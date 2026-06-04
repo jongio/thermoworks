@@ -5,63 +5,122 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="ThermoWorks CLI brings live ThermoWorks temperature readings into the GitHub Copilot CLI statusline."
+      content="Unofficial tools for ThermoWorks Cloud — CLI, SDK, and integrations for your connected thermometers."
     />
-    <title>ThermoWorks CLI</title>
+    <title>ThermoWorks Tools</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="page-shell">
       <header class="hero">
         <div class="hero-copy">
-          <p class="eyebrow">Unofficial community tool</p>
-          <h1>ThermoWorks CLI</h1>
+          <p class="eyebrow">Unofficial community tools</p>
+          <h1>🔥 ThermoWorks<br />Tools</h1>
           <p class="subtitle">
-            Live temperature readings from your ThermoWorks devices in the GitHub Copilot CLI
-            statusline
+            CLI, SDK, and integrations for your ThermoWorks Cloud connected thermometers.
+            Check temps from the terminal, build automations, or pipe live readings into your
+            favorite tools.
           </p>
+          <pre class="hero-install"><code>npx thermoworks auth login</code></pre>
           <p class="disclaimer">
-            Not affiliated with ThermoWorks. An unofficial community tool.
+            Not affiliated with, endorsed by, or connected to
+            <a href="https://www.thermoworks.com/">ThermoWorks</a>.
+            Built by ThermoWorks customers, for ThermoWorks customers.
           </p>
         </div>
-        <figure class="hero-shot">
-          <img
-            src="images/statusline.png"
-            alt="ThermoWorks CLI statusline showing device averages"
-          />
-          <img
-            src="images/statusline-channels.png"
-            alt="ThermoWorks CLI statusline showing per-channel temperatures"
-          />
-        </figure>
       </header>
 
       <main>
+        <section class="card" id="features">
+          <div class="section-heading">
+            <p class="eyebrow">What you can do</p>
+            <h2>Features</h2>
+          </div>
+          <div class="feature-grid">
+            <div class="feature-item">
+              <span class="feature-icon">🌡️</span>
+              <h3>Check temps from the terminal</h3>
+              <p>Log in once, then query any device or channel. Works with Smoke, Signals, RFX, and more.</p>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">📟</span>
+              <h3>GitHub Copilot CLI statusline</h3>
+              <p>See live readings while you code — pick devices, channels, and refresh rate with an interactive wizard.</p>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">🔐</span>
+              <h3>Secure credential storage</h3>
+              <p>Credentials are saved in the OS keychain (macOS Keychain, Windows Credential Vault, libsecret).</p>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">🛠️</span>
+              <h3>SDK for custom integrations</h3>
+              <p>Build your own dashboards, alerts, or automations with the <code>thermoworks-sdk</code> Node.js package.</p>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">📊</span>
+              <h3>Per-channel selection</h3>
+              <p>Pick averages or individual channels for multi-probe devices like the Signals 4-channel.</p>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">⚡</span>
+              <h3>Fast &amp; lightweight</h3>
+              <p>Zero install with <code>npx</code>. Smart caching keeps API calls low. Built on undici connection pooling.</p>
+            </div>
+          </div>
+        </section>
+
         <section class="card" id="quick-start">
           <div class="section-heading">
             <p class="eyebrow">Get started</p>
             <h2>Quick Start</h2>
           </div>
-          <pre><code>npx thermoworks auth login
-npx thermoworks copilot setup</code></pre>
+          <div class="steps">
+            <div class="step">
+              <span class="step-num">1</span>
+              <div>
+                <h3>Sign in</h3>
+                <pre><code>npx thermoworks auth login</code></pre>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-num">2</span>
+              <div>
+                <h3>List your devices</h3>
+                <pre><code>npx thermoworks devices</code></pre>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-num">3</span>
+              <div>
+                <h3>Set up Copilot statusline</h3>
+                <pre><code>npx thermoworks copilot setup</code></pre>
+              </div>
+            </div>
+          </div>
         </section>
 
-        <section class="card" id="features">
+        <section class="card" id="copilot">
           <div class="section-heading">
-            <p class="eyebrow">Why use it</p>
-            <h2>Features</h2>
+            <p class="eyebrow">Integration</p>
+            <h2>Copilot CLI Statusline</h2>
           </div>
-          <ul class="feature-list">
-            <li>🔥 Live temps in Copilot CLI statusline</li>
-            <li>🔐 OS keychain credential storage</li>
-            <li>📊 Per-device, per-channel selection</li>
-            <li>⚡ Configurable refresh rate with caching</li>
-          </ul>
+          <p class="section-desc">Run the setup wizard to pick devices and channels. Temps appear in the Copilot CLI footer while you work.</p>
+          <figure class="screenshot-strip">
+            <img
+              src="images/statusline.png"
+              alt="Statusline showing device averages"
+            />
+            <img
+              src="images/statusline-channels.png"
+              alt="Statusline showing per-channel temperatures"
+            />
+          </figure>
         </section>
 
         <section class="card" id="packages">
           <div class="section-heading">
-            <p class="eyebrow">Monorepo packages</p>
+            <p class="eyebrow">npm packages</p>
             <h2>Packages</h2>
           </div>
           <div class="package-grid">
@@ -69,17 +128,17 @@ npx thermoworks copilot setup</code></pre>
               class="package-card"
               href="https://github.com/jongio/thermoworks/blob/main/packages/cli/README.md"
             >
-              <h3>thermoworks (CLI)</h3>
-              <p>Authenticate, configure Copilot statusline output, and view live readings.</p>
-              <span>Open packages/cli README →</span>
+              <h3>thermoworks</h3>
+              <p>CLI for auth, device listing, and Copilot statusline. Use with <code>npx</code> or install globally.</p>
+              <span>View CLI docs →</span>
             </a>
             <a
               class="package-card"
               href="https://github.com/jongio/thermoworks/blob/main/packages/sdk/README.md"
             >
-              <h3>thermoworks-sdk (SDK)</h3>
-              <p>Build integrations on top of ThermoWorks Cloud device and channel data.</p>
-              <span>Open packages/sdk README →</span>
+              <h3>thermoworks-sdk</h3>
+              <p>Node.js SDK for ThermoWorks Cloud — devices, channels, temperatures, and auth.</p>
+              <span>View SDK docs →</span>
             </a>
           </div>
         </section>

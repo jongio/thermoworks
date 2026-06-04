@@ -39,6 +39,7 @@ export async function authLogout(): Promise<void> {
 	const deleted = await deleteCredentials();
 	if (deleted) {
 		console.log("Credentials removed from system keychain.");
+		console.log("Note: To fully revoke access, change your password at cloud.thermoworks.com.");
 	} else {
 		console.log("No credentials found in system keychain.");
 	}

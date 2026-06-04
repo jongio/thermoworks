@@ -34,7 +34,11 @@ const DEFAULT_CONFIG: ThermoworksCliConfig = {
 function isValidConfig(raw: unknown): raw is Partial<ThermoworksCliConfig> {
 	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return false;
 	const obj = raw as Record<string, unknown>;
-	if (obj.refreshSeconds !== undefined && (typeof obj.refreshSeconds !== "number" || obj.refreshSeconds < 1)) return false;
+	if (
+		obj.refreshSeconds !== undefined &&
+		(typeof obj.refreshSeconds !== "number" || obj.refreshSeconds < 1)
+	)
+		return false;
 	if (obj.devices !== undefined && !Array.isArray(obj.devices)) return false;
 	return true;
 }
@@ -58,7 +62,10 @@ export async function loadConfig(): Promise<ThermoworksCliConfig> {
 
 export async function saveConfig(config: ThermoworksCliConfig): Promise<void> {
 	await mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
-	await writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+	await writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, {
+		encoding: "utf8",
+		mode: 0o600,
+	});
 }
 
 export async function readCache(ttlMs: number): Promise<string | null> {

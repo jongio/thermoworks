@@ -19,7 +19,7 @@ import {
 	type User,
 } from "./types.js";
 
-const SERIAL_PATTERN = /^[A-Za-z0-9:_\-]+$/;
+const SERIAL_PATTERN = /^[A-Za-z0-9:_-]+$/;
 
 function validateSerial(serial: string): void {
 	if (!serial || !SERIAL_PATTERN.test(serial)) {
@@ -36,6 +36,7 @@ function validateChannel(channel: number): void {
 /** Strip ANSI escape sequences and control characters from a string. */
 function sanitizeLabel(value: string | null | undefined): string | null {
 	if (value == null) return null;
+	// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional - stripping control chars
 	return value.replace(/[\x00-\x1f\x7f\x1b](\[[0-9;]*[A-Za-z])?/g, "");
 }
 
@@ -141,7 +142,10 @@ export class ThermoworksCloud {
 	async getDevice(serial: string): Promise<Device> {
 		validateSerial(serial);
 		const session = await this.ensureSession();
-		const response = await session.request("GET", `documents/devices/${encodeURIComponent(serial)}`);
+		const response = await session.request(
+			"GET",
+			`documents/devices/${encodeURIComponent(serial)}`,
+		);
 
 		if (response.status === 404) {
 			await response.text().catch(() => {});
@@ -229,13 +233,15 @@ export class ThermoworksCloud {
 				this.config.password,
 				this.config.apiKey,
 				this.config.appId,
-			).then((s) => {
-				this.session = s;
-				return s;
-			}).catch((err) => {
-				this.sessionPromise = null;
-				throw err;
-			});
+			)
+				.then((s) => {
+					this.session = s;
+					return s;
+				})
+				.catch((err) => {
+					this.sessionPromise = null;
+					throw err;
+				});
 		}
 		return this.sessionPromise;
 	}

@@ -3,7 +3,15 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { type DeviceChannel, ThermoworksCloud } from "thermoworks-sdk";
 
-import { type DeviceEntry, type ThermoworksCliConfig, getConfigPath, loadConfig, readCache, saveConfig, writeCache } from "../config.js";
+import {
+	type DeviceEntry,
+	getConfigPath,
+	loadConfig,
+	readCache,
+	saveConfig,
+	type ThermoworksCliConfig,
+	writeCache,
+} from "../config.js";
 import { getCredentials } from "../credentials.js";
 import { prompt, promptCheckbox, promptRadio } from "../prompt.js";
 
@@ -24,8 +32,17 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 	process.stdout.write("Fetching devices and channels... ");
 	const client = new ThermoworksCloud({ email: creds.email, password: creds.password });
 
-	interface ChannelInfo { number: number; label: string; temp: string }
-	interface DeviceInfo { serial: string; label: string; channels: ChannelInfo[]; avgTemp: string }
+	interface ChannelInfo {
+		number: number;
+		label: string;
+		temp: string;
+	}
+	interface DeviceInfo {
+		serial: string;
+		label: string;
+		channels: ChannelInfo[];
+		avgTemp: string;
+	}
 
 	let deviceInfos: DeviceInfo[];
 	try {
@@ -55,7 +72,7 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 			if (tempChannels.length > 0) {
 				const sum = tempChannels.reduce((acc, ch) => acc + ch.value, 0);
 				const avg = Math.round(sum / tempChannels.length);
-				avgTemp = `${avg}\u00B0${tempChannels[0]!.units}`;
+				avgTemp = `${avg}\u00B0${tempChannels[0]?.units}`;
 			}
 
 			deviceInfos.push({ serial: d.serial, label, channels, avgTemp });
@@ -71,15 +88,14 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 	client.close();
 
 	// 3. Multi-select devices
-	const deviceLabels = deviceInfos.map(
-		(d) => `${d.label} (${d.serial}) - ${d.avgTemp}`,
-	);
+	const deviceLabels = deviceInfos.map((d) => `${d.label} (${d.serial}) - ${d.avgTemp}`);
 	const selectedDeviceIndices = await promptCheckbox("Select devices:", deviceLabels);
 
 	// 4. Per-device channel selection (only for multi-channel devices)
 	const selectedDevices: DeviceEntry[] = [];
 	for (const di of selectedDeviceIndices) {
-		const info = deviceInfos[di]!;
+		const info = deviceInfos[di];
+		if (!info) continue;
 
 		if (info.channels.length <= 1) {
 			selectedDevices.push({ serial: info.serial, label: info.label, channels: "avg" });
@@ -99,7 +115,9 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 			selectedDevices.push({
 				serial: info.serial,
 				label: info.label,
-				channels: channelIndices.map((i) => info.channels[i - 1]!.number),
+				channels: channelIndices
+					.map((i) => info.channels[i - 1]?.number)
+					.filter((n): n is number => n != null),
 			});
 		}
 	}
@@ -111,7 +129,7 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 
 	const config: ThermoworksCliConfig = {
 		devices: selectedDevices,
-		refreshSeconds: refreshValues[refreshIndex]!,
+		refreshSeconds: refreshValues[refreshIndex] ?? 30,
 	};
 
 	// 5. Save config
@@ -121,7 +139,9 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 	// 6. Configure statusline
 	const answer = await prompt("Configure Copilot CLI statusline? (Y/n) ");
 	if (answer.toLowerCase() === "n") {
-		console.log("Skipped statusline. You can run commands manually with: thermoworks copilot status");
+		console.log(
+			"Skipped statusline. You can run commands manually with: thermoworks copilot status",
+		);
 		return;
 	}
 
@@ -180,7 +200,9 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 	console.log(
 		`\nDone! Showing ${names}, updating at least every ${config.refreshSeconds}s.${dev ? " (dev mode)" : ""}`,
 	);
-	console.log("Note: The statusline refreshes each time Copilot CLI re-renders (on new prompts/responses).");
+	console.log(
+		"Note: The statusline refreshes each time Copilot CLI re-renders (on new prompts/responses).",
+	);
 }
 
 export async function copilotStatus(): Promise<void> {
@@ -208,7 +230,7 @@ export async function copilotStatus(): Promise<void> {
 		// Fetch all devices in one query (required by Firestore security rules
 		// before individual channel reads are permitted).
 		const allDevices = await client.getDevices();
-		const configSerials = new Set(config.devices.map((d) => d.serial));
+		const _configSerials = new Set(config.devices.map((d) => d.serial));
 
 		const parts: string[] = [];
 
@@ -223,14 +245,15 @@ export async function copilotStatus(): Promise<void> {
 
 			if (deviceConfig.channels === "avg") {
 				if (tempChannels.length > 0) {
-					const sum = tempChannels.reduce((acc, ch) => acc + ch.value!, 0);
+					const sum = tempChannels.reduce((acc, ch) => acc + (ch.value ?? 0), 0);
 					const avg = Math.round(sum / tempChannels.length);
-					const units = tempChannels[0]!.units;
+					const units = tempChannels[0]?.units;
 					parts.push(`${deviceConfig.label}:${avg}\u00B0${units}`);
 				}
 			} else if (deviceConfig.channels.length === 1) {
 				// Single channel — no channel label needed
-				const ch = allChannels[deviceConfig.channels[0]! - 1];
+				const chIdx = deviceConfig.channels[0];
+				const ch = chIdx != null ? allChannels[chIdx - 1] : undefined;
 				if (ch?.value != null && ch.units != null) {
 					parts.push(`${deviceConfig.label}:${Math.round(ch.value)}\u00B0${ch.units}`);
 				}
@@ -246,9 +269,7 @@ export async function copilotStatus(): Promise<void> {
 			}
 		}
 
-		const output = parts.length > 0
-			? `\u{1F525} ${parts.join(" \u00B7 ")}`
-			: "";
+		const output = parts.length > 0 ? `\u{1F525} ${parts.join(" \u00B7 ")}` : "";
 
 		if (output) {
 			await writeCache(output);

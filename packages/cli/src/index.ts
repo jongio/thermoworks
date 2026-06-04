@@ -1,5 +1,4 @@
-import { stdin, stdout } from "node:process";
-import { createInterface } from "node:readline";
+import { stdout } from "node:process";
 
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import { copilotRemove, copilotSetup, copilotStatus } from "./commands/copilot.js";
@@ -48,7 +47,11 @@ async function main(): Promise<void> {
 					await authStatus();
 					break;
 				default:
-					console.error(subcommand ? `Unknown auth command: ${subcommand}` : "Usage: thermoworks auth <login|logout|status>");
+					console.error(
+						subcommand
+							? `Unknown auth command: ${subcommand}`
+							: "Usage: thermoworks auth <login|logout|status>",
+					);
 					process.exit(1);
 			}
 			break;
@@ -65,7 +68,11 @@ async function main(): Promise<void> {
 					await copilotRemove();
 					break;
 				default:
-					console.error(subcommand ? `Unknown copilot command: ${subcommand}` : "Usage: thermoworks copilot <setup|status|remove>");
+					console.error(
+						subcommand
+							? `Unknown copilot command: ${subcommand}`
+							: "Usage: thermoworks copilot <setup|status|remove>",
+					);
 					process.exit(1);
 			}
 			break;

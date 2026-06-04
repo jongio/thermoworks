@@ -1,5 +1,5 @@
-import { createInterface } from "node:readline";
 import { stdin, stdout } from "node:process";
+import { createInterface } from "node:readline";
 import { Writable } from "node:stream";
 
 export function prompt(question: string): Promise<string> {
@@ -87,7 +87,7 @@ export function promptPassword(question: string): Promise<string> {
  * Returns 0-based index.
  */
 export function promptRadio(header: string, choices: string[], defaultIndex = 0): Promise<number> {
-	return new Promise((resolve, reject) => {
+	return new Promise((resolve, _reject) => {
 		let cursor = defaultIndex;
 		let rendered = false;
 
@@ -168,7 +168,7 @@ export function promptRadio(header: string, choices: string[], defaultIndex = 0)
  * Returns array of 0-based indices of selected items.
  */
 export function promptCheckbox(header: string, choices: string[]): Promise<number[]> {
-	return new Promise((resolve, reject) => {
+	return new Promise((resolve, _reject) => {
 		const selected = new Set<number>();
 		let cursor = 0;
 		let rendered = false;

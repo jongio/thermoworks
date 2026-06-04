@@ -1,6 +1,11 @@
 import { ThermoworksCloud } from "thermoworks-sdk";
 
-import { deleteCredentials, getCredentials, getStoredEmail, storeCredentials } from "../credentials.js";
+import {
+	deleteCredentials,
+	getCredentials,
+	getStoredEmail,
+	storeCredentials,
+} from "../credentials.js";
 import { prompt, promptPassword } from "../prompt.js";
 
 export async function authLogin(): Promise<void> {
@@ -25,7 +30,8 @@ export async function authLogin(): Promise<void> {
 		client.close();
 	} catch (err: unknown) {
 		console.log("\u2717");
-		const message = err instanceof Error && err.name === "AuthError" ? err.message : "Connection failed";
+		const message =
+			err instanceof Error && err.name === "AuthError" ? err.message : "Connection failed";
 		console.error(`\nError: ${message}`);
 		process.exit(1);
 	}

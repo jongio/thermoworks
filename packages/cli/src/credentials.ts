@@ -2,7 +2,7 @@ const SERVICE_NAME = "thermoworks";
 const ACCOUNT_EMAIL = "email";
 const ACCOUNT_PASSWORD = "password";
 
-type Keytar = typeof import("keytar");
+type Keytar = typeof import("@github/keytar");
 
 let _keytar: Keytar | null | undefined;
 

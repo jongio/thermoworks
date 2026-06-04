@@ -60,9 +60,7 @@ async function httpRequest(
 			text: async () => text,
 		};
 	} catch (err) {
-		throw new NetworkError(
-			err instanceof Error ? err.message : "Network request failed",
-		);
+		throw new NetworkError(err instanceof Error ? err.message : "Network request failed");
 	}
 }
 

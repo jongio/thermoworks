@@ -71,9 +71,19 @@ export async function saveConfig(config: ThermoworksCliConfig): Promise<void> {
 export async function readCache(ttlMs: number): Promise<string | null> {
 	try {
 		const raw = await readFile(CACHE_PATH, "utf8");
-		const entry = JSON.parse(raw) as CacheEntry;
-		if (Date.now() - entry.timestamp < ttlMs) {
-			return entry.output;
+		const parsed: unknown = JSON.parse(raw);
+		if (
+			typeof parsed === "object" &&
+			parsed !== null &&
+			"output" in parsed &&
+			typeof (parsed as CacheEntry).output === "string" &&
+			"timestamp" in parsed &&
+			typeof (parsed as CacheEntry).timestamp === "number"
+		) {
+			const entry = parsed as CacheEntry;
+			if (Date.now() - entry.timestamp < ttlMs) {
+				return entry.output;
+			}
 		}
 	} catch {
 		// Cache missing or corrupt

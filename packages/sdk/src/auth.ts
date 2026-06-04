@@ -46,7 +46,7 @@ async function httpRequest(
 			headers: _h,
 			body,
 		} = await undiciRequest(url, {
-			method: (options.method ?? "GET") as "GET" | "POST",
+			method: options.method ?? "GET",
 			headers: options.headers,
 			body: options.body,
 			dispatcher: agent,
@@ -62,6 +62,14 @@ async function httpRequest(
 	} catch (err) {
 		throw new NetworkError(err instanceof Error ? err.message : "Network request failed");
 	}
+}
+
+function parseExpiresIn(value: unknown): number {
+	const seconds = Number(value);
+	if (!Number.isFinite(seconds) || seconds < 0) {
+		throw new AuthError("Invalid expires_in from server", "INVALID_TOKEN_RESPONSE");
+	}
+	return seconds;
 }
 
 async function safeJsonParse(response: HttpResponse, context: string): Promise<unknown> {
@@ -233,7 +241,7 @@ async function login(
 		accessToken: data.idToken,
 		refreshToken: data.refreshToken,
 		userId: data.localId,
-		expiresAt: Date.now() + Number(data.expiresIn) * 1000,
+		expiresAt: Date.now() + parseExpiresIn(data.expiresIn) * 1000,
 	};
 }
 
@@ -274,6 +282,6 @@ async function refreshAccessToken(
 		accessToken: data.id_token,
 		refreshToken: data.refresh_token,
 		userId: data.user_id,
-		expiresAt: Date.now() + Number(data.expires_in) * 1000,
+		expiresAt: Date.now() + parseExpiresIn(data.expires_in) * 1000,
 	};
 }

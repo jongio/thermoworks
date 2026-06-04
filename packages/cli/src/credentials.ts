@@ -65,8 +65,8 @@ export async function storeCredentials(email: string, password: string): Promise
 
 		await keytar.setPassword(SERVICE_NAME, ACCOUNT_EMAIL, email);
 		await keytar.setPassword(SERVICE_NAME, ACCOUNT_PASSWORD, password);
-	} catch {
-		throw new Error("Failed to save credentials. Is the OS keychain available?");
+	} catch (err) {
+		throw new Error("Failed to save credentials. Is the OS keychain available?", { cause: err });
 	}
 }
 
@@ -82,8 +82,8 @@ export async function deleteCredentials(): Promise<boolean> {
 		const deletedEmail = await keytar.deletePassword(SERVICE_NAME, ACCOUNT_EMAIL);
 		const deletedPassword = await keytar.deletePassword(SERVICE_NAME, ACCOUNT_PASSWORD);
 		return deletedEmail || deletedPassword;
-	} catch {
-		throw new Error("Failed to remove credentials. Is the OS keychain available?");
+	} catch (err) {
+		throw new Error("Failed to remove credentials. Is the OS keychain available?", { cause: err });
 	}
 }
 

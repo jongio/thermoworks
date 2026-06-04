@@ -230,7 +230,6 @@ export async function copilotStatus(): Promise<void> {
 		// Fetch all devices in one query (required by Firestore security rules
 		// before individual channel reads are permitted).
 		const allDevices = await client.getDevices();
-		const _configSerials = new Set(config.devices.map((d) => d.serial));
 
 		const parts: string[] = [];
 

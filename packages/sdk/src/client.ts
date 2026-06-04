@@ -120,9 +120,14 @@ export class ThermoworksCloud {
 
 		const response = await session.request("POST", "documents:runQuery", queryBody);
 		const rawResults = await response.json();
-		const results = Array.isArray(rawResults)
-			? (rawResults as Array<{ document?: { fields?: FirestoreFields } }>)
-			: [];
+		if (!Array.isArray(rawResults)) {
+			const maybeError = rawResults as { error?: { message?: string } } | null;
+			if (maybeError?.error) {
+				throw new NetworkError(maybeError.error.message ?? "Query failed");
+			}
+			return [];
+		}
+		const results = rawResults as Array<{ document?: { fields?: FirestoreFields } }>;
 
 		let devices: Device[] = [];
 		for (const result of results) {

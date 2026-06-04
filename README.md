@@ -23,7 +23,7 @@ Done — your selected devices can now appear in the GitHub Copilot CLI statusli
 ## Features
 
 - Log in with your ThermoWorks Cloud account and store credentials in your OS keychain
-- Configure a GitHub Copilot CLI statusline that shows live device or channel temperatures
+- Configure a GitHub Copilot CLI statusline that shows live device or channel temperatures (updates on each Copilot interaction)
 - Choose device averages or specific channels for multi-channel probes
 - List devices connected to your ThermoWorks Cloud account
 - Use the SDK for scripts, automations, and custom integrations

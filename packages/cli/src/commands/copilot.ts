@@ -104,10 +104,10 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 		}
 	}
 
-	// 5. Pick refresh rate
+	// 5. Pick cache duration (how long before fetching fresh data from the API)
 	const refreshOptions = ["30 seconds", "60 seconds", "120 seconds", "300 seconds"];
 	const refreshValues = [30, 60, 120, 300];
-	const refreshIndex = await promptRadio("Refresh interval:", refreshOptions, 0);
+	const refreshIndex = await promptRadio("Minimum update interval:", refreshOptions, 0);
 
 	const config: ThermoworksCliConfig = {
 		devices: selectedDevices,
@@ -178,8 +178,9 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 
 	const names = selectedDevices.map((d) => d.label).join(", ");
 	console.log(
-		`\nDone! Showing ${names}, refreshing every ${config.refreshSeconds}s.${dev ? " (dev mode)" : ""}`,
+		`\nDone! Showing ${names}, updating at least every ${config.refreshSeconds}s.${dev ? " (dev mode)" : ""}`,
 	);
+	console.log("Note: The statusline refreshes each time Copilot CLI re-renders (on new prompts/responses).");
 }
 
 export async function copilotStatus(): Promise<void> {

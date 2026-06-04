@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="ThermoWorks CLI brings live ThermoWorks temperature readings into the GitHub Copilot CLI statusline."
+    />
+    <title>ThermoWorks CLI</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Unofficial community tool</p>
+          <h1>ThermoWorks CLI</h1>
+          <p class="subtitle">
+            Live temperature readings from your ThermoWorks devices in the GitHub Copilot CLI
+            statusline
+          </p>
+          <p class="disclaimer">
+            Not affiliated with ThermoWorks. An unofficial community tool.
+          </p>
+        </div>
+        <figure class="hero-shot">
+          <img
+            src="../../docs/images/statusline.png"
+            alt="ThermoWorks CLI statusline showing device averages"
+          />
+          <img
+            src="../../docs/images/statusline-channels.png"
+            alt="ThermoWorks CLI statusline showing per-channel temperatures"
+          />
+        </figure>
+      </header>
+
+      <main>
+        <section class="card" id="quick-start">
+          <div class="section-heading">
+            <p class="eyebrow">Get started</p>
+            <h2>Quick Start</h2>
+          </div>
+          <pre><code>npx thermoworks auth login
+npx thermoworks copilot setup</code></pre>
+        </section>
+
+        <section class="card" id="features">
+          <div class="section-heading">
+            <p class="eyebrow">Why use it</p>
+            <h2>Features</h2>
+          </div>
+          <ul class="feature-list">
+            <li>🔥 Live temps in Copilot CLI statusline</li>
+            <li>🔐 OS keychain credential storage</li>
+            <li>📊 Per-device, per-channel selection</li>
+            <li>⚡ Configurable refresh rate with caching</li>
+          </ul>
+        </section>
+
+        <section class="card" id="packages">
+          <div class="section-heading">
+            <p class="eyebrow">Monorepo packages</p>
+            <h2>Packages</h2>
+          </div>
+          <div class="package-grid">
+            <a
+              class="package-card"
+              href="https://github.com/jongio/thermoworks/blob/main/packages/cli/README.md"
+            >
+              <h3>thermoworks (CLI)</h3>
+              <p>Authenticate, configure Copilot statusline output, and view live readings.</p>
+              <span>Open packages/cli README →</span>
+            </a>
+            <a
+              class="package-card"
+              href="https://github.com/jongio/thermoworks/blob/main/packages/sdk/README.md"
+            >
+              <h3>thermoworks-sdk (SDK)</h3>
+              <p>Build integrations on top of ThermoWorks Cloud device and channel data.</p>
+              <span>Open packages/sdk README →</span>
+            </a>
+          </div>
+        </section>
+      </main>
+
+      <footer class="site-footer">
+        <span>Released under the MIT License.</span>
+        <a href="https://github.com/jongio/thermoworks">GitHub</a>
+      </footer>
+    </div>
+  </body>
+</html>

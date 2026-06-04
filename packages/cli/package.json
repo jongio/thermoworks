@@ -1,0 +1,52 @@
+{
+	"name": "thermoworks",
+	"version": "0.1.0",
+	"description": "CLI for ThermoWorks Cloud - manage credentials, view temperatures, configure Copilot statusline",
+	"type": "module",
+	"bin": {
+		"thermoworks": "./dist/index.js"
+	},
+	"files": [
+		"dist/",
+		"LICENSE"
+	],
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"license": "MIT",
+	"author": "Jon Gallant",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/jongio/thermoworks",
+		"directory": "packages/cli"
+	},
+	"keywords": [
+		"thermoworks",
+		"thermometer",
+		"temperature",
+		"cli",
+		"copilot",
+		"statusline",
+		"iot",
+		"smoke",
+		"signals"
+	],
+	"publishConfig": {
+		"provenance": true,
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsup",
+		"typecheck": "tsc --noEmit",
+		"prepack": "pnpm build",
+		"clean": "rimraf dist"
+	},
+	"devDependencies": {
+		"@types/node": "^25.9.1",
+		"tsup": "^8.4.0"
+	},
+	"dependencies": {
+		"keytar": "^7.9.0",
+		"thermoworks-sdk": "workspace:^"
+	}
+}

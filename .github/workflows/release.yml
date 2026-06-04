@@ -16,15 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'jongio'
     timeout-minutes: 20
-    environment: npm-publish
     permissions:
       contents: write
       pull-requests: write
       id-token: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          persist-credentials: false
 
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
@@ -33,6 +30,16 @@ jobs:
           node-version: 22
           cache: pnpm
           registry-url: https://registry.npmjs.org
+
+      - name: Ensure npm supports trusted publishing
+        run: npm install -g npm@latest
+
+      - name: Strip _authToken from .npmrc (let OIDC kick in)
+        run: |
+          npmrc="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+          if [ -f "$npmrc" ]; then
+            sed -i '/_authToken/d' "$npmrc"
+          fi
 
       - run: pnpm install --frozen-lockfile
 
@@ -50,4 +57,3 @@ jobs:
           commit: "chore: release packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

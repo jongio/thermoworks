@@ -9,7 +9,7 @@ let _keytar: Keytar | null | undefined;
 async function getKeytar(): Promise<Keytar | null> {
 	if (_keytar !== undefined) return _keytar;
 	try {
-		_keytar = (await import("keytar")).default;
+		_keytar = (await import("@github/keytar")).default;
 	} catch {
 		_keytar = null;
 	}

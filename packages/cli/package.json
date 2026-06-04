@@ -46,7 +46,7 @@
 		"tsup": "^8.4.0"
 	},
 	"dependencies": {
-		"keytar": "^7.9.0",
+		"@github/keytar": "^7.10.6",
 		"thermoworks-sdk": "workspace:^"
 	}
 }

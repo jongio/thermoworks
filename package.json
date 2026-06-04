@@ -24,7 +24,7 @@
 		"onlyBuiltDependencies": [
 			"@biomejs/biome",
 			"esbuild",
-			"keytar"
+			"@github/keytar"
 		]
 	},
 	"packageManager": "pnpm@10.12.1"

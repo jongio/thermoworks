@@ -1,5 +1,11 @@
 # thermoworks-sdk
 
+## 0.2.1
+
+### Patch Changes
+
+- [`06a542b`](https://github.com/jongio/thermoworks/commit/06a542b22be7acfbf46c9105e7f4b6ff8560c324) Thanks [@jongio](https://github.com/jongio)! - Add fire emoji favicon to GitHub Pages site. Clarify statusline refresh behavior in docs.
+
 ## 0.2.0
 
 ### Minor Changes

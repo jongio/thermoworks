@@ -1,8 +1,20 @@
-import keytar from "keytar";
-
 const SERVICE_NAME = "thermoworks";
 const ACCOUNT_EMAIL = "email";
 const ACCOUNT_PASSWORD = "password";
+
+type Keytar = typeof import("keytar");
+
+let _keytar: Keytar | null | undefined;
+
+async function getKeytar(): Promise<Keytar | null> {
+	if (_keytar !== undefined) return _keytar;
+	try {
+		_keytar = (await import("keytar")).default;
+	} catch {
+		_keytar = null;
+	}
+	return _keytar;
+}
 
 export interface Credentials {
 	readonly email: string;
@@ -26,6 +38,9 @@ export async function getCredentials(): Promise<Credentials | null> {
 	}
 
 	try {
+		const keytar = await getKeytar();
+		if (!keytar) return null;
+
 		const email = await keytar.getPassword(SERVICE_NAME, ACCOUNT_EMAIL);
 		const password = await keytar.getPassword(SERVICE_NAME, ACCOUNT_PASSWORD);
 
@@ -45,6 +60,9 @@ export async function getCredentials(): Promise<Credentials | null> {
  */
 export async function storeCredentials(email: string, password: string): Promise<void> {
 	try {
+		const keytar = await getKeytar();
+		if (!keytar) throw new Error("OS keychain not available (keytar failed to load).");
+
 		await keytar.setPassword(SERVICE_NAME, ACCOUNT_EMAIL, email);
 		await keytar.setPassword(SERVICE_NAME, ACCOUNT_PASSWORD, password);
 	} catch {
@@ -58,6 +76,9 @@ export async function storeCredentials(email: string, password: string): Promise
  */
 export async function deleteCredentials(): Promise<boolean> {
 	try {
+		const keytar = await getKeytar();
+		if (!keytar) throw new Error("OS keychain not available (keytar failed to load).");
+
 		const deletedEmail = await keytar.deletePassword(SERVICE_NAME, ACCOUNT_EMAIL);
 		const deletedPassword = await keytar.deletePassword(SERVICE_NAME, ACCOUNT_PASSWORD);
 		return deletedEmail || deletedPassword;
@@ -71,6 +92,8 @@ export async function deleteCredentials(): Promise<boolean> {
  */
 export async function getStoredEmail(): Promise<string | null> {
 	try {
+		const keytar = await getKeytar();
+		if (!keytar) return null;
 		return await keytar.getPassword(SERVICE_NAME, ACCOUNT_EMAIL);
 	} catch {
 		return null;

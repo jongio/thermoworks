@@ -19,6 +19,26 @@ import {
 	type User,
 } from "./types.js";
 
+const SERIAL_PATTERN = /^[A-Za-z0-9:_\-]+$/;
+
+function validateSerial(serial: string): void {
+	if (!serial || !SERIAL_PATTERN.test(serial)) {
+		throw new Error(`Invalid device serial: ${serial}`);
+	}
+}
+
+function validateChannel(channel: number): void {
+	if (!Number.isInteger(channel) || channel < 1 || channel > 9) {
+		throw new Error(`Invalid channel number: ${channel} (must be integer 1-9)`);
+	}
+}
+
+/** Strip ANSI escape sequences and control characters from a string. */
+function sanitizeLabel(value: string | null | undefined): string | null {
+	if (value == null) return null;
+	return value.replace(/[\x00-\x1f\x7f\x1b](\[[0-9;]*[A-Za-z])?/g, "");
+}
+
 /**
  * Client for the ThermoWorks Cloud service.
  *
@@ -98,7 +118,10 @@ export class ThermoworksCloud {
 		};
 
 		const response = await session.request("POST", "documents:runQuery", queryBody);
-		const results = (await response.json()) as Array<{ document?: { fields?: FirestoreFields } }>;
+		const rawResults = await response.json();
+		const results = Array.isArray(rawResults)
+			? (rawResults as Array<{ document?: { fields?: FirestoreFields } }>)
+			: [];
 
 		let devices: Device[] = [];
 		for (const result of results) {
@@ -116,8 +139,9 @@ export class ThermoworksCloud {
 
 	/** Get a single device by serial number. */
 	async getDevice(serial: string): Promise<Device> {
+		validateSerial(serial);
 		const session = await this.ensureSession();
-		const response = await session.request("GET", `documents/devices/${serial}`);
+		const response = await session.request("GET", `documents/devices/${encodeURIComponent(serial)}`);
 
 		if (response.status === 404) {
 			await response.text().catch(() => {});
@@ -134,10 +158,12 @@ export class ThermoworksCloud {
 
 	/** Get a channel reading for a device. Channels are 1-indexed. */
 	async getDeviceChannel(serial: string, channel: number): Promise<DeviceChannel> {
+		validateSerial(serial);
+		validateChannel(channel);
 		const session = await this.ensureSession();
 		const response = await session.request(
 			"GET",
-			`documents/devices/${serial}/channels/${channel}`,
+			`documents/devices/${encodeURIComponent(serial)}/channels/${channel}`,
 		);
 
 		if (response.status === 404) {
@@ -206,6 +232,9 @@ export class ThermoworksCloud {
 			).then((s) => {
 				this.session = s;
 				return s;
+			}).catch((err) => {
+				this.sessionPromise = null;
+				throw err;
 			});
 		}
 		return this.sessionPromise;
@@ -216,7 +245,7 @@ function parseDevice(fields: FirestoreFields): Device {
 	return {
 		serial: getString(fields, "serial") ?? "",
 		deviceId: getString(fields, "deviceId"),
-		label: getString(fields, "label"),
+		label: sanitizeLabel(getString(fields, "label")),
 		type: getString(fields, "type"),
 		status: getString(fields, "status"),
 		battery: getNumber(fields, "battery"),
@@ -244,7 +273,7 @@ function parseDeviceChannel(fields: FirestoreFields): DeviceChannel {
 	return {
 		value: getNumber(fields, "value"),
 		units: getString(fields, "units"),
-		label: getString(fields, "label"),
+		label: sanitizeLabel(getString(fields, "label")),
 		status: getString(fields, "status"),
 		type: getString(fields, "type"),
 		number: getString(fields, "number"),

@@ -22,6 +22,8 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
@@ -32,7 +34,7 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - name: Ensure npm supports trusted publishing
-        run: npm install -g npm@latest
+        run: npm install -g npm@11.4.2
 
       - name: Strip _authToken from .npmrc (let OIDC kick in)
         run: |

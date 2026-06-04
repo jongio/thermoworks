@@ -31,18 +31,34 @@ const DEFAULT_CONFIG: ThermoworksCliConfig = {
 	refreshSeconds: 60,
 };
 
+function isValidConfig(raw: unknown): raw is Partial<ThermoworksCliConfig> {
+	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return false;
+	const obj = raw as Record<string, unknown>;
+	if (obj.refreshSeconds !== undefined && (typeof obj.refreshSeconds !== "number" || obj.refreshSeconds < 1)) return false;
+	if (obj.devices !== undefined && !Array.isArray(obj.devices)) return false;
+	return true;
+}
+
 export async function loadConfig(): Promise<ThermoworksCliConfig> {
 	try {
 		const raw = await readFile(CONFIG_PATH, "utf8");
-		return { ...DEFAULT_CONFIG, ...(JSON.parse(raw) as Partial<ThermoworksCliConfig>) };
-	} catch {
+		const parsed: unknown = JSON.parse(raw);
+		if (!isValidConfig(parsed)) {
+			console.error("Warning: ~/.thermoworks/config.json has invalid format, using defaults.");
+			return DEFAULT_CONFIG;
+		}
+		return { ...DEFAULT_CONFIG, ...parsed };
+	} catch (err) {
+		if (err instanceof SyntaxError) {
+			console.error("Warning: ~/.thermoworks/config.json is corrupted, using defaults.");
+		}
 		return DEFAULT_CONFIG;
 	}
 }
 
 export async function saveConfig(config: ThermoworksCliConfig): Promise<void> {
-	await mkdir(CONFIG_DIR, { recursive: true });
-	await writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+	await mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
+	await writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
 }
 
 export async function readCache(ttlMs: number): Promise<string | null> {
@@ -60,9 +76,9 @@ export async function readCache(ttlMs: number): Promise<string | null> {
 
 export async function writeCache(output: string): Promise<void> {
 	try {
-		await mkdir(CACHE_DIR, { recursive: true });
+		await mkdir(CACHE_DIR, { recursive: true, mode: 0o700 });
 		const entry: CacheEntry = { output, timestamp: Date.now() };
-		await writeFile(CACHE_PATH, JSON.stringify(entry), "utf8");
+		await writeFile(CACHE_PATH, JSON.stringify(entry), { encoding: "utf8", mode: 0o600 });
 	} catch {
 		// Non-fatal
 	}

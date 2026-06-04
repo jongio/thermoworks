@@ -66,6 +66,14 @@ async function httpRequest(
 	}
 }
 
+async function safeJsonParse(response: HttpResponse, context: string): Promise<unknown> {
+	try {
+		return await response.json();
+	} catch {
+		throw new NetworkError(`Invalid JSON in ${context}`);
+	}
+}
+
 export interface AuthSession {
 	request(method: string, path: string, body?: unknown): Promise<HttpResponse>;
 	getUserId(): string;
@@ -86,10 +94,17 @@ export async function createAuthSession(
 		connections: 10,
 	});
 
-	const config = await fetchWebConfig(key, app, agent);
-	const baseUrl = `${FIRESTORE_HOST}/v1/projects/${config.projectId}/databases/(default)`;
+	let config: FirebaseWebConfig;
+	let token: TokenState;
+	try {
+		config = await fetchWebConfig(key, app, agent);
+		token = await login(email, password, key, agent);
+	} catch (err) {
+		agent.close();
+		throw err;
+	}
 
-	let token = await login(email, password, key, agent);
+	const baseUrl = `${FIRESTORE_HOST}/v1/projects/${config.projectId}/databases/(default)`;
 	let refreshPromise: Promise<TokenState> | null = null;
 
 	function isTokenValid(): boolean {
@@ -99,11 +114,14 @@ export async function createAuthSession(
 	async function ensureValidToken(): Promise<string> {
 		if (!isTokenValid()) {
 			if (!refreshPromise) {
-				refreshPromise = refreshAccessToken(token.refreshToken, key, agent).then((t) => {
-					token = t;
-					refreshPromise = null;
-					return t;
-				});
+				refreshPromise = refreshAccessToken(token.refreshToken, key, agent)
+					.then((t) => {
+						token = t;
+						return t;
+					})
+					.finally(() => {
+						refreshPromise = null;
+					});
 			}
 			await refreshPromise;
 		}
@@ -171,7 +189,7 @@ async function fetchWebConfig(
 		throw new NetworkError("Failed to fetch Firebase web config", response.status);
 	}
 
-	return (await response.json()) as FirebaseWebConfig;
+	return (await safeJsonParse(response, "Firebase web config")) as FirebaseWebConfig;
 }
 
 async function login(
@@ -206,7 +224,7 @@ async function login(
 		throw new AuthError(`Authentication failed: ${reason}`, reason);
 	}
 
-	const data = (await response.json()) as {
+	const data = (await safeJsonParse(response, "login response")) as {
 		idToken: string;
 		refreshToken: string;
 		localId: string;
@@ -247,7 +265,7 @@ async function refreshAccessToken(
 		throw new AuthError("Token refresh failed", "TOKEN_REFRESH_FAILED");
 	}
 
-	const data = (await response.json()) as {
+	const data = (await safeJsonParse(response, "token refresh")) as {
 		id_token: string;
 		refresh_token: string;
 		user_id: string;

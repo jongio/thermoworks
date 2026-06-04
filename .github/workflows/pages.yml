@@ -16,6 +16,7 @@ jobs:
     if: github.repository_owner == 'jongio'
     timeout-minutes: 5
     permissions:
+      contents: read
       pages: write
       id-token: write
     environment:

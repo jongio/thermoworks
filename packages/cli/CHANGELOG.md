@@ -1,5 +1,14 @@
 # thermoworks
 
+## 0.2.2
+
+### Patch Changes
+
+- [`e0a1041`](https://github.com/jongio/thermoworks/commit/e0a104154f8899c1dd7da238b5c56e7c77ddd06d) Thanks [@jongio](https://github.com/jongio)! - Fix NaN token expiry loop, improve error handling and cache validation, migrate to @github/keytar, remove misleading refresh rate prompt from copilot setup
+
+- Updated dependencies [[`e0a1041`](https://github.com/jongio/thermoworks/commit/e0a104154f8899c1dd7da238b5c56e7c77ddd06d)]:
+  - thermoworks-sdk@0.2.2
+
 ## 0.2.1
 
 ### Patch Changes

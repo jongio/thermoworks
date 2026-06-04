@@ -140,8 +140,8 @@ npx thermoworks copilot status
 **Notes**
 
 - Reads `~/.thermoworks/config.json` and silently exits when no devices are configured.
-- Uses a cache file in `~/.thermoworks/.cache/readings.json` for the configured refresh window. When the cache is fresh, it returns the cached value without hitting the API.
-- The statusline updates each time Copilot CLI re-renders (on prompts, responses, and state changes), not on a background timer. Readings are at most `refreshSeconds` old during active use.
+- Uses a cache file in `~/.thermoworks/.cache/readings.json`. API responses are cached for 30 seconds to avoid excessive requests.
+- The statusline updates each time Copilot CLI re-renders (on prompts, responses, and state changes), not on a background timer.
 - Output format is:
 
 ```text

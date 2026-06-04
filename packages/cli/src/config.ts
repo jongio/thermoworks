@@ -17,7 +17,7 @@ export interface DeviceEntry {
 export interface ThermoworksCliConfig {
 	/** Devices to show in statusline. */
 	devices: DeviceEntry[];
-	/** Refresh interval in seconds. */
+	/** API cache duration in seconds. */
 	refreshSeconds: number;
 }
 
@@ -28,7 +28,7 @@ interface CacheEntry {
 
 const DEFAULT_CONFIG: ThermoworksCliConfig = {
 	devices: [],
-	refreshSeconds: 60,
+	refreshSeconds: 30,
 };
 
 function isValidConfig(raw: unknown): raw is Partial<ThermoworksCliConfig> {

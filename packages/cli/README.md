@@ -53,11 +53,8 @@ The wizard walks through the full Copilot statusline setup flow:
    - Single-channel devices are stored as `"avg"` automatically.
    - Multi-channel devices show another checkbox list with `Average (...)` plus one entry per channel, including the live reading.
    - If you select `Average`, the saved config uses `"avg"`. Otherwise it stores the selected channel numbers.
-4. **Choose a refresh interval** with a radio selector.
-   - Options: `30`, `60`, `120`, or `300` seconds.
-   - Default selection: `30 seconds`.
-5. **Save the ThermoWorks config** to `~/.thermoworks/config.json`.
-6. **Optionally update GitHub Copilot CLI** by writing a managed `statusLine` command into `~/.copilot/settings.json`.
+4. **Save the ThermoWorks config** to `~/.thermoworks/config.json`.
+5. **Optionally update GitHub Copilot CLI** by writing a managed `statusLine` command into `~/.copilot/settings.json`.
    - If another statusline already exists and it was not created by `thermoworks`, the CLI asks before overwriting it.
    - If you skip this step, you can still run `thermoworks copilot status` manually.
 
@@ -76,7 +73,7 @@ Example output:
 🔥 RFX Gateway:189°F · Brisket:203°F · Ambient:271°F
 ```
 
-The CLI caches the rendered status output for the configured refresh interval so the statusline does not re-fetch on every repaint.
+The CLI caches readings for 30 seconds so the statusline does not re-fetch on every repaint.
 
 ## Configuration
 
@@ -110,9 +107,9 @@ The setup wizard writes config to `~/.thermoworks/config.json`.
 | `devices[].serial` | `string` | ThermoWorks device serial number |
 | `devices[].label` | `string` | Label used in output and setup summaries |
 | `devices[].channels` | `number[] \| "avg"` | Specific 1-based channel numbers to show, or `"avg"` to display the average temperature across temperature channels |
-| `refreshSeconds` | `number` | Cache and refresh interval in seconds |
+| `refreshSeconds` | `number` | API cache duration in seconds (default: 30) |
 
-If the file is missing, the CLI falls back to an empty device list with a default refresh interval of `60` seconds until you run setup.
+If the file is missing, the CLI falls back to an empty device list with a 30-second cache until you run setup.
 
 ## Commands
 

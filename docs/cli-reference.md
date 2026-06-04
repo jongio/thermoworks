@@ -110,9 +110,9 @@ npx thermoworks copilot setup --dev
 - Fetches all devices and channel readings before prompting.
 - Device selection uses a checkbox list with current average temperatures.
 - Multi-channel devices show a second checkbox list with `Average (...)` plus each channel label and live reading.
-- Refresh interval uses a radio selector with `30`, `60`, `120`, and `300` second options. The default selection is `30 seconds`. This controls how long the CLI caches readings before fetching fresh data from the API.
-- The Copilot CLI statusline updates each time Copilot re-renders (on new prompts, responses, and state changes). Temperatures are not polled on a background timer — they refresh during active CLI use.
 - Saves CLI config to `~/.thermoworks/config.json`.
+- API responses are cached for 30 seconds to avoid excessive requests.
+- The Copilot CLI statusline updates each time Copilot re-renders (on new prompts, responses, and state changes). Temperatures are not polled on a background timer.
 - Optionally writes a managed `statusLine` entry to `~/.copilot/settings.json`.
 - If `~/.copilot/settings.json` contains invalid JSON, setup stops and asks you to fix it manually.
 - If an existing statusline is present and it was not created by `thermoworks`, the command prompts before overwriting it.

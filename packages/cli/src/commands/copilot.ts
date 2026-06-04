@@ -13,7 +13,7 @@ import {
 	writeCache,
 } from "../config.js";
 import { getCredentials } from "../credentials.js";
-import { prompt, promptCheckbox, promptRadio } from "../prompt.js";
+import { prompt, promptCheckbox } from "../prompt.js";
 
 const COPILOT_DIR = join(homedir(), ".copilot");
 const SETTINGS_PATH = join(COPILOT_DIR, "settings.json");
@@ -122,14 +122,9 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 		}
 	}
 
-	// 5. Pick cache duration (how long before fetching fresh data from the API)
-	const refreshOptions = ["30 seconds", "60 seconds", "120 seconds", "300 seconds"];
-	const refreshValues = [30, 60, 120, 300];
-	const refreshIndex = await promptRadio("Minimum update interval:", refreshOptions, 0);
-
 	const config: ThermoworksCliConfig = {
 		devices: selectedDevices,
-		refreshSeconds: refreshValues[refreshIndex] ?? 30,
+		refreshSeconds: 30,
 	};
 
 	// 5. Save config
@@ -197,12 +192,8 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 	}
 
 	const names = selectedDevices.map((d) => d.label).join(", ");
-	console.log(
-		`\nDone! Showing ${names}, updating at least every ${config.refreshSeconds}s.${dev ? " (dev mode)" : ""}`,
-	);
-	console.log(
-		"Note: The statusline refreshes each time Copilot CLI re-renders (on new prompts/responses).",
-	);
+	console.log(`\nDone! Showing ${names}.${dev ? " (dev mode)" : ""}`);
+	console.log("Temperatures update each time you send a prompt or get a response in Copilot CLI.");
 }
 
 export async function copilotStatus(): Promise<void> {

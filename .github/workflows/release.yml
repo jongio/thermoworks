@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'jongio'
     timeout-minutes: 20
+    environment: npm-publish
     permissions:
       contents: write
       pull-requests: write

@@ -32,15 +32,13 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          registry-url: https://registry.npmjs.org
 
       - name: Install latest npm for trusted publishing
         run: npm install -g npm@latest
 
-      - name: Remove token placeholder from .npmrc (OIDC handles auth)
+      - name: Configure npm registry for OIDC
         run: |
-          npmrc="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
-          [ -f "$npmrc" ] && sed -i '/_authToken/d' "$npmrc" || true
+          echo "registry=https://registry.npmjs.org/" > ~/.npmrc
 
       - run: pnpm install --frozen-lockfile
 

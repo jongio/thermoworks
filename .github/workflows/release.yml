@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'jongio'
     timeout-minutes: 20
+    environment: npm-publish
     permissions:
       contents: write
       pull-requests: write
@@ -33,11 +34,13 @@ jobs:
           cache: pnpm
           registry-url: https://registry.npmjs.org
 
-      - name: Ensure npm supports trusted publishing
+      - name: Install latest npm for trusted publishing
         run: npm install -g npm@latest
 
-      - name: Strip token placeholder so OIDC takes over
-        run: sed -i '/_authToken/d' "$NPM_CONFIG_USERCONFIG"
+      - name: Remove token placeholder from .npmrc (OIDC handles auth)
+        run: |
+          npmrc="${NPM_CONFIG_USERCONFIG:-$HOME/.npmrc}"
+          [ -f "$npmrc" ] && sed -i '/_authToken/d' "$npmrc" || true
 
       - run: pnpm install --frozen-lockfile
 
@@ -55,3 +58,4 @@ jobs:
           commit: "chore: release packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: "true"

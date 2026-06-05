@@ -16,7 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'jongio'
     timeout-minutes: 20
-    environment: npm-publish
     permissions:
       contents: write
       pull-requests: write
@@ -36,6 +35,9 @@ jobs:
 
       - name: Ensure npm supports trusted publishing
         run: npm install -g npm@latest
+
+      - name: Strip token placeholder so OIDC takes over
+        run: sed -i '/_authToken/d' "$NPM_CONFIG_USERCONFIG"
 
       - run: pnpm install --frozen-lockfile
 

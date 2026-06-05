@@ -9,6 +9,6 @@
 	"linked": [],
 	"access": "public",
 	"baseBranch": "main",
-	"updateInternalDependencies": "patch",
+	"updateInternalDependencies": "minor",
 	"ignore": ["thermoworks-web"]
 }

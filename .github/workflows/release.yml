@@ -16,7 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'jongio'
     timeout-minutes: 20
-    environment: npm-publish
     permissions:
       contents: write
       pull-requests: write
@@ -32,13 +31,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          registry-url: https://registry.npmjs.org
 
-      - name: Install latest npm for trusted publishing
+      - name: Upgrade npm for trusted publishing
         run: npm install -g npm@latest
-
-      - name: Configure npm registry for OIDC
-        run: |
-          echo "registry=https://registry.npmjs.org/" > ~/.npmrc
 
       - run: pnpm install --frozen-lockfile
 
@@ -56,4 +52,3 @@ jobs:
           commit: "chore: release packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_CONFIG_PROVENANCE: "true"

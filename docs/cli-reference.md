@@ -211,6 +211,17 @@ npx thermoworks devices
 --version, -v  Show version
 ```
 
+## Shared Configuration
+
+The CLI and VS Code extension share credentials and device configuration:
+
+| File | Purpose |
+|------|---------|
+| OS Keychain (service: `thermoworks`) | Email and password — shared between CLI and VS Code extension |
+| `~/.thermoworks/config.json` | Device/channel selections — used by both CLI statusline and VS Code status bar |
+
+Sign in with either tool and both will see your credentials. Run `thermoworks copilot setup` to select devices — the VS Code extension reads the same config file.
+
 ### `thermoworks --help`
 
 Show the top-level usage text.

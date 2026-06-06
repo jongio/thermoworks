@@ -18,9 +18,8 @@
           <p class="eyebrow">Unofficial community tools</p>
           <h1>🔥 ThermoWorks<br />Tools</h1>
           <p class="subtitle">
-            CLI, SDK, and integrations for your ThermoWorks Cloud connected thermometers.
-            Check temps from the terminal, build automations, or pipe live readings into your
-            favorite tools.
+            CLI, SDK, VS Code extension, and integrations for your ThermoWorks Cloud connected thermometers.
+            Check temps from the terminal, VS Code status bar, or build automations with live readings.
           </p>
           <pre class="hero-install"><code>npx thermoworks</code></pre>
           <p class="disclaimer">
@@ -47,6 +46,11 @@
               <span class="feature-icon">📟</span>
               <h3>GitHub Copilot CLI statusline</h3>
               <p>See live readings while you code - pick devices and channels with an interactive wizard.</p>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">💻</span>
+              <h3>VS Code status bar</h3>
+              <p>Install the extension to see temperatures in the VS Code footer. Auto-refreshes and shares credentials with the CLI.</p>
             </div>
             <div class="feature-item">
               <span class="feature-icon">🔐</span>
@@ -119,6 +123,40 @@
           </figure>
         </section>
 
+        <section class="card" id="vscode">
+          <div class="section-heading">
+            <p class="eyebrow">Integration</p>
+            <h2>VS Code Extension</h2>
+          </div>
+          <p class="section-desc">
+            Install the <strong>ThermoWorks</strong> extension from the VS Code Marketplace to see live temperatures in the status bar.
+            Shares credentials and device config with the CLI — sign in once and both tools work.
+          </p>
+          <div class="steps">
+            <div class="step">
+              <span class="step-num">1</span>
+              <div>
+                <h3>Install the extension</h3>
+                <p>Search "ThermoWorks" in the VS Code Extensions panel, or install from the <a href="https://marketplace.visualstudio.com/items?itemName=jongio.thermoworks">Marketplace</a>.</p>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-num">2</span>
+              <div>
+                <h3>Sign in</h3>
+                <p>Use the <code>ThermoWorks: Login</code> command, or the CLI shares credentials automatically.</p>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-num">3</span>
+              <div>
+                <h3>See temperatures</h3>
+                <p>Temps appear in the status bar: <code>🔥 Smoker:225°F · Meat:145°F</code>. Hover for details.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section class="card" id="packages">
           <div class="section-heading">
             <p class="eyebrow">npm packages</p>
@@ -140,6 +178,14 @@
               <h3>thermoworks-sdk</h3>
               <p>Node.js SDK for ThermoWorks Cloud — devices, channels, temperatures, and auth.</p>
               <span>View SDK docs →</span>
+            </a>
+            <a
+              class="package-card"
+              href="https://marketplace.visualstudio.com/items?itemName=jongio.thermoworks"
+            >
+              <h3>ThermoWorks for VS Code</h3>
+              <p>VS Code extension — live temperatures in the status bar with auto-refresh and shared credentials.</p>
+              <span>View on Marketplace →</span>
             </a>
           </div>
         </section>

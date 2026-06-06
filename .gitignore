@@ -2,5 +2,6 @@ node_modules
 dist
 coverage
 *.tgz
+*.vsix
 .DS_Store
 .playwright-mcp

@@ -1,0 +1,88 @@
+{
+	"name": "thermoworks",
+	"displayName": "ThermoWorks",
+	"description": "Display real-time ThermoWorks device temperatures in the VS Code status bar",
+	"version": "0.1.0",
+	"publisher": "jongio",
+	"author": "Jon Gallant",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/jongio/thermoworks",
+		"directory": "packages/vscode"
+	},
+	"engines": {
+		"vscode": "^1.85.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"keywords": [
+		"thermoworks",
+		"temperature",
+		"thermometer",
+		"iot",
+		"status bar"
+	],
+	"extensionKind": [
+		"ui"
+	],
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"main": "./dist/extension.js",
+	"icon": "images/icon.png",
+	"galleryBanner": {
+		"color": "#1e1e2e",
+		"theme": "dark"
+	},
+	"contributes": {
+		"commands": [
+			{
+				"command": "thermoworks.login",
+				"title": "ThermoWorks: Login"
+			},
+			{
+				"command": "thermoworks.logout",
+				"title": "ThermoWorks: Logout"
+			},
+			{
+				"command": "thermoworks.refresh",
+				"title": "ThermoWorks: Refresh Temperatures"
+			}
+		],
+		"configuration": {
+			"title": "ThermoWorks",
+			"properties": {
+				"thermoworks.refreshInterval": {
+					"type": "number",
+					"default": 60,
+					"minimum": 15,
+					"description": "Temperature refresh interval in seconds (minimum 15)"
+				}
+			}
+		}
+	},
+	"scripts": {
+		"build": "node build.mjs",
+		"watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --external:@github/keytar --format=cjs --platform=node --sourcemap --watch",
+		"test": "vitest run",
+		"test:coverage": "vitest run --coverage",
+		"typecheck": "tsc --noEmit",
+		"package": "vsce package --no-dependencies",
+		"publish": "vsce publish --no-dependencies"
+	},
+	"devDependencies": {
+		"@types/node": "^22.0.0",
+		"@types/vscode": "^1.85.0",
+		"@vitest/coverage-v8": "^4.1.8",
+		"@vscode/vsce": "^3.3.2",
+		"esbuild": "^0.25.0",
+		"thermoworks-sdk": "workspace:^",
+		"typescript": "^6.0.3",
+		"vitest": "^4.1.8"
+	},
+	"dependencies": {
+		"@github/keytar": "^7.10.6"
+	}
+}

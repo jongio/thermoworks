@@ -1,0 +1,9 @@
+node_modules/
+src/
+tests/
+tsconfig.json
+vitest.config.ts
+build.mjs
+.gitignore
+**/*.map
+*.vsix

@@ -155,6 +155,8 @@ npx thermoworks copilot status
   - **High alarm** — bright red + blink (`\x1b[5;91m`)
   - **Low alarm** — bright blue + blink (`\x1b[5;94m`)
   - Terminals that do not support ANSI blink will display the color without blinking.
+
+  ![CLI low alarm](images/cli-alarm-low.png)
 - For entries configured as `"avg"`, the CLI averages temperature channels and excludes humidity channels.
 - For channel-specific entries, labels come from the ThermoWorks channel label or fall back to `<device label> Ch<channel>`.
 - On API failures it stays silent so the Copilot statusline does not spam errors.

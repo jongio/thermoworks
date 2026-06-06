@@ -40,9 +40,18 @@ See the [extension README](packages/vscode/README.md) for details.
 - Log in with your ThermoWorks Cloud account and store credentials in your OS keychain
 - Configure a GitHub Copilot CLI statusline that shows live device or channel temperatures (updates on each Copilot interaction)
 - See live temperatures in the VS Code status bar with auto-refresh
+- **Alarm indicators** — visual alerts when temperatures exceed thresholds (red for high, blue for low)
 - Choose device averages or specific channels for multi-channel probes
 - List devices connected to your ThermoWorks Cloud account
 - Use the SDK for scripts, automations, and custom integrations
+
+### Alarm Alerts
+
+![VS Code high alarm — red background](docs/images/vscode-alarm-high.png)
+
+![VS Code low alarm — blue text](docs/images/vscode-alarm-low.png)
+
+![CLI low alarm — blue ANSI text](docs/images/cli-alarm-low.png)
 
 ## Packages
 

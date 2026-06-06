@@ -68,6 +68,10 @@ When a device channel's alarm triggers, the status bar changes appearance:
 - **High alarm** — Red background (error styling) + blinking text
 - **Low alarm** — Blue text + blinking text
 
+![VS Code high alarm](../../docs/images/vscode-alarm-high.png)
+
+![VS Code low alarm](../../docs/images/vscode-alarm-low.png)
+
 Alarms are detected automatically from the `alarmHigh.alarming` and `alarmLow.alarming` fields on each channel. The highest severity alarm across all displayed channels determines the style (high takes priority over low).
 
 ## Requirements

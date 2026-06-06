@@ -101,7 +101,7 @@ h1 {
 .section-heading h2 { font-size: 1.5rem; }
 .section-desc { color: var(--muted); margin-bottom: 1.25rem; }
 
-/* Feature grid — 2×3 */
+/* Feature grid */
 .feature-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -162,6 +162,23 @@ h1 {
   border: 1px solid var(--border);
   border-radius: 12px;
 }
+
+/* Alert examples */
+.alert-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.alert-example {
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(9, 11, 17, 0.72);
+}
+
+.alert-example h3 { font-size: 1rem; margin-bottom: 0.25rem; }
+.alert-example > p { color: var(--muted); font-size: 0.9rem; margin-bottom: 1rem; }
+.alert-example .screenshot-strip { margin-top: 0; }
 
 /* Packages */
 .package-grid {

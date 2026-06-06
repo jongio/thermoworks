@@ -72,6 +72,11 @@
               <h3>Fast &amp; lightweight</h3>
               <p>Zero install with <code>npx</code>. Smart caching keeps API calls low. Built on undici connection pooling.</p>
             </div>
+            <div class="feature-item">
+              <span class="feature-icon">🚨</span>
+              <h3>Alarm alerts</h3>
+              <p>Visual indicators when temperatures go too high (red) or too low (blue) — with blinking in both CLI and VS Code.</p>
+            </div>
           </div>
         </section>
 
@@ -154,6 +159,57 @@
                 <p>Temps appear in the status bar: <code>🔥 Smoker:225°F · Meat:145°F</code>. Hover for details.</p>
               </div>
             </div>
+          </div>
+        </section>
+
+        <section class="card" id="alerts">
+          <div class="section-heading">
+            <p class="eyebrow">Stay informed</p>
+            <h2>Temperature Alerts</h2>
+          </div>
+          <p class="section-desc">When a channel's alarm triggers, both the CLI and VS Code immediately show visual alerts — red for too high, blue for too low, with blinking to grab your attention.</p>
+          <div class="alert-grid">
+            <div class="alert-example">
+              <h3>🔴 High Alarm</h3>
+              <p>Temperature exceeded the high threshold</p>
+              <figure class="screenshot-strip">
+                <img src="images/vscode-alarm-high.png" alt="VS Code high alarm — red background" />
+                <img src="images/cli-alarm-high.png" alt="CLI high alarm — red ANSI text" />
+              </figure>
+            </div>
+            <div class="alert-example">
+              <h3>🔵 Low Alarm</h3>
+              <p>Temperature dropped below the low threshold</p>
+              <figure class="screenshot-strip">
+                <img src="images/vscode-alarm-low.png" alt="VS Code low alarm — blue text" />
+                <img src="images/cli-alarm-low.png" alt="CLI low alarm — blue ANSI text" />
+              </figure>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="docs">
+          <div class="section-heading">
+            <p class="eyebrow">Reference</p>
+            <h2>Documentation</h2>
+          </div>
+          <div class="package-grid">
+            <a
+              class="package-card"
+              href="https://github.com/jongio/thermoworks/blob/main/docs/cli-reference.md"
+            >
+              <h3>CLI Reference</h3>
+              <p>Full command documentation — auth, copilot setup, devices, demo mode, and all flags.</p>
+              <span>View CLI reference →</span>
+            </a>
+            <a
+              class="package-card"
+              href="https://github.com/jongio/thermoworks/blob/main/docs/api-reference.md"
+            >
+              <h3>API Reference</h3>
+              <p>ThermoWorks Cloud Firestore REST API — authentication, collections, and data types.</p>
+              <span>View API reference →</span>
+            </a>
           </div>
         </section>
 

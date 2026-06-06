@@ -329,8 +329,8 @@ export async function copilotStatus(): Promise<void> {
 type AlarmStyle = "none" | "low" | "high";
 
 const ANSI_RESET = "\x1b[0m";
-const ANSI_BLINK_RED = "\x1b[5;91m"; // blink + bright red
-const ANSI_BLINK_BLUE = "\x1b[5;94m"; // blink + bright blue
+const ANSI_RED = "\x1b[91m"; // bright red
+const ANSI_BLUE = "\x1b[94m"; // bright blue
 
 function getChannelAlarmStyle(channels: DeviceChannel[]): AlarmStyle {
 	for (const ch of channels) {
@@ -345,9 +345,9 @@ function getChannelAlarmStyle(channels: DeviceChannel[]): AlarmStyle {
 function wrapAnsi(text: string, style: AlarmStyle): string {
 	switch (style) {
 		case "high":
-			return `${ANSI_BLINK_RED}${text}${ANSI_RESET}`;
+			return `${ANSI_RED}${text}${ANSI_RESET}`;
 		case "low":
-			return `${ANSI_BLINK_BLUE}${text}${ANSI_RESET}`;
+			return `${ANSI_BLUE}${text}${ANSI_RESET}`;
 		default:
 			return text;
 	}

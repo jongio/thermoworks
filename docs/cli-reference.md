@@ -152,9 +152,8 @@ npx thermoworks copilot status
 ```
 
 - When a channel's alarm is active, the reading is styled with ANSI escape codes:
-  - **High alarm** — bright red + blink (`\x1b[5;91m`)
-  - **Low alarm** — bright blue + blink (`\x1b[5;94m`)
-  - Terminals that do not support ANSI blink will display the color without blinking.
+  - **High alarm** — bright red (`\x1b[91m`)
+  - **Low alarm** — bright blue (`\x1b[94m`)
 
   ![CLI low alarm](images/cli-alarm-low.png)
 
@@ -235,10 +234,10 @@ None. The mode argument is required.
 
 ```bash
 npx thermoworks demo high
-# 🔥 Smoker:Pit:285°F · Smoker:Meat:205°F · Fridge:Internal:38°F  (red + blink)
+# 🔥 Smoker:Pit:285°F · Smoker:Meat:205°F · Fridge:Internal:38°F  (red)
 
 npx thermoworks demo low
-# 🔥 Smoker:Pit:180°F · Smoker:Meat:120°F · Fridge:Internal:28°F  (blue + blink)
+# 🔥 Smoker:Pit:180°F · Smoker:Meat:120°F · Fridge:Internal:28°F  (blue)
 
 npx thermoworks demo normal
 # 🔥 Smoker:Pit:225°F · Smoker:Meat:165°F · Fridge:Internal:38°F  (no color)
@@ -247,7 +246,7 @@ npx thermoworks demo normal
 **Notes**
 
 - Useful for testing alarm styling, taking screenshots, or verifying terminal ANSI support.
-- High mode uses bright red + blink ANSI codes; low mode uses bright blue + blink.
+- High mode uses bright red ANSI color; low mode uses bright blue.
 - Normal mode outputs plain text with no ANSI escape codes.
 
 ## Global Options

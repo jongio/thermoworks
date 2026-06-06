@@ -204,8 +204,8 @@ Found 2 devices:
 Show demo output with alarm styling. No credentials required.
 
 ```bash
-npx thermoworks demo high    # red + blink
-npx thermoworks demo low     # blue + blink
+npx thermoworks demo high    # red text
+npx thermoworks demo low     # blue text
 npx thermoworks demo normal  # no color
 ```
 

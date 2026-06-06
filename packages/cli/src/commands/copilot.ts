@@ -62,11 +62,14 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 					ch.value != null && ch.units != null && ch.units !== "H",
 			);
 
-			const channels: ChannelInfo[] = tempChannels.map((ch, idx) => ({
-				number: idx + 1,
-				label: ch.label || `Channel ${idx + 1}`,
-				temp: `${Math.round(ch.value)}\u00B0${ch.units}`,
-			}));
+			const channels: ChannelInfo[] = tempChannels.map((ch) => {
+				const originalIndex = allChannels.indexOf(ch) + 1;
+				return {
+					number: originalIndex,
+					label: ch.label || `Channel ${originalIndex}`,
+					temp: `${Math.round(ch.value)}\u00B0${ch.units}`,
+				};
+			});
 
 			let avgTemp = "no reading";
 			if (tempChannels.length > 0) {

@@ -1,6 +1,9 @@
 const SERVICE_NAME = "thermoworks";
-const ACCOUNT_EMAIL = "email";
-const ACCOUNT_PASSWORD = "password";
+const ACCOUNT_CREDENTIALS = "credentials";
+
+// Legacy account names for backward-compatible migration
+const LEGACY_ACCOUNT_EMAIL = "email";
+const LEGACY_ACCOUNT_PASSWORD = "password";
 
 type Keytar = typeof import("@github/keytar");
 
@@ -26,8 +29,9 @@ export interface Credentials {
  *
  * Resolution order:
  * 1. Environment variables (explicit override, good for CI)
- * 2. OS keychain via keytar
- * 3. Returns null if neither available
+ * 2. OS keychain via keytar (atomic JSON blob)
+ * 3. Legacy keychain format (separate email/password entries) with auto-migration
+ * 4. Returns null if neither available
  */
 export async function getCredentials(): Promise<Credentials | null> {
 	const envEmail = process.env.THERMOWORKS_EMAIL;
@@ -41,11 +45,28 @@ export async function getCredentials(): Promise<Credentials | null> {
 		const keytar = await getKeytar();
 		if (!keytar) return null;
 
-		const email = await keytar.getPassword(SERVICE_NAME, ACCOUNT_EMAIL);
-		const password = await keytar.getPassword(SERVICE_NAME, ACCOUNT_PASSWORD);
+		// Try new atomic format first
+		const blob = await keytar.getPassword(SERVICE_NAME, ACCOUNT_CREDENTIALS);
+		if (blob) {
+			const parsed = JSON.parse(blob) as { email?: string; password?: string };
+			if (parsed.email && parsed.password) {
+				return { email: parsed.email, password: parsed.password };
+			}
+		}
 
-		if (email && password) {
-			return { email, password };
+		// Fallback: read legacy separate entries and migrate
+		const legacyEmail = await keytar.getPassword(SERVICE_NAME, LEGACY_ACCOUNT_EMAIL);
+		const legacyPassword = await keytar.getPassword(SERVICE_NAME, LEGACY_ACCOUNT_PASSWORD);
+		if (legacyEmail && legacyPassword) {
+			// Migrate to atomic format
+			await keytar.setPassword(
+				SERVICE_NAME,
+				ACCOUNT_CREDENTIALS,
+				JSON.stringify({ email: legacyEmail, password: legacyPassword }),
+			);
+			await keytar.deletePassword(SERVICE_NAME, LEGACY_ACCOUNT_EMAIL);
+			await keytar.deletePassword(SERVICE_NAME, LEGACY_ACCOUNT_PASSWORD);
+			return { email: legacyEmail, password: legacyPassword };
 		}
 	} catch {
 		// Keychain not available (e.g., headless CI, container)
@@ -55,7 +76,7 @@ export async function getCredentials(): Promise<Credentials | null> {
 }
 
 /**
- * Stores credentials in the OS keychain.
+ * Stores credentials in the OS keychain as a single atomic JSON entry.
  * Throws with a user-friendly message if the keychain is unavailable.
  */
 export async function storeCredentials(email: string, password: string): Promise<void> {
@@ -63,8 +84,11 @@ export async function storeCredentials(email: string, password: string): Promise
 		const keytar = await getKeytar();
 		if (!keytar) throw new Error("OS keychain not available (keytar failed to load).");
 
-		await keytar.setPassword(SERVICE_NAME, ACCOUNT_EMAIL, email);
-		await keytar.setPassword(SERVICE_NAME, ACCOUNT_PASSWORD, password);
+		await keytar.setPassword(
+			SERVICE_NAME,
+			ACCOUNT_CREDENTIALS,
+			JSON.stringify({ email, password }),
+		);
 	} catch (err) {
 		throw new Error("Failed to save credentials. Is the OS keychain available?", { cause: err });
 	}
@@ -79,9 +103,11 @@ export async function deleteCredentials(): Promise<boolean> {
 		const keytar = await getKeytar();
 		if (!keytar) throw new Error("OS keychain not available (keytar failed to load).");
 
-		const deletedEmail = await keytar.deletePassword(SERVICE_NAME, ACCOUNT_EMAIL);
-		const deletedPassword = await keytar.deletePassword(SERVICE_NAME, ACCOUNT_PASSWORD);
-		return deletedEmail || deletedPassword;
+		const deleted = await keytar.deletePassword(SERVICE_NAME, ACCOUNT_CREDENTIALS);
+		// Also clean up any legacy entries
+		await keytar.deletePassword(SERVICE_NAME, LEGACY_ACCOUNT_EMAIL);
+		await keytar.deletePassword(SERVICE_NAME, LEGACY_ACCOUNT_PASSWORD);
+		return deleted;
 	} catch (err) {
 		throw new Error("Failed to remove credentials. Is the OS keychain available?", { cause: err });
 	}
@@ -94,7 +120,16 @@ export async function getStoredEmail(): Promise<string | null> {
 	try {
 		const keytar = await getKeytar();
 		if (!keytar) return null;
-		return await keytar.getPassword(SERVICE_NAME, ACCOUNT_EMAIL);
+
+		// Try new atomic format
+		const blob = await keytar.getPassword(SERVICE_NAME, ACCOUNT_CREDENTIALS);
+		if (blob) {
+			const parsed = JSON.parse(blob) as { email?: string };
+			if (parsed.email) return parsed.email;
+		}
+
+		// Fallback: legacy separate entry
+		return await keytar.getPassword(SERVICE_NAME, LEGACY_ACCOUNT_EMAIL);
 	} catch {
 		return null;
 	}

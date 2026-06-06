@@ -64,8 +64,15 @@ export function promptPassword(question: string): Promise<string> {
 
 		stdin.on("keypress", onKeypress);
 
+		rl.on("close", () => {
+			stdin.removeListener("keypress", onKeypress);
+			stdout.write("\n");
+			reject(new Error("cancelled"));
+		});
+
 		rl.on("line", (answer) => {
 			stdin.removeListener("keypress", onKeypress);
+			rl.removeAllListeners("close");
 			rl.close();
 			stdout.write("\n");
 			resolve(answer);
@@ -73,6 +80,7 @@ export function promptPassword(question: string): Promise<string> {
 
 		rl.on("SIGINT", () => {
 			stdin.removeListener("keypress", onKeypress);
+			rl.removeAllListeners("close");
 			rl.close();
 			stdout.write("\n");
 			reject(new Error("cancelled"));

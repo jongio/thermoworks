@@ -37,13 +37,15 @@
 	},
 	"scripts": {
 		"build": "tsup",
+		"test": "vitest run",
 		"typecheck": "tsc --noEmit",
 		"prepack": "pnpm build",
 		"clean": "rimraf dist"
 	},
 	"devDependencies": {
 		"@types/node": "^25.9.1",
-		"tsup": "^8.4.0"
+		"tsup": "^8.4.0",
+		"vitest": "^4.1.8"
 	},
 	"dependencies": {
 		"@github/keytar": "^7.10.6",

@@ -43,6 +43,7 @@ This saves your selection to `~/.thermoworks/config.json`, which the extension r
 | `ThermoWorks: Login` | Enter your ThermoWorks Cloud credentials |
 | `ThermoWorks: Logout` | Clear stored credentials |
 | `ThermoWorks: Refresh Temperatures` | Force an immediate temperature refresh |
+| `ThermoWorks: Demo (Simulate Alarm)` | Show fake data with selectable alarm state (for testing/screenshots) |
 
 ## Settings
 
@@ -59,6 +60,15 @@ The extension shows temperatures in the format:
 ```
 
 Hover for a detailed tooltip with all device and channel information.
+
+### Alarm Indicators
+
+When a device channel's alarm triggers, the status bar changes appearance:
+
+- **High alarm** — Red background (error styling) + blinking text
+- **Low alarm** — Blue text + blinking text
+
+Alarms are detected automatically from the `alarmHigh.alarming` and `alarmLow.alarming` fields on each channel. The highest severity alarm across all displayed channels determines the style (high takes priority over low).
 
 ## Requirements
 

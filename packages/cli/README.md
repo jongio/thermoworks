@@ -199,6 +199,16 @@ Found 2 devices:
   Signals  (signals)  [offline]  last seen 12m ago
 ```
 
+### `thermoworks demo <high|low|normal>`
+
+Show demo output with alarm styling. No credentials required.
+
+```bash
+npx thermoworks demo high    # red + blink
+npx thermoworks demo low     # blue + blink
+npx thermoworks demo normal  # no color
+```
+
 ### Global options
 
 ```bash

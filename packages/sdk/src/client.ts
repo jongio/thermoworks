@@ -63,6 +63,8 @@ export class ThermoworksCloud {
 	private readonly config: ThermoworksConfig;
 	private session: AuthSession | null = null;
 	private sessionPromise: Promise<AuthSession> | null = null;
+	private cachedAccountId: string | null = null;
+	private closed = false;
 
 	constructor(config: ThermoworksConfig) {
 		this.config = config;
@@ -98,9 +100,14 @@ export class ThermoworksCloud {
 
 	/** Get all devices for the authenticated user, with optional filtering. */
 	async getDevices(filter?: DeviceFilter): Promise<Device[]> {
-		const user = await this.getUser();
-		if (!user.accountId) {
-			return [];
+		let accountId = this.cachedAccountId;
+		if (!accountId) {
+			const user = await this.getUser();
+			if (!user.accountId) {
+				return [];
+			}
+			accountId = user.accountId;
+			this.cachedAccountId = accountId;
 		}
 
 		const session = await this.ensureSession();
@@ -111,7 +118,7 @@ export class ThermoworksCloud {
 					fieldFilter: {
 						field: { fieldPath: "accountId" },
 						op: "EQUAL",
-						value: { stringValue: user.accountId },
+						value: { stringValue: accountId },
 					},
 				},
 				orderBy: [{ field: { fieldPath: "__name__" }, direction: "ASCENDING" }],
@@ -185,7 +192,7 @@ export class ThermoworksCloud {
 	}
 
 	/**
-	 * Get all channels for a device. Probes channels 1-9 and stops at first not-found.
+	 * Get all channels for a device. Probes all channels 1-9, skipping any gaps.
 	 */
 	async getAllDeviceChannels(serial: string): Promise<DeviceChannel[]> {
 		const channels: DeviceChannel[] = [];
@@ -194,7 +201,7 @@ export class ThermoworksCloud {
 				const channel = await this.getDeviceChannel(serial, i);
 				channels.push(channel);
 			} catch (error) {
-				if (error instanceof NotFoundError) break;
+				if (error instanceof NotFoundError) continue;
 				throw error;
 			}
 		}
@@ -225,12 +232,17 @@ export class ThermoworksCloud {
 
 	/** Close the client and release resources. */
 	close(): void {
+		this.closed = true;
 		this.session?.close();
 		this.session = null;
 		this.sessionPromise = null;
+		this.cachedAccountId = null;
 	}
 
 	private async ensureSession(): Promise<AuthSession> {
+		if (this.closed) {
+			throw new Error("Client is closed");
+		}
 		if (this.session) return this.session;
 		if (!this.sessionPromise) {
 			this.sessionPromise = createAuthSession(
@@ -240,6 +252,10 @@ export class ThermoworksCloud {
 				this.config.appId,
 			)
 				.then((s) => {
+					if (this.closed) {
+						s.close();
+						return s;
+					}
 					this.session = s;
 					return s;
 				})

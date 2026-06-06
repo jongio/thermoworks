@@ -340,7 +340,10 @@ describe("ThermoworksCloud", () => {
 					fields: { value: { doubleValue: 80 }, units: { stringValue: "F" } },
 				}) as any,
 			);
-			mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+			// Channels 3-9: not found
+			for (let i = 3; i <= 9; i++) {
+				mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+			}
 
 			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
 			const avg = await client.getAverageTemperature("ABC123");
@@ -360,7 +363,10 @@ describe("ThermoworksCloud", () => {
 					fields: { value: { doubleValue: 45 }, units: { stringValue: "H" } },
 				}) as any,
 			);
-			mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+			// Channels 3-9: not found
+			for (let i = 3; i <= 9; i++) {
+				mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+			}
 
 			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
 			const avg = await client.getAverageTemperature("ABC123");
@@ -370,7 +376,10 @@ describe("ThermoworksCloud", () => {
 
 		it("returns null when no temperature channels have readings", async () => {
 			setupAuth();
-			mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+			// All 9 channels: not found
+			for (let i = 1; i <= 9; i++) {
+				mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+			}
 
 			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
 			const avg = await client.getAverageTemperature("ABC123");
@@ -379,20 +388,116 @@ describe("ThermoworksCloud", () => {
 		});
 	});
 
-	describe("getAllDeviceChannels", () => {
-		it("collects channels until NotFoundError", async () => {
+	describe("close", () => {
+		it("throws 'Client is closed' when calling getUser after close", async () => {
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			client.close();
+			await expect(client.getUser()).rejects.toThrow("Client is closed");
+		});
+
+		it("throws 'Client is closed' when calling getDevices after close", async () => {
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			client.close();
+			await expect(client.getDevices()).rejects.toThrow("Client is closed");
+		});
+
+		it("throws 'Client is closed' when calling getDeviceChannel after close", async () => {
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			client.close();
+			await expect(client.getDeviceChannel("ABC123", 1)).rejects.toThrow("Client is closed");
+		});
+
+		it("throws 'Client is closed' when calling getDevice after close", async () => {
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			client.close();
+			await expect(client.getDevice("ABC123")).rejects.toThrow("Client is closed");
+		});
+	});
+
+	describe("accountId caching", () => {
+		it("does not call getUser on second getDevices invocation", async () => {
 			setupAuth();
+			// First getDevices: getUser response (accountId) + devices query
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, { fields: { accountId: { stringValue: "acct-123" } } }) as any,
+			);
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, [
+					{
+						document: {
+							fields: {
+								serial: { stringValue: "A" },
+								type: { stringValue: "node" },
+								accountId: { stringValue: "acct-123" },
+							},
+						},
+					},
+				]) as any,
+			);
+			// Second getDevices: only devices query (no getUser call)
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, [
+					{
+						document: {
+							fields: {
+								serial: { stringValue: "A" },
+								type: { stringValue: "node" },
+								accountId: { stringValue: "acct-123" },
+							},
+						},
+					},
+				]) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			await client.getDevices();
+			const callsAfterFirst = mockRequest.mock.calls.length;
+
+			await client.getDevices();
+			const callsAfterSecond = mockRequest.mock.calls.length;
+
+			// Second call should only add the devices query (1 call), not getUser + devices query (2 calls)
+			expect(callsAfterSecond - callsAfterFirst).toBe(1);
+			client.close();
+		});
+
+		it("clears cached accountId on close", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, { fields: { accountId: { stringValue: "acct-123" } } }) as any,
+			);
+			mockRequest.mockResolvedValueOnce(mockRes(200, []) as any);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			await client.getDevices();
+			client.close();
+
+			// After close, calling getDevices throws - cache is cleared along with the client
+			await expect(client.getDevices()).rejects.toThrow("Client is closed");
+		});
+	});
+
+	describe("getAllDeviceChannels", () => {
+		it("probes all 9 slots, skipping gaps", async () => {
+			setupAuth();
+			// Channel 1: exists
 			mockRequest.mockResolvedValueOnce(
 				mockRes(200, {
 					fields: { value: { doubleValue: 72.4 }, units: { stringValue: "F" } },
 				}) as any,
 			);
+			// Channel 2: gap (not found)
+			mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+			// Channel 3: exists
 			mockRequest.mockResolvedValueOnce(
 				mockRes(200, {
 					fields: { value: { doubleValue: 45.0 }, units: { stringValue: "H" } },
 				}) as any,
 			);
-			mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+			// Channels 4-9: not found
+			for (let i = 4; i <= 9; i++) {
+				mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+			}
 
 			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
 			const channels = await client.getAllDeviceChannels("ABC123");

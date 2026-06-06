@@ -6,7 +6,7 @@ vi.mock("node:fs/promises", () => ({
 	mkdir: vi.fn(),
 }));
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 const mockReadFile = vi.mocked(readFile);
 const mockWriteFile = vi.mocked(writeFile);
@@ -40,9 +40,7 @@ describe("loadConfig", () => {
 		const config = await loadConfig();
 
 		expect(config).toEqual({ devices: [], refreshSeconds: 30 });
-		expect(consoleSpy).toHaveBeenCalledWith(
-			expect.stringContaining("corrupted"),
-		);
+		expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("corrupted"));
 	});
 
 	it("returns parsed config when valid", async () => {
@@ -66,9 +64,7 @@ describe("loadConfig", () => {
 		const config = await loadConfig();
 
 		expect(config).toEqual({ devices: [], refreshSeconds: 30 });
-		expect(consoleSpy).toHaveBeenCalledWith(
-			expect.stringContaining("invalid format"),
-		);
+		expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining("invalid format"));
 	});
 
 	it("returns default config when refreshSeconds is negative", async () => {
@@ -161,10 +157,10 @@ describe("saveConfig", () => {
 
 		await saveConfig(config);
 
-		expect(mockMkdir).toHaveBeenCalledWith(
-			expect.stringContaining(".thermoworks"),
-			{ recursive: true, mode: 0o700 },
-		);
+		expect(mockMkdir).toHaveBeenCalledWith(expect.stringContaining(".thermoworks"), {
+			recursive: true,
+			mode: 0o700,
+		});
 	});
 
 	it("writes JSON with mode 0o600", async () => {
@@ -318,10 +314,10 @@ describe("writeCache", () => {
 
 		await writeCache("72.4F");
 
-		expect(mockMkdir).toHaveBeenCalledWith(
-			expect.stringContaining(".cache"),
-			{ recursive: true, mode: 0o700 },
-		);
+		expect(mockMkdir).toHaveBeenCalledWith(expect.stringContaining(".cache"), {
+			recursive: true,
+			mode: 0o700,
+		});
 	});
 
 	it("writes cache entry with timestamp", async () => {

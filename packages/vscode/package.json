@@ -1,5 +1,6 @@
 {
-	"name": "thermoworks",
+	"name": "thermoworks-vscode",
+	"private": true,
 	"displayName": "ThermoWorks",
 	"description": "Display real-time ThermoWorks device temperatures in the VS Code status bar",
 	"version": "0.1.0",

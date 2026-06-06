@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Device, DeviceChannel } from "thermoworks-sdk";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // --- Module mocks ---
 
@@ -36,8 +36,8 @@ vi.mock("../src/prompt.js", () => ({
 }));
 
 import { ThermoworksCloud } from "thermoworks-sdk";
-import { getCredentials } from "../src/credentials.js";
 import { loadConfig, readCache, writeCache } from "../src/config.js";
+import { getCredentials } from "../src/credentials.js";
 
 const mockGetCredentials = vi.mocked(getCredentials);
 const mockLoadConfig = vi.mocked(loadConfig);
@@ -193,10 +193,7 @@ describe("devices", () => {
 
 	it("shows plural 'devices' for multiple", async () => {
 		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
-		mockGetDevices.mockResolvedValue([
-			makeDevice({ serial: "A" }),
-			makeDevice({ serial: "B" }),
-		]);
+		mockGetDevices.mockResolvedValue([makeDevice({ serial: "A" }), makeDevice({ serial: "B" })]);
 
 		const { devices } = await import("../src/commands/devices.js");
 		await devices();
@@ -213,7 +210,10 @@ describe("devices", () => {
 describe("copilotStatus", () => {
 	it("returns cached output when cache is fresh", async () => {
 		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
-		mockLoadConfig.mockResolvedValue({ devices: [{ serial: "X", label: "X", channels: "avg" }], refreshSeconds: 30 });
+		mockLoadConfig.mockResolvedValue({
+			devices: [{ serial: "X", label: "X", channels: "avg" }],
+			refreshSeconds: 30,
+		});
 		mockReadCache.mockResolvedValue("\u{1F525} Smoker:225\u00B0F");
 
 		const { copilotStatus } = await import("../src/commands/copilot.js");
@@ -466,9 +466,9 @@ describe("copilotSetup channel mapping", () => {
 		const savedConfig = mockSaveConfig.mock.calls[0]?.[0];
 		expect(savedConfig).toBeDefined();
 
-		const device = savedConfig!.devices[0];
+		const device = savedConfig?.devices[0];
 		expect(device).toBeDefined();
-		expect(device!.serial).toBe("SMOKE1");
+		expect(device?.serial).toBe("SMOKE1");
 
 		// CRITICAL: The channels should use allChannels indices, not filtered indices
 		// tempChannels after filtering "H": [Pit (allChannels[1]), Meat (allChannels[2])]
@@ -476,7 +476,7 @@ describe("copilotSetup channel mapping", () => {
 		// User selected index 2 ("Meat") -> info.channels[2 - 1] = info.channels[1]
 		// info.channels[1].number should be the ORIGINAL index in allChannels + 1 = 3
 		// (because tempChannels.map uses allChannels.indexOf(ch) + 1)
-		expect(device!.channels).toEqual([3]);
+		expect(device?.channels).toEqual([3]);
 	});
 
 	it("stores 'avg' when user selects Average option (index 0)", async () => {
@@ -507,7 +507,7 @@ describe("copilotSetup channel mapping", () => {
 		stdoutSpy.mockRestore();
 
 		const savedConfig = mockSaveConfig.mock.calls[0]?.[0];
-		expect(savedConfig!.devices[0]!.channels).toBe("avg");
+		expect(savedConfig?.devices[0]?.channels).toBe("avg");
 	});
 
 	it("defaults to 'avg' for single-channel devices (no channel prompt)", async () => {
@@ -536,7 +536,7 @@ describe("copilotSetup channel mapping", () => {
 		stdoutSpy.mockRestore();
 
 		const savedConfig = mockSaveConfig.mock.calls[0]?.[0];
-		expect(savedConfig!.devices[0]!.channels).toBe("avg");
+		expect(savedConfig?.devices[0]?.channels).toBe("avg");
 		// Should only be called once (device selection), not twice
 		expect(mockPromptCheckbox).toHaveBeenCalledTimes(1);
 	});

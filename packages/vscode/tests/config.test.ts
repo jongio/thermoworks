@@ -61,7 +61,7 @@ describe("loadConfig()", () => {
 		const config = await loadConfig();
 
 		expect(config.devices).toHaveLength(1);
-		expect(config.devices[0]!.serial).toBe("GOOD1");
+		expect(config.devices[0]?.serial).toBe("GOOD1");
 	});
 
 	it("filters out entries with invalid channels", async () => {
@@ -107,9 +107,7 @@ describe("loadConfig()", () => {
 
 	it("returns default when refreshSeconds is invalid", async () => {
 		const fs = await import("node:fs/promises");
-		vi.mocked(fs.readFile).mockResolvedValue(
-			JSON.stringify({ refreshSeconds: 0, devices: [] }),
-		);
+		vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify({ refreshSeconds: 0, devices: [] }));
 
 		const { loadConfig } = await importConfig();
 		const config = await loadConfig();
@@ -158,6 +156,6 @@ describe("loadConfig()", () => {
 		const config = await loadConfig();
 
 		expect(config.devices).toHaveLength(1);
-		expect(config.devices[0]!.serial).toBe("A");
+		expect(config.devices[0]?.serial).toBe("A");
 	});
 });

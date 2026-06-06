@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetPassword = vi.fn<(service: string, account: string) => Promise<string | null>>();
-const mockSetPassword = vi.fn<(service: string, account: string, password: string) => Promise<void>>();
+const mockSetPassword =
+	vi.fn<(service: string, account: string, password: string) => Promise<void>>();
 const mockDeletePassword = vi.fn<(service: string, account: string) => Promise<boolean>>();
 
 function registerKeytarMock() {
@@ -171,9 +172,7 @@ describe("storeCredentials", () => {
 
 		const { storeCredentials } = await importCredentials();
 
-		await expect(storeCredentials("x@y.com", "pw")).rejects.toThrow(
-			/Failed to save credentials/,
-		);
+		await expect(storeCredentials("x@y.com", "pw")).rejects.toThrow(/Failed to save credentials/);
 	});
 
 	it("throws when keytar.setPassword rejects", async () => {
@@ -181,9 +180,7 @@ describe("storeCredentials", () => {
 
 		const { storeCredentials } = await importCredentials();
 
-		await expect(storeCredentials("x@y.com", "pw")).rejects.toThrow(
-			/Failed to save credentials/,
-		);
+		await expect(storeCredentials("x@y.com", "pw")).rejects.toThrow(/Failed to save credentials/);
 	});
 });
 
@@ -215,9 +212,7 @@ describe("deleteCredentials", () => {
 
 		const { deleteCredentials } = await importCredentials();
 
-		await expect(deleteCredentials()).rejects.toThrow(
-			/Failed to remove credentials/,
-		);
+		await expect(deleteCredentials()).rejects.toThrow(/Failed to remove credentials/);
 	});
 });
 

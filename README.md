@@ -53,6 +53,8 @@ See the [extension README](packages/vscode/README.md) for details.
 
 ![CLI low alarm — blue ANSI text](docs/images/cli-alarm-low.png)
 
+![CLI high alarm — red ANSI text](docs/images/cli-alarm-high.png)
+
 ## Packages
 
 | Package | Description |

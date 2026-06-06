@@ -50,6 +50,10 @@
       {
         "command": "thermoworks.refresh",
         "title": "ThermoWorks: Refresh Temperatures"
+      },
+      {
+        "command": "thermoworks.demo",
+        "title": "ThermoWorks: Demo (Simulate Alarm)"
       }
     ],
     "configuration": {

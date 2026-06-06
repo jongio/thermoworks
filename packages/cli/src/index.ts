@@ -1,7 +1,14 @@
 import { stdout } from "node:process";
 
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
-import { copilotRemove, copilotSetup, copilotStatus } from "./commands/copilot.js";
+import {
+	copilotRemove,
+	copilotSetup,
+	copilotSetupDemo,
+	copilotStatus,
+	copilotStatusDemo,
+	nextDemoState,
+} from "./commands/copilot.js";
 import { devices } from "./commands/devices.js";
 
 // Clean exit on Ctrl+C
@@ -23,6 +30,8 @@ Commands:
   copilot remove   Remove statusline configuration
 
   devices          List connected devices
+
+  demo <mode>      Show demo output (modes: high, low, normal)
 
 Options:
   --help, -h       Show this help message
@@ -59,10 +68,18 @@ async function main(): Promise<void> {
 		case "copilot":
 			switch (subcommand) {
 				case "setup":
-					await copilotSetup(args.includes("--dev"));
+					if (args.includes("--demo")) {
+						await copilotSetupDemo();
+					} else {
+						await copilotSetup(args.includes("--dev"));
+					}
 					break;
 				case "status":
-					await copilotStatus();
+					if (args.includes("--demo")) {
+						await copilotStatusDemo(await nextDemoState());
+					} else {
+						await copilotStatus();
+					}
 					break;
 				case "remove":
 					await copilotRemove();
@@ -80,6 +97,16 @@ async function main(): Promise<void> {
 		case "devices":
 			await devices();
 			break;
+
+		case "demo": {
+			const mode = args[1];
+			if (mode !== "high" && mode !== "low" && mode !== "normal") {
+				console.error("Usage: thermoworks demo <high|low|normal>");
+				process.exit(1);
+			}
+			await copilotStatusDemo(mode === "normal" ? "none" : mode);
+			break;
+		}
 
 		case "--version":
 		case "-v": {

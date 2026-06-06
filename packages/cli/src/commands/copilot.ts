@@ -20,7 +20,6 @@ const SETTINGS_PATH = join(COPILOT_DIR, "settings.json");
 
 export async function copilotSetup(dev: boolean): Promise<void> {
 	console.log("ThermoWorks Copilot Statusline Setup\n");
-
 	// 1. Check credentials
 	const creds = await getCredentials();
 	if (!creds) {
@@ -199,6 +198,46 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 	console.log("Temperatures update each time you send a prompt or get a response in Copilot CLI.");
 }
 
+export async function copilotSetupDemo(): Promise<void> {
+	console.log("ThermoWorks Copilot Statusline Demo Setup\n");
+	console.log("This configures the statusline to show fake data cycling through alarm states.");
+	console.log("No credentials or devices required.\n");
+
+	const { fileURLToPath } = await import("node:url");
+	const { dirname } = await import("node:path");
+	const cliDir = dirname(dirname(fileURLToPath(import.meta.url)));
+	const localEntry = join(cliDir, "dist", "index.js");
+
+	const command = `node "${localEntry}" copilot status --demo`;
+	const statusLineConfig = { type: "command", command, _managedBy: "thermoworks-demo" };
+
+	try {
+		await mkdir(COPILOT_DIR, { recursive: true });
+
+		let settings: Record<string, unknown> = {};
+		try {
+			const raw = await readFile(SETTINGS_PATH, "utf8");
+			settings = JSON.parse(raw) as Record<string, unknown>;
+		} catch (err: unknown) {
+			if (err instanceof SyntaxError) {
+				console.error("Error: ~/.copilot/settings.json contains invalid JSON. Fix it manually.");
+				return;
+			}
+		}
+
+		settings.statusLine = statusLineConfig;
+		await writeFile(SETTINGS_PATH, `${JSON.stringify(settings, null, 2)}\n`, "utf8");
+		console.log(`Statusline configured in ${SETTINGS_PATH}`);
+		console.log(
+			`\nCycle: normal → normal → HIGH alarm → HIGH alarm → LOW alarm → LOW alarm → repeat`,
+		);
+		console.log("Each Copilot CLI prompt/response will advance to the next state.");
+	} catch {
+		console.log("\nCouldn't auto-configure. Add manually to ~/.copilot/settings.json:");
+		console.log(`  ${JSON.stringify({ statusLine: statusLineConfig })}`);
+	}
+}
+
 export async function copilotStatus(): Promise<void> {
 	const creds = await getCredentials();
 	if (!creds) {
@@ -241,14 +280,18 @@ export async function copilotStatus(): Promise<void> {
 					const sum = tempChannels.reduce((acc, ch) => acc + (ch.value ?? 0), 0);
 					const avg = Math.round(sum / tempChannels.length);
 					const units = tempChannels[0]?.units;
-					parts.push(`${deviceConfig.label}:${avg}\u00B0${units}`);
+					const alarmStyle = getChannelAlarmStyle(tempChannels);
+					parts.push(wrapAnsi(`${deviceConfig.label}:${avg}\u00B0${units}`, alarmStyle));
 				}
 			} else if (deviceConfig.channels.length === 1) {
 				// Single channel — no channel label needed
 				const chIdx = deviceConfig.channels[0];
 				const ch = chIdx != null ? allChannels[chIdx - 1] : undefined;
 				if (ch?.value != null && ch.units != null) {
-					parts.push(`${deviceConfig.label}:${Math.round(ch.value)}\u00B0${ch.units}`);
+					const alarmStyle = getChannelAlarmStyle([ch]);
+					parts.push(
+						wrapAnsi(`${deviceConfig.label}:${Math.round(ch.value)}\u00B0${ch.units}`, alarmStyle),
+					);
 				}
 			} else {
 				// Multiple channels — include channel label
@@ -256,7 +299,13 @@ export async function copilotStatus(): Promise<void> {
 					const ch = allChannels[chNum - 1];
 					if (ch?.value != null && ch.units != null) {
 						const chLabel = ch.label || `Ch${chNum}`;
-						parts.push(`${deviceConfig.label}:${chLabel}:${Math.round(ch.value)}\u00B0${ch.units}`);
+						const alarmStyle = getChannelAlarmStyle([ch]);
+						parts.push(
+							wrapAnsi(
+								`${deviceConfig.label}:${chLabel}:${Math.round(ch.value)}\u00B0${ch.units}`,
+								alarmStyle,
+							),
+						);
 					}
 				}
 			}
@@ -275,6 +324,107 @@ export async function copilotStatus(): Promise<void> {
 	}
 }
 
+// ─── Alarm styling helpers ───────────────────────────────────────────────────
+
+type AlarmStyle = "none" | "low" | "high";
+
+const ANSI_RESET = "\x1b[0m";
+const ANSI_BLINK_RED = "\x1b[5;91m"; // blink + bright red
+const ANSI_BLINK_BLUE = "\x1b[5;94m"; // blink + bright blue
+
+function getChannelAlarmStyle(channels: DeviceChannel[]): AlarmStyle {
+	for (const ch of channels) {
+		if (ch.alarmHigh?.alarming) return "high";
+	}
+	for (const ch of channels) {
+		if (ch.alarmLow?.alarming) return "low";
+	}
+	return "none";
+}
+
+function wrapAnsi(text: string, style: AlarmStyle): string {
+	switch (style) {
+		case "high":
+			return `${ANSI_BLINK_RED}${text}${ANSI_RESET}`;
+		case "low":
+			return `${ANSI_BLINK_BLUE}${text}${ANSI_RESET}`;
+		default:
+			return text;
+	}
+}
+
+// ─── Demo mode ───────────────────────────────────────────────────────────────
+
+const DEMO_STATE_PATH = join(homedir(), ".thermoworks", ".demo-state");
+const DEMO_CYCLE: AlarmStyle[] = ["none", "none", "high", "high", "low", "low"];
+
+interface DemoScenario {
+	label: string;
+	channels: { label: string; value: number; units: string }[];
+}
+
+const DEMO_SCENARIOS: Record<AlarmStyle, DemoScenario[]> = {
+	none: [
+		{
+			label: "Smoker",
+			channels: [
+				{ label: "Pit", value: 225, units: "F" },
+				{ label: "Meat", value: 165, units: "F" },
+			],
+		},
+		{ label: "Fridge", channels: [{ label: "Internal", value: 38, units: "F" }] },
+	],
+	high: [
+		{
+			label: "Smoker",
+			channels: [
+				{ label: "Pit", value: 285, units: "F" },
+				{ label: "Meat", value: 205, units: "F" },
+			],
+		},
+		{ label: "Fridge", channels: [{ label: "Internal", value: 38, units: "F" }] },
+	],
+	low: [
+		{
+			label: "Smoker",
+			channels: [
+				{ label: "Pit", value: 180, units: "F" },
+				{ label: "Meat", value: 120, units: "F" },
+			],
+		},
+		{ label: "Fridge", channels: [{ label: "Internal", value: 28, units: "F" }] },
+	],
+};
+
+export async function nextDemoState(): Promise<AlarmStyle> {
+	let idx = 0;
+	try {
+		const raw = await readFile(DEMO_STATE_PATH, "utf8");
+		const parsed = Number.parseInt(raw.trim(), 10);
+		idx = Number.isNaN(parsed) ? 0 : (parsed + 1) % DEMO_CYCLE.length;
+	} catch {
+		idx = 0;
+	}
+	await mkdir(join(homedir(), ".thermoworks"), { recursive: true });
+	await writeFile(DEMO_STATE_PATH, String(idx), "utf8");
+	return DEMO_CYCLE[idx] ?? "none";
+}
+
+export async function copilotStatusDemo(mode: AlarmStyle): Promise<void> {
+	const devices = DEMO_SCENARIOS[mode];
+	const parts: string[] = [];
+
+	for (const device of devices) {
+		for (const ch of device.channels) {
+			const text = `${device.label}:${ch.label}:${ch.value}\u00B0${ch.units}`;
+			parts.push(wrapAnsi(text, mode));
+		}
+	}
+
+	const output = `\u{1F525} ${parts.join(" \u00B7 ")}`;
+	console.log(output);
+}
+
 export async function copilotRemove(): Promise<void> {
 	try {
 		const raw = await readFile(SETTINGS_PATH, "utf8");
@@ -286,7 +436,7 @@ export async function copilotRemove(): Promise<void> {
 			return;
 		}
 
-		if (existing._managedBy !== "thermoworks") {
+		if (existing._managedBy !== "thermoworks" && existing._managedBy !== "thermoworks-demo") {
 			console.log("Statusline is not managed by thermoworks. Not removing.");
 			return;
 		}

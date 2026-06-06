@@ -1,3 +1,4 @@
+import type { DeviceChannel } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 import * as vscode from "vscode";
 import { loadConfig } from "./config";
@@ -6,16 +7,22 @@ import type { CredentialStore } from "./credentials";
 const MIN_REFRESH_MS = 15_000;
 const BACKOFF_BASE_MS = 5_000;
 const MAX_BACKOFF_MS = 300_000; // 5 minutes
+const BLINK_INTERVAL_MS = 800;
+
+type AlarmState = "none" | "low" | "high";
 
 export class TemperatureStatusBar implements vscode.Disposable {
 	private readonly item: vscode.StatusBarItem;
 	private readonly credentialStore: CredentialStore;
 	private timer: ReturnType<typeof setTimeout> | undefined;
+	private blinkTimer: ReturnType<typeof setInterval> | undefined;
 	private client: ThermoworksCloud | undefined;
 	private refreshing = false;
 	private consecutiveFailures = 0;
 	private disposed = false;
 	private generation = 0; // Incremented on login/logout/dispose to invalidate in-flight work
+	private blinkVisible = true;
+	private lastText = "";
 
 	constructor(credentialStore: CredentialStore, context: vscode.ExtensionContext) {
 		this.credentialStore = credentialStore;
@@ -80,6 +87,36 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		vscode.window.showInformationMessage("ThermoWorks: Logged out.");
 	}
 
+	simulateAlarm(mode: AlarmState): void {
+		// Invalidate in-flight refreshes and cancel scheduled ones
+		this.generation++;
+		this.cancelTimer();
+
+		const demoText =
+			mode === "none"
+				? "$(flame) Smoker:Pit:225°F · Smoker:Meat:165°F · Fridge:38°F"
+				: mode === "high"
+					? "$(flame) Smoker:Pit:285°F · Smoker:Meat:205°F · Fridge:38°F"
+					: "$(flame) Smoker:Pit:180°F · Fridge:28°F";
+
+		this.lastText = demoText;
+		this.item.text = demoText;
+		this.item.show();
+
+		const tooltipLines = ["**ThermoWorks Demo Mode**", ""];
+		if (mode === "high") tooltipLines.push("**⚠️ 🔴 HIGH ALARM ⚠️**", "");
+		if (mode === "low") tooltipLines.push("**⚠️ 🔵 LOW ALARM ⚠️**", "");
+		tooltipLines.push(`Mode: ${mode}`, "", "_Use command palette 'ThermoWorks: Demo' to change_");
+		this.item.tooltip = new vscode.MarkdownString(tooltipLines.join("\n"));
+
+		this.applyAlarmStyle(mode);
+
+		if (mode === "none") {
+			// Resume normal refresh after clearing demo
+			this.scheduleNext();
+		}
+	}
+
 	async refresh(): Promise<void> {
 		if (this.refreshing || this.disposed) return;
 		this.refreshing = true;
@@ -116,6 +153,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 
 			const parts: string[] = [];
 			const tooltipLines: string[] = ["**ThermoWorks Temperatures**", ""];
+			let overallAlarm: AlarmState = "none";
 
 			for (const deviceConfig of config.devices) {
 				const device = allDevices.find((d) => d.serial === deviceConfig.serial);
@@ -137,6 +175,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 						tooltipLines.push(
 							`🌡️ ${deviceConfig.label}: ${avg}°${units} (avg of ${tempChannels.length} channels)`,
 						);
+						overallAlarm = escalateAlarm(overallAlarm, getChannelAlarmState(tempChannels));
 					}
 				} else if (deviceConfig.channels.length === 1) {
 					const chIdx = deviceConfig.channels[0];
@@ -144,6 +183,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 					if (ch?.value != null && ch.units != null) {
 						parts.push(`${deviceConfig.label}:${Math.round(ch.value)}\u00B0${ch.units}`);
 						tooltipLines.push(`🌡️ ${deviceConfig.label}: ${Math.round(ch.value)}°${ch.units}`);
+						overallAlarm = escalateAlarm(overallAlarm, getChannelAlarmState([ch]));
 					}
 				} else {
 					for (const chNum of deviceConfig.channels) {
@@ -156,6 +196,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 							tooltipLines.push(
 								`🌡️ ${deviceConfig.label} → ${chLabel}: ${Math.round(ch.value)}°${ch.units}`,
 							);
+							overallAlarm = escalateAlarm(overallAlarm, getChannelAlarmState([ch]));
 						}
 					}
 				}
@@ -164,22 +205,31 @@ export class TemperatureStatusBar implements vscode.Disposable {
 			if (this.isStale(gen)) return;
 
 			if (parts.length > 0) {
-				this.item.text = `$(flame) ${parts.join(" · ")}`;
+				this.lastText = `$(flame) ${parts.join(" · ")}`;
+				this.item.text = this.lastText;
 				tooltipLines.push("", `_Last updated: ${new Date().toLocaleTimeString()}_`);
+				if (overallAlarm !== "none") {
+					const alarmType = overallAlarm === "high" ? "🔴 HIGH ALARM" : "🔵 LOW ALARM";
+					tooltipLines.splice(2, 0, `**⚠️ ${alarmType} ⚠️**`, "");
+				}
 				this.item.tooltip = new vscode.MarkdownString(tooltipLines.join("\n"));
 			} else {
-				this.item.text = "$(flame) No readings";
+				this.lastText = "$(flame) No readings";
+				this.item.text = this.lastText;
 				this.item.tooltip = "ThermoWorks: No temperature readings available.";
 			}
 
+			this.applyAlarmStyle(overallAlarm);
 			this.consecutiveFailures = 0;
 		} catch (error) {
 			if (this.isStale(gen)) return;
 			this.consecutiveFailures++;
 			this.closeClient();
+			this.applyAlarmStyle("none");
 
 			const message = error instanceof Error ? error.message : "Unknown error";
-			this.item.text = "$(flame) --";
+			this.lastText = "$(flame) --";
+			this.item.text = this.lastText;
 			this.item.tooltip = `ThermoWorks: Error — ${message}. Click to retry.`;
 		} finally {
 			this.refreshing = false;
@@ -194,6 +244,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		this.disposed = true;
 		this.generation++;
 		this.cancelTimer();
+		this.stopBlink();
 		this.closeClient();
 		this.item.dispose();
 	}
@@ -205,6 +256,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 	private invalidateAndReset(): void {
 		this.generation++;
 		this.consecutiveFailures = 0;
+		this.applyAlarmStyle("none");
 		this.closeClient();
 	}
 
@@ -236,4 +288,66 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		this.client?.close();
 		this.client = undefined;
 	}
+
+	private applyAlarmStyle(alarm: AlarmState): void {
+		this.stopBlink();
+
+		switch (alarm) {
+			case "high":
+				this.item.backgroundColor = new vscode.ThemeColor("statusBarItem.errorBackground");
+				this.item.color = undefined;
+				this.startBlink();
+				break;
+			case "low":
+				this.item.backgroundColor = undefined;
+				this.item.color = "#64B5F6"; // material blue 300
+				this.startBlink();
+				break;
+			default:
+				this.item.backgroundColor = undefined;
+				this.item.color = undefined;
+				break;
+		}
+	}
+
+	private startBlink(): void {
+		this.blinkVisible = true;
+		this.blinkTimer = setInterval(() => {
+			if (this.disposed) {
+				this.stopBlink();
+				return;
+			}
+			this.blinkVisible = !this.blinkVisible;
+			this.item.text = this.blinkVisible ? this.lastText : "$(flame)";
+		}, BLINK_INTERVAL_MS);
+	}
+
+	private stopBlink(): void {
+		if (this.blinkTimer) {
+			clearInterval(this.blinkTimer);
+			this.blinkTimer = undefined;
+		}
+		this.blinkVisible = true;
+		if (this.lastText) {
+			this.item.text = this.lastText;
+		}
+	}
+}
+
+// ─── Alarm helpers ───────────────────────────────────────────────────────────
+
+function getChannelAlarmState(channels: DeviceChannel[]): AlarmState {
+	for (const ch of channels) {
+		if (ch.alarmHigh?.alarming) return "high";
+	}
+	for (const ch of channels) {
+		if (ch.alarmLow?.alarming) return "low";
+	}
+	return "none";
+}
+
+function escalateAlarm(current: AlarmState, incoming: AlarmState): AlarmState {
+	if (current === "high" || incoming === "high") return "high";
+	if (current === "low" || incoming === "low") return "low";
+	return "none";
 }

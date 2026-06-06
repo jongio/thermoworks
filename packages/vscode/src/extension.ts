@@ -17,6 +17,7 @@ export function activate(context: vscode.ExtensionContext): void {
 		treeDataProvider: treeProvider,
 		showCollapseAll: true,
 	});
+	treeProvider.setTreeView(treeView);
 
 	treeProvider.initialize();
 	treeProvider.startAutoRefresh(context);
@@ -40,16 +41,35 @@ export function activate(context: vscode.ExtensionContext): void {
 				[
 					{
 						label: "$(alert) High Alarm",
-						description: "Red background + blink",
+						description: "Red background + blink (full panel demo)",
 						value: "high" as const,
 					},
-					{ label: "$(info) Low Alarm", description: "Blue text + blink", value: "low" as const },
-					{ label: "$(flame) Normal", description: "Clear alarm state", value: "none" as const },
+					{
+						label: "$(info) Low Alarm",
+						description: "Blue text + blink (full panel demo)",
+						value: "low" as const,
+					},
+					{
+						label: "$(flame) Normal",
+						description: "Normal readings (full panel demo)",
+						value: "normal" as const,
+					},
+					{
+						label: "$(close) Exit Demo",
+						description: "Return to real data",
+						value: "exit" as const,
+					},
 				],
-				{ placeHolder: "Select demo alarm mode" },
+				{ placeHolder: "Select demo mode (affects status bar + tree panel)" },
 			);
-			if (pick) {
-				statusBar?.simulateAlarm(pick.value);
+			if (!pick) return;
+			if (pick.value === "exit") {
+				treeProvider.exitDemoMode();
+				statusBar?.simulateAlarm("none");
+			} else {
+				const alarmState = pick.value === "normal" ? "none" : pick.value;
+				treeProvider.enterDemoMode(pick.value === "normal" ? "normal" : pick.value);
+				statusBar?.simulateAlarm(alarmState as "none" | "high" | "low");
 			}
 		}),
 

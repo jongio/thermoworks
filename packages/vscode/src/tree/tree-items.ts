@@ -101,7 +101,10 @@ export class DeviceNode extends vscode.TreeItem {
 		const statusEmoji = isOnline ? "" : " (Offline)";
 		this.description = `${device.type ?? "Unknown"}${statusEmoji}`;
 
-		if (hasAlarm) {
+		// Use product thumbnail image when available
+		if (device.thumbnail) {
+			this.iconPath = vscode.Uri.parse(device.thumbnail);
+		} else if (hasAlarm) {
 			this.iconPath = new vscode.ThemeIcon("warning", new vscode.ThemeColor("charts.red"));
 		} else if (isOnline) {
 			this.iconPath = new vscode.ThemeIcon("pulse", new vscode.ThemeColor("charts.green"));

@@ -1,6 +1,7 @@
 import type { Device, DeviceChannel, User } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 import * as vscode from "vscode";
+import { DEMO_DEVICES, DEMO_USER, getDemoChannels } from "../demo-data";
 import type { CredentialStore } from "../credentials";
 import {
 	AccountDetailNode,
@@ -31,15 +32,21 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 	readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
 	private readonly credentialStore: CredentialStore;
+	private treeView: vscode.TreeView<TreeNode> | undefined;
 	private client: ThermoworksCloud | undefined;
 	private user: User | undefined;
 	private deviceCache: DeviceCache | undefined;
 	private channelCaches = new Map<string, ChannelCache>();
 	private refreshTimer: ReturnType<typeof setInterval> | undefined;
 	private disposed = false;
+	private demoMode: "normal" | "high" | "low" | false = false;
 
 	constructor(credentialStore: CredentialStore) {
 		this.credentialStore = credentialStore;
+	}
+
+	setTreeView(view: vscode.TreeView<TreeNode>): void {
+		this.treeView = view;
 	}
 
 	// ─── TreeDataProvider ────────────────────────────────────────────────────
@@ -57,8 +64,9 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 		}
 
 		// Account children
-		if (element instanceof AccountNode && this.user) {
-			return this.getAccountChildren(this.user);
+		if (element instanceof AccountNode) {
+			const user = this.demoMode ? DEMO_USER : this.user;
+			if (user) return this.getAccountChildren(user);
 		}
 
 		// Devices folder children
@@ -111,6 +119,7 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 	async signOut(): Promise<void> {
 		await this.credentialStore.deleteCredentials();
 		this.invalidate();
+		this.updateBadge(0);
 		await vscode.commands.executeCommand("setContext", "thermoworks.isAuthenticated", false);
 		vscode.window.showInformationMessage("ThermoWorks: Signed out.");
 		this._onDidChangeTreeData.fire();
@@ -129,6 +138,21 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 
 	openCloud(): void {
 		vscode.env.openExternal(vscode.Uri.parse("https://cloud.thermoworks.com"));
+	}
+
+	enterDemoMode(mode: "normal" | "high" | "low"): void {
+		this.demoMode = mode;
+		this.stopAutoRefresh();
+		this._onDidChangeTreeData.fire();
+	}
+
+	exitDemoMode(): void {
+		this.demoMode = false;
+		this._onDidChangeTreeData.fire();
+	}
+
+	isDemoActive(): boolean {
+		return this.demoMode !== false;
 	}
 
 	startAutoRefresh(context: vscode.ExtensionContext): void {
@@ -176,6 +200,11 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 	// ─── Private: Tree Building ──────────────────────────────────────────────
 
 	private async getRootChildren(): Promise<TreeNode[]> {
+		// Demo mode — use fake data, no credentials needed
+		if (this.demoMode) {
+			return [new AccountNode(DEMO_USER), new DevicesFolderNode(DEMO_DEVICES.length)];
+		}
+
 		const creds = await this.credentialStore.getCredentials();
 		if (!creds) {
 			// Welcome view handles the unauthenticated state
@@ -230,19 +259,25 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 
 	private async getDeviceNodes(): Promise<TreeNode[]> {
 		try {
-			const devices = await this.getCachedDevices();
+			const devices = this.demoMode ? DEMO_DEVICES : await this.getCachedDevices();
 			if (devices.length === 0) {
+				this.updateBadge(0);
 				return [new ErrorNode("No devices found")];
 			}
 
 			const nodes: TreeNode[] = [];
+			let alarmCount = 0;
 			for (const device of devices) {
-				const channels = await this.getCachedChannels(device.serial);
+				const channels = this.demoMode
+					? getDemoChannels(device.serial, this.demoMode)
+					: await this.getCachedChannels(device.serial);
 				const hasAlarm = channels.some(
 					(ch) => ch.alarmHigh?.alarming || ch.alarmLow?.alarming,
 				);
+				if (hasAlarm) alarmCount++;
 				nodes.push(new DeviceNode(device, hasAlarm));
 			}
+			this.updateBadge(alarmCount);
 			return nodes;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load devices";
@@ -252,11 +287,13 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 
 	private async getDeviceChildren(serial: string): Promise<TreeNode[]> {
 		try {
-			const devices = await this.getCachedDevices();
+			const devices = this.demoMode ? DEMO_DEVICES : await this.getCachedDevices();
 			const device = devices.find((d) => d.serial === serial);
 			if (!device) return [new ErrorNode("Device not found")];
 
-			const channels = await this.getCachedChannels(serial);
+			const channels = this.demoMode
+				? getDemoChannels(serial, this.demoMode)
+				: await this.getCachedChannels(serial);
 			return buildDeviceChildren(device, channels);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load channels";
@@ -308,6 +345,13 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 	private closeClient(): void {
 		this.client?.close();
 		this.client = undefined;
+	}
+
+	private updateBadge(alarmCount: number): void {
+		if (!this.treeView) return;
+		this.treeView.badge = alarmCount > 0
+			? { value: alarmCount, tooltip: `${alarmCount} device${alarmCount > 1 ? "s" : ""} alarming` }
+			: undefined;
 	}
 
 	private stopAutoRefresh(): void {

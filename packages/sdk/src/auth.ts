@@ -5,6 +5,7 @@ const IDENTITY_HOST = "https://identitytoolkit.googleapis.com";
 const TOKEN_HOST = "https://securetoken.googleapis.com";
 const FIREBASE_HOST = "https://firebase.googleapis.com";
 const FIRESTORE_HOST = "https://firestore.googleapis.com";
+const FUNCTIONS_HOST = "https://us-central1-thermoworks-cloud-production.cloudfunctions.net";
 
 const DEFAULT_API_KEY = "AIzaSyCf079iccUFc1k7VHdGXng22zXDy8Y3KEY";
 const DEFAULT_APP_ID = "1:78998049458:web:b41e9d405d8c7de95eefab";
@@ -82,6 +83,7 @@ async function safeJsonParse(response: HttpResponse, context: string): Promise<u
 
 export interface AuthSession {
 	request(method: string, path: string, body?: unknown): Promise<HttpResponse>;
+	callFunction(name: string, data: unknown): Promise<unknown>;
 	getUserId(): string;
 	close(): void;
 }
@@ -137,7 +139,8 @@ export async function createAuthSession(
 	return {
 		async request(method: string, path: string, body?: unknown): Promise<HttpResponse> {
 			const accessToken = await ensureValidToken();
-			const url = `${baseUrl}/${path}?key=${key}`;
+			const separator = path.includes("?") ? "&" : "?";
+			const url = `${baseUrl}/${path}${separator}key=${key}`;
 			const headers: Record<string, string> = {
 				authorization: `Bearer ${accessToken}`,
 			};
@@ -161,6 +164,33 @@ export async function createAuthSession(
 			}
 
 			return response;
+		},
+
+		async callFunction(name: string, data: unknown): Promise<unknown> {
+			if (!name || !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) {
+				throw new Error(`Invalid function name: ${name}`);
+			}
+			const accessToken = await ensureValidToken();
+			const url = `${FUNCTIONS_HOST}/${name}`;
+			const response = await httpRequest(
+				url,
+				{
+					method: "POST",
+					headers: {
+						authorization: `Bearer ${accessToken}`,
+						"content-type": "application/json",
+					},
+					body: JSON.stringify({ data }),
+				},
+				agent,
+			);
+
+			if (!response.ok) {
+				throw new NetworkError(`Cloud function call failed: HTTP ${response.status}`, response.status);
+			}
+
+			const result = await response.json();
+			return (result as { result?: unknown }).result ?? result;
 		},
 
 		getUserId(): string {

@@ -13,6 +13,7 @@ type FirestoreValue =
 	| { mapValue: { fields?: Record<string, FirestoreValue> } }
 	| { arrayValue: { values?: FirestoreValue[] } };
 
+export type { FirestoreValue };
 export type FirestoreFields = Record<string, FirestoreValue>;
 
 /** Extract a string from a Firestore field. */
@@ -57,4 +58,23 @@ export function getMapFields(fields: FirestoreFields, key: string): FirestoreFie
 	if (!field) return null;
 	if ("mapValue" in field) return field.mapValue.fields ?? null;
 	return null;
+}
+
+/** Extract an array of values from a Firestore field. */
+export function getArray(fields: FirestoreFields, key: string): FirestoreValue[] | null {
+	const field = fields[key];
+	if (!field) return null;
+	if ("arrayValue" in field) return field.arrayValue.values ?? null;
+	return null;
+}
+
+/** Extract string values from an array field. */
+export function getStringArray(fields: FirestoreFields, key: string): string[] | null {
+	const values = getArray(fields, key);
+	if (!values) return null;
+	const result: string[] = [];
+	for (const v of values) {
+		if ("stringValue" in v) result.push(v.stringValue);
+	}
+	return result.length > 0 ? result : null;
 }

@@ -1,20 +1,43 @@
 import { type AuthSession, createAuthSession } from "./auth.js";
 import {
 	type FirestoreFields,
+	type FirestoreValue,
+	getArray,
 	getBoolean,
 	getMapFields,
 	getNumber,
 	getString,
+	getStringArray,
 	getTimestamp,
 } from "./firestore.js";
 import {
+	type Account,
+	type ActionResult,
 	type Alarm,
+	type Archive,
+	type ArchiveChannel,
+	type ArchiveListOptions,
+	type BigQueryRef,
+	type CalibrationPoint,
+	type CalibrationRecord,
 	type Device,
 	type DeviceChannel,
+	type DeviceEvent,
 	type DeviceFilter,
+	type EventFilter,
+	type FanSettings,
+	type FirmwareInfo,
+	type GatewayInfo,
 	type MinMaxReading,
 	NetworkError,
 	NotFoundError,
+	type NotificationSettings,
+	type SearchHit,
+	type SearchOptions,
+	type SearchResult,
+	type TemperatureCategory,
+	type TemperatureGuide,
+	type TemperatureReading,
 	type ThermoworksConfig,
 	type User,
 } from "./types.js";
@@ -95,6 +118,10 @@ export class ThermoworksCloud {
 			photoUrl: getString(fields, "photoURL"),
 			use24Time: getBoolean(fields, "use24Time"),
 			lastLogin: getTimestamp(fields, "lastLogin"),
+			appVersion: getString(fields, "appVersion"),
+			accountRoles: parseStringBooleanMap(getMapFields(fields, "accountRoles")),
+			roles: parseStringBooleanMap(getMapFields(fields, "roles")),
+			notificationSettings: parseNotificationSettings(getMapFields(fields, "notificationSettings")),
 		};
 	}
 
@@ -230,6 +257,296 @@ export class ThermoworksCloud {
 		};
 	}
 
+	/** Get account metadata. */
+	async getAccount(): Promise<Account> {
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+		const response = await session.request(
+			"GET",
+			`documents/accounts/${encodeURIComponent(accountId)}`,
+		);
+
+		if (response.status === 404) {
+			await response.text().catch(() => {});
+			throw new NotFoundError("Account not found");
+		}
+
+		const doc = (await response.json()) as { fields?: FirestoreFields };
+		const fields = doc.fields ?? {};
+
+		return {
+			accountId,
+			name: getString(fields, "name"),
+			type: getString(fields, "type"),
+			createdOn: getTimestamp(fields, "createdOn"),
+			exportVersion: getNumber(fields, "exportVersion"),
+		};
+	}
+
+	/** Get events for the authenticated user's account. */
+	async getEvents(filter?: EventFilter): Promise<DeviceEvent[]> {
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+		const limit = Math.min(Math.max(1, filter?.limit ?? 50), 500);
+
+		const filters: Array<{ fieldFilter: { field: { fieldPath: string }; op: string; value: { stringValue: string } } }> = [
+			{
+				fieldFilter: {
+					field: { fieldPath: "accountId" },
+					op: "EQUAL",
+					value: { stringValue: accountId },
+				},
+			},
+		];
+
+		if (filter?.deviceId) {
+			filters.push({
+				fieldFilter: {
+					field: { fieldPath: "deviceId" },
+					op: "EQUAL",
+					value: { stringValue: filter.deviceId },
+				},
+			});
+		}
+
+		if (filter?.eventType) {
+			filters.push({
+				fieldFilter: {
+					field: { fieldPath: "EventType" },
+					op: "EQUAL",
+					value: { stringValue: filter.eventType },
+				},
+			});
+		}
+
+		const where = filters.length === 1
+			? filters[0]
+			: { compositeFilter: { op: "AND", filters: filters } };
+
+		const queryBody = {
+			structuredQuery: {
+				from: [{ collectionId: "events" }],
+				where,
+				orderBy: [{ field: { fieldPath: "EventTime" }, direction: "DESCENDING" }],
+				limit,
+			},
+		};
+
+		const response = await session.request("POST", "documents:runQuery", queryBody);
+		const rawResults = await response.json();
+		if (!Array.isArray(rawResults)) {
+			const maybeError = rawResults as { error?: { message?: string } } | null;
+			if (maybeError?.error) {
+				throw new NetworkError(maybeError.error.message ?? "Event query failed");
+			}
+			return [];
+		}
+
+		const results = rawResults as Array<{ document?: { fields?: FirestoreFields; name?: string } }>;
+		const events: DeviceEvent[] = [];
+		for (const result of results) {
+			if (result.document?.fields) {
+				events.push(parseDeviceEvent(result.document.fields, extractDocId(result.document.name)));
+			}
+		}
+		return events;
+	}
+
+	/** Get events for a specific device. */
+	async getDeviceEvents(serial: string, limit?: number): Promise<DeviceEvent[]> {
+		validateSerial(serial);
+		return this.getEvents({ deviceId: serial, limit: limit ?? 50 });
+	}
+
+	/** Get archived sessions for a device. */
+	async getArchives(serial: string, options?: ArchiveListOptions): Promise<Archive[]> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const limit = Math.min(Math.max(1, options?.limit ?? 20), 500);
+		let path = `documents/devices/${encodeURIComponent(serial)}/archive?pageSize=${limit}&orderBy=createdOn%20desc`;
+		if (options?.startAfter) {
+			path += `&pageToken=${encodeURIComponent(options.startAfter)}`;
+		}
+
+		const response = await session.request("GET", path);
+		const data = (await response.json()) as { documents?: Array<{ fields?: FirestoreFields; name?: string }>; error?: { message?: string } };
+		if (data.error) {
+			throw new NetworkError(data.error.message ?? "Failed to list archives");
+		}
+		if (!data.documents) return [];
+
+		return data.documents.map((doc) => parseArchive(doc.fields ?? {}, extractDocId(doc.name)));
+	}
+
+	/** Get a specific archive by ID. */
+	async getArchive(serial: string, archiveId: string): Promise<Archive> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const response = await session.request(
+			"GET",
+			`documents/devices/${encodeURIComponent(serial)}/archive/${encodeURIComponent(archiveId)}`,
+		);
+
+		if (response.status === 404) {
+			await response.text().catch(() => {});
+			throw new NotFoundError(`Archive '${archiveId}' not found for device '${serial}'`);
+		}
+
+		const doc = (await response.json()) as { fields?: FirestoreFields; name?: string };
+		return parseArchive(doc.fields ?? {}, archiveId);
+	}
+
+	/** Get calibration records for a device. */
+	async getCalibration(serial: string): Promise<CalibrationRecord[]> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const response = await session.request(
+			"GET",
+			`documents/devices/${encodeURIComponent(serial)}/calibration`,
+		);
+
+		const data = (await response.json()) as { documents?: Array<{ fields?: FirestoreFields; name?: string }> };
+		if (!data.documents) return [];
+
+		return data.documents.map((doc) => parseCalibrationRecord(doc.fields ?? {}, extractDocId(doc.name)));
+	}
+
+	/** Get firmware info for a device type. */
+	async getFirmwareInfo(deviceType: string): Promise<FirmwareInfo> {
+		const session = await this.ensureSession();
+		const response = await session.request(
+			"GET",
+			`documents/firmware/${encodeURIComponent(deviceType)}`,
+		);
+
+		if (response.status === 404) {
+			await response.text().catch(() => {});
+			throw new NotFoundError(`Firmware info not found for type '${deviceType}'`);
+		}
+
+		const doc = (await response.json()) as { fields?: FirestoreFields };
+		const fields = doc.fields ?? {};
+
+		return {
+			name: getString(fields, "name") ?? deviceType,
+			version: getString(fields, "version") ?? "",
+			location: getString(fields, "location") ?? "",
+			md5: getString(fields, "md5") ?? "",
+		};
+	}
+
+	/** Get the cooking temperature guide. */
+	async getTemperatureGuide(): Promise<TemperatureGuide> {
+		const session = await this.ensureSession();
+		const response = await session.request("GET", "documents/content/temperatureGuide");
+
+		if (response.status === 404) {
+			await response.text().catch(() => {});
+			throw new NotFoundError("Temperature guide not found");
+		}
+
+		const doc = (await response.json()) as { fields?: FirestoreFields };
+		const fields = doc.fields ?? {};
+		const categoriesRaw = getArray(fields, "categories");
+		const categories: TemperatureCategory[] = [];
+
+		if (categoriesRaw) {
+			for (const item of categoriesRaw) {
+				if ("mapValue" in item && item.mapValue.fields) {
+					const f = item.mapValue.fields;
+					categories.push({
+						label: getString(f, "label") ?? "",
+						icon: getString(f, "icon") ?? "",
+						pullWarning: getString(f, "pullWarning"),
+						warning: getString(f, "warning"),
+					});
+				}
+			}
+		}
+
+		return { categories };
+	}
+
+	/** Search across devices, accounts, or users via Typesense. */
+	async search(query: string, options: SearchOptions): Promise<SearchResult> {
+		const allowedCollections = new Set(["device", "accounts", "users"]);
+		if (!allowedCollections.has(options.collection)) {
+			throw new Error(`Invalid search collection: ${options.collection}`);
+		}
+		if (query.length > 500) {
+			throw new Error("Search query exceeds maximum length of 500 characters");
+		}
+		const session = await this.ensureSession();
+		const result = await session.callFunction("typesense_search", {
+			query,
+			collection: options.collection,
+			page: Math.max(1, options.page ?? 1),
+			pageSize: Math.min(Math.max(1, options.pageSize ?? 20), 100),
+		});
+
+		const data = result as { hits?: Array<{ id?: string; score?: number; document?: Record<string, unknown> }>; totalHits?: number; page?: number } | null;
+		const hits: SearchHit[] = [];
+		if (data?.hits) {
+			for (const hit of data.hits) {
+				hits.push({
+					id: hit.id ?? "",
+					score: hit.score ?? 0,
+					document: hit.document ?? {},
+				});
+			}
+		}
+
+		return {
+			hits,
+			totalHits: data?.totalHits ?? 0,
+			page: data?.page ?? 1,
+		};
+	}
+
+	/** Experimental callable function actions. */
+	readonly actions = {
+		startSession: async (serial: string, label?: string): Promise<ActionResult> => {
+			validateSerial(serial);
+			const session = await this.ensureSession();
+			const data: Record<string, string> = { deviceId: serial };
+			if (label != null) data.label = label;
+			const result = await session.callFunction("newSessionRequest", data);
+			return toActionResult(result);
+		},
+
+		endSession: async (serial: string): Promise<ActionResult> => {
+			validateSerial(serial);
+			const session = await this.ensureSession();
+			const result = await session.callFunction("endSessionRequest", { deviceId: serial });
+			return toActionResult(result);
+		},
+
+		clearSession: async (serial: string): Promise<ActionResult> => {
+			validateSerial(serial);
+			const session = await this.ensureSession();
+			const result = await session.callFunction("clearSessionRequest", { deviceId: serial });
+			return toActionResult(result);
+		},
+
+		resetMinMax: async (serial: string, channel: number): Promise<ActionResult> => {
+			validateSerial(serial);
+			validateChannel(channel);
+			const session = await this.ensureSession();
+			const result = await session.callFunction("telemetryDeviceChannelResetMinMax", {
+				deviceId: serial,
+				channelId: channel,
+			});
+			return toActionResult(result);
+		},
+
+		clearEvents: async (serial: string): Promise<ActionResult> => {
+			validateSerial(serial);
+			const session = await this.ensureSession();
+			const result = await session.callFunction("deviceClearEvents", { deviceId: serial });
+			return toActionResult(result);
+		},
+	};
+
 	/** Close the client and release resources. */
 	close(): void {
 		this.closed = true;
@@ -266,14 +583,31 @@ export class ThermoworksCloud {
 		}
 		return this.sessionPromise;
 	}
+
+	private async resolveAccountId(): Promise<string> {
+		if (this.cachedAccountId) return this.cachedAccountId;
+		const user = await this.getUser();
+		if (!user.accountId) {
+			throw new NotFoundError("User has no associated account");
+		}
+		this.cachedAccountId = user.accountId;
+		return this.cachedAccountId;
+	}
 }
 
 function parseDevice(fields: FirestoreFields): Device {
+	const gatewayId = getString(fields, "gatewayId");
+	const gatewayFields = gatewayId != null ? fields : null;
+
+	const fanMap = getMapFields(fields, "fan");
+	const bigQueryMap = getMapFields(fields, "bigQuery");
+
 	return {
 		serial: getString(fields, "serial") ?? "",
 		deviceId: getString(fields, "deviceId"),
 		label: sanitizeLabel(getString(fields, "label")),
 		type: getString(fields, "type"),
+		device: getString(fields, "device"),
 		status: getString(fields, "status"),
 		battery: getNumber(fields, "battery"),
 		batteryState: getString(fields, "battery_state") ?? getString(fields, "batteryState"),
@@ -283,16 +617,49 @@ function parseDevice(fields: FirestoreFields): Device {
 		thumbnail: getString(fields, "thumbnail"),
 		deviceDisplayUnits: getString(fields, "deviceDisplayUnits"),
 		iotDeviceId: getString(fields, "iotDeviceId"),
+		iotCoreDeviceBlocked: getBoolean(fields, "iotCoreDeviceBlocked"),
 		recordingIntervalInSeconds: getNumber(fields, "recordingIntervalInSeconds"),
 		transmitIntervalInSeconds: getNumber(fields, "transmitIntervalInSeconds"),
+		readInterval: getNumber(fields, "readInterval"),
+		heartbeatInterval: getNumber(fields, "heartbeatInterval"),
+		temperatureDeltaTrigger: getNumber(fields, "temperatureDeltaTrigger"),
 		pendingLoad: getBoolean(fields, "pendingLoad"),
 		batteryAlertSent: getBoolean(fields, "batteryAlertSent"),
 		lastSeen: getTimestamp(fields, "last_seen") ?? getTimestamp(fields, "lastSeen"),
 		lastTelemetrySaved: getTimestamp(fields, "lastTelemetrySaved"),
+		latestReading: getTimestamp(fields, "latestReading"),
 		lastWifiConnection: getTimestamp(fields, "lastWifiConnection"),
 		lastBluetoothConnection: getTimestamp(fields, "lastBluetoothConnection"),
 		sessionStart: getTimestamp(fields, "sessionStart"),
+		sessionLabel: getString(fields, "sessionLabel"),
+		lastArchive: getTimestamp(fields, "lastArchive"),
+		lastPurged: getTimestamp(fields, "lastPurged"),
+		assignedToAccountOn: getTimestamp(fields, "assignedToAccountOn"),
 		accountId: getString(fields, "accountId"),
+		notes: getString(fields, "notes"),
+		public: getBoolean(fields, "public"),
+		publicLink: getString(fields, "publicLink"),
+		searModeEnabled: getBoolean(fields, "searModeEnabled"),
+		showSensorChannels: getBoolean(fields, "showSensorChannels"),
+		ringColors: getStringArray(fields, "ringColors"),
+		gateway: gatewayFields ? {
+			gatewayId,
+			rssi: getNumber(gatewayFields, "gatewayRSSI"),
+			lastSeen: getTimestamp(gatewayFields, "gatewayLastSeen"),
+			switchedAt: getTimestamp(gatewayFields, "gatewaySwitchLastAt"),
+			lastPacketId: getNumber(gatewayFields, "lastPacketId"),
+		} : null,
+		fan: fanMap ? {
+			connected: getBoolean(fanMap, "connected") ?? false,
+			connection: getBoolean(fanMap, "connection") ?? false,
+			setTemp: getNumber(fanMap, "setTemp"),
+			fanChannel: getString(fanMap, "fan_channel"),
+			state: getNumber(fanMap, "state"),
+		} : null,
+		bigQuery: bigQueryMap ? {
+			datasetId: getString(bigQueryMap, "datasetId") ?? "",
+			tableId: getString(bigQueryMap, "tableId") ?? "",
+		} : null,
 	};
 }
 
@@ -304,9 +671,15 @@ function parseDeviceChannel(fields: FirestoreFields): DeviceChannel {
 		status: getString(fields, "status"),
 		type: getString(fields, "type"),
 		number: getString(fields, "number"),
+		enabled: getBoolean(fields, "enabled"),
+		color: getString(fields, "color"),
 		lastSeen: getTimestamp(fields, "last_seen") ?? getTimestamp(fields, "lastSeen"),
 		lastTelemetrySaved: getTimestamp(fields, "lastTelemetrySaved"),
+		lastEventId: getString(fields, "lastEventId"),
 		showAvgTemp: getBoolean(fields, "showAvgTemp"),
+		estimatedAlarmStatus: getString(fields, "estimatedAlarmStatus"),
+		rateOfChange: getNumber(fields, "rateOfChange"),
+		rateOfChangeUnit: getString(fields, "rateOfChangeUnit"),
 		alarmHigh: parseAlarm(getMapFields(fields, "alarmHigh")),
 		alarmLow: parseAlarm(getMapFields(fields, "alarmLow")),
 		minimum: parseMinMaxReading(getMapFields(fields, "minimum")),
@@ -319,8 +692,10 @@ function parseAlarm(fields: FirestoreFields | null): Alarm | null {
 	return {
 		enabled: getBoolean(fields, "enabled") ?? false,
 		alarming: getBoolean(fields, "alarming") ?? false,
+		muted: getBoolean(fields, "muted"),
 		value: getNumber(fields, "value"),
 		units: getString(fields, "units"),
+		lastNotified: getTimestamp(fields, "lastNotified"),
 	};
 }
 
@@ -358,4 +733,174 @@ function applyDeviceFilter(devices: Device[], filter: DeviceFilter): Device[] {
 		}
 		return true;
 	});
+}
+
+function extractDocId(name: string | undefined): string {
+	if (!name) return "";
+	const parts = name.split("/");
+	return parts[parts.length - 1] ?? "";
+}
+
+function parseStringBooleanMap(fields: FirestoreFields | null): Record<string, boolean> | null {
+	if (!fields) return null;
+	const result: Record<string, boolean> = {};
+	for (const [key, value] of Object.entries(fields)) {
+		if ("booleanValue" in value) {
+			result[key] = value.booleanValue;
+		}
+	}
+	return Object.keys(result).length > 0 ? result : null;
+}
+
+function parseNotificationSettings(fields: FirestoreFields | null): NotificationSettings | null {
+	if (!fields) return null;
+	return {
+		enabled: getBoolean(fields, "enabled") ?? false,
+		continuousAlerts: getBoolean(fields, "continuousAlerts") ?? false,
+		emailNotification: getBoolean(fields, "emailNotification") ?? false,
+		smsNotification: getBoolean(fields, "smsNotification") ?? false,
+		deviceNotification: getBoolean(fields, "deviceNotification") ?? false,
+	};
+}
+
+function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {
+	return {
+		id,
+		eventType: getString(fields, "eventType") ?? "",
+		severity: getNumber(fields, "severity") ?? 0,
+		eventTime: getTimestamp(fields, "eventTime") ?? new Date(0),
+		deviceId: getString(fields, "deviceId") ?? "",
+		channelId: getString(fields, "channelId"),
+		accountId: getString(fields, "accountId") ?? "",
+		valueBefore: getString(fields, "valueBefore"),
+		valueAfter: getString(fields, "valueAfter"),
+		groups: getStringArray(fields, "groups"),
+	};
+}
+
+function parseArchive(fields: FirestoreFields, id: string): Archive {
+	const channelsRaw = getArray(fields, "channels");
+	let channels: ArchiveChannel[] | null = null;
+
+	if (channelsRaw) {
+		channels = [];
+		for (const item of channelsRaw) {
+			if ("mapValue" in item && item.mapValue.fields) {
+				channels.push(parseArchiveChannel(item.mapValue.fields));
+			}
+		}
+		if (channels.length === 0) channels = null;
+	}
+
+	return {
+		id,
+		start: getTimestamp(fields, "start"),
+		end: getTimestamp(fields, "end"),
+		count: getNumber(fields, "count"),
+		type: getString(fields, "type"),
+		label: getString(fields, "label"),
+		deviceLabel: getString(fields, "deviceLabel"),
+		notes: getString(fields, "notes"),
+		createdOn: getTimestamp(fields, "createdOn"),
+		public: getBoolean(fields, "public"),
+		publicLink: getString(fields, "publicLink"),
+		filename: getString(fields, "filename"),
+		channels,
+	};
+}
+
+function parseArchiveChannel(fields: FirestoreFields): ArchiveChannel {
+	const readingsRaw = getArray(fields, "recentReadings");
+	const recentReadings: TemperatureReading[] = [];
+
+	if (readingsRaw) {
+		for (const item of readingsRaw) {
+			if ("mapValue" in item && item.mapValue.fields) {
+				const rf = item.mapValue.fields;
+				const value = getNumber(rf, "value");
+				const timestamp = getTimestamp(rf, "timestamp");
+				const units = getString(rf, "units");
+				if (value != null && timestamp != null && units != null) {
+					recentReadings.push({ value, timestamp, units });
+				}
+			}
+		}
+	}
+
+	return {
+		number: getString(fields, "number"),
+		label: getString(fields, "label"),
+		units: getString(fields, "units"),
+		value: getNumber(fields, "value"),
+		status: getString(fields, "status"),
+		enabled: getBoolean(fields, "enabled"),
+		color: getString(fields, "color"),
+		type: getString(fields, "type"),
+		alarmHigh: parseAlarm(getMapFields(fields, "alarmHigh")),
+		alarmLow: parseAlarm(getMapFields(fields, "alarmLow")),
+		minimum: parseMinMaxReading(getMapFields(fields, "minimum")),
+		maximum: parseMinMaxReading(getMapFields(fields, "maximum")),
+		recentReadings,
+	};
+}
+
+function parseCalibrationRecord(fields: FirestoreFields, id: string): CalibrationRecord {
+	const lowPoints = getArray(fields, "lowPointAdjustments");
+	const highPoints = getArray(fields, "highPointReference");
+
+	return {
+		calibrationId: id,
+		calibrationDate: getTimestamp(fields, "calibrationDate"),
+		deviceId: getString(fields, "deviceId") ?? "",
+		sessionId: getString(fields, "sessionId"),
+		performedBy: getString(fields, "performedBy"),
+		manager: getString(fields, "manager"),
+		referenceDetail: getString(fields, "referenceDetail"),
+		statedAccuracy: getString(fields, "statedAccuracy"),
+		ambientTemperature: getString(fields, "ambientTemperature"),
+		ambientHumidity: getString(fields, "ambientHumidity"),
+		result: getString(fields, "result"),
+		lowPointAdjustments: parseCalibrationPoints(lowPoints),
+		highPointReference: parseCalibrationPoints(highPoints),
+	};
+}
+
+function parseCalibrationPoints(values: FirestoreValue[] | null): CalibrationPoint[] {
+	if (!values) return [];
+	const points: CalibrationPoint[] = [];
+	for (const item of values) {
+		if ("mapValue" in item && item.mapValue.fields) {
+			const f = item.mapValue.fields;
+			points.push({
+				channel: getNumber(f, "channel") ?? 0,
+				value: getNumber(f, "value") ?? 0,
+				units: getString(f, "units") ?? "",
+				referenceValue: getNumber(f, "referenceValue") ?? 0,
+				deviation: getNumber(f, "deviation") ?? 0,
+				trimValue: getNumber(f, "trimValue"),
+				result: getString(f, "result") ?? "",
+			});
+		}
+	}
+	return points;
+}
+
+function toActionResult(result: unknown): ActionResult {
+	const data = result as { success?: boolean; error?: string; status?: string; message?: string } | null;
+	if (data && typeof data === "object") {
+		// Detect error envelope: { status: "error", message: "..." }
+		if (data.status === "error" || data.error) {
+			return {
+				success: false,
+				data: null,
+				error: data.error ?? data.message ?? "Action failed",
+			};
+		}
+		return {
+			success: data.success !== false,
+			data: data,
+			error: null,
+		};
+	}
+	return { success: true, data: result ?? null, error: null };
 }

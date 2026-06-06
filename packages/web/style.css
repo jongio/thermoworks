@@ -163,6 +163,12 @@ h1 {
   border-radius: 12px;
 }
 
+.screenshot-single {
+  grid-template-columns: 1fr;
+  max-width: 600px;
+  margin-top: 1.25rem;
+}
+
 /* Alert examples */
 .alert-grid {
   display: grid;

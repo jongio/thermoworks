@@ -38,6 +38,31 @@
     "theme": "dark"
   },
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "thermoworks",
+          "title": "ThermoWorks",
+          "icon": "images/fire.svg"
+        }
+      ]
+    },
+    "views": {
+      "thermoworks": [
+        {
+          "id": "thermoworksPanel",
+          "name": "Devices",
+          "icon": "images/fire.svg"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "thermoworksPanel",
+        "contents": "Sign in to ThermoWorks Cloud to view your devices and temperatures.\n[Sign In](command:thermoworks.signIn)\n\n[Open ThermoWorks Cloud](command:thermoworks.openCloud)",
+        "when": "!thermoworks.isAuthenticated"
+      }
+    ],
     "commands": [
       {
         "command": "thermoworks.login",
@@ -54,8 +79,50 @@
       {
         "command": "thermoworks.demo",
         "title": "ThermoWorks: Demo (Simulate Alarm)"
+      },
+      {
+        "command": "thermoworks.signIn",
+        "title": "ThermoWorks: Sign In"
+      },
+      {
+        "command": "thermoworks.signOut",
+        "title": "ThermoWorks: Sign Out"
+      },
+      {
+        "command": "thermoworks.refreshPanel",
+        "title": "ThermoWorks: Refresh Panel",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "thermoworks.openCloud",
+        "title": "ThermoWorks: Open Cloud Dashboard",
+        "icon": "$(link-external)"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "thermoworks.refreshPanel",
+          "when": "view == thermoworksPanel && thermoworks.isAuthenticated",
+          "group": "navigation"
+        },
+        {
+          "command": "thermoworks.openCloud",
+          "when": "view == thermoworksPanel",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "thermoworks.signOut",
+          "when": "view == thermoworksPanel && viewItem == account"
+        },
+        {
+          "command": "thermoworks.refreshPanel",
+          "when": "view == thermoworksPanel && viewItem == devicesFolder"
+        }
+      ]
+    },
     "configuration": {
       "title": "ThermoWorks",
       "properties": {

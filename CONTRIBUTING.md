@@ -4,39 +4,134 @@ Thanks for your interest in contributing to this unofficial ThermoWorks CLI/SDK.
 
 ## Prerequisites
 
-- Node.js 18+
-- pnpm
+The following tools must be installed on your machine to build and run the full project:
 
-## Setup
+| Tool | Version | Purpose | Install |
+|------|---------|---------|---------|
+| **Node.js** | ≥ 18.0.0 | JavaScript runtime | [nodejs.org](https://nodejs.org) or `nvm install 22` |
+| **pnpm** | 10.12.1+ | Package manager (monorepo workspaces) | `corepack enable && corepack prepare pnpm@latest --activate` |
+| **Git** | Any recent | Source control | [git-scm.com](https://git-scm.com) |
 
-```sh
-pnpm install && pnpm -r build
+### Platform-Specific Dependencies
+
+The CLI and VS Code extension use [`@github/keytar`](https://github.com/nicedoc/keytar) for secure credential storage in the OS keychain. This requires native compilation support:
+
+#### Windows
+
+No extra steps — Windows Credential Vault is used automatically. Ensure you have the **Visual Studio Build Tools** (C++ workload) or **windows-build-tools** installed for native module compilation:
+
+```powershell
+# Option A: Install via npm (requires admin)
+npm install -g windows-build-tools
+
+# Option B: Install Visual Studio Build Tools with C++ workload
+# Download from https://visualstudio.microsoft.com/visual-cpp-build-tools/
 ```
 
-## Testing
+#### macOS
 
-```sh
-pnpm -r test
+No extra steps — macOS Keychain is used automatically. Xcode Command Line Tools provide the necessary compiler:
+
+```bash
+xcode-select --install
 ```
 
-## Linting
+#### Linux (Ubuntu/Debian)
 
-```sh
+Install `libsecret-1-dev` for keychain access and build essentials for native compilation:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libsecret-1-dev build-essential python3
+```
+
+#### Linux (Fedora/RHEL)
+
+```bash
+sudo dnf install -y libsecret-devel gcc-c++ make python3
+```
+
+## Quick Setup
+
+Run the automated setup verification script to check that all dependencies are installed:
+
+```bash
+# PowerShell (Windows)
+pwsh ./scripts/setup-verify.ps1
+
+# Bash (macOS/Linux)
+./scripts/setup-verify.sh
+```
+
+Or manually:
+
+```bash
+git clone https://github.com/jongio/thermoworks.git
+cd thermoworks
+pnpm install
+pnpm build
+pnpm test
+```
+
+## Running the App
+
+```bash
+# CLI — run any command
+pnpm --filter thermoworks exec thermoworks auth status
+
+# SDK — run tests in watch mode
+pnpm --filter thermoworks-sdk test:watch
+
+# VS Code Extension — open in VS Code Extension Development Host
+cd packages/vscode && code .
+# Then press F5 to launch
+```
+
+## Development Commands
+
+```bash
+# Install all dependencies
+pnpm install
+
+# Build all packages
+pnpm build
+
+# Run all tests
+pnpm test
+
+# Type-check all packages
+pnpm typecheck
+
+# Lint (Biome)
 pnpm lint
+
+# Format code
+pnpm format
 ```
 
-## Repository structure
+## Repository Structure
 
-- `packages/sdk`
-- `packages/cli`
-- `packages/vscode`
-- `packages/web`
+| Path | Package | Description |
+|------|---------|-------------|
+| `packages/sdk` | `thermoworks-sdk` | Node.js client library for ThermoWorks Cloud API |
+| `packages/cli` | `thermoworks` | CLI for auth, device listing, Copilot statusline setup |
+| `packages/vscode` | VS Code extension | Status bar + device panel extension |
+| `packages/web` | Landing page | Static marketing/landing page |
 
-## Pull requests
+## Environment Variables
+
+For headless/CI environments where the OS keychain is unavailable, credentials can be provided via environment variables:
+
+| Variable | Description |
+|----------|-------------|
+| `THERMOWORKS_EMAIL` | ThermoWorks Cloud account email |
+| `THERMOWORKS_PASSWORD` | ThermoWorks Cloud account password |
+
+## Pull Requests
 
 1. Fork the repository.
 2. Create a branch for your change.
-3. Run the relevant build, lint, and test commands.
+3. Run `pnpm build && pnpm test && pnpm typecheck && pnpm lint` to verify.
 4. Open a pull request with a clear description.
 
 ## Notes

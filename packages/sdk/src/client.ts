@@ -513,48 +513,64 @@ export class ThermoworksCloud {
 		};
 	}
 
-	/** Experimental callable function actions. */
+	/** Start a monitoring session for the given device. */
+	async startSession(serial: string, label?: string): Promise<ActionResult> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const data: Record<string, string> = { deviceId: serial };
+		if (label != null) data.label = label;
+		const result = await session.callFunction("newSessionRequest", data);
+		return toActionResult(result);
+	}
+
+	/** End an active monitoring session for the given device. */
+	async endSession(serial: string): Promise<ActionResult> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const result = await session.callFunction("endSessionRequest", { deviceId: serial });
+		return toActionResult(result);
+	}
+
+	/** Clear session data for the given device. */
+	async clearSession(serial: string): Promise<ActionResult> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const result = await session.callFunction("clearSessionRequest", { deviceId: serial });
+		return toActionResult(result);
+	}
+
+	/** Reset the min/max readings for a specific device channel. */
+	async resetMinMax(serial: string, channel: number): Promise<ActionResult> {
+		validateSerial(serial);
+		validateChannel(channel);
+		const session = await this.ensureSession();
+		const result = await session.callFunction("telemetryDeviceChannelResetMinMax", {
+			deviceId: serial,
+			channelId: channel,
+		});
+		return toActionResult(result);
+	}
+
+	/** Clear all events for the given device. */
+	async clearEvents(serial: string): Promise<ActionResult> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const result = await session.callFunction("deviceClearEvents", { deviceId: serial });
+		return toActionResult(result);
+	}
+
+	/**
+	 * @deprecated Use the top-level methods `startSession`, `endSession`,
+	 * `clearSession`, `resetMinMax`, and `clearEvents` instead.
+	 */
 	readonly actions = {
-		startSession: async (serial: string, label?: string): Promise<ActionResult> => {
-			validateSerial(serial);
-			const session = await this.ensureSession();
-			const data: Record<string, string> = { deviceId: serial };
-			if (label != null) data.label = label;
-			const result = await session.callFunction("newSessionRequest", data);
-			return toActionResult(result);
-		},
-
-		endSession: async (serial: string): Promise<ActionResult> => {
-			validateSerial(serial);
-			const session = await this.ensureSession();
-			const result = await session.callFunction("endSessionRequest", { deviceId: serial });
-			return toActionResult(result);
-		},
-
-		clearSession: async (serial: string): Promise<ActionResult> => {
-			validateSerial(serial);
-			const session = await this.ensureSession();
-			const result = await session.callFunction("clearSessionRequest", { deviceId: serial });
-			return toActionResult(result);
-		},
-
-		resetMinMax: async (serial: string, channel: number): Promise<ActionResult> => {
-			validateSerial(serial);
-			validateChannel(channel);
-			const session = await this.ensureSession();
-			const result = await session.callFunction("telemetryDeviceChannelResetMinMax", {
-				deviceId: serial,
-				channelId: channel,
-			});
-			return toActionResult(result);
-		},
-
-		clearEvents: async (serial: string): Promise<ActionResult> => {
-			validateSerial(serial);
-			const session = await this.ensureSession();
-			const result = await session.callFunction("deviceClearEvents", { deviceId: serial });
-			return toActionResult(result);
-		},
+		startSession: (serial: string, label?: string): Promise<ActionResult> =>
+			this.startSession(serial, label),
+		endSession: (serial: string): Promise<ActionResult> => this.endSession(serial),
+		clearSession: (serial: string): Promise<ActionResult> => this.clearSession(serial),
+		resetMinMax: (serial: string, channel: number): Promise<ActionResult> =>
+			this.resetMinMax(serial, channel),
+		clearEvents: (serial: string): Promise<ActionResult> => this.clearEvents(serial),
 	};
 
 	/** Close the client and release resources. */

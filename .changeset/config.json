@@ -10,5 +10,6 @@
 	"access": "public",
 	"baseBranch": "main",
 	"updateInternalDependencies": "minor",
-	"ignore": ["thermoworks-web"]
+	"ignore": ["thermoworks-web"],
+	"privatePackages": { "version": false, "tag": false }
 }

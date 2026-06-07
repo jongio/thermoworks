@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+### Minor Changes
+
+- [`50329e0`](https://github.com/jongio/thermoworks/commit/50329e0f2e0e4db0a214ec0e9db393cbafc35667) Thanks [@jongio](https://github.com/jongio)! - Parallelize per-device channel fetches in copilot status for faster output. Use shared alarm, credential, and config utilities from SDK. Fix static imports for --version flag and flaky time-dependent test.
+
 ## 0.1.0 (2026-06-05)
 
 ### Features

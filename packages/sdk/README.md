@@ -18,11 +18,32 @@ npm install thermoworks-sdk
 
 The package exports:
 
-- `ThermoworksCloud`
-- `AuthError`
-- `NetworkError`
-- `NotFoundError`
-- Type interfaces: `Alarm`, `Device`, `DeviceChannel`, `DeviceFilter`, `MinMaxReading`, `ThermoworksConfig`, and `User`
+**Client:**
+- `ThermoworksCloud` — main API client
+
+**Error types:**
+- `AuthError`, `NetworkError`, `NotFoundError`
+
+**Alarm utilities:**
+- `getChannelAlarmState(channel)` — returns `"high"`, `"low"`, or `"none"` for a channel
+- `getChannelsAlarmState(channels)` — highest alarm state across multiple channels
+- `escalateAlarm(current, incoming)` — returns the more severe of two alarm states
+
+**Formatting:**
+- `formatTimeAgo(date)` — human-readable relative time (e.g., `"5m ago"`, `"2h ago"`)
+
+**Credential helpers:**
+- `parseCredentialBlob(blob)` — parse a JSON credential blob into `{ email, password }`
+- `serializeCredentials(email, password)` — serialize credentials to JSON
+- `resolveEnvCredentials()` — resolve credentials from `THERMOWORKS_EMAIL`/`THERMOWORKS_PASSWORD` env vars
+- Constants: `CREDENTIAL_SERVICE`, `CREDENTIAL_ACCOUNT`, `LEGACY_ACCOUNT_EMAIL`, `LEGACY_ACCOUNT_PASSWORD`
+
+**Config types:**
+- `StatuslineConfig`, `DeviceEntry`, `DEFAULT_STATUSLINE_CONFIG`
+- `isValidStatuslineConfig(raw)`, `isValidDeviceEntry(entry)` — validation helpers
+
+**Type interfaces:**
+- `Account`, `Alarm`, `Archive`, `CalibrationRecord`, `Credentials`, `Device`, `DeviceChannel`, `DeviceEvent`, `DeviceFilter`, `EventFilter`, `FirmwareInfo`, `MinMaxReading`, `TemperatureGuide`, `ThermoworksConfig`, `User`, and more
 
 ## Usage
 
@@ -63,11 +84,20 @@ client.close();
 | Method | Returns | Description |
 |--------|---------|-------------|
 | `getUser()` | `Promise<User>` | Get the authenticated user record |
+| `getAccount()` | `Promise<Account>` | Get the full account (user + preferences) |
 | `getDevices(filter?)` | `Promise<Device[]>` | List devices, with optional filtering |
 | `getDevice(serial)` | `Promise<Device>` | Get a single device by serial number |
 | `getDeviceChannel(serial, channel)` | `Promise<DeviceChannel>` | Get one channel reading; `channel` is 1-indexed |
 | `getAllDeviceChannels(serial)` | `Promise<DeviceChannel[]>` | Get all device channels until the first missing channel |
 | `getAverageTemperature(serial)` | `Promise<{ value: number; units: string } \| null>` | Average temperature across readable temperature channels |
+| `getEvents(filter?)` | `Promise<DeviceEvent[]>` | Get device events with optional filtering |
+| `getDeviceEvents(serial, limit?)` | `Promise<DeviceEvent[]>` | Convenience — events for a single device |
+| `getArchives(serial, options?)` | `Promise<Archive[]>` | List session archives for a device |
+| `getArchive(serial, archiveId)` | `Promise<Archive>` | Get a single archive session |
+| `getCalibration(serial)` | `Promise<CalibrationRecord[]>` | Get calibration records for a device |
+| `getFirmwareInfo(deviceType)` | `Promise<FirmwareInfo>` | Get latest firmware info for a device type |
+| `getTemperatureGuide()` | `Promise<TemperatureGuide>` | Get the USDA temperature guide |
+| `search(query, options)` | `Promise<SearchResult>` | Search across devices and data |
 | `close()` | `void` | Release the underlying authenticated session |
 
 ### Filtering Devices

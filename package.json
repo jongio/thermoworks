@@ -6,15 +6,10 @@
 		"test": "pnpm -r test",
 		"lint": "biome check .",
 		"format": "biome format . --write",
-		"typecheck": "pnpm -r typecheck",
-		"changeset": "changeset",
-		"version-packages": "changeset version",
-		"release": "pnpm build && pnpm -r publish"
+		"typecheck": "pnpm -r typecheck"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.4.16",
-		"@changesets/changelog-github": "^0.7.0",
-		"@changesets/cli": "^2.29.0",
 		"typescript": "^6.0.3"
 	},
 	"engines": {

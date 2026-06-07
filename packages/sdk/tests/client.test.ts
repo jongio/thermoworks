@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ThermoworksCloud } from "../src/client.js";
-import { NotFoundError } from "../src/types.js";
+import { NetworkError, NotFoundError } from "../src/types.js";
 
 vi.mock("undici", () => {
 	const mockRequest = vi.fn();
@@ -504,6 +504,414 @@ describe("ThermoworksCloud", () => {
 			expect(channels).toHaveLength(2);
 			expect(channels[0]?.value).toBe(72.4);
 			expect(channels[1]?.units).toBe("H");
+			client.close();
+		});
+	});
+
+	describe("getAccount", () => {
+		it("fetches account info", async () => {
+			setupAuth();
+			// resolveAccountId -> getUser
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: { accountId: { stringValue: "acct-123" } },
+				}) as any,
+			);
+			// getAccount document
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: {
+						name: { stringValue: "My Account" },
+						type: { stringValue: "personal" },
+						createdOn: { timestampValue: "2024-01-15T08:00:00.000Z" },
+						exportVersion: { integerValue: "3" },
+					},
+				}) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const account = await client.getAccount();
+			expect(account.accountId).toBe("acct-123");
+			expect(account.name).toBe("My Account");
+			expect(account.type).toBe("personal");
+			expect(account.createdOn).toEqual(new Date("2024-01-15T08:00:00.000Z"));
+			expect(account.exportVersion).toBe(3);
+			client.close();
+		});
+
+		it("throws NotFoundError for 404", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: { accountId: { stringValue: "acct-123" } },
+				}) as any,
+			);
+			mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			await expect(client.getAccount()).rejects.toThrow(NotFoundError);
+			client.close();
+		});
+	});
+
+	describe("getEvents", () => {
+		it("fetches events with default limit", async () => {
+			setupAuth();
+			// resolveAccountId -> getUser
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: { accountId: { stringValue: "acct-123" } },
+				}) as any,
+			);
+			// events query
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, [
+					{
+						document: {
+							name: "projects/thermoworks-app/databases/(default)/documents/events/evt-1",
+							fields: {
+								eventType: { stringValue: "High Alarm" },
+								severity: { integerValue: "2" },
+								eventTime: { timestampValue: "2026-06-01T10:00:00.000Z" },
+								deviceId: { stringValue: "ABC123" },
+								accountId: { stringValue: "acct-123" },
+							},
+						},
+					},
+				]) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const events = await client.getEvents();
+			expect(events).toHaveLength(1);
+			expect(events[0]?.eventType).toBe("High Alarm");
+			expect(events[0]?.severity).toBe(2);
+			expect(events[0]?.deviceId).toBe("ABC123");
+			expect(events[0]?.id).toBe("evt-1");
+			client.close();
+		});
+
+		it("filters by deviceId", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: { accountId: { stringValue: "acct-123" } },
+				}) as any,
+			);
+			mockRequest.mockResolvedValueOnce(mockRes(200, []) as any);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const events = await client.getEvents({ deviceId: "ABC123" });
+			expect(events).toEqual([]);
+			// Verify the query body includes the deviceId filter
+			const lastCall = mockRequest.mock.calls[mockRequest.mock.calls.length - 1];
+			const body = (lastCall?.[1] as any)?.body;
+			if (body) {
+				const parsed = JSON.parse(body);
+				const filters = parsed.structuredQuery.where.compositeFilter.filters;
+				const deviceFilter = filters.find((f: any) => f.fieldFilter.field.fieldPath === "deviceId");
+				expect(deviceFilter).toBeDefined();
+				expect(deviceFilter.fieldFilter.value.stringValue).toBe("ABC123");
+			}
+			client.close();
+		});
+
+		it("filters by eventType", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: { accountId: { stringValue: "acct-123" } },
+				}) as any,
+			);
+			mockRequest.mockResolvedValueOnce(mockRes(200, []) as any);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const events = await client.getEvents({ eventType: "Low Battery Alert" });
+			expect(events).toEqual([]);
+			client.close();
+		});
+
+		it("handles server error response", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: { accountId: { stringValue: "acct-123" } },
+				}) as any,
+			);
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, { error: { message: "Internal error" } }) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			await expect(client.getEvents()).rejects.toThrow(NetworkError);
+			client.close();
+		});
+
+		it("returns empty array for non-array response", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: { accountId: { stringValue: "acct-123" } },
+				}) as any,
+			);
+			mockRequest.mockResolvedValueOnce(mockRes(200, {}) as any);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const events = await client.getEvents();
+			expect(events).toEqual([]);
+			client.close();
+		});
+	});
+
+	describe("getArchives", () => {
+		it("lists archives for a device", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					documents: [
+						{
+							name: "projects/thermoworks-app/databases/(default)/documents/devices/ABC123/archive/arch-1",
+							fields: {
+								label: { stringValue: "Cook Session" },
+								type: { stringValue: "session" },
+								start: { timestampValue: "2026-06-01T10:00:00.000Z" },
+								end: { timestampValue: "2026-06-01T14:00:00.000Z" },
+								count: { integerValue: "120" },
+								createdOn: { timestampValue: "2026-06-01T14:05:00.000Z" },
+							},
+						},
+					],
+				}) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const archives = await client.getArchives("ABC123");
+			expect(archives).toHaveLength(1);
+			expect(archives[0]?.id).toBe("arch-1");
+			expect(archives[0]?.label).toBe("Cook Session");
+			expect(archives[0]?.count).toBe(120);
+			client.close();
+		});
+
+		it("handles pagination token (startAfter)", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(mockRes(200, { documents: [] }) as any);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const archives = await client.getArchives("ABC123", { startAfter: "cursor-token" });
+			expect(archives).toEqual([]);
+			// Verify the URL includes the pageToken
+			const lastCall = mockRequest.mock.calls[mockRequest.mock.calls.length - 1];
+			const url = lastCall?.[0] as string;
+			expect(url).toContain("pageToken=cursor-token");
+			client.close();
+		});
+
+		it("returns empty when no documents", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(mockRes(200, {}) as any);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const archives = await client.getArchives("ABC123");
+			expect(archives).toEqual([]);
+			client.close();
+		});
+
+		it("throws NetworkError on error response", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, { error: { message: "Access denied" } }) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			await expect(client.getArchives("ABC123")).rejects.toThrow(NetworkError);
+			client.close();
+		});
+	});
+
+	describe("getArchive", () => {
+		it("fetches a specific archive", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					name: "projects/thermoworks-app/databases/(default)/documents/devices/ABC123/archive/arch-1",
+					fields: {
+						label: { stringValue: "BBQ Session" },
+						type: { stringValue: "session" },
+						start: { timestampValue: "2026-06-01T10:00:00.000Z" },
+						count: { integerValue: "50" },
+					},
+				}) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const archive = await client.getArchive("ABC123", "arch-1");
+			expect(archive.id).toBe("arch-1");
+			expect(archive.label).toBe("BBQ Session");
+			expect(archive.count).toBe(50);
+			client.close();
+		});
+
+		it("throws NotFoundError for 404", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			await expect(client.getArchive("ABC123", "missing")).rejects.toThrow(NotFoundError);
+			client.close();
+		});
+	});
+
+	describe("getCalibration", () => {
+		it("returns calibration records", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					documents: [
+						{
+							name: "projects/thermoworks-app/databases/(default)/documents/devices/ABC123/calibration/cal-1",
+							fields: {
+								deviceId: { stringValue: "ABC123" },
+								calibrationDate: { timestampValue: "2025-12-01T00:00:00.000Z" },
+								performedBy: { stringValue: "ThermoWorks Lab" },
+								result: { stringValue: "pass" },
+							},
+						},
+					],
+				}) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const records = await client.getCalibration("ABC123");
+			expect(records).toHaveLength(1);
+			expect(records[0]?.calibrationId).toBe("cal-1");
+			expect(records[0]?.deviceId).toBe("ABC123");
+			expect(records[0]?.result).toBe("pass");
+			client.close();
+		});
+
+		it("returns empty array when no documents", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(mockRes(200, {}) as any);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const records = await client.getCalibration("ABC123");
+			expect(records).toEqual([]);
+			client.close();
+		});
+	});
+
+	describe("getFirmwareInfo", () => {
+		it("fetches firmware info by device type", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: {
+						name: { stringValue: "Smoke X4" },
+						version: { stringValue: "2.1.0" },
+						location: { stringValue: "https://firmware.thermoworks.com/smoke-x4-2.1.0.bin" },
+						md5: { stringValue: "abc123def456" },
+					},
+				}) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const fw = await client.getFirmwareInfo("smoke_x4");
+			expect(fw.name).toBe("Smoke X4");
+			expect(fw.version).toBe("2.1.0");
+			expect(fw.location).toContain("smoke-x4");
+			expect(fw.md5).toBe("abc123def456");
+			client.close();
+		});
+
+		it("throws NotFoundError for 404", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			await expect(client.getFirmwareInfo("unknown_type")).rejects.toThrow(NotFoundError);
+			client.close();
+		});
+	});
+
+	describe("getTemperatureGuide", () => {
+		it("fetches temperature categories", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: {
+						categories: {
+							arrayValue: {
+								values: [
+									{
+										mapValue: {
+											fields: {
+												label: { stringValue: "Beef" },
+												icon: { stringValue: "beef-icon" },
+												pullWarning: { stringValue: "Pull 5F early" },
+											},
+										},
+									},
+									{
+										mapValue: {
+											fields: {
+												label: { stringValue: "Poultry" },
+												icon: { stringValue: "poultry-icon" },
+												warning: { stringValue: "Must reach 165F" },
+											},
+										},
+									},
+								],
+							},
+						},
+					},
+				}) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const guide = await client.getTemperatureGuide();
+			expect(guide.categories).toHaveLength(2);
+			expect(guide.categories[0]?.label).toBe("Beef");
+			expect(guide.categories[0]?.pullWarning).toBe("Pull 5F early");
+			expect(guide.categories[1]?.label).toBe("Poultry");
+			expect(guide.categories[1]?.warning).toBe("Must reach 165F");
+			client.close();
+		});
+
+		it("throws NotFoundError for 404", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			await expect(client.getTemperatureGuide()).rejects.toThrow(NotFoundError);
+			client.close();
+		});
+	});
+
+	describe("error handling", () => {
+		it("throws on 500 server error from getDevices", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, { fields: { accountId: { stringValue: "acct-123" } } }) as any,
+			);
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, { error: { message: "Internal Server Error" } }) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			await expect(client.getDevices()).rejects.toThrow(NetworkError);
+			client.close();
+		});
+
+		it("handles network failures gracefully", async () => {
+			// Auth succeeds, but the actual API call fails on all retry attempts
+			setupAuth();
+			mockRequest.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+			mockRequest.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+			mockRequest.mockRejectedValueOnce(new Error("ECONNREFUSED"));
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			await expect(client.getUser()).rejects.toThrow(NetworkError);
 			client.close();
 		});
 	});

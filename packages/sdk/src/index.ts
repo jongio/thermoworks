@@ -1,5 +1,6 @@
 export type { AlarmState } from "./alarm.js";
 export { escalateAlarm, getChannelAlarmState, getChannelsAlarmState } from "./alarm.js";
+export type { AuthSessionOptions } from "./auth.js";
 export { ThermoworksCloud } from "./client.js";
 export type { DeviceEntry, StatuslineConfig } from "./config.js";
 export {
@@ -7,6 +8,7 @@ export {
 	isValidDeviceEntry,
 	isValidStatuslineConfig,
 } from "./config.js";
+export { toCelsius, toFahrenheit } from "./convert.js";
 export type { Credentials } from "./credentials.js";
 export {
 	CREDENTIAL_ACCOUNT,
@@ -19,28 +21,49 @@ export {
 } from "./credentials.js";
 export { formatTimeAgo } from "./format.js";
 export type {
+	ChannelUpdate,
+	ChannelUpdateCallback,
+	ErrorCallback,
+	Subscription,
+	SubscriptionOptions,
+} from "./subscribe.js";
+export { createSubscription } from "./subscribe.js";
+export type { TokenCacheData } from "./token-cache.js";
+export { invalidateTokenCache, resolveTokenCachePath } from "./token-cache.js";
+export type {
 	Account,
+	AccountInvite,
 	ActionResult,
 	Alarm,
+	AlarmSetOptions,
+	AlarmThresholdOptions,
 	Archive,
 	ArchiveChannel,
 	ArchiveListOptions,
 	BigQueryRef,
+	BillingPlan,
 	CalibrationPoint,
 	CalibrationRecord,
+	DataUsage,
 	Device,
 	DeviceChannel,
+	DeviceDataUsage,
 	DeviceEvent,
 	DeviceFilter,
+	DeviceGroup,
+	DeviceHistory,
 	EventFilter,
 	FanSettings,
 	FirmwareInfo,
 	GatewayInfo,
+	HistoricalReading,
 	MinMaxReading,
 	NotificationSettings,
+	RetryConfig,
 	SearchHit,
 	SearchOptions,
 	SearchResult,
+	ShareResult,
 	TemperatureCategory,
 	TemperatureGuide,
 	TemperatureReading,

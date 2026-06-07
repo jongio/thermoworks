@@ -11,20 +11,37 @@ import {
 	getTimestamp,
 } from "./firestore.js";
 import {
+	type ChannelUpdateCallback,
+	createSubscription,
+	type ErrorCallback,
+	type Subscription,
+	type SubscriptionOptions,
+} from "./subscribe.js";
+import {
 	type Account,
+	type AccountInvite,
 	type ActionResult,
 	type Alarm,
+	type AlarmSetOptions,
+	type AlarmThresholdOptions,
 	type Archive,
 	type ArchiveChannel,
 	type ArchiveListOptions,
+	type BillingPlan,
 	type CalibrationPoint,
 	type CalibrationRecord,
+	type DataUsage,
 	type Device,
 	type DeviceChannel,
+	type DeviceDataUsage,
 	type DeviceEvent,
 	type DeviceFilter,
+	type DeviceGroup,
+	type DeviceHistory,
 	type EventFilter,
+	type FanSettings,
 	type FirmwareInfo,
+	type HistoricalReading,
 	type MinMaxReading,
 	NetworkError,
 	NotFoundError,
@@ -32,6 +49,7 @@ import {
 	type SearchHit,
 	type SearchOptions,
 	type SearchResult,
+	type ShareResult,
 	type TemperatureCategory,
 	type TemperatureGuide,
 	type TemperatureReading,
@@ -85,6 +103,7 @@ export class ThermoworksCloud {
 	private sessionPromise: Promise<AuthSession> | null = null;
 	private cachedAccountId: string | null = null;
 	private closed = false;
+	private readonly activeSubscriptions = new Set<Subscription>();
 
 	constructor(config: ThermoworksConfig) {
 		this.config = config;
@@ -120,6 +139,60 @@ export class ThermoworksCloud {
 			roles: parseStringBooleanMap(getMapFields(fields, "roles")),
 			notificationSettings: parseNotificationSettings(getMapFields(fields, "notificationSettings")),
 		};
+	}
+
+	/** Get the authenticated user's notification preferences. */
+	async getNotificationSettings(): Promise<NotificationSettings> {
+		const user = await this.getUser();
+		return (
+			user.notificationSettings ?? {
+				enabled: false,
+				continuousAlerts: false,
+				emailNotification: false,
+				smsNotification: false,
+				deviceNotification: false,
+			}
+		);
+	}
+
+	/**
+	 * Update the authenticated user's notification preferences.
+	 *
+	 * Performs a read-merge-write to ensure unspecified fields retain
+	 * their current values (Firestore updateMask replaces the entire map).
+	 */
+	async updateNotificationSettings(settings: Partial<NotificationSettings>): Promise<void> {
+		const current = await this.getNotificationSettings();
+		const merged: NotificationSettings = { ...current, ...settings };
+
+		const session = await this.ensureSession();
+		const userId = session.getUserId();
+		const path = `documents/users/${userId}?updateMask.fieldPaths=notificationSettings`;
+		const body = {
+			fields: {
+				notificationSettings: {
+					mapValue: {
+						fields: {
+							enabled: { booleanValue: merged.enabled },
+							continuousAlerts: { booleanValue: merged.continuousAlerts },
+							emailNotification: { booleanValue: merged.emailNotification },
+							smsNotification: { booleanValue: merged.smsNotification },
+							deviceNotification: { booleanValue: merged.deviceNotification },
+						},
+					},
+				},
+			},
+		};
+
+		const response = await session.request("PATCH", path, body);
+		if (!response.ok) {
+			throw new NetworkError(
+				`Failed to update notification settings: HTTP ${response.status}`,
+				response.status,
+			);
+		}
+		// Consume the response body to release the connection
+		await response.text().catch(() => {});
 	}
 
 	/** Get all devices for the authenticated user, with optional filtering. */
@@ -177,42 +250,25 @@ export class ThermoworksCloud {
 	/** Get a single device by serial number. */
 	async getDevice(serial: string): Promise<Device> {
 		validateSerial(serial);
-		const session = await this.ensureSession();
-		const response = await session.request(
-			"GET",
+		const fields = await this.fetchDocFields(
 			`documents/devices/${encodeURIComponent(serial)}`,
+			`Device with serial '${serial}' not found`,
 		);
-
-		if (response.status === 404) {
-			await response.text().catch(() => {});
-			throw new NotFoundError(`Device with serial '${serial}' not found`);
-		}
-
-		const doc = (await response.json()) as { fields?: FirestoreFields };
-		if (!doc.fields) {
+		if (!fields || Object.keys(fields).length === 0) {
 			throw new NetworkError("Invalid response: missing fields");
 		}
-
-		return parseDevice(doc.fields);
+		return parseDevice(fields);
 	}
 
 	/** Get a channel reading for a device. Channels are 1-indexed. */
 	async getDeviceChannel(serial: string, channel: number): Promise<DeviceChannel> {
 		validateSerial(serial);
 		validateChannel(channel);
-		const session = await this.ensureSession();
-		const response = await session.request(
-			"GET",
+		const fields = await this.fetchDocFields(
 			`documents/devices/${encodeURIComponent(serial)}/channels/${channel}`,
+			`Channel ${channel} not found for device '${serial}'`,
 		);
-
-		if (response.status === 404) {
-			await response.text().catch(() => {});
-			throw new NotFoundError(`Channel ${channel} not found for device '${serial}'`);
-		}
-
-		const doc = (await response.json()) as { fields?: FirestoreFields };
-		return parseDeviceChannel(doc.fields ?? {});
+		return parseDeviceChannel(fields);
 	}
 
 	/**
@@ -255,22 +311,63 @@ export class ThermoworksCloud {
 		};
 	}
 
+	/**
+	 * Set alarm thresholds on a device channel.
+	 *
+	 * Performs a partial update - only the provided fields are modified.
+	 * At least one of `high` or `low` must be specified.
+	 *
+	 * @example
+	 * ```ts
+	 * // Set a high alarm at 275°F
+	 * await client.setAlarm("ABC123", 1, {
+	 *   high: { value: 275, units: "F", enabled: true },
+	 * });
+	 *
+	 * // Set both high and low alarms
+	 * await client.setAlarm("ABC123", 1, {
+	 *   high: { value: 275, units: "F", enabled: true },
+	 *   low: { value: 32, units: "F", enabled: true },
+	 * });
+	 * ```
+	 */
+	async setAlarm(serial: string, channel: number, config: AlarmSetOptions): Promise<void> {
+		validateSerial(serial);
+		validateChannel(channel);
+
+		if (!config.high && !config.low) {
+			throw new Error("At least one of 'high' or 'low' must be provided");
+		}
+
+		const fieldPaths: string[] = [];
+		const fields: Record<string, FirestoreValue> = {};
+
+		if (config.high) {
+			fieldPaths.push("alarmHigh");
+			fields.alarmHigh = buildAlarmMapValue(config.high);
+		}
+
+		if (config.low) {
+			fieldPaths.push("alarmLow");
+			fields.alarmLow = buildAlarmMapValue(config.low);
+		}
+
+		const updateMask = fieldPaths.map((fp) => `updateMask.fieldPaths=${fp}`).join("&");
+
+		const path = `documents/devices/${encodeURIComponent(serial)}/channels/${channel}?${updateMask}`;
+		const body = { fields };
+
+		const session = await this.ensureSession();
+		await session.request("PATCH", path, body);
+	}
+
 	/** Get account metadata. */
 	async getAccount(): Promise<Account> {
 		const accountId = await this.resolveAccountId();
-		const session = await this.ensureSession();
-		const response = await session.request(
-			"GET",
+		const fields = await this.fetchDocFields(
 			`documents/accounts/${encodeURIComponent(accountId)}`,
+			"Account not found",
 		);
-
-		if (response.status === 404) {
-			await response.text().catch(() => {});
-			throw new NotFoundError("Account not found");
-		}
-
-		const doc = (await response.json()) as { fields?: FirestoreFields };
-		const fields = doc.fields ?? {};
 
 		return {
 			accountId,
@@ -279,6 +376,132 @@ export class ThermoworksCloud {
 			createdOn: getTimestamp(fields, "createdOn"),
 			exportVersion: getNumber(fields, "exportVersion"),
 		};
+	}
+
+	/** Get total data storage usage for the authenticated user's account. */
+	async getDataUsage(): Promise<DataUsage> {
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+		const result = await session.callFunction("accountDataStorageSize", { accountId });
+		const data = result as { totalBytes?: number } | null;
+		const totalBytes = data?.totalBytes ?? 0;
+		return {
+			totalBytes,
+			formattedSize: formatBytes(totalBytes),
+		};
+	}
+
+	/** Get per-device data storage usage for the authenticated user's account. */
+	async getDataUsageByDevice(): Promise<DeviceDataUsage[]> {
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+		const result = await session.callFunction("accountDataStorageSizeByTable", { accountId });
+		const data = result as Array<{ deviceId?: string; bytes?: number }> | null;
+		if (!Array.isArray(data)) return [];
+		return data.map((entry) => {
+			const bytes = entry.bytes ?? 0;
+			return {
+				deviceId: entry.deviceId ?? "",
+				bytes,
+				formattedSize: formatBytes(bytes),
+			};
+		});
+	}
+
+	/** Get the billing plan for the authenticated user's account. */
+	async getBillingPlan(): Promise<BillingPlan | null> {
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+		const accountResponse = await session.request(
+			"GET",
+			`documents/accounts/${encodeURIComponent(accountId)}`,
+		);
+
+		if (accountResponse.status === 404) {
+			await accountResponse.text().catch(() => {});
+			return null;
+		}
+
+		const accountDoc = (await accountResponse.json()) as { fields?: FirestoreFields };
+		const accountFields = accountDoc.fields ?? {};
+		const planId = getString(accountFields, "billingPlanId");
+		if (!planId) return null;
+
+		const planResponse = await session.request(
+			"GET",
+			`documents/system/billingPlans/plans/${encodeURIComponent(planId)}`,
+		);
+
+		if (planResponse.status === 404) {
+			await planResponse.text().catch(() => {});
+			return null;
+		}
+
+		const planDoc = (await planResponse.json()) as { fields?: FirestoreFields };
+		const fields = planDoc.fields ?? {};
+		return {
+			id: planId,
+			name: getString(fields, "name") ?? "",
+			description: getString(fields, "description") ?? "",
+			monthlyAmount: getNumber(fields, "monthlyAmount") ?? 0,
+			deviceCount: getNumber(fields, "deviceCount") ?? 0,
+			isDefault: getBoolean(fields, "isDefault") ?? false,
+		};
+	}
+
+	/** Get pending invitations for the authenticated user's account. */
+	async getInvites(): Promise<AccountInvite[]> {
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+
+		const queryBody = {
+			structuredQuery: {
+				from: [{ collectionId: "usersInvites" }],
+				where: {
+					fieldFilter: {
+						field: { fieldPath: "accountId" },
+						op: "EQUAL",
+						value: { stringValue: accountId },
+					},
+				},
+				orderBy: [{ field: { fieldPath: "__name__" }, direction: "ASCENDING" }],
+			},
+		};
+
+		const response = await session.request("POST", "documents:runQuery", queryBody);
+		const rawResults = await response.json();
+		if (!Array.isArray(rawResults)) {
+			const maybeError = rawResults as { error?: { message?: string } } | null;
+			if (maybeError?.error) {
+				throw new NetworkError(maybeError.error.message ?? "Invites query failed");
+			}
+			return [];
+		}
+
+		const results = rawResults as Array<{ document?: { fields?: FirestoreFields; name?: string } }>;
+		const invites: AccountInvite[] = [];
+		for (const result of results) {
+			if (result.document?.fields) {
+				const f = result.document.fields;
+				invites.push({
+					id: extractDocId(result.document.name),
+					accountId: getString(f, "accountId") ?? accountId,
+					email: getString(f, "email") ?? undefined,
+					status: getString(f, "status") ?? undefined,
+					createdAt: getString(f, "createdAt") ?? undefined,
+				});
+			}
+		}
+		return invites;
+	}
+
+	/** Remove a user from the authenticated user's account. */
+	async removeUser(userId: string): Promise<ActionResult> {
+		if (!userId) {
+			throw new Error("userId is required");
+		}
+		const accountId = await this.resolveAccountId();
+		return this.callAction("userRemoteFromAccount", { userId, accountId });
 	}
 
 	/** Get events for the authenticated user's account. */
@@ -419,19 +642,10 @@ export class ThermoworksCloud {
 
 	/** Get firmware info for a device type. */
 	async getFirmwareInfo(deviceType: string): Promise<FirmwareInfo> {
-		const session = await this.ensureSession();
-		const response = await session.request(
-			"GET",
+		const fields = await this.fetchDocFields(
 			`documents/firmware/${encodeURIComponent(deviceType)}`,
+			`Firmware info not found for type '${deviceType}'`,
 		);
-
-		if (response.status === 404) {
-			await response.text().catch(() => {});
-			throw new NotFoundError(`Firmware info not found for type '${deviceType}'`);
-		}
-
-		const doc = (await response.json()) as { fields?: FirestoreFields };
-		const fields = doc.fields ?? {};
 
 		return {
 			name: getString(fields, "name") ?? deviceType,
@@ -513,53 +727,289 @@ export class ThermoworksCloud {
 		};
 	}
 
-	/** Experimental callable function actions. */
-	readonly actions = {
-		startSession: async (serial: string, label?: string): Promise<ActionResult> => {
-			validateSerial(serial);
-			const session = await this.ensureSession();
-			const data: Record<string, string> = { deviceId: serial };
-			if (label != null) data.label = label;
-			const result = await session.callFunction("newSessionRequest", data);
-			return toActionResult(result);
-		},
+	/** Start a monitoring session for the given device. */
+	async startSession(serial: string, label?: string): Promise<ActionResult> {
+		validateSerial(serial);
+		if (label != null && label.length > 200) {
+			throw new Error("label exceeds maximum length of 200 characters");
+		}
+		const data: Record<string, unknown> = { deviceId: serial };
+		if (label != null) data.label = sanitizeLabel(label) ?? label;
+		return this.callAction("newSessionRequest", data);
+	}
 
-		endSession: async (serial: string): Promise<ActionResult> => {
-			validateSerial(serial);
-			const session = await this.ensureSession();
-			const result = await session.callFunction("endSessionRequest", { deviceId: serial });
-			return toActionResult(result);
-		},
+	/** End an active monitoring session for the given device. */
+	async endSession(serial: string): Promise<ActionResult> {
+		validateSerial(serial);
+		return this.callAction("endSessionRequest", { deviceId: serial });
+	}
 
-		clearSession: async (serial: string): Promise<ActionResult> => {
-			validateSerial(serial);
-			const session = await this.ensureSession();
-			const result = await session.callFunction("clearSessionRequest", { deviceId: serial });
-			return toActionResult(result);
-		},
+	/** Clear session data for the given device. */
+	async clearSession(serial: string): Promise<ActionResult> {
+		validateSerial(serial);
+		return this.callAction("clearSessionRequest", { deviceId: serial });
+	}
 
-		resetMinMax: async (serial: string, channel: number): Promise<ActionResult> => {
-			validateSerial(serial);
-			validateChannel(channel);
-			const session = await this.ensureSession();
-			const result = await session.callFunction("telemetryDeviceChannelResetMinMax", {
-				deviceId: serial,
-				channelId: channel,
+	/** Reset the min/max readings for a specific device channel. */
+	async resetMinMax(serial: string, channel: number): Promise<ActionResult> {
+		validateSerial(serial);
+		validateChannel(channel);
+		return this.callAction("telemetryDeviceChannelResetMinMax", {
+			deviceId: serial,
+			channelId: channel,
+		});
+	}
+
+	/** Clear all events for the given device. */
+	async clearEvents(serial: string): Promise<ActionResult> {
+		validateSerial(serial);
+		return this.callAction("deviceClearEvents", { deviceId: serial });
+	}
+
+	/** Update device state/settings via a Cloud Function. */
+	async updateDeviceState(serial: string, state: Record<string, unknown>): Promise<ActionResult> {
+		validateSerial(serial);
+		if (!state || typeof state !== "object" || Array.isArray(state)) {
+			throw new Error("state must be a non-null object");
+		}
+		return this.callAction("deviceStateUpdate", { deviceId: serial, state });
+	}
+
+	/** Rename a device. */
+	async renameDevice(serial: string, name: string): Promise<ActionResult> {
+		validateSerial(serial);
+		if (typeof name !== "string" || name.trim().length === 0) {
+			throw new Error("name must be a non-empty string");
+		}
+		if (name.length > 200) {
+			throw new Error("name exceeds maximum length of 200 characters");
+		}
+		return this.callAction("setInstrumentName", { deviceId: serial, name });
+	}
+
+	/** Factory reset a device. */
+	async factoryReset(serial: string): Promise<ActionResult> {
+		validateSerial(serial);
+		return this.callAction("deviceFactoryReset", { deviceId: serial });
+	}
+
+	/** Share a device's live state publicly via a shareable link. */
+	async shareDevice(serial: string): Promise<ShareResult> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const result = await session.callFunction("publicShareDeviceState", { deviceId: serial });
+		return toShareResult(result);
+	}
+
+	/** Share an archive publicly via a shareable link. */
+	async shareArchive(serial: string, archiveId: string): Promise<ShareResult> {
+		validateSerial(serial);
+		if (!archiveId) {
+			throw new Error("archiveId is required");
+		}
+		const session = await this.ensureSession();
+		const result = await session.callFunction("publicShareArchive", {
+			archiveId,
+			deviceId: serial,
+		});
+		return toShareResult(result);
+	}
+
+	/** Retrieve full historical temperature time-series data from BigQuery. */
+	async getHistory(serial: string): Promise<DeviceHistory> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const result = await session.callFunction("requestRetrieveInstrumentHistory", {
+			deviceId: serial,
+		});
+		return parseDeviceHistory(serial, result);
+	}
+
+	// ─── Device Groups ─────────────────────────────────────────────────────────
+
+	/**
+	 * Get device groups for the authenticated user.
+	 *
+	 * Reads the user profile's `deviceGroupOrDeviceOrder` field to identify
+	 * group references, then fetches each group's details from the account's
+	 * `deviceGroups` subcollection.
+	 */
+	async getDeviceGroups(): Promise<DeviceGroup[]> {
+		const session = await this.ensureSession();
+		const userId = session.getUserId();
+		const response = await session.request("GET", `documents/users/${userId}`);
+
+		if (response.status === 404) {
+			await response.text().catch(() => {});
+			throw new NotFoundError("User not found");
+		}
+
+		const doc = (await response.json()) as { fields?: FirestoreFields };
+		const fields = doc.fields ?? {};
+
+		const accountId = getString(fields, "accountId");
+		if (!accountId) return [];
+
+		// Parse deviceGroupOrDeviceOrder: { accountId: { "0": { id, type }, ... } }
+		const orderMap = getMapFields(fields, "deviceGroupOrDeviceOrder");
+		if (!orderMap) return [];
+
+		const accountOrderMap = getMapFields(orderMap, accountId);
+		if (!accountOrderMap) return [];
+
+		// Collect group IDs from entries with type "deviceGroup"
+		const groupIds: string[] = [];
+		for (const entry of Object.values(accountOrderMap)) {
+			if ("mapValue" in entry) {
+				const entryFields = entry.mapValue.fields ?? {};
+				const id =
+					entryFields.id && "stringValue" in entryFields.id ? entryFields.id.stringValue : null;
+				const type =
+					entryFields.type && "stringValue" in entryFields.type
+						? entryFields.type.stringValue
+						: null;
+				if (id && type === "deviceGroup") {
+					groupIds.push(id);
+				}
+			}
+		}
+
+		if (groupIds.length === 0) return [];
+
+		// Fetch each group document from the account's deviceGroups subcollection
+		const groups: DeviceGroup[] = [];
+		for (const groupId of groupIds) {
+			const groupPath = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups/${encodeURIComponent(groupId)}`;
+			const groupResponse = await session.request("GET", groupPath);
+
+			if (groupResponse.status === 404) {
+				await groupResponse.text().catch(() => {});
+				// Group referenced but document missing - include with minimal info
+				groups.push({ id: groupId, name: "", devices: [] });
+				continue;
+			}
+
+			const groupDoc = (await groupResponse.json()) as { fields?: FirestoreFields };
+			const groupFields = groupDoc.fields ?? {};
+			groups.push({
+				id: groupId,
+				name: getString(groupFields, "name") ?? "",
+				devices: getStringArray(groupFields, "devices") ?? [],
 			});
-			return toActionResult(result);
-		},
+		}
 
-		clearEvents: async (serial: string): Promise<ActionResult> => {
-			validateSerial(serial);
-			const session = await this.ensureSession();
-			const result = await session.callFunction("deviceClearEvents", { deviceId: serial });
-			return toActionResult(result);
-		},
+		return groups;
+	}
+
+	/**
+	 * Create a new device group.
+	 *
+	 * @throws Error - This method is not yet supported as the full device group
+	 * API is not documented.
+	 */
+	async createDeviceGroup(_name: string, _devices: string[]): Promise<DeviceGroup> {
+		throw new Error(
+			"createDeviceGroup is not yet supported: the device group write API is not fully documented",
+		);
+	}
+
+	/**
+	 * Delete a device group.
+	 *
+	 * @throws Error - This method is not yet supported as the full device group
+	 * API is not documented.
+	 */
+	async deleteDeviceGroup(_groupId: string): Promise<void> {
+		throw new Error(
+			"deleteDeviceGroup is not yet supported: the device group write API is not fully documented",
+		);
+	}
+
+	// ─── Fan Controller ──────────────────────────────────────────────────────────
+
+	/** Get the current fan/blower controller state for a device. Returns `null` if the device has no fan. */
+	async getFanState(serial: string): Promise<FanSettings | null> {
+		const device = await this.getDevice(serial);
+		return device.fan;
+	}
+
+	/** Set the fan controller target temperature. */
+	async setFanTarget(serial: string, targetTemp: number): Promise<ActionResult> {
+		validateSerial(serial);
+		if (!Number.isFinite(targetTemp)) {
+			throw new Error("targetTemp must be a finite number");
+		}
+		return this.callAction("deviceStateUpdate", {
+			deviceId: serial,
+			fan: { setTemp: targetTemp },
+		});
+	}
+
+	/** Enable or disable the fan controller connection. */
+	async setFanEnabled(serial: string, enabled: boolean): Promise<ActionResult> {
+		validateSerial(serial);
+		return this.callAction("deviceStateUpdate", {
+			deviceId: serial,
+			fan: { connection: enabled },
+		});
+	}
+
+	/**
+	 * @deprecated Use the top-level methods `startSession`, `endSession`,
+	 * `clearSession`, `resetMinMax`, and `clearEvents` instead.
+	 */
+	readonly actions = {
+		startSession: (serial: string, label?: string): Promise<ActionResult> =>
+			this.startSession(serial, label),
+		endSession: (serial: string): Promise<ActionResult> => this.endSession(serial),
+		clearSession: (serial: string): Promise<ActionResult> => this.clearSession(serial),
+		resetMinMax: (serial: string, channel: number): Promise<ActionResult> =>
+			this.resetMinMax(serial, channel),
+		clearEvents: (serial: string): Promise<ActionResult> => this.clearEvents(serial),
 	};
 
-	/** Close the client and release resources. */
+	/**
+	 * Subscribe to real-time channel updates for a device via polling.
+	 *
+	 * Immediately fetches the current state, then polls at the configured
+	 * interval. The callback is only invoked when a channel's value, units,
+	 * or status actually changes (deduplication).
+	 *
+	 * @example
+	 * ```ts
+	 * const sub = client.subscribe("ABC123", (update) => {
+	 *   console.log(`Ch${update.channel}: ${update.value}°${update.units}`);
+	 * }, { intervalMs: 5000, onError: console.error });
+	 *
+	 * // Later: stop polling
+	 * sub.unsubscribe();
+	 * ```
+	 */
+	subscribe(
+		serial: string,
+		callback: ChannelUpdateCallback,
+		options?: SubscriptionOptions & { onError?: ErrorCallback },
+	): Subscription {
+		if (this.closed) {
+			throw new Error("Client is closed");
+		}
+		validateSerial(serial);
+		const sub = createSubscription(serial, (s) => this.getAllDeviceChannels(s), callback, options);
+		const tracked: Subscription = {
+			unsubscribe: () => {
+				sub.unsubscribe();
+				this.activeSubscriptions.delete(tracked);
+			},
+		};
+		this.activeSubscriptions.add(tracked);
+		return tracked;
+	}
+
+	/** Close the client and release resources. Stops all active subscriptions. */
 	close(): void {
 		this.closed = true;
+		for (const sub of this.activeSubscriptions) sub.unsubscribe();
+		this.activeSubscriptions.clear();
 		this.session?.close();
 		this.session = null;
 		this.sessionPromise = null;
@@ -572,12 +1022,14 @@ export class ThermoworksCloud {
 		}
 		if (this.session) return this.session;
 		if (!this.sessionPromise) {
-			this.sessionPromise = createAuthSession(
-				this.config.email,
-				this.config.password,
-				this.config.apiKey,
-				this.config.appId,
-			)
+			this.sessionPromise = createAuthSession({
+				email: this.config.email,
+				password: this.config.password,
+				apiKey: this.config.apiKey,
+				appId: this.config.appId,
+				tokenCachePath: this.config.tokenCachePath,
+				retry: this.config.retry,
+			})
 				.then((s) => {
 					if (this.closed) {
 						s.close();
@@ -602,6 +1054,28 @@ export class ThermoworksCloud {
 		}
 		this.cachedAccountId = user.accountId;
 		return this.cachedAccountId;
+	}
+
+	/** Fetch a Firestore document and return its fields, or throw NotFoundError. */
+	private async fetchDocFields(path: string, notFoundMsg: string): Promise<FirestoreFields> {
+		const session = await this.ensureSession();
+		const response = await session.request("GET", path);
+		if (response.status === 404) {
+			await response.text().catch(() => {});
+			throw new NotFoundError(notFoundMsg);
+		}
+		const doc = (await response.json()) as { fields?: FirestoreFields };
+		return doc.fields ?? {};
+	}
+
+	/** Call a Cloud Function and return the result as an ActionResult. */
+	private async callAction(
+		functionName: string,
+		data: Record<string, unknown>,
+	): Promise<ActionResult> {
+		const session = await this.ensureSession();
+		const result = await session.callFunction(functionName, data);
+		return toActionResult(result);
 	}
 }
 
@@ -924,4 +1398,69 @@ function toActionResult(result: unknown): ActionResult {
 		};
 	}
 	return { success: true, data: result ?? null, error: null };
+}
+
+function toShareResult(result: unknown): ShareResult {
+	const data = result as {
+		success?: boolean;
+		publicLink?: string;
+		error?: string;
+		status?: string;
+		message?: string;
+	} | null;
+	if (data && typeof data === "object") {
+		if (data.status === "error" || data.error) {
+			return { success: false };
+		}
+		return {
+			success: data.success !== false,
+			publicLink: data.publicLink ?? undefined,
+		};
+	}
+	return { success: true };
+}
+
+function parseDeviceHistory(serial: string, result: unknown): DeviceHistory {
+	const readings: HistoricalReading[] = [];
+	if (result && typeof result === "object" && "readings" in result) {
+		const raw = (result as { readings?: unknown }).readings;
+		if (Array.isArray(raw)) {
+			for (const entry of raw) {
+				if (entry && typeof entry === "object") {
+					const r = entry as { v?: string; ts?: string; u?: string };
+					const value = r.v != null ? Number(r.v) : Number.NaN;
+					if (!Number.isNaN(value) && r.ts && r.u) {
+						readings.push({ value, timestamp: r.ts, units: r.u });
+					}
+				}
+			}
+		}
+	}
+	return { deviceId: serial, readings };
+}
+
+function buildAlarmMapValue(opts: AlarmThresholdOptions): FirestoreValue {
+	const mapFields: Record<string, FirestoreValue> = {
+		value: { doubleValue: opts.value },
+	};
+	if (opts.units !== undefined) {
+		mapFields.units = { stringValue: opts.units };
+	}
+	if (opts.enabled !== undefined) {
+		mapFields.enabled = { booleanValue: opts.enabled };
+	}
+	if (opts.muted !== undefined) {
+		mapFields.muted = { booleanValue: opts.muted };
+	}
+	return { mapValue: { fields: mapFields } };
+}
+
+const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
+
+function formatBytes(bytes: number): string {
+	if (bytes === 0) return "0 B";
+	const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), BYTE_UNITS.length - 1);
+	const value = bytes / 1024 ** exponent;
+	const formatted = exponent === 0 ? value.toString() : value.toFixed(2);
+	return `${formatted} ${BYTE_UNITS[exponent]}`;
 }

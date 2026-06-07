@@ -1,3 +1,13 @@
+/** Configuration for automatic retry with exponential backoff. */
+export interface RetryConfig {
+	/** Maximum number of retry attempts (default 3). */
+	maxRetries?: number;
+	/** Base delay in milliseconds before exponential increase (default 1000). */
+	baseDelayMs?: number;
+	/** Maximum delay in milliseconds between retries (default 30000). */
+	maxDelayMs?: number;
+}
+
 /** Configuration for the ThermoWorks Cloud client. */
 export interface ThermoworksConfig {
 	/** ThermoWorks Cloud account email address. */
@@ -8,6 +18,17 @@ export interface ThermoworksConfig {
 	apiKey?: string;
 	/** Override the default Firebase app ID. */
 	appId?: string;
+	/** Retry configuration for transient failures (429, 503, network errors). */
+	retry?: RetryConfig;
+	/**
+	 * Path to the token cache file for persisting auth tokens across sessions.
+	 * Reduces authentication overhead by reusing valid tokens instead of
+	 * performing a full sign-in on every client instantiation.
+	 *
+	 * Defaults to `~/.thermoworks/.token-cache.json` if set to `true` or a string path.
+	 * Set to `false` or omit to disable token caching.
+	 */
+	tokenCachePath?: string | boolean;
 }
 
 // ─── Device ──────────────────────────────────────────────────────────────────
@@ -322,6 +343,72 @@ export interface SearchOptions {
 	pageSize?: number;
 }
 
+// ─── Sharing ─────────────────────────────────────────────────────────────────
+
+/** Result from a public sharing operation. */
+export interface ShareResult {
+	readonly success: boolean;
+	readonly publicLink?: string;
+}
+
+// ─── Alarm Configuration ─────────────────────────────────────────────────────
+
+/** Options for configuring a single alarm threshold. */
+export interface AlarmThresholdOptions {
+	/** Alarm trigger value (temperature or humidity). */
+	value: number;
+	/** Units for the alarm value (e.g., "F", "C"). Defaults to the device's current units if omitted. */
+	units?: string;
+	/** Whether this alarm threshold is enabled. */
+	enabled?: boolean;
+	/** Whether this alarm is muted (suppresses notifications). */
+	muted?: boolean;
+}
+
+/** Options for setting alarm thresholds on a device channel. At least one of `high` or `low` must be provided. */
+export interface AlarmSetOptions {
+	/** High alarm threshold configuration. */
+	high?: AlarmThresholdOptions;
+	/** Low alarm threshold configuration. */
+	low?: AlarmThresholdOptions;
+}
+
+// ─── Billing & Storage ───────────────────────────────────────────────────────
+
+/** Total data storage usage for an account. */
+export interface DataUsage {
+	readonly totalBytes: number;
+	readonly formattedSize: string;
+}
+
+/** Data storage usage for a single device. */
+export interface DeviceDataUsage {
+	readonly deviceId: string;
+	readonly bytes: number;
+	readonly formattedSize: string;
+}
+
+/** Billing plan details. */
+export interface BillingPlan {
+	readonly id: string;
+	readonly name: string;
+	readonly description: string;
+	readonly monthlyAmount: number;
+	readonly deviceCount: number;
+	readonly isDefault: boolean;
+}
+
+// ─── Account Invites ─────────────────────────────────────────────────────────
+
+/** A pending invitation to join an account. */
+export interface AccountInvite {
+	readonly id: string;
+	readonly accountId: string;
+	readonly email?: string;
+	readonly status?: string;
+	readonly createdAt?: string;
+}
+
 // ─── Actions (Callable Functions) ────────────────────────────────────────────
 
 /** Result from a callable function invocation. */
@@ -329,6 +416,30 @@ export interface ActionResult<T = unknown> {
 	readonly success: boolean;
 	readonly data: T | null;
 	readonly error: string | null;
+}
+
+// ─── History ─────────────────────────────────────────────────────────────────
+
+/** A single historical temperature reading from BigQuery time-series data. */
+export interface HistoricalReading {
+	readonly value: number;
+	readonly timestamp: string;
+	readonly units: string;
+}
+
+/** Historical readings for a device retrieved from BigQuery. */
+export interface DeviceHistory {
+	readonly deviceId: string;
+	readonly readings: HistoricalReading[];
+}
+
+// ─── Device Groups ───────────────────────────────────────────────────────────
+
+/** A device group organizing multiple devices together. */
+export interface DeviceGroup {
+	readonly id: string;
+	readonly name: string;
+	readonly devices: string[];
 }
 
 // ─── Filters ─────────────────────────────────────────────────────────────────

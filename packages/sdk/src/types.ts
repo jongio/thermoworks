@@ -8,6 +8,15 @@ export interface ThermoworksConfig {
 	apiKey?: string;
 	/** Override the default Firebase app ID. */
 	appId?: string;
+	/**
+	 * Path to the token cache file for persisting auth tokens across sessions.
+	 * Reduces authentication overhead by reusing valid tokens instead of
+	 * performing a full sign-in on every client instantiation.
+	 *
+	 * Defaults to `~/.thermoworks/.token-cache.json` if set to `true` or a string path.
+	 * Set to `false` or omit to disable token caching.
+	 */
+	tokenCachePath?: string | boolean;
 }
 
 // ─── Device ──────────────────────────────────────────────────────────────────

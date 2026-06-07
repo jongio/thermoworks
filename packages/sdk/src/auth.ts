@@ -1,4 +1,10 @@
 import { Agent, request as undiciRequest } from "undici";
+import {
+	readTokenCache,
+	resolveTokenCachePath,
+	type TokenCacheData,
+	writeTokenCache,
+} from "./token-cache.js";
 import { AuthError, NetworkError } from "./types.js";
 
 const IDENTITY_HOST = "https://identitytoolkit.googleapis.com";
@@ -109,14 +115,29 @@ export interface AuthSession {
 	close(): void;
 }
 
+export interface AuthSessionOptions {
+	email: string;
+	password: string;
+	apiKey?: string;
+	appId?: string;
+	/** Path to token cache file, or true for default path, or false/undefined to disable. */
+	tokenCachePath?: string | boolean;
+}
+
 export async function createAuthSession(
-	email: string,
-	password: string,
+	emailOrOptions: string | AuthSessionOptions,
+	password?: string,
 	apiKey?: string,
 	appId?: string,
 ): Promise<AuthSession> {
-	const key = apiKey ?? DEFAULT_API_KEY;
-	const app = appId ?? DEFAULT_APP_ID;
+	// Support both legacy positional args and new options object
+	const opts: AuthSessionOptions =
+		typeof emailOrOptions === "string"
+			? { email: emailOrOptions, password: password ?? "", apiKey, appId }
+			: emailOrOptions;
+
+	const key = opts.apiKey ?? DEFAULT_API_KEY;
+	const app = opts.appId ?? DEFAULT_APP_ID;
 
 	const agent = new Agent({
 		keepAliveTimeout: 60_000,
@@ -125,9 +146,22 @@ export async function createAuthSession(
 
 	let config: FirebaseWebConfig;
 	let token: TokenState;
+
+	const cachePath = resolveCacheSetting(opts.tokenCachePath);
+
 	try {
-		config = await fetchWebConfig(key, app, agent);
-		token = await login(email, password, key, agent);
+		const cached = cachePath ? await tryRestoreFromCache(cachePath, key, agent) : null;
+
+		if (cached) {
+			config = { projectId: cached.projectId };
+			token = cached.token;
+		} else {
+			config = await fetchWebConfig(key, app, agent);
+			token = await login(opts.email, opts.password, key, agent);
+			if (cachePath) {
+				await persistToCache(cachePath, token, config.projectId);
+			}
+		}
 	} catch (err) {
 		agent.close();
 		throw err;
@@ -146,6 +180,9 @@ export async function createAuthSession(
 				refreshPromise = refreshAccessToken(token.refreshToken, key, agent)
 					.then((t) => {
 						token = t;
+						if (cachePath) {
+							persistToCache(cachePath, t, config.projectId);
+						}
 						return t;
 					})
 					.finally(() => {
@@ -225,6 +262,62 @@ export async function createAuthSession(
 			agent.close();
 		},
 	};
+}
+
+function resolveCacheSetting(setting: string | boolean | undefined): string | null {
+	if (setting === false || setting === undefined) return null;
+	if (setting === true) return resolveTokenCachePath();
+	return resolveTokenCachePath(setting);
+}
+
+async function tryRestoreFromCache(
+	cachePath: string,
+	apiKey: string,
+	agent: Agent,
+): Promise<{ token: TokenState; projectId: string } | null> {
+	const cached = await readTokenCache(cachePath);
+	if (!cached) return null;
+
+	const expiresAt = Date.parse(cached.expiresAt);
+	if (Number.isNaN(expiresAt)) return null;
+
+	// Token is still valid - use directly
+	if (Date.now() < expiresAt - EXPIRY_BUFFER_MS) {
+		return {
+			token: {
+				accessToken: cached.idToken,
+				refreshToken: cached.refreshToken,
+				userId: cached.userId,
+				expiresAt,
+			},
+			projectId: cached.projectId,
+		};
+	}
+
+	// Token expired - try refresh
+	try {
+		const refreshed = await refreshAccessToken(cached.refreshToken, apiKey, agent);
+		await persistToCache(cachePath, refreshed, cached.projectId);
+		return { token: refreshed, projectId: cached.projectId };
+	} catch {
+		// Refresh failed - fall back to full re-auth (caller handles this via null return)
+		return null;
+	}
+}
+
+async function persistToCache(
+	cachePath: string,
+	token: TokenState,
+	projectId: string,
+): Promise<void> {
+	const data: TokenCacheData = {
+		idToken: token.accessToken,
+		refreshToken: token.refreshToken,
+		userId: token.userId,
+		expiresAt: new Date(token.expiresAt).toISOString(),
+		projectId,
+	};
+	await writeTokenCache(cachePath, data);
 }
 
 async function fetchWebConfig(

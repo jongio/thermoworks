@@ -43,6 +43,7 @@ import {
 	AccountDetailNode,
 	AccountNode,
 	ActionNode,
+	ArchivesFolderNode,
 	buildDeviceChildren,
 	ChannelNode,
 	DeviceDetailNode,
@@ -233,6 +234,20 @@ describe("tree-items", () => {
 			const node = new DeviceNode(device, false);
 			expect(node.label).toBe("ABC123");
 		});
+
+		it("shows recording indicator for device with active session", () => {
+			const device = { ...mockDevice, sessionStart: new Date("2026-06-07T08:00:00Z") };
+			const node = new DeviceNode(device, false);
+			expect(node.description).toContain("\uD83D\uDD34 Recording");
+			expect((node.iconPath as { id: string }).id).toBe("record");
+		});
+
+		it("alarm icon takes priority over session icon", () => {
+			const device = { ...mockDevice, sessionStart: new Date("2026-06-07T08:00:00Z") };
+			const node = new DeviceNode(device, true);
+			expect((node.iconPath as { id: string }).id).toBe("warning");
+			expect(node.description).toContain("\uD83D\uDD34 Recording");
+		});
 	});
 
 	describe("ChannelNode", () => {
@@ -328,12 +343,13 @@ describe("tree-items", () => {
 			];
 			const children = buildDeviceChildren(mockDevice, channels);
 
-			// 2 channels + battery + last seen + firmware = 5
-			expect(children.length).toBe(5);
+			// 2 channels + battery + last seen + firmware + archives folder = 6
+			expect(children.length).toBe(6);
 			expect(children[0]).toBeInstanceOf(ChannelNode);
 			expect(children[1]).toBeInstanceOf(ChannelNode);
 			expect(children[2]).toBeInstanceOf(DeviceDetailNode);
 			expect((children[2] as DeviceDetailNode).label).toBe("Battery: 85%");
+			expect(children[5]).toBeInstanceOf(ArchivesFolderNode);
 		});
 
 		it("filters out disabled channels", () => {
@@ -359,9 +375,10 @@ describe("tree-items", () => {
 		it("omits metadata when not available", () => {
 			const channels = [makeChannel()];
 			const children = buildDeviceChildren(mockOfflineDevice, channels);
-			// 1 channel, no battery, no lastSeen, no firmware on offline device
+			// 1 channel + archives folder, no battery, no lastSeen, no firmware on offline device
 			const detailNodes = children.filter((c) => c instanceof DeviceDetailNode);
 			expect(detailNodes.length).toBe(0);
+			expect(children[children.length - 1]).toBeInstanceOf(ArchivesFolderNode);
 		});
 	});
 });

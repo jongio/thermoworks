@@ -1,6 +1,11 @@
+import type { DeviceEvent } from "thermoworks-sdk";
 import * as vscode from "vscode";
+import { configureAlarm } from "./alarm-config";
+import { ChartPanel } from "./chart-panel";
+import { registerChatParticipant } from "./chat-participant";
 import { ClientManager } from "./client-manager";
 import { CredentialStore } from "./credentials";
+import { endSession, startSession } from "./session-commands";
 import { TemperatureStatusBar } from "./status-bar";
 import { ThermoworksTreeProvider } from "./tree/thermoworks-tree-provider";
 
@@ -24,7 +29,14 @@ export function activate(context: vscode.ExtensionContext): void {
 	treeProvider.initialize();
 	treeProvider.startAutoRefresh(context);
 
+	// ─── Events Output Channel ──────────────────────────────────────────
+	const eventsOutput = vscode.window.createOutputChannel("ThermoWorks Events");
+
+	// ─── Copilot Chat Participant ────────────────────────────────────────
+	const chatParticipant = registerChatParticipant(credentialStore, clientManager);
+
 	context.subscriptions.push(
+		chatParticipant,
 		// Status bar commands
 		vscode.commands.registerCommand("thermoworks.login", async () => {
 			await statusBar?.login();
@@ -38,6 +50,9 @@ export function activate(context: vscode.ExtensionContext): void {
 			await treeProvider.signOut();
 		}),
 		vscode.commands.registerCommand("thermoworks.refresh", () => statusBar?.refresh()),
+		vscode.commands.registerCommand("thermoworks.cycleNext", () => {
+			statusBar?.cycleNext();
+		}),
 		vscode.commands.registerCommand("thermoworks.demo", async () => {
 			const pick = await vscode.window.showQuickPick(
 				[
@@ -80,9 +95,64 @@ export function activate(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand("thermoworks.signOut", () => treeProvider.signOut()),
 		vscode.commands.registerCommand("thermoworks.refreshPanel", () => treeProvider.refresh()),
 		vscode.commands.registerCommand("thermoworks.openCloud", () => treeProvider.openCloud()),
+		vscode.commands.registerCommand("thermoworks.configureAlarm", () =>
+			configureAlarm(clientManager, credentialStore),
+		),
+		vscode.commands.registerCommand("thermoworks.showEventDetails", (event: DeviceEvent) => {
+			const lines = [
+				`Event: ${event.eventType}`,
+				`Severity: ${event.severity >= 3 ? "Critical" : event.severity === 2 ? "Warning" : "Info"} (${event.severity})`,
+				`Device: ${event.deviceId}`,
+				...(event.channelId ? [`Channel: ${event.channelId}`] : []),
+				`Time: ${event.eventTime.toLocaleString()}`,
+				...(event.valueBefore != null || event.valueAfter != null
+					? [`Change: ${event.valueBefore ?? "--"} -> ${event.valueAfter ?? "--"}`]
+					: []),
+				...(event.groups?.length ? [`Groups: ${event.groups.join(", ")}`] : []),
+				"---",
+			];
+			eventsOutput.appendLine(lines.join("\n"));
+			eventsOutput.show(true);
+		}),
+		vscode.commands.registerCommand(
+			"thermoworks.showTemperatureChart",
+			async (serialOrNode: string | { serial?: string }, channelNumber?: string) => {
+				const serial = typeof serialOrNode === "string" ? serialOrNode : serialOrNode?.serial;
+				if (!serial) {
+					vscode.window.showErrorMessage("ThermoWorks: No device serial provided.");
+					return;
+				}
+				await ChartPanel.show(
+					serial,
+					credentialStore,
+					clientManager,
+					context.extensionUri,
+					channelNumber,
+				);
+			},
+		),
+		vscode.commands.registerCommand("thermoworks.showArchiveDetails", (archiveNode) => {
+			if (archiveNode?.archive) {
+				treeProvider.showArchiveDetails(archiveNode.archive);
+			}
+		}),
+		vscode.commands.registerCommand("thermoworks.refreshArchives", () =>
+			treeProvider.refreshArchives(),
+		),
+
+		// Session commands
+		vscode.commands.registerCommand("thermoworks.startSession", async () => {
+			await startSession(clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.endSession", async () => {
+			await endSession(clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
 
 		treeView,
 		treeProvider,
+		eventsOutput,
 		statusBar,
 	);
 

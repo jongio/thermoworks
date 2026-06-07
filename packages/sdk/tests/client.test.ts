@@ -904,13 +904,18 @@ describe("ThermoworksCloud", () => {
 		});
 
 		it("handles network failures gracefully", async () => {
-			// Auth succeeds, but the actual API call fails on all retry attempts
+			// Auth succeeds, but the actual API call fails on all retry attempts.
+			// Use short retry delays to avoid hitting the test timeout.
 			setupAuth();
 			mockRequest.mockRejectedValueOnce(new Error("ECONNREFUSED"));
 			mockRequest.mockRejectedValueOnce(new Error("ECONNREFUSED"));
 			mockRequest.mockRejectedValueOnce(new Error("ECONNREFUSED"));
 
-			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const client = new ThermoworksCloud({
+				email: "test@example.com",
+				password: "pass",
+				retry: { maxRetries: 2, baseDelayMs: 10, maxDelayMs: 50 },
+			});
 			await expect(client.getUser()).rejects.toThrow(NetworkError);
 			client.close();
 		});

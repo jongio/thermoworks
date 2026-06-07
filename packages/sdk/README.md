@@ -127,6 +127,20 @@ try {
 }
 ```
 
+## Examples
+
+See [SDK Usage Examples & Cookbook](../../docs/sdk-examples.md) for complete, runnable TypeScript examples covering:
+
+- Basic device monitoring
+- Temperature alerting
+- Data logging to CSV
+- Session management
+- Multi-device dashboards
+- Archive export
+- Firmware version checking
+- Real-time subscriptions
+- Error handling patterns
+
 ## Requirements
 
 - Node.js `>= 18`

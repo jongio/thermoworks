@@ -1,6 +1,9 @@
 import {
+	type Archive,
+	type ArchiveChannel,
 	type Device,
 	type DeviceChannel,
+	type DeviceEvent,
 	formatTimeAgo,
 	getChannelAlarmState,
 	type User,
@@ -17,6 +20,11 @@ export type TreeNode =
 	| ChannelNode
 	| DeviceDetailNode
 	| FirmwareWarningNode
+	| EventsFolderNode
+	| EventNode
+	| ArchivesFolderNode
+	| ArchiveNode
+	| ArchiveChannelNode
 	| ActionNode
 	| ErrorNode
 	| LoadingNode;
@@ -90,16 +98,20 @@ export class DeviceNode extends vscode.TreeItem {
 		this.contextValue = "device";
 
 		const isOnline = device.status === "online";
+		const hasSession = device.sessionStart != null;
 		const statusParts: string[] = [device.type ?? "Unknown"];
 		if (!isOnline) statusParts.push("(Offline)");
-		if (firmwareOutdated) statusParts.push("⬆️ Update");
+		if (firmwareOutdated) statusParts.push("\u2B06\uFE0F Update");
+		if (hasSession) statusParts.push("\uD83D\uDD34 Recording");
 		this.description = statusParts.join(" ");
 
-		// Icon priority: alarm > firmware outdated > thumbnail > online/offline
+		// Icon priority: alarm > firmware outdated > session recording > thumbnail > online/offline
 		if (hasAlarm) {
 			this.iconPath = new vscode.ThemeIcon("warning", new vscode.ThemeColor("charts.red"));
 		} else if (firmwareOutdated) {
 			this.iconPath = new vscode.ThemeIcon("alert", new vscode.ThemeColor("charts.orange"));
+		} else if (hasSession) {
+			this.iconPath = new vscode.ThemeIcon("record", new vscode.ThemeColor("charts.red"));
 		} else if (device.thumbnail) {
 			this.iconPath = vscode.Uri.parse(device.thumbnail);
 		} else if (isOnline) {
@@ -172,6 +184,159 @@ export class FirmwareWarningNode extends vscode.TreeItem {
 	}
 }
 
+// ─── Event Nodes ─────────────────────────────────────────────────────────────
+
+export class EventsFolderNode extends vscode.TreeItem {
+	readonly type = "eventsFolder" as const;
+
+	constructor(eventCount: number) {
+		super("Events", vscode.TreeItemCollapsibleState.Collapsed);
+		this.id = "thermoworks-events";
+		this.contextValue = "eventsFolder";
+		this.iconPath = new vscode.ThemeIcon("history");
+		this.description = `${eventCount}`;
+	}
+}
+
+/** Maps numeric severity to icon, color, and label. */
+function getSeverityDisplay(severity: number): {
+	icon: string;
+	color: vscode.ThemeColor;
+	label: string;
+} {
+	if (severity >= 3) {
+		return { icon: "error", color: new vscode.ThemeColor("charts.red"), label: "critical" };
+	}
+	if (severity === 2) {
+		return { icon: "warning", color: new vscode.ThemeColor("charts.orange"), label: "warning" };
+	}
+	return { icon: "info", color: new vscode.ThemeColor("charts.blue"), label: "info" };
+}
+
+export class EventNode extends vscode.TreeItem {
+	readonly type = "event" as const;
+	readonly event: DeviceEvent;
+
+	constructor(event: DeviceEvent) {
+		const label = event.eventType;
+		super(label, vscode.TreeItemCollapsibleState.None);
+		this.event = event;
+		this.id = `thermoworks-event-${event.id}`;
+		this.contextValue = "event";
+
+		const { icon, color, label: severityLabel } = getSeverityDisplay(event.severity);
+		this.iconPath = new vscode.ThemeIcon(icon, color);
+		this.description = formatTimeAgo(event.eventTime);
+
+		const tooltipParts = [`**${event.eventType}** (${severityLabel})`, `Device: ${event.deviceId}`];
+		if (event.channelId) tooltipParts.push(`Channel: ${event.channelId}`);
+		if (event.valueBefore != null || event.valueAfter != null) {
+			tooltipParts.push(`Change: ${event.valueBefore ?? "--"} → ${event.valueAfter ?? "--"}`);
+		}
+		tooltipParts.push(`Time: ${event.eventTime.toLocaleString()}`);
+		this.tooltip = new vscode.MarkdownString(tooltipParts.join("\n\n"));
+
+		this.command = {
+			command: "thermoworks.showEventDetails",
+			title: "Show Event Details",
+			arguments: [event],
+		};
+	}
+}
+
+// ─── Archive Nodes ───────────────────────────────────────────────────────────
+
+export class ArchivesFolderNode extends vscode.TreeItem {
+	readonly type = "archivesFolder" as const;
+	readonly serial: string;
+
+	constructor(serial: string) {
+		super("Archives", vscode.TreeItemCollapsibleState.Collapsed);
+		this.serial = serial;
+		this.id = `thermoworks-archives-${serial}`;
+		this.iconPath = new vscode.ThemeIcon("history");
+		this.contextValue = "archivesFolder";
+	}
+}
+
+export class ArchiveNode extends vscode.TreeItem {
+	readonly type = "archive" as const;
+	readonly serial: string;
+	readonly archive: Archive;
+
+	constructor(archive: Archive, serial: string) {
+		const label = archive.label || `Session ${archive.id.slice(0, 6)}`;
+		super(label, vscode.TreeItemCollapsibleState.Collapsed);
+		this.serial = serial;
+		this.archive = archive;
+		this.id = `thermoworks-archive-${serial}-${archive.id}`;
+		this.contextValue = "archive";
+		this.iconPath = new vscode.ThemeIcon("notebook");
+		this.description = formatArchiveDuration(archive.start, archive.end);
+		this.tooltip = buildArchiveTooltip(archive);
+	}
+}
+
+export class ArchiveChannelNode extends vscode.TreeItem {
+	readonly type = "archiveChannel" as const;
+
+	constructor(channel: ArchiveChannel, serial: string, archiveId: string, index: number) {
+		const label = channel.label || `Channel ${index + 1}`;
+		const minMax = formatMinMax(channel);
+		super(label, vscode.TreeItemCollapsibleState.None);
+		this.id = `thermoworks-archive-ch-${serial}-${archiveId}-${index}`;
+		this.description = minMax;
+		this.iconPath = new vscode.ThemeIcon("graph-line");
+		this.contextValue = "archiveChannel";
+	}
+}
+
+// ─── Archive Helpers ─────────────────────────────────────────────────────────
+
+export function formatArchiveDuration(start: Date | null, end: Date | null): string {
+	if (!start || !end) return "";
+	const ms = end.getTime() - start.getTime();
+	if (ms < 0) return "";
+	const totalMinutes = Math.floor(ms / 60_000);
+	const hours = Math.floor(totalMinutes / 60);
+	const minutes = totalMinutes % 60;
+	if (hours > 0) {
+		return `${hours}h ${minutes}m`;
+	}
+	return `${minutes}m`;
+}
+
+export function formatMinMax(channel: ArchiveChannel): string {
+	const parts: string[] = [];
+	if (channel.minimum?.value != null) {
+		const units = channel.minimum.units ?? channel.units ?? "";
+		parts.push(`min ${Math.round(channel.minimum.value)}\u00B0${units}`);
+	}
+	if (channel.maximum?.value != null) {
+		const units = channel.maximum.units ?? channel.units ?? "";
+		parts.push(`max ${Math.round(channel.maximum.value)}\u00B0${units}`);
+	}
+	return parts.join(" / ") || "--";
+}
+
+function buildArchiveTooltip(archive: Archive): string {
+	const lines: string[] = [];
+	if (archive.label) lines.push(archive.label);
+	if (archive.start) {
+		lines.push(`Start: ${archive.start.toLocaleString()}`);
+	}
+	if (archive.end) {
+		lines.push(`End: ${archive.end.toLocaleString()}`);
+	}
+	if (archive.count != null) {
+		lines.push(`Readings: ${archive.count}`);
+	}
+	if (archive.notes) {
+		lines.push(`Notes: ${archive.notes}`);
+	}
+	return lines.join("\n");
+}
+
 // ─── Utility Nodes ───────────────────────────────────────────────────────────
 
 export class ErrorNode extends vscode.TreeItem {
@@ -227,6 +392,9 @@ export function buildDeviceChildren(
 	if (device.firmware && !firmwareOutdated) {
 		children.push(new DeviceDetailNode("Firmware", device.firmware, device.serial));
 	}
+
+	// Archives folder (always present, loads on expand)
+	children.push(new ArchivesFolderNode(device.serial));
 
 	return children;
 }

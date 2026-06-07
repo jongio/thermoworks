@@ -3,7 +3,10 @@ import { dirname, join } from "node:path";
 import { stdout } from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { alarmClear, alarmSet } from "./commands/alarm.js";
+import { archives, parseArchivesArgs } from "./commands/archives.js";
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
+import { calibration } from "./commands/calibration.js";
 import {
 	copilotRemove,
 	copilotSetup,
@@ -12,8 +15,16 @@ import {
 	copilotStatusDemo,
 	nextDemoState,
 } from "./commands/copilot.js";
+import type { DevicesOptions } from "./commands/devices.js";
 import { devices } from "./commands/devices.js";
+import { events, parseEventsArgs } from "./commands/events.js";
+import { exportData } from "./commands/export.js";
+import { firmware } from "./commands/firmware.js";
+import { guide } from "./commands/guide.js";
 import { mcpStart } from "./commands/mcp.js";
+import { session } from "./commands/session.js";
+import { watch } from "./commands/watch.js";
+import { parseGlobalFlags } from "./output.js";
 
 // Clean exit on Ctrl+C
 process.on("SIGINT", () => {
@@ -29,22 +40,49 @@ Commands:
   auth logout      Remove saved credentials
   auth status      Show current authentication status
 
+  alarm set        Set alarm thresholds on a device channel
+  alarm clear      Clear alarm thresholds on a device channel
+
+  calibration <SERIAL>  Show NIST-traceable calibration data for a device
+
   copilot setup    Configure Copilot CLI statusline (wizard)
   copilot status   Show configured temperature reading
   copilot remove   Remove statusline configuration
 
   devices          List connected devices
   mcp start        Start MCP server for AI assistants
+  devices          List connected devices and channel readings
+  watch            Continuously monitor temperatures (live refresh)
+    --device SN    Watch a specific device by serial number
+    --interval N   Refresh interval in seconds (default: 10)
+  events           Show device event history (alarms, status changes)
+  archives <serial>  List archived sessions for a device
+
+  firmware         Show firmware versions and available updates
+
+  session start    Start a monitoring session (--label TEXT)
+  session end      End an active monitoring session
+  session clear    Clear session data (--yes to skip confirmation)
+
+  export SERIAL    Export archive readings to CSV or JSON
+    --archive ID   Export a specific archive (default: latest)
+    --format FMT   Output format: csv or json (default: json)
+    --output PATH  Write to file (default: stdout)
+
+  guide [category] Show temperature guide (safe cooking temps)
 
   demo <mode>      Show demo output (modes: high, low, normal)
 
 Options:
+  --json           Output machine-readable JSON (for scripting)
+  --no-channels    Hide channel readings in devices output
   --help, -h       Show this help message
   --version, -v    Show version`);
 }
 
 async function main(): Promise<void> {
-	const args = process.argv.slice(2);
+	const rawArgs = process.argv.slice(2);
+	const { options, remaining: args } = parseGlobalFlags(rawArgs);
 	const command = args[0];
 	const subcommand = args[1];
 
@@ -58,13 +96,31 @@ async function main(): Promise<void> {
 					await authLogout();
 					break;
 				case "status":
-					await authStatus();
+					await authStatus(options);
 					break;
 				default:
 					console.error(
 						subcommand
 							? `Unknown auth command: ${subcommand}`
 							: "Usage: thermoworks auth <login|logout|status>",
+					);
+					process.exit(1);
+			}
+			break;
+
+		case "alarm":
+			switch (subcommand) {
+				case "set":
+					await alarmSet(args.slice(2), options);
+					break;
+				case "clear":
+					await alarmClear(args.slice(2), options);
+					break;
+				default:
+					console.error(
+						subcommand
+							? `Unknown alarm command: ${subcommand}`
+							: "Usage: thermoworks alarm <set|clear>",
 					);
 					process.exit(1);
 			}
@@ -112,8 +168,55 @@ async function main(): Promise<void> {
 			}
 			break;
 
-		case "devices":
-			await devices();
+		case "devices": {
+			const devicesOpts: DevicesOptions = {
+				...options,
+				channels: !args.includes("--no-channels"),
+			};
+			await devices(devicesOpts);
+			break;
+		}
+
+		case "watch":
+			await watch(args.slice(1), options);
+			break;
+
+		case "events": {
+			const eventArgs = parseEventsArgs(args.slice(1));
+			await events(eventArgs, options);
+			break;
+		}
+
+		case "archives": {
+			const archivesArgs = parseArchivesArgs(args);
+			if (!archivesArgs) {
+				console.error("Usage: thermoworks archives <serial> [--id ID] [--limit N] [--json]");
+				process.exit(1);
+			}
+			await archives(archivesArgs, options);
+			break;
+		}
+
+		case "firmware": {
+			const deviceFlag = args.includes("--device") ? args[args.indexOf("--device") + 1] : undefined;
+			await firmware(options, deviceFlag);
+			break;
+		}
+
+		case "session":
+			await session(args.slice(1), options);
+			break;
+
+		case "export":
+			await exportData(args);
+			break;
+
+		case "guide":
+			await guide(args[1], options);
+			break;
+
+		case "calibration":
+			await calibration(args[1], options);
 			break;
 
 		case "demo": {

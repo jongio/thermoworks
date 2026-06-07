@@ -6,6 +6,7 @@ import {
 	getStoredEmail,
 	storeCredentials,
 } from "../credentials.js";
+import { type OutputOptions, outputJson } from "../output.js";
 import { prompt, promptPassword } from "../prompt.js";
 
 export async function authLogin(): Promise<void> {
@@ -51,16 +52,28 @@ export async function authLogout(): Promise<void> {
 	}
 }
 
-export async function authStatus(): Promise<void> {
+export async function authStatus(options: OutputOptions = { json: false }): Promise<void> {
 	const creds = await getCredentials();
 	if (creds) {
-		console.log(`Logged in as ${creds.email}`);
+		if (options.json) {
+			outputJson({ loggedIn: true, email: creds.email });
+		} else {
+			console.log(`Logged in as ${creds.email}`);
+		}
 	} else {
 		const email = await getStoredEmail();
 		if (email) {
-			console.log(`Stored email: ${email} (password missing)`);
+			if (options.json) {
+				outputJson({ loggedIn: false, email, passwordMissing: true });
+			} else {
+				console.log(`Stored email: ${email} (password missing)`);
+			}
 		} else {
-			console.log("Not logged in. Run: thermoworks auth login");
+			if (options.json) {
+				outputJson({ loggedIn: false });
+			} else {
+				console.log("Not logged in. Run: thermoworks auth login");
+			}
 		}
 	}
 }

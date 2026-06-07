@@ -1,265 +1,288 @@
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { resetClient } from "../src/server.js";
 
-// Mock the SDK client
-const mockGetDevices = vi.fn();
-const mockGetDevice = vi.fn();
-const mockGetAllDeviceChannels = vi.fn();
-const mockGetAverageTemperature = vi.fn();
-const mockGetEvents = vi.fn();
-const mockGetArchives = vi.fn();
-const mockGetTemperatureGuide = vi.fn();
-const mockClose = vi.fn();
+vi.mock("thermoworks-sdk", () => {
+	const mockClose = vi.fn();
+	const mockGetDevices = vi.fn();
+	const mockGetDevice = vi.fn();
+	const mockGetAllDeviceChannels = vi.fn();
+	const mockGetAverageTemperature = vi.fn();
+	const mockGetEvents = vi.fn();
+	const mockGetArchives = vi.fn();
+	const mockGetTemperatureGuide = vi.fn();
 
-vi.mock("thermoworks-sdk", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("thermoworks-sdk")>();
+	class MockThermoworksCloud {
+		close = mockClose;
+		getDevices = mockGetDevices;
+		getDevice = mockGetDevice;
+		getAllDeviceChannels = mockGetAllDeviceChannels;
+		getAverageTemperature = mockGetAverageTemperature;
+		getEvents = mockGetEvents;
+		getArchives = mockGetArchives;
+		getTemperatureGuide = mockGetTemperatureGuide;
+	}
+
 	return {
-		...actual,
-		ThermoworksCloud: class MockThermoworksCloud {
-			getDevices = mockGetDevices;
-			getDevice = mockGetDevice;
-			getAllDeviceChannels = mockGetAllDeviceChannels;
-			getAverageTemperature = mockGetAverageTemperature;
-			getEvents = mockGetEvents;
-			getArchives = mockGetArchives;
-			getTemperatureGuide = mockGetTemperatureGuide;
-			close = mockClose;
-		},
+		ThermoworksCloud: MockThermoworksCloud,
+		mockClose,
+		mockGetDevices,
+		mockGetDevice,
+		mockGetAllDeviceChannels,
+		mockGetAverageTemperature,
+		mockGetEvents,
+		mockGetArchives,
+		mockGetTemperatureGuide,
 	};
 });
 
-const { createServer } = await import("../src/server.js");
+import {
+	mockClose,
+	mockGetAllDeviceChannels,
+	mockGetArchives,
+	mockGetAverageTemperature,
+	mockGetDevice,
+	mockGetDevices,
+	mockGetEvents,
+	mockGetTemperatureGuide,
+} from "thermoworks-sdk";
 
-let client: Client;
-let cleanup: () => Promise<void>;
+import { createServer } from "../src/server.js";
 
-async function setup() {
-	const server = createServer({ email: "test@example.com", password: "secret" });
-	const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
-	const c = new Client({ name: "test-client", version: "1.0.0" });
-	await server.connect(serverTransport);
-	await c.connect(clientTransport);
-	return {
-		client: c,
-		cleanup: async () => {
-			await c.close();
-			await server.close();
-		},
-	};
+function getToolHandler(server: ReturnType<typeof createServer>, toolName: string) {
+	// Access the server internals to call tool handlers directly
+	const tools = (server as any)._registeredTools as Record<
+		string,
+		{ handler: (args: any, extra: any) => Promise<any> }
+	>;
+	const tool = tools[toolName];
+	if (!tool) {
+		throw new Error(`Tool "${toolName}" not found`);
+	}
+	return tool.handler;
 }
 
-beforeEach(async () => {
-	vi.clearAllMocks();
-	const s = await setup();
-	client = s.client;
-	cleanup = s.cleanup;
-});
+describe("MCP Server", () => {
+	const originalEnv = process.env;
 
-afterEach(async () => {
-	await cleanup();
-	expect(mockClose).toHaveBeenCalledTimes(1);
-});
+	function setupEnv() {
+		process.env = {
+			...originalEnv,
+			THERMOWORKS_EMAIL: "test@example.com",
+			THERMOWORKS_PASSWORD: "testpass",
+		};
+	}
 
-describe("tool registration", () => {
-	it("registers all 7 expected tools", async () => {
-		const { tools } = await client.listTools();
-		const names = tools.map((t) => t.name).sort();
-		expect(names).toEqual([
-			"get_archives",
-			"get_average_temperature",
-			"get_device",
-			"get_device_channels",
-			"get_devices",
-			"get_events",
-			"get_temperature_guide",
-		]);
-	});
-});
+	function teardownEnv() {
+		process.env = originalEnv;
+	}
 
-describe("get_devices", () => {
-	it("returns formatted device list", async () => {
-		mockGetDevices.mockResolvedValue([
-			{
-				serial: "ABC123",
-				label: "Smoker",
-				type: "signals",
-				status: "online",
-				battery: 85,
-				lastSeen: new Date("2026-01-01T00:00:00Z"),
-			},
-		]);
-
-		const result = await client.callTool({ name: "get_devices", arguments: {} });
-		const content = result.content as Array<{ type: string; text: string }>;
-		const data = JSON.parse(content[0].text);
-		expect(data).toHaveLength(1);
-		expect(data[0].serial).toBe("ABC123");
-		expect(data[0].label).toBe("Smoker");
-		expect(data[0].status).toBe("online");
-		expect(data[0].battery).toBe(85);
-		expect(mockClose).not.toHaveBeenCalled();
+	describe("createServer", () => {
+		it("creates a server instance", () => {
+			const server = createServer();
+			expect(server).toBeDefined();
+		});
 	});
 
-	it("returns sanitized MCP error when the SDK throws", async () => {
-		mockGetDevices.mockRejectedValue(new Error("upstream unavailable"));
+	describe("get_devices tool", () => {
+		it("returns device list", async () => {
+			setupEnv();
+			try {
+				const devices = [
+					{ serial: "ABC123", label: "Smoker", status: "online", battery: 85 },
+					{ serial: "DEF456", label: "Grill", status: "offline", battery: 42 },
+				];
+				(mockGetDevices as any).mockResolvedValueOnce(devices);
 
-		const result = await client.callTool({ name: "get_devices", arguments: {} });
-		const content = result.content as Array<{ type: string; text: string }>;
+				const server = createServer();
+				const handler = getToolHandler(server, "get_devices");
+				const result = await handler({}, {});
 
-		expect(result.isError).toBe(true);
-		expect(content[0].text).toContain("An unexpected error occurred");
+				expect(result.content[0].type).toBe("text");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed).toHaveLength(2);
+				expect(parsed[0].serial).toBe("ABC123");
+			} finally {
+				teardownEnv();
+			}
+		});
 	});
-});
 
-describe("get_device", () => {
-	it("returns device details", async () => {
-		mockGetDevice.mockResolvedValue({
-			serial: "ABC123",
-			label: "Smoker",
-			type: "signals",
-			status: "online",
-			battery: 85,
-			firmware: "1.2.3",
-			lastSeen: new Date("2026-01-01T00:00:00Z"),
-			sessionLabel: "Session 1",
-			notes: "My smoker",
+	describe("get_device tool", () => {
+		it("returns device details for serial", async () => {
+			setupEnv();
+			try {
+				const device = { serial: "ABC123", label: "Smoker", status: "online", battery: 85 };
+				(mockGetDevice as any).mockResolvedValueOnce(device);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_device");
+				const result = await handler({ serial: "ABC123" }, {});
+
+				expect(result.content[0].type).toBe("text");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.serial).toBe("ABC123");
+				expect(parsed.label).toBe("Smoker");
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("get_device_channels tool", () => {
+		it("returns channel readings", async () => {
+			setupEnv();
+			try {
+				const channels = [
+					{ value: 225.5, units: "F", label: "Probe 1", number: "1" },
+					{ value: 185.0, units: "F", label: "Probe 2", number: "2" },
+				];
+				(mockGetAllDeviceChannels as any).mockResolvedValueOnce(channels);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_device_channels");
+				const result = await handler({ serial: "ABC123" }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed).toHaveLength(2);
+				expect(parsed[0].value).toBe(225.5);
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("get_average_temperature tool", () => {
+		it("returns average temperature", async () => {
+			setupEnv();
+			try {
+				(mockGetAverageTemperature as any).mockResolvedValueOnce({ value: 205.3, units: "F" });
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_average_temperature");
+				const result = await handler({ serial: "ABC123" }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.value).toBe(205.3);
+				expect(parsed.units).toBe("F");
+			} finally {
+				teardownEnv();
+			}
 		});
 
-		const result = await client.callTool({
-			name: "get_device",
-			arguments: { serial: "ABC123" },
+		it("returns message when no readings available", async () => {
+			setupEnv();
+			try {
+				(mockGetAverageTemperature as any).mockResolvedValueOnce(null);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_average_temperature");
+				const result = await handler({ serial: "ABC123" }, {});
+
+				expect(result.content[0].text).toBe("No temperature readings available for this device");
+			} finally {
+				teardownEnv();
+			}
 		});
-		const content = result.content as Array<{ type: string; text: string }>;
-		const data = JSON.parse(content[0].text);
-		expect(data.serial).toBe("ABC123");
-		expect(data.firmware).toBe("1.2.3");
-		expect(data.notes).toBe("My smoker");
-	});
-});
-
-describe("get_device_channels", () => {
-	it("returns channel readings with alarms", async () => {
-		mockGetAllDeviceChannels.mockResolvedValue([
-			{
-				value: 225,
-				units: "F",
-				label: "Pit",
-				status: "ok",
-				alarmHigh: null,
-				alarmLow: null,
-				minimum: null,
-				maximum: null,
-			},
-			{
-				value: 165,
-				units: "F",
-				label: "Meat",
-				status: "ok",
-				alarmHigh: { enabled: true, alarming: false, value: 205 },
-				alarmLow: null,
-				minimum: null,
-				maximum: null,
-			},
-		]);
-
-		const result = await client.callTool({
-			name: "get_device_channels",
-			arguments: { serial: "ABC123" },
-		});
-		const content = result.content as Array<{ type: string; text: string }>;
-		const data = JSON.parse(content[0].text);
-		expect(data).toHaveLength(2);
-		expect(data[0].label).toBe("Pit");
-		expect(data[0].value).toBe(225);
-		expect(data[1].alarmHigh.enabled).toBe(true);
-	});
-});
-
-describe("get_average_temperature", () => {
-	it("returns average when available", async () => {
-		mockGetAverageTemperature.mockResolvedValue({ value: 195, units: "F" });
-
-		const result = await client.callTool({
-			name: "get_average_temperature",
-			arguments: { serial: "ABC123" },
-		});
-		const content = result.content as Array<{ type: string; text: string }>;
-		const data = JSON.parse(content[0].text);
-		expect(data.value).toBe(195);
-		expect(data.units).toBe("F");
 	});
 
-	it("returns message when no readings", async () => {
-		mockGetAverageTemperature.mockResolvedValue(null);
+	describe("get_events tool", () => {
+		it("returns events with optional filters", async () => {
+			setupEnv();
+			try {
+				const events = [
+					{
+						id: "evt1",
+						eventType: "Low Battery Alert",
+						deviceId: "ABC123",
+						severity: 2,
+						eventTime: new Date("2024-01-01"),
+					},
+				];
+				(mockGetEvents as any).mockResolvedValueOnce(events);
 
-		const result = await client.callTool({
-			name: "get_average_temperature",
-			arguments: { serial: "ABC123" },
+				const server = createServer();
+				const handler = getToolHandler(server, "get_events");
+				const result = await handler(
+					{ device_id: "ABC123", event_type: "Low Battery Alert", limit: 10 },
+					{},
+				);
+
+				expect(mockGetEvents).toHaveBeenCalledWith({
+					deviceId: "ABC123",
+					eventType: "Low Battery Alert",
+					limit: 10,
+				});
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed).toHaveLength(1);
+				expect(parsed[0].eventType).toBe("Low Battery Alert");
+			} finally {
+				teardownEnv();
+			}
 		});
-		const content = result.content as Array<{ type: string; text: string }>;
-		expect(content[0].text).toBe("No temperature readings available");
 	});
-});
 
-describe("get_events", () => {
-	it("returns events", async () => {
-		mockGetEvents.mockResolvedValue([
-			{
-				id: "evt1",
-				eventType: "High Temperature",
-				severity: 3,
-				eventTime: new Date("2026-01-01T12:00:00Z"),
-				deviceId: "ABC123",
-				channelId: "ch1",
-				valueBefore: "200",
-				valueAfter: "250",
-			},
-		]);
+	describe("get_archives tool", () => {
+		it("returns archives for device", async () => {
+			setupEnv();
+			try {
+				const archives = [{ id: "arch1", label: "Cook Session 1", start: new Date("2024-01-01") }];
+				(mockGetArchives as any).mockResolvedValueOnce(archives);
 
-		const result = await client.callTool({ name: "get_events", arguments: {} });
-		const content = result.content as Array<{ type: string; text: string }>;
-		const data = JSON.parse(content[0].text);
-		expect(data).toHaveLength(1);
-		expect(data[0].eventType).toBe("High Temperature");
-	});
-});
+				const server = createServer();
+				const handler = getToolHandler(server, "get_archives");
+				const result = await handler({ serial: "ABC123", limit: 5 }, {});
 
-describe("get_archives", () => {
-	it("returns archives for a device", async () => {
-		mockGetArchives.mockResolvedValue([
-			{
-				id: "arch1",
-				label: "Session 1",
-				start: new Date("2026-01-01T10:00:00Z"),
-				end: new Date("2026-01-01T14:00:00Z"),
-				count: 100,
-				type: "session",
-				notes: "BBQ day",
-			},
-		]);
-
-		const result = await client.callTool({
-			name: "get_archives",
-			arguments: { serial: "ABC123" },
+				expect(mockGetArchives).toHaveBeenCalledWith("ABC123", { limit: 5 });
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed).toHaveLength(1);
+				expect(parsed[0].label).toBe("Cook Session 1");
+			} finally {
+				teardownEnv();
+			}
 		});
-		const content = result.content as Array<{ type: string; text: string }>;
-		const data = JSON.parse(content[0].text);
-		expect(data).toHaveLength(1);
-		expect(data[0].label).toBe("Session 1");
-		expect(data[0].notes).toBe("BBQ day");
 	});
-});
 
-describe("get_temperature_guide", () => {
-	it("returns guide data", async () => {
-		mockGetTemperatureGuide.mockResolvedValue({
-			categories: [{ label: "Beef", icon: "🥩", pullWarning: null, warning: null }],
+	describe("get_temperature_guide tool", () => {
+		it("returns temperature guide", async () => {
+			setupEnv();
+			try {
+				const guide = {
+					categories: [
+						{ label: "Beef", icon: "beef", pullWarning: null, warning: null },
+						{ label: "Pork", icon: "pork", pullWarning: "Pull 5F early", warning: null },
+					],
+				};
+				(mockGetTemperatureGuide as any).mockResolvedValueOnce(guide);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_temperature_guide");
+				const result = await handler({}, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.categories).toHaveLength(2);
+				expect(parsed.categories[0].label).toBe("Beef");
+			} finally {
+				teardownEnv();
+			}
 		});
+	});
 
-		const result = await client.callTool({ name: "get_temperature_guide", arguments: {} });
-		const content = result.content as Array<{ type: string; text: string }>;
-		const data = JSON.parse(content[0].text);
-		expect(data.categories[0].label).toBe("Beef");
+	describe("credential validation", () => {
+		it("throws when THERMOWORKS_EMAIL is missing", async () => {
+			resetClient();
+			process.env = { ...originalEnv };
+			delete process.env.THERMOWORKS_EMAIL;
+			delete process.env.THERMOWORKS_PASSWORD;
+			try {
+				const server = createServer();
+				const handler = getToolHandler(server, "get_devices");
+				await expect(handler({}, {})).rejects.toThrow(
+					"Missing credentials: set THERMOWORKS_EMAIL and THERMOWORKS_PASSWORD environment variables",
+				);
+			} finally {
+				process.env = originalEnv;
+				resetClient();
+			}
+		});
 	});
 });

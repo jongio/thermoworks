@@ -289,11 +289,484 @@ npx thermoworks mcp start
 }
 ```
 
+## `thermoworks alarm set`
+
+Set alarm thresholds on a device channel. At least one of `--high` or `--low` must be specified.
+
+**Usage**
+
+```bash
+npx thermoworks alarm set <SERIAL> --channel <1-9> --high <temp> --low <temp>
+```
+
+**Options**
+
+- `--channel <1-9>` - (Required) Channel number to set the alarm on.
+- `--high <temp>` - High alarm threshold temperature.
+- `--low <temp>` - Low alarm threshold temperature.
+- `--json` - Output the updated alarm state as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks alarm set ABC123 --channel 1 --high 275 --low 200
+# Alarm set on ABC123:
+#   Channel 1  high=275°F  low=200°F
+
+npx thermoworks alarm set ABC123 --channel 2 --high 165
+# Alarm set on ABC123:
+#   Channel 2  high=165°F
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- At least one of `--high` or `--low` must be provided; you can set both in a single call.
+- Channel must be an integer from 1 to 9.
+- After setting the alarm, the command reads back and displays the confirmed alarm state.
+
+## `thermoworks alarm clear`
+
+Clear alarm thresholds on a device channel, disabling both high and low alarms.
+
+**Usage**
+
+```bash
+npx thermoworks alarm clear <SERIAL> --channel <1-9>
+```
+
+**Options**
+
+- `--channel <1-9>` - (Required) Channel number to clear alarms on.
+- `--json` - Output the updated alarm state as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks alarm clear ABC123 --channel 1
+# Alarms cleared on ABC123:
+#   Channel 1  alarms disabled
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Disables both high and low alarms on the specified channel.
+- After clearing, the command reads back and displays the confirmed alarm state.
+
+## `thermoworks archives`
+
+List or inspect archived cooking sessions for a device.
+
+**Usage**
+
+```bash
+npx thermoworks archives <SERIAL> [--id ID] [--limit N]
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--id ID` - Show detailed view of a specific archive by ID.
+- `--limit N` - Maximum number of archives to list.
+- `--json` - Output as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks archives ABC123
+# Found 3 archives:
+#
+#   Weekend Brisket
+#     Start: 6/1/2026, 8:00:00 AM  Duration: 12h 30m  Readings: 750
+#     ID: arch-001
+#
+#   Pork Shoulder
+#     Start: 5/28/2026, 7:15:00 AM  Duration: 9h 45m  Readings: 585
+#     ID: arch-002
+
+npx thermoworks archives ABC123 --id arch-001
+# Archive: Weekend Brisket
+#   ID:       arch-001
+#   Start:    6/1/2026, 8:00:00 AM
+#   End:      6/1/2026, 8:30:00 PM
+#   Duration: 12h 30m
+#   Readings: 750
+#
+#   Channels:
+#     Pit: min=215°F max=285°F last=250°F
+#     Meat: min=38°F max=205°F last=205°F
+
+npx thermoworks archives ABC123 --limit 5 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Without `--id`: lists archives showing label, start time, duration, and reading count.
+- With `--id`: shows detailed view including per-channel min/max/last values.
+- Prints `No archives found.` when the device has no archived sessions.
+
+## `thermoworks calibration`
+
+Show NIST-traceable calibration data for a device, including low-point adjustments and high-point reference measurements.
+
+**Usage**
+
+```bash
+npx thermoworks calibration <SERIAL>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--json` - Output as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks calibration ABC123
+# Calibration: CAL-2026-001
+#   Date:        January 15, 2026
+#   Technician:  J. Smith
+#   Reference:   NIST-traceable reference thermometer
+#   Accuracy:    ±0.05°F
+#   Result:      PASS
+#
+#   Low-Point Adjustments
+#   Ch  Value       Reference   Deviation   Trim      Result
+#   ----------------------------------------------------------
+#   1   32.1°F      32.0°F      +0.1°F      -0.1      PASS
+#   2   32.0°F      32.0°F      +0.0°F      -         PASS
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Displays calibration records with date, technician, manager, reference instrument, and stated accuracy.
+- Measurement points are displayed in a table showing channel, measured value, reference value, deviation, trim adjustment, and pass/fail result.
+- Results are color-coded: green for PASS, red for FAIL.
+- Prints `No calibration records found for <serial>.` when no records exist.
+
+## `thermoworks events`
+
+Show device event history including alarms, status changes, and connectivity events.
+
+**Usage**
+
+```bash
+npx thermoworks events [--device SERIAL] [--type TYPE] [--limit N]
+```
+
+**Options**
+
+- `--device SERIAL` - Filter events to a specific device by serial number.
+- `--type TYPE` - Filter by event type (e.g., `alarm`, `status`, `connection`).
+- `--limit N` - Maximum number of events to return.
+- `--json` - Output as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks events
+# Found 5 events:
+#
+#   [CRITICAL] alarm  ABC123  2 minutes ago  250 → 285
+#   [WARNING] alarm  ABC123  15 minutes ago  200 → 180
+#   [INFO] connection  DEF456  1 hour ago
+
+npx thermoworks events --device ABC123 --limit 10
+
+npx thermoworks events --type alarm --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Events are displayed with a severity badge: `[CRITICAL]` (red), `[WARNING]` (yellow), or `[INFO]`.
+- Each event shows: severity, event type, device serial, relative time, and value change (if applicable).
+- Prints `No events found.` when no events match the filters.
+
+## `thermoworks export`
+
+Export archive readings to CSV or JSON format. Outputs to stdout by default, or writes to a file with `--output`.
+
+**Usage**
+
+```bash
+npx thermoworks export <SERIAL> [--archive ID] [--format csv|json] [--output PATH]
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--archive ID` - Export a specific archive by ID. Defaults to the latest archive.
+- `--format csv|json` - Output format. Defaults to `json`.
+- `--output PATH` - Write to a file instead of stdout.
+
+**Examples**
+
+```bash
+npx thermoworks export ABC123
+# [
+#   { "timestamp": "2026-06-01T08:00:00.000Z", "channel": "Pit", "value": 225, "units": "F" },
+#   { "timestamp": "2026-06-01T08:00:00.000Z", "channel": "Meat", "value": 38, "units": "F" },
+#   ...
+# ]
+
+npx thermoworks export ABC123 --format csv
+# timestamp,channel,value,units
+# 2026-06-01T08:00:00.000Z,Pit,225,F
+# 2026-06-01T08:00:00.000Z,Meat,38,F
+
+npx thermoworks export ABC123 --archive arch-001 --format csv --output brisket.csv
+# Exported 750 readings to brisket.csv
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Without `--archive`, exports the most recent archive for the device.
+- Readings are flattened into rows with timestamp, channel label, value, and units.
+- Rows are sorted by timestamp ascending.
+- CSV fields containing commas, quotes, or newlines are properly escaped.
+- When writing to a file, a summary line is printed to stderr (not stdout) so piping works correctly.
+- Exits with an error if no archives are found for the device.
+
+## `thermoworks firmware`
+
+Show firmware versions for all devices and indicate whether updates are available.
+
+**Usage**
+
+```bash
+npx thermoworks firmware [--device SERIAL]
+```
+
+**Options**
+
+- `--device SERIAL` - Check firmware for a specific device only.
+- `--json` - Output as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks firmware
+# Smoker (Signals)    firmware: 2.1.0  latest: 2.2.0  ⚠️  UPDATE AVAILABLE
+# Fridge (TempLog)    firmware: 1.5.3  latest: 1.5.3  ✓  UP TO DATE
+
+npx thermoworks firmware --device ABC123 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Only checks devices that report both a device type and firmware version.
+- Fetches the latest available firmware per device type in parallel.
+- Update available status is shown in yellow; up-to-date status in green.
+- Prints `No devices with firmware information found.` when no devices have firmware data.
+
+## `thermoworks guide`
+
+Show the ThermoWorks temperature guide with safe cooking temperatures, organized by category.
+
+**Usage**
+
+```bash
+npx thermoworks guide [category]
+```
+
+**Options**
+
+- `[category]` - (Optional) Filter categories by name (case-insensitive substring match).
+- `--json` - Output as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks guide
+# 🥩  Beef & Lamb
+#    ⚠ Pull: Remove 5°F before target
+# 🐔  Poultry
+#    ⚠ All poultry must reach 165°F internal
+# 🐖  Pork
+# 🐟  Seafood
+
+npx thermoworks guide beef
+# 🥩  Beef & Lamb
+#    ⚠ Pull: Remove 5°F before target
+
+npx thermoworks guide --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Categories include icons, labels, and optional warnings (pull temperature offsets, safety notices).
+- The category filter is a case-insensitive substring match against category labels.
+- Prints `No categories matching "<filter>".` when the filter has no matches.
+- Prints `No temperature guide categories found.` when the guide data is empty.
+
+## `thermoworks session start`
+
+Start a monitoring session on a device. Sessions group readings for later review as archives.
+
+**Usage**
+
+```bash
+npx thermoworks session start <SERIAL> [--label TEXT]
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--label TEXT` or `-l TEXT` - Optional label for the session (e.g., "Weekend Brisket").
+- `--json` - Output as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks session start ABC123 --label "Weekend Brisket"
+# Session started for ABC123 ("Weekend Brisket").
+
+npx thermoworks session start ABC123
+# Session started for ABC123.
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- The label is optional but recommended for identifying sessions later in archives.
+- Exits with an error if the session fails to start (e.g., device offline, session already active).
+
+## `thermoworks session end`
+
+End an active monitoring session on a device.
+
+**Usage**
+
+```bash
+npx thermoworks session end <SERIAL>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--json` - Output as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks session end ABC123
+# Session ended for ABC123.
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Exits with an error if no active session exists for the device.
+
+## `thermoworks session clear`
+
+Clear all session data for a device. This action cannot be undone.
+
+**Usage**
+
+```bash
+npx thermoworks session clear <SERIAL> [--yes]
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--yes` or `-y` - Skip the confirmation prompt.
+- `--json` - Output as JSON (also skips confirmation prompt).
+
+**Examples**
+
+```bash
+npx thermoworks session clear ABC123
+# Clear all session data for ABC123? This cannot be undone. [y/N] y
+# Session data cleared for ABC123.
+
+npx thermoworks session clear ABC123 --yes
+# Session data cleared for ABC123.
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Without `--yes`, prompts for confirmation before clearing.
+- When `--json` is active, the confirmation prompt is skipped.
+- Exits with an error if clearing fails.
+
+## `thermoworks watch`
+
+Continuously monitor device temperatures with a live-refreshing display. Clears the terminal and redraws on each refresh cycle.
+
+**Usage**
+
+```bash
+npx thermoworks watch [--device SERIAL] [--interval N]
+```
+
+**Options**
+
+- `--device SERIAL` - Watch a specific device by serial number. Without this flag, all devices are shown.
+- `--interval N` - Refresh interval in seconds. Must be >= 1. Defaults to `10`.
+
+**Examples**
+
+```bash
+npx thermoworks watch
+# ThermoWorks Watch  [7:30:00 PM]
+# Refreshing every 10s  (Ctrl+C to exit)
+#
+#   Smoker  (Signals)  [online]
+#     Pit       225°F
+#     Meat      165°F
+#   Fridge  (TempLog)  [online]
+#     Internal  38°F
+
+npx thermoworks watch --device ABC123 --interval 5
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Clears the screen before each refresh and displays a timestamp header.
+- Shows device label (or serial), type, status, and all enabled channels with current readings.
+- Exits immediately with an error if `--device` is specified and no matching device is found.
+- Press `Ctrl+C` to exit (handled by the global SIGINT handler).
+- The `--interval` must be a positive number >= 1; values below 1 produce an error.
+
 ## Global Options
 
 ```text
---help, -h     Show help
---version, -v  Show version
+--json           Output machine-readable JSON (for scripting)
+--no-channels    Hide channel readings in devices output
+--help, -h       Show help
+--version, -v    Show version
+```
+
+### `--json`
+
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `calibration`, `guide`, `alarm set`, `alarm clear`, `session start`, `session end`, `session clear`, `auth status`).
+
+When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
+
+```bash
+npx thermoworks devices --json | jq '.[].serial'
+npx thermoworks events --json --limit 5
+npx thermoworks firmware --json
+```
+
+### `--no-channels`
+
+Hide individual channel readings in `thermoworks devices` output. Only shows device-level information (label, type, status, battery, last seen) without listing each channel's temperature.
+
+```bash
+npx thermoworks devices --no-channels
 ```
 
 ## Shared Configuration

@@ -29,7 +29,8 @@
     "ui"
   ],
   "activationEvents": [
-    "onStartupFinished"
+    "onView:thermoworksPanel",
+    "onCommand:thermoworks.login"
   ],
   "main": "./dist/extension.js",
   "icon": "images/icon.png",
@@ -38,6 +39,14 @@
     "theme": "dark"
   },
   "contributes": {
+    "chatParticipants": [
+      {
+        "id": "thermoworks",
+        "name": "thermoworks",
+        "description": "Query ThermoWorks device data",
+        "isSticky": true
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -77,6 +86,10 @@
         "title": "ThermoWorks: Refresh Temperatures"
       },
       {
+        "command": "thermoworks.cycleNext",
+        "title": "ThermoWorks: Cycle to Next Device"
+      },
+      {
         "command": "thermoworks.demo",
         "title": "ThermoWorks: Demo (Simulate Alarm)"
       },
@@ -97,6 +110,39 @@
         "command": "thermoworks.openCloud",
         "title": "ThermoWorks: Open Cloud Dashboard",
         "icon": "$(link-external)"
+      },
+      {
+        "command": "thermoworks.showEventDetails",
+        "title": "ThermoWorks: Show Event Details"
+      },
+      {
+        "command": "thermoworks.showArchiveDetails",
+        "title": "ThermoWorks: Show Archive Details",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "thermoworks.refreshArchives",
+        "title": "ThermoWorks: Refresh Archives",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "thermoworks.configureAlarm",
+        "title": "ThermoWorks: Configure Alarm"
+      },
+      {
+        "command": "thermoworks.showTemperatureChart",
+        "title": "ThermoWorks: Show Temperature Chart",
+        "icon": "$(graph-line)"
+      },
+      {
+        "command": "thermoworks.startSession",
+        "title": "ThermoWorks: Start Session",
+        "icon": "$(record)"
+      },
+      {
+        "command": "thermoworks.endSession",
+        "title": "ThermoWorks: End Session",
+        "icon": "$(debug-stop)"
       }
     ],
     "menus": {
@@ -120,6 +166,18 @@
         {
           "command": "thermoworks.refreshPanel",
           "when": "view == thermoworksPanel && viewItem == devicesFolder"
+        },
+        {
+          "command": "thermoworks.showArchiveDetails",
+          "when": "view == thermoworksPanel && viewItem == archive",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.refreshArchives",
+          "when": "view == thermoworksPanel && viewItem == archivesFolder",
+          "command": "thermoworks.showTemperatureChart",
+          "when": "view == thermoworksPanel && viewItem == device",
+          "group": "inline"
         }
       ]
     },
@@ -131,6 +189,30 @@
           "default": 60,
           "minimum": 15,
           "description": "Temperature refresh interval in seconds (minimum 15)"
+        },
+        "thermoworks.statusBarMode": {
+          "type": "string",
+          "enum": ["single", "cycle", "all"],
+          "default": "single",
+          "description": "Status bar display mode: 'single' shows the first device, 'cycle' rotates through devices, 'all' shows all devices compactly"
+        },
+        "thermoworks.cycleInterval": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "description": "Seconds between device rotations in cycle mode (minimum 1)"
+        },
+        "thermoworks.eventsLimit": {
+          "type": "number",
+          "default": 20,
+          "minimum": 1,
+          "maximum": 500,
+          "description": "Maximum number of events to display in the Events panel"
+        },
+        "thermoworks.notifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show desktop notifications when a temperature alarm triggers"
         }
       }
     }

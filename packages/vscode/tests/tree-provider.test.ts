@@ -1,4 +1,4 @@
-import type { Device, DeviceChannel, User } from "thermoworks-sdk";
+import type { Archive, ArchiveChannel, Device, DeviceChannel, User } from "thermoworks-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── VS Code mock ────────────────────────────────────────────────────────────
@@ -75,10 +75,20 @@ vi.mock("vscode", () => ({
 
 // ─── SDK mock ────────────────────────────────────────────────────────────────
 
-const { mockGetUser, mockGetDevices, mockGetAllDeviceChannels, mockClose } = vi.hoisted(() => ({
+const {
+	mockGetUser,
+	mockGetDevices,
+	mockGetAllDeviceChannels,
+	mockGetEvents,
+	mockGetArchives,
+	mockClose,
+} = vi.hoisted(() => ({
 	mockGetUser: vi.fn(),
 	mockGetDevices: vi.fn(),
 	mockGetAllDeviceChannels: vi.fn(),
+	mockGetEvents: vi.fn(),
+
+	mockGetArchives: vi.fn(),
 	mockClose: vi.fn(),
 }));
 
@@ -87,6 +97,9 @@ vi.mock("thermoworks-sdk", () => ({
 		getUser = mockGetUser;
 		getDevices = mockGetDevices;
 		getAllDeviceChannels = mockGetAllDeviceChannels;
+		getEvents = mockGetEvents;
+
+		getArchives = mockGetArchives;
 		close = mockClose;
 	},
 }));
@@ -94,6 +107,7 @@ vi.mock("thermoworks-sdk", () => ({
 // ─── Import after mocks ─────────────────────────────────────────────────────
 
 import { ThermoworksTreeProvider } from "../src/tree/thermoworks-tree-provider";
+import { ArchiveChannelNode, ArchiveNode, ArchivesFolderNode } from "../src/tree/tree-items";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -204,6 +218,9 @@ function createProvider(): ThermoworksTreeProvider {
 			getUser: mockGetUser,
 			getDevices: mockGetDevices,
 			getAllDeviceChannels: mockGetAllDeviceChannels,
+			getEvents: mockGetEvents,
+
+			getArchives: mockGetArchives,
 			close: mockClose,
 		})),
 		close: vi.fn(),
@@ -244,6 +261,8 @@ describe("ThermoworksTreeProvider", () => {
 			const children = await provider.getChildren();
 			expect(children.length).toBe(2);
 			expect(children[0]?.label).toBe("Account");
+			expect(children[1]?.label).toBe("Devices");
+			expect(children[0]?.label).toBeDefined();
 			expect(children[1]?.label).toBe("Devices");
 		});
 
@@ -410,6 +429,142 @@ describe("ThermoworksTreeProvider", () => {
 			});
 			const children = await provider.getChildren();
 			expect(children).toEqual([]);
+		});
+	});
+
+	describe("getChildren (archives folder)", () => {
+		const mockArchive: Archive = {
+			id: "arch-001",
+			start: new Date("2026-01-01T08:00:00Z"),
+			end: new Date("2026-01-01T14:30:00Z"),
+			count: 390,
+			type: "session",
+			label: "Brisket Cook",
+			deviceLabel: "Smoker",
+			notes: null,
+			createdOn: new Date("2026-01-01T14:31:00Z"),
+			public: false,
+			publicLink: null,
+			filename: null,
+			channels: [
+				{
+					number: "1",
+					label: "Pit",
+					units: "F",
+					value: 225,
+					status: "ok",
+					enabled: true,
+					color: null,
+					type: "temperature",
+					alarmHigh: null,
+					alarmLow: null,
+					minimum: { value: 180, units: "F", date: null },
+					maximum: { value: 275, units: "F", date: null },
+					recentReadings: [],
+				},
+			],
+		};
+
+		it("returns archive nodes when expanding archives folder", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetArchives.mockResolvedValue([mockArchive]);
+
+			const folder = new ArchivesFolderNode("ABC123");
+			const children = await provider.getChildren(folder);
+
+			expect(children.length).toBe(1);
+			expect(children[0]).toBeInstanceOf(ArchiveNode);
+			expect((children[0] as ArchiveNode).label).toBe("Brisket Cook");
+			expect(mockGetArchives).toHaveBeenCalledWith("ABC123", { limit: 10 });
+		});
+
+		it("returns error node when no archives exist", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetArchives.mockResolvedValue([]);
+
+			const folder = new ArchivesFolderNode("ABC123");
+			const children = await provider.getChildren(folder);
+
+			expect(children.length).toBe(1);
+			expect(children[0]?.label).toBe("No archived sessions");
+		});
+
+		it("returns error node on API failure", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetArchives.mockRejectedValue(new Error("Network timeout"));
+
+			const folder = new ArchivesFolderNode("ABC123");
+			const children = await provider.getChildren(folder);
+
+			expect(children.length).toBe(1);
+			expect(children[0]?.label).toBe("Network timeout");
+		});
+
+		it("returns channel nodes when expanding an archive", async () => {
+			const archiveNode = new ArchiveNode(mockArchive, "ABC123");
+			const children = await provider.getChildren(archiveNode);
+
+			expect(children.length).toBe(1);
+			expect(children[0]).toBeInstanceOf(ArchiveChannelNode);
+			expect((children[0] as ArchiveChannelNode).label).toBe("Pit");
+		});
+
+		it("returns error when archive has no channels", async () => {
+			const emptyArchive: Archive = { ...mockArchive, channels: [] };
+			const archiveNode = new ArchiveNode(emptyArchive, "ABC123");
+			const children = await provider.getChildren(archiveNode);
+
+			expect(children.length).toBe(1);
+			expect(children[0]?.label).toBe("No channel data");
+		});
+
+		it("returns error when archive channels is null", async () => {
+			const nullArchive: Archive = { ...mockArchive, channels: null };
+			const archiveNode = new ArchiveNode(nullArchive, "ABC123");
+			const children = await provider.getChildren(archiveNode);
+
+			expect(children.length).toBe(1);
+			expect(children[0]?.label).toBe("No channel data");
+		});
+
+		it("caches archives and reuses on subsequent expand", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetArchives.mockResolvedValue([mockArchive]);
+
+			const folder = new ArchivesFolderNode("ABC123");
+			await provider.getChildren(folder);
+			await provider.getChildren(folder);
+
+			// Only one API call due to cache
+			expect(mockGetArchives).toHaveBeenCalledTimes(1);
+		});
+
+		it("refreshArchives clears cache and re-fetches", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetArchives.mockResolvedValue([mockArchive]);
+
+			const folder = new ArchivesFolderNode("ABC123");
+			await provider.getChildren(folder);
+			expect(mockGetArchives).toHaveBeenCalledTimes(1);
+
+			await provider.refreshArchives();
+			await provider.getChildren(folder);
+			expect(mockGetArchives).toHaveBeenCalledTimes(2);
 		});
 	});
 });

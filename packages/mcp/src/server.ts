@@ -1,221 +1,172 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import { AuthError, NetworkError, NotFoundError, ThermoworksCloud } from "thermoworks-sdk";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { ThermoworksCloud } from "thermoworks-sdk";
 import { z } from "zod";
-import type { Credentials } from "./auth.js";
 
-export function createServer(credentials: Credentials): McpServer {
-	const client = new ThermoworksCloud({
-		email: credentials.email,
-		password: credentials.password,
-	});
+function resolveCredentials(): { email: string; password: string } {
+	const email = process.env.THERMOWORKS_EMAIL;
+	const password = process.env.THERMOWORKS_PASSWORD;
+
+	if (!email || !password) {
+		throw new Error(
+			"Missing credentials: set THERMOWORKS_EMAIL and THERMOWORKS_PASSWORD environment variables",
+		);
+	}
+
+	return { email, password };
+}
+
+let cachedClient: ThermoworksCloud | null = null;
+
+function getClient(): ThermoworksCloud {
+	if (!cachedClient) {
+		const { email, password } = resolveCredentials();
+		cachedClient = new ThermoworksCloud({ email, password });
+	}
+	return cachedClient;
+}
+
+/** Reset the cached client (for testing). */
+export function resetClient(): void {
+	if (cachedClient) {
+		cachedClient.close();
+		cachedClient = null;
+	}
+}
+
+type ToolResult = { content: Array<{ type: "text"; text: string }> };
+
+async function handleTool<T>(fn: (client: ThermoworksCloud) => Promise<T>): Promise<ToolResult> {
+	const client = getClient();
+	const result = await fn(client);
+	return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+}
+
+export function createServer(): McpServer {
 	const server = new McpServer({
-		name: "thermoworks",
+		name: "thermoworks-mcp",
 		version: "0.1.0",
 	});
-	const closeServer = server.close.bind(server);
 
-	server.close = async () => {
-		try {
-			await closeServer();
-		} finally {
-			client.close();
-		}
-	};
-
-	function textContent(text: string): CallToolResult {
-		return {
-			content: [{ type: "text", text }],
-		};
-	}
-
-	function jsonContent(value: unknown): CallToolResult {
-		return textContent(JSON.stringify(value, null, 2));
-	}
-
-	async function withClient<T>(fn: (client: ThermoworksCloud) => Promise<T>): Promise<T> {
-		try {
-			return await fn(client);
-		} catch (err) {
-			if (err instanceof NotFoundError) throw new Error("Resource not found");
-			if (err instanceof AuthError) throw new Error("Authentication failed");
-			if (err instanceof NetworkError) throw new Error("Service unavailable");
-			throw new Error("An unexpected error occurred");
-		}
-	}
-
-	server.tool(
+	server.registerTool(
 		"get_devices",
-		"List all ThermoWorks devices with status, battery, and last seen time",
-		{},
-		async () => {
-			const devices = await withClient((client) => client.getDevices());
-			return jsonContent(
-				devices.map((device) => ({
-					serial: device.serial,
-					label: device.label,
-					type: device.type,
-					status: device.status,
-					battery: device.battery,
-					lastSeen: device.lastSeen?.toISOString() ?? null,
-				})),
-			);
+		{
+			description:
+				"List all ThermoWorks Cloud devices with status, battery level, and last seen time",
+			inputSchema: z.object({}),
 		},
+		() => handleTool((client) => client.getDevices()),
 	);
 
-	server.tool(
+	server.registerTool(
 		"get_device",
-		"Get detailed information about a specific device by serial number",
-		{ serial: z.string().describe("Device serial number") },
-		async ({ serial }) => {
-			const device = await withClient((client) => client.getDevice(serial));
-			return jsonContent({
-				serial: device.serial,
-				label: device.label,
-				type: device.type,
-				status: device.status,
-				battery: device.battery,
-				firmware: device.firmware,
-				lastSeen: device.lastSeen?.toISOString() ?? null,
-				sessionLabel: device.sessionLabel,
-				notes: device.notes,
-			});
+		{
+			description: "Get detailed information for a specific ThermoWorks device by serial number",
+			inputSchema: z.object({
+				serial: z.string().describe("The device serial number"),
+			}),
 		},
+		({ serial }) => handleTool((client) => client.getDevice(serial)),
 	);
 
-	server.tool(
+	server.registerTool(
 		"get_device_channels",
-		"Get all temperature/sensor channel readings for a device",
-		{ serial: z.string().describe("Device serial number") },
-		async ({ serial }) => {
-			const channels = await withClient((client) => client.getAllDeviceChannels(serial));
-			return jsonContent(
-				channels.map((channel, index) => ({
-					channel: index + 1,
-					label: channel.label,
-					value: channel.value,
-					units: channel.units,
-					status: channel.status,
-					alarmHigh: channel.alarmHigh
-						? {
-								enabled: channel.alarmHigh.enabled,
-								alarming: channel.alarmHigh.alarming,
-								value: channel.alarmHigh.value,
-							}
-						: null,
-					alarmLow: channel.alarmLow
-						? {
-								enabled: channel.alarmLow.enabled,
-								alarming: channel.alarmLow.alarming,
-								value: channel.alarmLow.value,
-							}
-						: null,
-					minimum: channel.minimum
-						? {
-								value: channel.minimum.value,
-								date: channel.minimum.date?.toISOString() ?? null,
-							}
-						: null,
-					maximum: channel.maximum
-						? {
-								value: channel.maximum.value,
-								date: channel.maximum.date?.toISOString() ?? null,
-							}
-						: null,
-				})),
-			);
+		{
+			description: "Get temperature and sensor readings for all channels on a ThermoWorks device",
+			inputSchema: z.object({
+				serial: z.string().describe("The device serial number"),
+			}),
 		},
+		({ serial }) => handleTool((client) => client.getAllDeviceChannels(serial)),
 	);
 
-	server.tool(
+	server.registerTool(
 		"get_average_temperature",
-		"Get the average temperature across all channels of a device",
-		{ serial: z.string().describe("Device serial number") },
+		{
+			description:
+				"Get the average temperature across all temperature channels for a ThermoWorks device",
+			inputSchema: z.object({
+				serial: z.string().describe("The device serial number"),
+			}),
+		},
 		async ({ serial }) => {
-			const average = await withClient((client) => client.getAverageTemperature(serial));
-			if (!average) {
-				return textContent("No temperature readings available");
+			const client = getClient();
+			const avg = await client.getAverageTemperature(serial);
+			if (!avg) {
+				return {
+					content: [{ type: "text", text: "No temperature readings available for this device" }],
+				};
 			}
-
-			return jsonContent(average);
+			return { content: [{ type: "text", text: JSON.stringify(avg, null, 2) }] };
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		"get_events",
-		"Get device events (alarms, status changes, alerts)",
 		{
-			serial: z.string().optional().describe("Filter by device serial number"),
-			event_type: z.string().optional().describe("Filter by event type"),
-			limit: z
-				.number()
-				.int()
-				.min(1)
-				.max(500)
-				.optional()
-				.describe("Maximum events to return (default 50)"),
+			description: "Get device events (alarms, status changes, alerts) from ThermoWorks Cloud",
+			inputSchema: z.object({
+				device_id: z.string().optional().describe("Optional device serial to filter events"),
+				event_type: z
+					.string()
+					.optional()
+					.describe("Optional event type filter (e.g., 'Low Battery Alert')"),
+				limit: z
+					.number()
+					.int()
+					.min(1)
+					.max(500)
+					.optional()
+					.describe("Maximum number of events to return (default 50, max 500)"),
+			}),
 		},
-		async ({ serial, event_type, limit }) => {
-			const events = await withClient((client) =>
-				client.getEvents({
-					deviceId: serial,
-					eventType: event_type,
-					limit,
-				}),
-			);
-			return jsonContent(
-				events.map((event) => ({
-					id: event.id,
-					eventType: event.eventType,
-					severity: event.severity,
-					eventTime: event.eventTime.toISOString(),
-					deviceId: event.deviceId,
-					channelId: event.channelId,
-					valueBefore: event.valueBefore,
-					valueAfter: event.valueAfter,
-				})),
-			);
-		},
+		({ device_id, event_type, limit }) =>
+			handleTool((client) =>
+				client.getEvents({ deviceId: device_id, eventType: event_type, limit }),
+			),
 	);
 
-	server.tool(
+	server.registerTool(
 		"get_archives",
-		"Get historical session archives for a device",
 		{
-			serial: z.string().describe("Device serial number"),
-			limit: z
-				.number()
-				.int()
-				.min(1)
-				.max(500)
-				.optional()
-				.describe("Maximum archives to return (default 20)"),
+			description: "Get historical session archives for a ThermoWorks device",
+			inputSchema: z.object({
+				serial: z.string().describe("The device serial number"),
+				limit: z
+					.number()
+					.int()
+					.min(1)
+					.max(500)
+					.optional()
+					.describe("Maximum number of archives to return (default 20, max 500)"),
+			}),
 		},
-		async ({ serial, limit }) => {
-			const archives = await withClient((client) => client.getArchives(serial, { limit }));
-			return jsonContent(
-				archives.map((archive) => ({
-					id: archive.id,
-					label: archive.label,
-					start: archive.start?.toISOString() ?? null,
-					end: archive.end?.toISOString() ?? null,
-					count: archive.count,
-					type: archive.type,
-					notes: archive.notes,
-				})),
-			);
-		},
+		({ serial, limit }) => handleTool((client) => client.getArchives(serial, { limit })),
 	);
 
-	server.tool(
+	server.registerTool(
 		"get_temperature_guide",
-		"Get cooking temperature reference guide with categories and recommended temperatures",
-		{},
-		async () => {
-			const guide = await withClient((client) => client.getTemperatureGuide());
-			return jsonContent(guide);
+		{
+			description:
+				"Get the cooking temperature reference guide with categories and recommendations",
+			inputSchema: z.object({}),
 		},
+		() => handleTool((client) => client.getTemperatureGuide()),
 	);
 
 	return server;
+}
+
+export async function startServer(): Promise<void> {
+	const server = createServer();
+	const transport = new StdioServerTransport();
+
+	const shutdown = () => {
+		resetClient();
+		process.exit(0);
+	};
+	process.on("SIGINT", shutdown);
+	process.on("SIGTERM", shutdown);
+
+	await server.connect(transport);
 }

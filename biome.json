@@ -12,6 +12,11 @@
 		"indentStyle": "tab",
 		"lineWidth": 100
 	},
+	"css": {
+		"parser": {
+			"cssModules": false
+		}
+	},
 	"overrides": [
 		{
 			"includes": ["**/tests/**"],
@@ -20,6 +25,14 @@
 					"suspicious": {
 						"noExplicitAny": "off"
 					}
+				}
+			}
+		},
+		{
+			"includes": ["**/*.css"],
+			"css": {
+				"parser": {
+					"tailwindDirectives": true
 				}
 			}
 		}

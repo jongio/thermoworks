@@ -57,33 +57,34 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 			process.exit(1);
 		}
 
-		deviceInfos = [];
-		for (const d of devices) {
-			const label = d.label || d.serial;
-			const allChannels = await client.getAllDeviceChannels(d.serial);
-			const tempChannels = allChannels.filter(
-				(ch): ch is DeviceChannel & { value: number; units: string } =>
-					ch.value != null && ch.units != null && ch.units !== "H",
-			);
+		deviceInfos = await Promise.all(
+			devices.map(async (d) => {
+				const label = d.label || d.serial;
+				const allChannels = await client.getAllDeviceChannels(d.serial);
+				const tempChannels = allChannels.filter(
+					(ch): ch is DeviceChannel & { value: number; units: string } =>
+						ch.value != null && ch.units != null && ch.units !== "H",
+				);
 
-			const channels: ChannelInfo[] = tempChannels.map((ch) => {
-				const originalIndex = allChannels.indexOf(ch) + 1;
-				return {
-					number: originalIndex,
-					label: ch.label || `Channel ${originalIndex}`,
-					temp: `${Math.round(ch.value)}\u00B0${ch.units}`,
-				};
-			});
+				const channels: ChannelInfo[] = tempChannels.map((ch) => {
+					const originalIndex = allChannels.indexOf(ch) + 1;
+					return {
+						number: originalIndex,
+						label: ch.label || `Channel ${originalIndex}`,
+						temp: `${Math.round(ch.value)}\u00B0${ch.units}`,
+					};
+				});
 
-			let avgTemp = "no reading";
-			if (tempChannels.length > 0) {
-				const sum = tempChannels.reduce((acc, ch) => acc + ch.value, 0);
-				const avg = Math.round(sum / tempChannels.length);
-				avgTemp = `${avg}\u00B0${tempChannels[0]?.units}`;
-			}
+				let avgTemp = "no reading";
+				if (tempChannels.length > 0) {
+					const sum = tempChannels.reduce((acc, ch) => acc + ch.value, 0);
+					const avg = Math.round(sum / tempChannels.length);
+					avgTemp = `${avg}\u00B0${tempChannels[0]?.units}`;
+				}
 
-			deviceInfos.push({ serial: d.serial, label, channels, avgTemp });
-		}
+				return { serial: d.serial, label, channels, avgTemp };
+			}),
+		);
 		console.log(`found ${devices.length}.\n`);
 	} catch (err: unknown) {
 		console.log("failed.");

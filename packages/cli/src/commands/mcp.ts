@@ -1,5 +1,5 @@
-import { startStdio } from "thermoworks-mcp";
+import { startServer } from "thermoworks-mcp";
 
 export async function mcpStart(): Promise<void> {
-	await startStdio();
+	await startServer();
 }

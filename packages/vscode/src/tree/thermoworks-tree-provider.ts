@@ -1,4 +1,4 @@
-import type { Device, DeviceChannel, User } from "thermoworks-sdk";
+import type { Archive, Device, DeviceChannel, User } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 import * as vscode from "vscode";
 import type { ClientManager } from "../client-manager";
@@ -8,6 +8,9 @@ import {
 	AccountDetailNode,
 	AccountNode,
 	ActionNode,
+	ArchiveChannelNode,
+	ArchiveNode,
+	ArchivesFolderNode,
 	buildDeviceChildren,
 	DeviceNode,
 	DevicesFolderNode,
@@ -33,6 +36,11 @@ interface FirmwareCache {
 	fetchedAt: number;
 }
 
+interface ArchiveCache {
+	archives: Archive[];
+	fetchedAt: number;
+}
+
 export class ThermoworksTreeProvider
 	implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable
 {
@@ -46,11 +54,13 @@ export class ThermoworksTreeProvider
 	private deviceCache: DeviceCache | undefined;
 	private channelCaches = new Map<string, ChannelCache>();
 	private firmwareCaches = new Map<string, FirmwareCache>();
+	private archiveCaches = new Map<string, ArchiveCache>();
 	private firmwareUpdateCount = 0;
 	private refreshTimer: ReturnType<typeof setInterval> | undefined;
 	private configDisposable: vscode.Disposable | undefined;
 	private disposed = false;
 	private demoMode: "normal" | "high" | "low" | false = false;
+	private outputChannel: vscode.OutputChannel | undefined;
 
 	constructor(credentialStore: CredentialStore, clientManager: ClientManager) {
 		this.credentialStore = credentialStore;
@@ -89,6 +99,16 @@ export class ThermoworksTreeProvider
 		// Device children (channels + metadata)
 		if (element instanceof DeviceNode) {
 			return this.getDeviceChildren(element.serial);
+		}
+
+		// Archives folder children
+		if (element instanceof ArchivesFolderNode) {
+			return this.getArchiveNodes(element.serial);
+		}
+
+		// Archive children (channel summaries)
+		if (element instanceof ArchiveNode) {
+			return this.getArchiveChildren(element.archive, element.serial);
 		}
 
 		return [];
@@ -140,6 +160,12 @@ export class ThermoworksTreeProvider
 	async refresh(): Promise<void> {
 		this.deviceCache = undefined;
 		this.channelCaches.clear();
+		this.archiveCaches.clear();
+		this._onDidChangeTreeData.fire(undefined);
+	}
+
+	async refreshArchives(): Promise<void> {
+		this.archiveCaches.clear();
 		this._onDidChangeTreeData.fire(undefined);
 	}
 
@@ -150,6 +176,39 @@ export class ThermoworksTreeProvider
 
 	openCloud(): void {
 		vscode.env.openExternal(vscode.Uri.parse("https://cloud.thermoworks.com"));
+	}
+
+	showArchiveDetails(archive: Archive): void {
+		if (!this.outputChannel) {
+			this.outputChannel = vscode.window.createOutputChannel("ThermoWorks Archives");
+		}
+		const ch = this.outputChannel;
+		ch.clear();
+		ch.appendLine(`=== ${archive.label || "Unnamed Session"} ===`);
+		ch.appendLine("");
+		if (archive.start) ch.appendLine(`Start: ${archive.start.toLocaleString()}`);
+		if (archive.end) ch.appendLine(`End:   ${archive.end.toLocaleString()}`);
+		if (archive.count != null) ch.appendLine(`Readings: ${archive.count}`);
+		if (archive.notes) ch.appendLine(`Notes: ${archive.notes}`);
+		ch.appendLine("");
+
+		if (archive.channels && archive.channels.length > 0) {
+			ch.appendLine("--- Channels ---");
+			for (const channel of archive.channels) {
+				const label = channel.label || "Unnamed";
+				const min =
+					channel.minimum?.value != null
+						? `${Math.round(channel.minimum.value)}\u00B0${channel.minimum.units ?? ""}`
+						: "--";
+				const max =
+					channel.maximum?.value != null
+						? `${Math.round(channel.maximum.value)}\u00B0${channel.maximum.units ?? ""}`
+						: "--";
+				ch.appendLine(`  ${label}: min ${min} / max ${max}`);
+			}
+		}
+
+		ch.show(true);
 	}
 
 	enterDemoMode(mode: "normal" | "high" | "low"): void {
@@ -203,6 +262,7 @@ export class ThermoworksTreeProvider
 		this.disposed = true;
 		this.stopAutoRefresh();
 		this.clientManager.close();
+		this.outputChannel?.dispose();
 		this._onDidChangeTreeData.dispose();
 	}
 
@@ -341,6 +401,30 @@ export class ThermoworksTreeProvider
 		}
 	}
 
+	private async getArchiveNodes(serial: string): Promise<TreeNode[]> {
+		if (this.demoMode) {
+			return [new ErrorNode("Archives not available in demo mode")];
+		}
+
+		try {
+			const archives = await this.getCachedArchives(serial);
+			if (archives.length === 0) {
+				return [new ErrorNode("No archived sessions")];
+			}
+			return archives.map((a) => new ArchiveNode(a, serial));
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to load archives";
+			return [new ErrorNode(message)];
+		}
+	}
+
+	private getArchiveChildren(archive: Archive, serial: string): TreeNode[] {
+		if (!archive.channels || archive.channels.length === 0) {
+			return [new ErrorNode("No channel data")];
+		}
+		return archive.channels.map((ch, i) => new ArchiveChannelNode(ch, serial, archive.id, i));
+	}
+
 	// ─── Private: Caching ────────────────────────────────────────────────────
 
 	private async getCachedDevices(): Promise<Device[]> {
@@ -371,6 +455,19 @@ export class ThermoworksTreeProvider
 		const channels = await client.getAllDeviceChannels(serial);
 		this.channelCaches.set(serial, { channels, fetchedAt: now });
 		return channels;
+	}
+
+	private async getCachedArchives(serial: string): Promise<Archive[]> {
+		const now = Date.now();
+		const cached = this.archiveCaches.get(serial);
+		if (cached && now - cached.fetchedAt < DEVICE_CACHE_TTL_MS) {
+			return cached.archives;
+		}
+
+		const client = await this.getClient();
+		const archives = await client.getArchives(serial, { limit: 10 });
+		this.archiveCaches.set(serial, { archives, fetchedAt: now });
+		return archives;
 	}
 
 	private async isFirmwareOutdated(device: Device): Promise<boolean> {
@@ -405,6 +502,7 @@ export class ThermoworksTreeProvider
 		this.user = undefined;
 		this.deviceCache = undefined;
 		this.channelCaches.clear();
+		this.archiveCaches.clear();
 		this.clientManager.close();
 	}
 

@@ -1,66 +1,43 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import {
+	DEFAULT_STATUSLINE_CONFIG,
+	type DeviceEntry,
+	isValidStatuslineConfig,
+	type StatuslineConfig,
+} from "thermoworks-sdk";
+
+export type { DeviceEntry, StatuslineConfig };
 
 const CONFIG_DIR = join(homedir(), ".thermoworks");
 const CONFIG_PATH = join(CONFIG_DIR, "config.json");
 const CACHE_DIR = join(CONFIG_DIR, ".cache");
 const CACHE_PATH = join(CACHE_DIR, "readings.json");
 
-export interface DeviceEntry {
-	serial: string;
-	label: string;
-	/** Channel numbers to display, or "avg" for average temperature. */
-	channels: number[] | "avg";
-}
-
-export interface ThermoworksCliConfig {
-	/** Devices to show in statusline. */
-	devices: DeviceEntry[];
-	/** API cache duration in seconds. */
-	refreshSeconds: number;
-}
-
 interface CacheEntry {
 	output: string;
 	timestamp: number;
 }
 
-const DEFAULT_CONFIG: ThermoworksCliConfig = {
-	devices: [],
-	refreshSeconds: 30,
-};
-
-function isValidConfig(raw: unknown): raw is Partial<ThermoworksCliConfig> {
-	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return false;
-	const obj = raw as Record<string, unknown>;
-	if (
-		obj.refreshSeconds !== undefined &&
-		(typeof obj.refreshSeconds !== "number" || obj.refreshSeconds < 1)
-	)
-		return false;
-	if (obj.devices !== undefined && !Array.isArray(obj.devices)) return false;
-	return true;
-}
-
-export async function loadConfig(): Promise<ThermoworksCliConfig> {
+export async function loadConfig(): Promise<StatuslineConfig> {
 	try {
 		const raw = await readFile(CONFIG_PATH, "utf8");
 		const parsed: unknown = JSON.parse(raw);
-		if (!isValidConfig(parsed)) {
+		if (!isValidStatuslineConfig(parsed)) {
 			console.error("Warning: ~/.thermoworks/config.json has invalid format, using defaults.");
-			return DEFAULT_CONFIG;
+			return DEFAULT_STATUSLINE_CONFIG;
 		}
-		return { ...DEFAULT_CONFIG, ...parsed };
+		return { ...DEFAULT_STATUSLINE_CONFIG, ...parsed };
 	} catch (err) {
 		if (err instanceof SyntaxError) {
 			console.error("Warning: ~/.thermoworks/config.json is corrupted, using defaults.");
 		}
-		return DEFAULT_CONFIG;
+		return DEFAULT_STATUSLINE_CONFIG;
 	}
 }
 
-export async function saveConfig(config: ThermoworksCliConfig): Promise<void> {
+export async function saveConfig(config: StatuslineConfig): Promise<void> {
 	await mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
 	await writeFile(CONFIG_PATH, `${JSON.stringify(config, null, 2)}\n`, {
 		encoding: "utf8",

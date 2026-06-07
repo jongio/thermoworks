@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // --- Module mocks ---
 
-vi.mock("thermoworks-sdk", () => {
+vi.mock("thermoworks-sdk", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("thermoworks-sdk")>();
 	const mockGetDevices = vi.fn();
 	const mockGetAllDeviceChannels = vi.fn();
 	const mockClose = vi.fn();
@@ -14,7 +15,7 @@ vi.mock("thermoworks-sdk", () => {
 		close = mockClose;
 	}
 
-	return { ThermoworksCloud: MockThermoworksCloud };
+	return { ...actual, ThermoworksCloud: MockThermoworksCloud };
 });
 
 vi.mock("../src/credentials.js", () => ({

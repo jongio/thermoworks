@@ -1,5 +1,9 @@
-import type { DeviceChannel } from "thermoworks-sdk";
-import { ThermoworksCloud } from "thermoworks-sdk";
+import {
+	type AlarmState,
+	escalateAlarm,
+	getChannelsAlarmState,
+	ThermoworksCloud,
+} from "thermoworks-sdk";
 import * as vscode from "vscode";
 import { loadConfig } from "./config";
 import type { CredentialStore } from "./credentials";
@@ -8,8 +12,6 @@ const MIN_REFRESH_MS = 15_000;
 const BACKOFF_BASE_MS = 5_000;
 const MAX_BACKOFF_MS = 300_000; // 5 minutes
 const BLINK_INTERVAL_MS = 800;
-
-type AlarmState = "none" | "low" | "high";
 
 export class TemperatureStatusBar implements vscode.Disposable {
 	private readonly item: vscode.StatusBarItem;
@@ -175,7 +177,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 						tooltipLines.push(
 							`🌡️ ${deviceConfig.label}: ${avg}°${units} (avg of ${tempChannels.length} channels)`,
 						);
-						overallAlarm = escalateAlarm(overallAlarm, getChannelAlarmState(tempChannels));
+						overallAlarm = escalateAlarm(overallAlarm, getChannelsAlarmState(tempChannels));
 					}
 				} else if (deviceConfig.channels.length === 1) {
 					const chIdx = deviceConfig.channels[0];
@@ -183,7 +185,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 					if (ch?.value != null && ch.units != null) {
 						parts.push(`${deviceConfig.label}:${Math.round(ch.value)}\u00B0${ch.units}`);
 						tooltipLines.push(`🌡️ ${deviceConfig.label}: ${Math.round(ch.value)}°${ch.units}`);
-						overallAlarm = escalateAlarm(overallAlarm, getChannelAlarmState([ch]));
+						overallAlarm = escalateAlarm(overallAlarm, getChannelsAlarmState([ch]));
 					}
 				} else {
 					for (const chNum of deviceConfig.channels) {
@@ -196,7 +198,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 							tooltipLines.push(
 								`🌡️ ${deviceConfig.label} → ${chLabel}: ${Math.round(ch.value)}°${ch.units}`,
 							);
-							overallAlarm = escalateAlarm(overallAlarm, getChannelAlarmState([ch]));
+							overallAlarm = escalateAlarm(overallAlarm, getChannelsAlarmState([ch]));
 						}
 					}
 				}
@@ -332,22 +334,4 @@ export class TemperatureStatusBar implements vscode.Disposable {
 			this.item.text = this.lastText;
 		}
 	}
-}
-
-// ─── Alarm helpers ───────────────────────────────────────────────────────────
-
-function getChannelAlarmState(channels: DeviceChannel[]): AlarmState {
-	for (const ch of channels) {
-		if (ch.alarmHigh?.alarming) return "high";
-	}
-	for (const ch of channels) {
-		if (ch.alarmLow?.alarming) return "low";
-	}
-	return "none";
-}
-
-function escalateAlarm(current: AlarmState, incoming: AlarmState): AlarmState {
-	if (current === "high" || incoming === "high") return "high";
-	if (current === "low" || incoming === "low") return "low";
-	return "none";
 }

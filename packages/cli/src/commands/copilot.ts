@@ -1,15 +1,20 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { type DeviceChannel, ThermoworksCloud } from "thermoworks-sdk";
+import {
+	type AlarmState,
+	type DeviceChannel,
+	type DeviceEntry,
+	getChannelsAlarmState,
+	ThermoworksCloud,
+} from "thermoworks-sdk";
 
 import {
-	type DeviceEntry,
 	getConfigPath,
 	loadConfig,
 	readCache,
+	type StatuslineConfig,
 	saveConfig,
-	type ThermoworksCliConfig,
 	writeCache,
 } from "../config.js";
 import { getCredentials } from "../credentials.js";
@@ -124,7 +129,7 @@ export async function copilotSetup(dev: boolean): Promise<void> {
 		}
 	}
 
-	const config: ThermoworksCliConfig = {
+	const config: StatuslineConfig = {
 		devices: selectedDevices,
 		refreshSeconds: 30,
 	};
@@ -280,7 +285,7 @@ export async function copilotStatus(): Promise<void> {
 					const sum = tempChannels.reduce((acc, ch) => acc + (ch.value ?? 0), 0);
 					const avg = Math.round(sum / tempChannels.length);
 					const units = tempChannels[0]?.units;
-					const alarmStyle = getChannelAlarmStyle(tempChannels);
+					const alarmStyle = getChannelsAlarmState(tempChannels);
 					parts.push(wrapAnsi(`${deviceConfig.label}:${avg}\u00B0${units}`, alarmStyle));
 				}
 			} else if (deviceConfig.channels.length === 1) {
@@ -288,7 +293,7 @@ export async function copilotStatus(): Promise<void> {
 				const chIdx = deviceConfig.channels[0];
 				const ch = chIdx != null ? allChannels[chIdx - 1] : undefined;
 				if (ch?.value != null && ch.units != null) {
-					const alarmStyle = getChannelAlarmStyle([ch]);
+					const alarmStyle = getChannelsAlarmState([ch]);
 					parts.push(
 						wrapAnsi(`${deviceConfig.label}:${Math.round(ch.value)}\u00B0${ch.units}`, alarmStyle),
 					);
@@ -299,7 +304,7 @@ export async function copilotStatus(): Promise<void> {
 					const ch = allChannels[chNum - 1];
 					if (ch?.value != null && ch.units != null) {
 						const chLabel = ch.label || `Ch${chNum}`;
-						const alarmStyle = getChannelAlarmStyle([ch]);
+						const alarmStyle = getChannelsAlarmState([ch]);
 						parts.push(
 							wrapAnsi(
 								`${deviceConfig.label}:${chLabel}:${Math.round(ch.value)}\u00B0${ch.units}`,
@@ -326,23 +331,11 @@ export async function copilotStatus(): Promise<void> {
 
 // ─── Alarm styling helpers ───────────────────────────────────────────────────
 
-type AlarmStyle = "none" | "low" | "high";
-
 const ANSI_RESET = "\x1b[0m";
 const ANSI_RED = "\x1b[91m"; // bright red
 const ANSI_BLUE = "\x1b[94m"; // bright blue
 
-function getChannelAlarmStyle(channels: DeviceChannel[]): AlarmStyle {
-	for (const ch of channels) {
-		if (ch.alarmHigh?.alarming) return "high";
-	}
-	for (const ch of channels) {
-		if (ch.alarmLow?.alarming) return "low";
-	}
-	return "none";
-}
-
-function wrapAnsi(text: string, style: AlarmStyle): string {
+function wrapAnsi(text: string, style: AlarmState): string {
 	switch (style) {
 		case "high":
 			return `${ANSI_RED}${text}${ANSI_RESET}`;
@@ -356,14 +349,14 @@ function wrapAnsi(text: string, style: AlarmStyle): string {
 // ─── Demo mode ───────────────────────────────────────────────────────────────
 
 const DEMO_STATE_PATH = join(homedir(), ".thermoworks", ".demo-state");
-const DEMO_CYCLE: AlarmStyle[] = ["none", "none", "high", "high", "low", "low"];
+const DEMO_CYCLE: AlarmState[] = ["none", "none", "high", "high", "low", "low"];
 
 interface DemoScenario {
 	label: string;
 	channels: { label: string; value: number; units: string }[];
 }
 
-const DEMO_SCENARIOS: Record<AlarmStyle, DemoScenario[]> = {
+const DEMO_SCENARIOS: Record<AlarmState, DemoScenario[]> = {
 	none: [
 		{
 			label: "Smoker",
@@ -396,7 +389,7 @@ const DEMO_SCENARIOS: Record<AlarmStyle, DemoScenario[]> = {
 	],
 };
 
-export async function nextDemoState(): Promise<AlarmStyle> {
+export async function nextDemoState(): Promise<AlarmState> {
 	let idx = 0;
 	try {
 		const raw = await readFile(DEMO_STATE_PATH, "utf8");
@@ -410,7 +403,7 @@ export async function nextDemoState(): Promise<AlarmStyle> {
 	return DEMO_CYCLE[idx] ?? "none";
 }
 
-export async function copilotStatusDemo(mode: AlarmStyle): Promise<void> {
+export async function copilotStatusDemo(mode: AlarmState): Promise<void> {
 	const devices = DEMO_SCENARIOS[mode];
 	const parts: string[] = [];
 

@@ -1,0 +1,61 @@
+name: Skill Evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Eval suite to run
+        required: false
+        default: smoke
+        type: choice
+        options:
+          - smoke
+          - full
+          - integration
+          - dev
+      model:
+        description: Model override (leave empty for eval.yaml default)
+        required: false
+        type: string
+  schedule:
+    - cron: "0 6 * * 1-5" # weekdays at 6am UTC
+
+permissions: {}
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run eval suite
+        run: |
+          ARGS="--suite ${{ inputs.suite || 'smoke' }} --verbose"
+          if [ -n "${{ inputs.model }}" ]; then
+            ARGS="$ARGS --model ${{ inputs.model }}"
+          fi
+          npx vally eval $ARGS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload eval results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: eval-results-${{ github.run_id }}
+          path: vally-results/
+          retention-days: 30

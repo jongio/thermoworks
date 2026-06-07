@@ -1,0 +1,127 @@
+name: thermoworks-dev-eval
+description: >-
+  Evaluates the thermoworks-dev skill - adding features, understanding
+  project structure, build/test workflows.
+
+type: capability
+
+executor: copilot-sdk
+model: gpt-4o
+runs: 2
+timeout: 120
+
+environment: thermoworks-dev-workspace
+
+scoring:
+  weights:
+    output-contains: 1.0
+    completed: 1.0
+  threshold: 0.7
+
+stimuli:
+  - name: add-cli-command
+    tags:
+      tier: smoke
+      skill: thermoworks-dev
+      goal: add-feature
+    prompt: >-
+      I want to add a new "thermoworks history" command that shows recent
+      temperature session archives. Walk me through the exact files to
+      create and modify, with code.
+    graders:
+      - type: output-contains
+        config:
+          substring: "src/commands/"
+      - type: output-contains
+        config:
+          substring: "index.ts"
+      - type: completed
+
+  - name: add-vscode-command
+    tags:
+      tier: integration
+      skill: thermoworks-dev
+      goal: add-feature
+    prompt: >-
+      How do I add a new "thermoworks.exportData" command to the VS Code
+      extension? Show the package.json changes and the handler registration
+      code.
+    graders:
+      - type: output-contains
+        config:
+          substring: "contributes"
+      - type: output-contains
+        config:
+          substring: "registerCommand"
+      - type: completed
+
+  - name: build-test-commands
+    tags:
+      tier: smoke
+      skill: thermoworks-dev
+      goal: workflow
+    prompt: >-
+      What are the commands to build, test, type-check, and lint the
+      thermoworks project? I need both the root-level commands and
+      how to run them for a specific package.
+    graders:
+      - type: output-contains
+        config:
+          substring: "pnpm build"
+      - type: output-contains
+        config:
+          substring: "pnpm test"
+      - type: completed
+
+  - name: add-new-package
+    tags:
+      tier: integration
+      skill: thermoworks-dev
+      goal: add-feature
+    prompt: >-
+      I want to add a new "thermoworks-mcp" package that provides an MCP
+      server exposing device data. What are the steps to add it to the
+      monorepo, including package.json, tsconfig, and workspace setup?
+    graders:
+      - type: output-contains
+        config:
+          substring: "package.json"
+      - type: output-matches
+        config:
+          pattern: "workspace|pnpm"
+      - type: completed
+
+  - name: testing-patterns
+    tags:
+      tier: integration
+      skill: thermoworks-dev
+      goal: testing
+    prompt: >-
+      How do tests work in the thermoworks project? Explain the test
+      framework, the mocking pattern for keytar, and the rule about
+      vi.mock vs vi.doMock.
+    graders:
+      - type: output-contains
+        config:
+          substring: "vitest"
+      - type: output-contains
+        config:
+          substring: "doMock"
+      - type: completed
+
+  - name: project-structure
+    tags:
+      tier: smoke
+      skill: thermoworks-dev
+      goal: orientation
+    prompt: >-
+      Describe the thermoworks monorepo structure. What packages exist,
+      what does each one do, and what are the dependencies between them?
+    graders:
+      - type: output-contains
+        config:
+          substring: "thermoworks-sdk"
+      - type: output-matches
+        config:
+          pattern: "cli|vscode|web"
+      - type: completed

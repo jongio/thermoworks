@@ -1,0 +1,124 @@
+name: thermoworks-eval
+description: >-
+  Evaluates the thermoworks skill - reading temperatures, monitoring alarms,
+  accessing history, using the CLI.
+
+type: capability
+
+executor: copilot-sdk
+model: gpt-4o
+runs: 2
+timeout: 120
+
+environment: thermoworks-workspace
+
+scoring:
+  weights:
+    output-contains: 1.0
+    completed: 1.0
+  threshold: 0.7
+
+stimuli:
+  - name: read-temperatures
+    tags:
+      tier: smoke
+      skill: thermoworks
+      goal: read-data
+    prompt: >-
+      Write TypeScript code that connects to ThermoWorks Cloud, lists all
+      devices, and prints the temperature reading from channel 1 of each
+      device. Use the thermoworks-sdk package.
+    graders:
+      - type: output-contains
+        config:
+          substring: "ThermoworksCloud"
+      - type: output-contains
+        config:
+          substring: "getDeviceChannel"
+      - type: completed
+
+  - name: monitor-alarms
+    tags:
+      tier: smoke
+      skill: thermoworks
+      goal: alarms
+    prompt: >-
+      Using thermoworks-sdk, write code that checks if any channel on a
+      device is in an alarm state. Use the alarm helper functions, not
+      raw alarm field inspection.
+    graders:
+      - type: output-matches
+        config:
+          pattern: "getChannel(s)?AlarmState|escalateAlarm"
+      - type: completed
+
+  - name: filter-online-devices
+    tags:
+      tier: integration
+      skill: thermoworks
+      goal: read-data
+    prompt: >-
+      Write code to fetch only online smoke-type devices that have been
+      active in the last 30 minutes from ThermoWorks Cloud.
+    graders:
+      - type: output-contains
+        config:
+          substring: "getDevices"
+      - type: output-matches
+        config:
+          pattern: "type.*smoke|activeWithinMinutes"
+      - type: completed
+
+  - name: handle-errors
+    tags:
+      tier: integration
+      skill: thermoworks
+      goal: errors
+    prompt: >-
+      Write code that fetches a ThermoWorks device by serial number,
+      handling the three possible error types (auth failure, device not
+      found, network error) with appropriate messages for each.
+    graders:
+      - type: output-contains
+        config:
+          substring: "AuthError"
+      - type: output-contains
+        config:
+          substring: "NotFoundError"
+      - type: completed
+
+  - name: access-session-history
+    tags:
+      tier: integration
+      skill: thermoworks
+      goal: history
+    prompt: >-
+      Write code to retrieve the last 5 cooking session archives for
+      a device and print each archive's label, start/end times, and
+      the temperature readings from its channels.
+    graders:
+      - type: output-contains
+        config:
+          substring: "getArchives"
+      - type: output-matches
+        config:
+          pattern: "recentReadings|readings"
+      - type: completed
+
+  - name: cli-statusline-setup
+    tags:
+      tier: smoke
+      skill: thermoworks
+      goal: cli
+    prompt: >-
+      How do I set up the ThermoWorks CLI to show live temperatures in
+      my terminal prompt? Include the setup command and explain what
+      the configuration wizard does.
+    graders:
+      - type: output-contains
+        config:
+          substring: "thermoworks copilot setup"
+      - type: output-contains
+        config:
+          substring: "statusline"
+      - type: completed

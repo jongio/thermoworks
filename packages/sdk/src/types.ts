@@ -1,3 +1,13 @@
+/** Configuration for automatic retry with exponential backoff. */
+export interface RetryConfig {
+	/** Maximum number of retry attempts (default 3). */
+	maxRetries?: number;
+	/** Base delay in milliseconds before exponential increase (default 1000). */
+	baseDelayMs?: number;
+	/** Maximum delay in milliseconds between retries (default 30000). */
+	maxDelayMs?: number;
+}
+
 /** Configuration for the ThermoWorks Cloud client. */
 export interface ThermoworksConfig {
 	/** ThermoWorks Cloud account email address. */
@@ -8,6 +18,8 @@ export interface ThermoworksConfig {
 	apiKey?: string;
 	/** Override the default Firebase app ID. */
 	appId?: string;
+	/** Retry configuration for transient failures (429, 503, network errors). */
+	retry?: RetryConfig;
 }
 
 // ─── Device ──────────────────────────────────────────────────────────────────

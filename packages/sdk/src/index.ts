@@ -38,6 +38,7 @@ export type {
 	GatewayInfo,
 	MinMaxReading,
 	NotificationSettings,
+	RetryConfig,
 	SearchHit,
 	SearchOptions,
 	SearchResult,

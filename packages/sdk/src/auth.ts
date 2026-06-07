@@ -1,5 +1,5 @@
 import { Agent, request as undiciRequest } from "undici";
-import { AuthError, NetworkError } from "./types.js";
+import { AuthError, NetworkError, type RetryConfig } from "./types.js";
 
 const IDENTITY_HOST = "https://identitytoolkit.googleapis.com";
 const TOKEN_HOST = "https://securetoken.googleapis.com";
@@ -13,6 +13,13 @@ const REFERER = "https://cloud.thermoworks.com/";
 
 // Refresh tokens 60 seconds before they actually expire
 const EXPIRY_BUFFER_MS = 60_000;
+
+const DEFAULT_MAX_RETRIES = 3;
+const DEFAULT_BASE_DELAY_MS = 1000;
+const DEFAULT_MAX_DELAY_MS = 30_000;
+
+/** HTTP status codes that indicate transient failures worth retrying. */
+const RETRYABLE_STATUS_CODES = new Set([429, 503]);
 
 interface TokenState {
 	accessToken: string;
@@ -28,8 +35,53 @@ interface FirebaseWebConfig {
 interface HttpResponse {
 	ok: boolean;
 	status: number;
+	headers: Record<string, string | string[] | undefined>;
 	json(): Promise<unknown>;
 	text(): Promise<string>;
+}
+
+/**
+ * Compute the retry delay using exponential backoff with full jitter.
+ * Formula: random(0, min(baseDelay * 2^attempt, maxDelay))
+ * If a Retry-After header is present, use that as a floor instead.
+ */
+export function computeRetryDelay(
+	attempt: number,
+	baseDelayMs: number,
+	maxDelayMs: number,
+	retryAfterHeader?: string | string[] | null,
+): number {
+	// Parse Retry-After header if present (seconds or HTTP-date)
+	let retryAfterMs = 0;
+	if (retryAfterHeader) {
+		const headerValue = Array.isArray(retryAfterHeader) ? retryAfterHeader[0] : retryAfterHeader;
+		if (headerValue) {
+			const seconds = Number(headerValue);
+			if (Number.isFinite(seconds) && seconds > 0) {
+				retryAfterMs = seconds * 1000;
+			} else {
+				// Try parsing as HTTP-date
+				const date = Date.parse(headerValue);
+				if (!Number.isNaN(date)) {
+					retryAfterMs = Math.max(0, date - Date.now());
+				}
+			}
+		}
+	}
+
+	// Exponential backoff: baseDelay * 2^attempt, capped at maxDelay
+	const exponentialDelay = Math.min(baseDelayMs * 2 ** attempt, maxDelayMs);
+
+	// Use Retry-After as floor if larger than computed delay
+	const baseDelay = Math.max(exponentialDelay, retryAfterMs);
+
+	// Full jitter: uniform random in [0, baseDelay], capped at maxDelay
+	const jitteredDelay = Math.random() * baseDelay;
+	return Math.min(jitteredDelay, maxDelayMs);
+}
+
+function isRetryableStatus(statusCode: number): boolean {
+	return RETRYABLE_STATUS_CODES.has(statusCode) || statusCode >= 500;
 }
 
 async function httpRequest(
@@ -40,14 +92,18 @@ async function httpRequest(
 		body?: string;
 	},
 	agent: Agent,
-	retries = 2,
+	retry?: RetryConfig,
 ): Promise<HttpResponse> {
+	const maxRetries = retry?.maxRetries ?? DEFAULT_MAX_RETRIES;
+	const baseDelayMs = retry?.baseDelayMs ?? DEFAULT_BASE_DELAY_MS;
+	const maxDelayMs = retry?.maxDelayMs ?? DEFAULT_MAX_DELAY_MS;
+
 	let lastError: Error | undefined;
-	for (let attempt = 0; attempt <= retries; attempt++) {
+	for (let attempt = 0; attempt <= maxRetries; attempt++) {
 		try {
 			const {
 				statusCode,
-				headers: _h,
+				headers: responseHeaders,
 				body,
 			} = await undiciRequest(url, {
 				method: options.method ?? "GET",
@@ -57,25 +113,35 @@ async function httpRequest(
 			});
 
 			const text = await body.text();
+			const normalizedHeaders: Record<string, string | string[] | undefined> = {};
+			if (responseHeaders && typeof responseHeaders === "object") {
+				for (const [key, value] of Object.entries(responseHeaders)) {
+					normalizedHeaders[key.toLowerCase()] = value;
+				}
+			}
+
 			const response: HttpResponse = {
 				ok: statusCode >= 200 && statusCode < 300,
 				status: statusCode,
+				headers: normalizedHeaders,
 				json: async () => JSON.parse(text),
 				text: async () => text,
 			};
 
-			// Don't retry client errors (4xx) — only server errors (5xx)
-			if (statusCode >= 500 && attempt < retries) {
-				lastError = new NetworkError(`Server error: HTTP ${statusCode}`);
-				await delay(100 * 2 ** attempt);
+			// Retry on transient status codes (429, 5xx)
+			if (isRetryableStatus(statusCode) && attempt < maxRetries) {
+				lastError = new NetworkError(`Server error: HTTP ${statusCode}`, statusCode);
+				const retryAfter = normalizedHeaders["retry-after"];
+				const retryAfterValue = Array.isArray(retryAfter) ? retryAfter[0] : retryAfter;
+				await delay(computeRetryDelay(attempt, baseDelayMs, maxDelayMs, retryAfterValue));
 				continue;
 			}
 
 			return response;
 		} catch (err) {
 			lastError = new NetworkError(err instanceof Error ? err.message : "Network request failed");
-			if (attempt < retries) {
-				await delay(100 * 2 ** attempt);
+			if (attempt < maxRetries) {
+				await delay(computeRetryDelay(attempt, baseDelayMs, maxDelayMs));
 			}
 		}
 	}
@@ -114,6 +180,7 @@ export async function createAuthSession(
 	password: string,
 	apiKey?: string,
 	appId?: string,
+	retry?: RetryConfig,
 ): Promise<AuthSession> {
 	const key = apiKey ?? DEFAULT_API_KEY;
 	const app = appId ?? DEFAULT_APP_ID;
@@ -126,8 +193,8 @@ export async function createAuthSession(
 	let config: FirebaseWebConfig;
 	let token: TokenState;
 	try {
-		config = await fetchWebConfig(key, app, agent);
-		token = await login(email, password, key, agent);
+		config = await fetchWebConfig(key, app, agent, retry);
+		token = await login(email, password, key, agent, retry);
 	} catch (err) {
 		agent.close();
 		throw err;
@@ -143,7 +210,7 @@ export async function createAuthSession(
 	async function ensureValidToken(): Promise<string> {
 		if (!isTokenValid()) {
 			if (!refreshPromise) {
-				refreshPromise = refreshAccessToken(token.refreshToken, key, agent)
+				refreshPromise = refreshAccessToken(token.refreshToken, key, agent, retry)
 					.then((t) => {
 						token = t;
 						return t;
@@ -178,6 +245,7 @@ export async function createAuthSession(
 					body: body !== undefined ? JSON.stringify(body) : undefined,
 				},
 				agent,
+				retry,
 			);
 
 			if (!response.ok && response.status !== 404) {
@@ -204,6 +272,7 @@ export async function createAuthSession(
 					body: JSON.stringify({ data }),
 				},
 				agent,
+				retry,
 			);
 
 			if (!response.ok) {
@@ -231,6 +300,7 @@ async function fetchWebConfig(
 	apiKey: string,
 	appId: string,
 	agent: Agent,
+	retry?: RetryConfig,
 ): Promise<FirebaseWebConfig> {
 	const url = `${FIREBASE_HOST}/v1alpha/projects/-/apps/${appId}/webConfig`;
 	const response = await httpRequest(
@@ -243,6 +313,7 @@ async function fetchWebConfig(
 			},
 		},
 		agent,
+		retry,
 	);
 
 	if (!response.ok) {
@@ -257,6 +328,7 @@ async function login(
 	password: string,
 	apiKey: string,
 	agent: Agent,
+	retry?: RetryConfig,
 ): Promise<TokenState> {
 	const url = `${IDENTITY_HOST}/v1/accounts:signInWithPassword?key=${apiKey}`;
 	const response = await httpRequest(
@@ -274,6 +346,7 @@ async function login(
 			}),
 		},
 		agent,
+		retry,
 	);
 
 	if (!response.ok) {
@@ -303,6 +376,7 @@ async function refreshAccessToken(
 	refreshToken: string,
 	apiKey: string,
 	agent: Agent,
+	retry?: RetryConfig,
 ): Promise<TokenState> {
 	const url = `${TOKEN_HOST}/v1/token?key=${apiKey}`;
 	const response = await httpRequest(
@@ -319,6 +393,7 @@ async function refreshAccessToken(
 			}),
 		},
 		agent,
+		retry,
 	);
 
 	if (!response.ok) {

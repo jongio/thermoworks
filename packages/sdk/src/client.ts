@@ -577,6 +577,7 @@ export class ThermoworksCloud {
 				this.config.password,
 				this.config.apiKey,
 				this.config.appId,
+				this.config.retry,
 			)
 				.then((s) => {
 					if (this.closed) {

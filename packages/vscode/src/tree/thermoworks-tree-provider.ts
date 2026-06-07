@@ -16,6 +16,7 @@ import {
 } from "./tree-items";
 
 const DEVICE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const FIRMWARE_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (firmware releases are rare)
 
 interface DeviceCache {
 	devices: Device[];
@@ -24,6 +25,11 @@ interface DeviceCache {
 
 interface ChannelCache {
 	channels: DeviceChannel[];
+	fetchedAt: number;
+}
+
+interface FirmwareCache {
+	latestVersion: string;
 	fetchedAt: number;
 }
 

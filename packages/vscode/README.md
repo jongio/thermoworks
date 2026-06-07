@@ -70,7 +70,15 @@ The panel auto-refreshes on the same interval as the status bar. Device list is 
 
 ### Firmware Update Detection
 
-The extension compares each device's current firmware version against the latest available version from ThermoWorks Cloud. If a device is outdated, an orange **"Firmware update available"** warning appears at the top of that device's channel list. Firmware info is cached for 1 hour.
+The extension compares each device's current firmware version against the latest available version from ThermoWorks Cloud. If a device is outdated, an orange **"Firmware update available"** warning is visible at every level of the tree:
+
+- **Devices folder** — shows "1 update available" in the description with an orange alert icon
+- **Device node** — shows "⬆️ Update" next to the device type, with an orange alert icon
+- **Device children** — shows "Firmware update available" with the current version
+
+Firmware info is cached for 1 hour (releases are infrequent).
+
+![Firmware update alert](../../docs/images/vscode-firmware-update.png)
 
 ## Status Bar
 

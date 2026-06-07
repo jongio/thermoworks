@@ -7,6 +7,7 @@ export {
 	isValidDeviceEntry,
 	isValidStatuslineConfig,
 } from "./config.js";
+export { toCelsius, toFahrenheit } from "./convert.js";
 export type { Credentials } from "./credentials.js";
 export {
 	CREDENTIAL_ACCOUNT,

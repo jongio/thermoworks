@@ -31,6 +31,7 @@ export type TreeNode =
 	| DeviceNode
 	| ChannelNode
 	| DeviceDetailNode
+	| FirmwareWarningNode
 	| ActionNode
 	| ErrorNode
 	| LoadingNode;
@@ -169,6 +170,19 @@ export class DeviceDetailNode extends vscode.TreeItem {
 	}
 }
 
+export class FirmwareWarningNode extends vscode.TreeItem {
+	readonly type = "firmwareWarning" as const;
+
+	constructor(currentVersion: string, deviceSerial: string) {
+		super("Firmware update available", vscode.TreeItemCollapsibleState.None);
+		this.id = `thermoworks-firmware-${deviceSerial}`;
+		this.description = `current: ${currentVersion}`;
+		this.iconPath = new vscode.ThemeIcon("alert", new vscode.ThemeColor("charts.orange"));
+		this.tooltip = `Device firmware ${currentVersion} is outdated. Update via the ThermoWorks app.`;
+		this.contextValue = "firmwareWarning";
+	}
+}
+
 // ─── Utility Nodes ───────────────────────────────────────────────────────────
 
 export class ErrorNode extends vscode.TreeItem {
@@ -196,8 +210,14 @@ export class LoadingNode extends vscode.TreeItem {
 export function buildDeviceChildren(
 	device: Device,
 	channels: DeviceChannel[],
+	firmwareOutdated = false,
 ): TreeNode[] {
 	const children: TreeNode[] = [];
+
+	// Firmware update warning (shown first for visibility)
+	if (firmwareOutdated && device.firmware) {
+		children.push(new FirmwareWarningNode(device.firmware, device.serial));
+	}
 
 	// Temperature channels (filter out humidity-only)
 	const tempChannels = channels.filter(
@@ -214,7 +234,7 @@ export function buildDeviceChildren(
 	if (device.lastSeen) {
 		children.push(new DeviceDetailNode("Last Seen", formatTimeAgo(device.lastSeen), device.serial));
 	}
-	if (device.firmware) {
+	if (device.firmware && !firmwareOutdated) {
 		children.push(new DeviceDetailNode("Firmware", device.firmware, device.serial));
 	}
 

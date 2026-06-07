@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { ClientManager } from "./client-manager";
 import { CredentialStore } from "./credentials";
 import { TemperatureStatusBar } from "./status-bar";
 import { ThermoworksTreeProvider } from "./tree/thermoworks-tree-provider";
@@ -7,12 +8,13 @@ let statusBar: TemperatureStatusBar | undefined;
 
 export function activate(context: vscode.ExtensionContext): void {
 	const credentialStore = new CredentialStore(context.secrets);
+	const clientManager = new ClientManager();
 
 	// ─── Status Bar (existing) ───────────────────────────────────────────
-	statusBar = new TemperatureStatusBar(credentialStore, context);
+	statusBar = new TemperatureStatusBar(credentialStore, clientManager, context);
 
 	// ─── TreeView Panel ──────────────────────────────────────────────────
-	const treeProvider = new ThermoworksTreeProvider(credentialStore);
+	const treeProvider = new ThermoworksTreeProvider(credentialStore, clientManager);
 	const treeView = vscode.window.createTreeView("thermoworksPanel", {
 		treeDataProvider: treeProvider,
 		showCollapseAll: true,

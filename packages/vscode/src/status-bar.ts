@@ -5,6 +5,7 @@ import {
 	ThermoworksCloud,
 } from "thermoworks-sdk";
 import * as vscode from "vscode";
+import type { ClientManager } from "./client-manager";
 import { loadConfig } from "./config";
 import type { CredentialStore } from "./credentials";
 
@@ -16,9 +17,9 @@ const BLINK_INTERVAL_MS = 800;
 export class TemperatureStatusBar implements vscode.Disposable {
 	private readonly item: vscode.StatusBarItem;
 	private readonly credentialStore: CredentialStore;
+	private readonly clientManager: ClientManager;
 	private timer: ReturnType<typeof setTimeout> | undefined;
 	private blinkTimer: ReturnType<typeof setInterval> | undefined;
-	private client: ThermoworksCloud | undefined;
 	private refreshing = false;
 	private consecutiveFailures = 0;
 	private disposed = false;
@@ -26,8 +27,13 @@ export class TemperatureStatusBar implements vscode.Disposable {
 	private blinkVisible = true;
 	private lastText = "";
 
-	constructor(credentialStore: CredentialStore, context: vscode.ExtensionContext) {
+	constructor(
+		credentialStore: CredentialStore,
+		clientManager: ClientManager,
+		context: vscode.ExtensionContext,
+	) {
 		this.credentialStore = credentialStore;
+		this.clientManager = clientManager;
 		this.item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
 		this.item.command = "thermoworks.refresh";
 		this.item.text = "$(flame) --";
@@ -145,11 +151,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 				return;
 			}
 
-			if (!this.client) {
-				this.client = new ThermoworksCloud({ email: creds.email, password: creds.password });
-			}
-
-			const client = this.client;
+			const client = this.clientManager.getClient(creds);
 			const allDevices = await client.getDevices();
 			if (this.isStale(gen)) return;
 
@@ -226,7 +228,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		} catch (error) {
 			if (this.isStale(gen)) return;
 			this.consecutiveFailures++;
-			this.closeClient();
+			this.clientManager.close();
 			this.applyAlarmStyle("none");
 
 			const message = error instanceof Error ? error.message : "Unknown error";
@@ -247,7 +249,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		this.generation++;
 		this.cancelTimer();
 		this.stopBlink();
-		this.closeClient();
+		this.clientManager.close();
 		this.item.dispose();
 	}
 
@@ -259,7 +261,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		this.generation++;
 		this.consecutiveFailures = 0;
 		this.applyAlarmStyle("none");
-		this.closeClient();
+		this.clientManager.close();
 	}
 
 	private getRefreshMs(): number {
@@ -284,11 +286,6 @@ export class TemperatureStatusBar implements vscode.Disposable {
 			clearTimeout(this.timer);
 			this.timer = undefined;
 		}
-	}
-
-	private closeClient(): void {
-		this.client?.close();
-		this.client = undefined;
 	}
 
 	private applyAlarmStyle(alarm: AlarmState): void {

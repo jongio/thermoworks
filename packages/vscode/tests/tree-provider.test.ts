@@ -197,7 +197,19 @@ function createProvider(): ThermoworksTreeProvider {
 		storeCredentials: vi.fn(),
 		deleteCredentials: vi.fn(),
 	};
-	return new ThermoworksTreeProvider(credStore as any);
+
+	// Construct with a mock client manager that returns a mock SDK client
+	const clientManager = {
+		getClient: vi.fn(() => ({
+			getUser: mockGetUser,
+			getDevices: mockGetDevices,
+			getAllDeviceChannels: mockGetAllDeviceChannels,
+			close: mockClose,
+		})),
+		close: vi.fn(),
+	};
+
+	return new ThermoworksTreeProvider(credStore as any, clientManager as any);
 }
 
 function getCredStoreMock(provider: ThermoworksTreeProvider): any {

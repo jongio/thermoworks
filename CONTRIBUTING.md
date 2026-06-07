@@ -134,6 +134,23 @@ For headless/CI environments where the OS keychain is unavailable, credentials c
 3. Run `pnpm build && pnpm test && pnpm typecheck && pnpm lint` to verify.
 4. Open a pull request with a clear description.
 
+## Agent Skills and Evaluation
+
+The project includes GitHub Copilot agent skills in `.github/skills/` and [Vally](https://aka.ms/vally) evaluation suites in `evals/`.
+
+```bash
+# Validate skill format and eval specs
+pnpm eval:lint
+
+# Run smoke eval suite (agent-based, needs GITHUB_TOKEN)
+pnpm eval:smoke
+
+# Run full eval suite
+pnpm eval:full
+```
+
+When adding a new skill, create a `SKILL.md` in `.github/skills/<name>/` with YAML frontmatter (`name` must match directory name) and add a corresponding eval spec in `evals/<name>/eval.yaml`. Run `pnpm eval:lint` to validate before pushing.
+
 ## Notes
 
 This project interacts with an undocumented API. Be especially careful with changes to authentication and Firestore-related code.

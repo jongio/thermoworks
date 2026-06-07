@@ -147,6 +147,32 @@ pnpm build
 pnpm typecheck
 ```
 
+## Agent Skills
+
+This project includes [GitHub Copilot agent skills](https://docs.github.com/en/copilot) in `.github/skills/` that help AI coding assistants work with the codebase:
+
+| Skill | Description |
+|-------|-------------|
+| `thermoworks` | Integration guide for reading temperatures, monitoring alarms, and using the CLI |
+| `thermoworks-dev` | Development guide for adding features, understanding conventions, and building |
+
+Skills are auto-discovered by GitHub Copilot and activated when relevant to your task.
+
+## Skill Evaluation (Vally)
+
+Eval suites in `evals/` validate that agent skills produce correct guidance, powered by [`@microsoft/vally`](https://aka.ms/vally):
+
+```bash
+# Validate eval specs (fast, no execution)
+pnpm eval:lint
+
+# Run smoke suite
+pnpm eval:smoke
+
+# Run full evaluation
+pnpm eval:full
+```
+
 ## License
 
 MIT

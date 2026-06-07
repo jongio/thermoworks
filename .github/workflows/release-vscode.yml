@@ -1,0 +1,66 @@
+name: Release VS Code Extension
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+concurrency:
+  group: release-vscode
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  release-vscode:
+    name: Publish to VS Code Marketplace
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'jongio'
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm -r test
+
+      - name: Bump, publish, tag
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          cd packages/vscode
+          VERSION=$(npm version ${{ inputs.bump }} --no-git-tag-version)
+          VERSION="${VERSION#v}"
+          echo "Publishing jongio.thermoworks@$VERSION to VS Code Marketplace"
+          npx vsce publish --no-dependencies --pat "$VSCE_PAT"
+          cd ../..
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: release thermoworks-vscode@$VERSION [skip ci]"
+          git tag "vscode-v$VERSION"
+          git push origin main --tags
+          gh release create "vscode-v$VERSION" --title "ThermoWorks for VS Code v$VERSION" --generate-notes
+          echo "## Published jongio.thermoworks@$VERSION to Marketplace" >> "$GITHUB_STEP_SUMMARY"

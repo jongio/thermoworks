@@ -1,0 +1,149 @@
+name: Release All
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type for all packages"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+      skip_unchanged:
+        description: "Skip packages with no changes since last release"
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: release-all
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  release-all:
+    name: Release all packages
+    runs-on: ubuntu-latest
+    if: github.repository_owner == 'jongio'
+    timeout-minutes: 30
+    environment: npm-publish
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm install -g npm@latest
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -r build
+      - run: pnpm -r test
+
+      - name: Release packages
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+
+          BUMP="${{ inputs.bump }}"
+          SKIP_UNCHANGED="${{ inputs.skip_unchanged }}"
+          published=""
+
+          # Helper: get latest tag for prefix
+          latest_tag() {
+            git tag --sort=-v:refname | grep "^$1" | head -1 || echo ""
+          }
+
+          # Helper: check if package has changes since tag
+          has_changes() {
+            local pkg_dir="$1"
+            local tag="$2"
+            if [ -z "$tag" ]; then
+              return 0  # no tag = first release, always publish
+            fi
+            [ -n "$(git log "$tag"..HEAD --oneline -- "$pkg_dir")" ]
+          }
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # --- SDK ---
+          SDK_TAG=$(latest_tag "sdk-v")
+          if [ "$SKIP_UNCHANGED" = "false" ] || has_changes "packages/sdk" "$SDK_TAG"; then
+            cd packages/sdk
+            VERSION=$(npm version "$BUMP" --no-git-tag-version)
+            VERSION="${VERSION#v}"
+            echo "::group::Publishing thermoworks-sdk@$VERSION"
+            pnpm publish --no-git-checks --provenance
+            echo "::endgroup::"
+            cd ../..
+            published="$published sdk-v$VERSION"
+          else
+            echo "SDK: no changes since $SDK_TAG, skipping"
+          fi
+
+          # --- CLI ---
+          CLI_TAG=$(latest_tag "cli-v")
+          if [ "$SKIP_UNCHANGED" = "false" ] || has_changes "packages/cli" "$CLI_TAG"; then
+            cd packages/cli
+            VERSION=$(npm version "$BUMP" --no-git-tag-version)
+            VERSION="${VERSION#v}"
+            echo "::group::Publishing thermoworks@$VERSION"
+            pnpm publish --no-git-checks --provenance
+            echo "::endgroup::"
+            cd ../..
+            published="$published cli-v$VERSION"
+          else
+            echo "CLI: no changes since $CLI_TAG, skipping"
+          fi
+
+          # --- VS Code ---
+          VSCODE_TAG=$(latest_tag "vscode-v")
+          if [ "$SKIP_UNCHANGED" = "false" ] || has_changes "packages/vscode" "$VSCODE_TAG"; then
+            cd packages/vscode
+            VERSION=$(npm version "$BUMP" --no-git-tag-version)
+            VERSION="${VERSION#v}"
+            echo "::group::Publishing jongio.thermoworks@$VERSION"
+            npx vsce publish --no-dependencies --pat "$VSCE_PAT"
+            echo "::endgroup::"
+            cd ../..
+            published="$published vscode-v$VERSION"
+          else
+            echo "VS Code: no changes since $VSCODE_TAG, skipping"
+          fi
+
+          # --- Commit and tag ---
+          if [ -n "$published" ]; then
+            git add -A
+            git commit -m "chore: release$published [skip ci]"
+
+            for tag in $published; do
+              git tag "$tag"
+            done
+
+            git push origin main --tags
+
+            for tag in $published; do
+              gh release create "$tag" --generate-notes --latest=false
+            done
+
+            echo "## Released:$published" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## No packages needed releasing" >> "$GITHUB_STEP_SUMMARY"
+          fi

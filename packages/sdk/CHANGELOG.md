@@ -1,5 +1,11 @@
 # thermoworks-sdk
 
+## 0.3.0
+
+### Minor Changes
+
+- [`50329e0`](https://github.com/jongio/thermoworks/commit/50329e0f2e0e4db0a214ec0e9db393cbafc35667) Thanks [@jongio](https://github.com/jongio)! - Add shared alarm utilities (getChannelAlarmState, getChannelsAlarmState, escalateAlarm), shared config types and validation (StatuslineConfig, DeviceEntry, isValidDeviceEntry), shared credential contract (parseCredentialBlob, serializeCredentials, resolveEnvCredentials), formatTimeAgo utility, retry with exponential backoff for transient HTTP failures, parallel channel fetches via Promise.allSettled, 9 new API methods (getAccount, getEvents, getArchives, getArchive, getCalibration, getFirmwareInfo, getTemperatureGuide, search, getDeviceEvents), and hardened isValidDeviceEntry to reject empty channels.
+
 ## 0.2.2
 
 ### Patch Changes

@@ -11,6 +11,13 @@ import {
 	getTimestamp,
 } from "./firestore.js";
 import {
+	type ChannelUpdateCallback,
+	createSubscription,
+	type ErrorCallback,
+	type Subscription,
+	type SubscriptionOptions,
+} from "./subscribe.js";
+import {
 	type Account,
 	type ActionResult,
 	type Alarm,
@@ -775,6 +782,35 @@ export class ThermoworksCloud {
 			this.resetMinMax(serial, channel),
 		clearEvents: (serial: string): Promise<ActionResult> => this.clearEvents(serial),
 	};
+
+	/**
+	 * Subscribe to real-time channel updates for a device via polling.
+	 *
+	 * Immediately fetches the current state, then polls at the configured
+	 * interval. The callback is only invoked when a channel's value, units,
+	 * or status actually changes (deduplication).
+	 *
+	 * @example
+	 * ```ts
+	 * const sub = client.subscribe("ABC123", (update) => {
+	 *   console.log(`Ch${update.channel}: ${update.value}°${update.units}`);
+	 * }, { intervalMs: 5000, onError: console.error });
+	 *
+	 * // Later: stop polling
+	 * sub.unsubscribe();
+	 * ```
+	 */
+	subscribe(
+		serial: string,
+		callback: ChannelUpdateCallback,
+		options?: SubscriptionOptions & { onError?: ErrorCallback },
+	): Subscription {
+		if (this.closed) {
+			throw new Error("Client is closed");
+		}
+		validateSerial(serial);
+		return createSubscription(serial, (s) => this.getAllDeviceChannels(s), callback, options);
+	}
 
 	/** Close the client and release resources. */
 	close(): void {

@@ -1,23 +1,46 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { ThermoworksCloud } from "thermoworks-sdk";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
+import { AuthError, NetworkError, NotFoundError, ThermoworksCloud } from "thermoworks-sdk";
 import { z } from "zod";
 import type { Credentials } from "./auth.js";
 
 export function createServer(credentials: Credentials): McpServer {
+	const client = new ThermoworksCloud({
+		email: credentials.email,
+		password: credentials.password,
+	});
 	const server = new McpServer({
 		name: "thermoworks",
 		version: "0.1.0",
 	});
+	const closeServer = server.close.bind(server);
 
-	async function withClient<T>(fn: (client: ThermoworksCloud) => Promise<T>): Promise<T> {
-		const client = new ThermoworksCloud({
-			email: credentials.email,
-			password: credentials.password,
-		});
+	server.close = async () => {
 		try {
-			return await fn(client);
+			await closeServer();
 		} finally {
 			client.close();
+		}
+	};
+
+	function textContent(text: string): CallToolResult {
+		return {
+			content: [{ type: "text", text }],
+		};
+	}
+
+	function jsonContent(value: unknown): CallToolResult {
+		return textContent(JSON.stringify(value, null, 2));
+	}
+
+	async function withClient<T>(fn: (client: ThermoworksCloud) => Promise<T>): Promise<T> {
+		try {
+			return await fn(client);
+		} catch (err) {
+			if (err instanceof NotFoundError) throw new Error("Resource not found");
+			if (err instanceof AuthError) throw new Error("Authentication failed");
+			if (err instanceof NetworkError) throw new Error("Service unavailable");
+			throw new Error("An unexpected error occurred");
 		}
 	}
 
@@ -27,25 +50,16 @@ export function createServer(credentials: Credentials): McpServer {
 		{},
 		async () => {
 			const devices = await withClient((client) => client.getDevices());
-			return {
-				content: [
-					{
-						type: "text" as const,
-						text: JSON.stringify(
-							devices.map((device) => ({
-								serial: device.serial,
-								label: device.label,
-								type: device.type,
-								status: device.status,
-								battery: device.battery,
-								lastSeen: device.lastSeen?.toISOString() ?? null,
-							})),
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return jsonContent(
+				devices.map((device) => ({
+					serial: device.serial,
+					label: device.label,
+					type: device.type,
+					status: device.status,
+					battery: device.battery,
+					lastSeen: device.lastSeen?.toISOString() ?? null,
+				})),
+			);
 		},
 	);
 
@@ -55,28 +69,17 @@ export function createServer(credentials: Credentials): McpServer {
 		{ serial: z.string().describe("Device serial number") },
 		async ({ serial }) => {
 			const device = await withClient((client) => client.getDevice(serial));
-			return {
-				content: [
-					{
-						type: "text" as const,
-						text: JSON.stringify(
-							{
-								serial: device.serial,
-								label: device.label,
-								type: device.type,
-								status: device.status,
-								battery: device.battery,
-								firmware: device.firmware,
-								lastSeen: device.lastSeen?.toISOString() ?? null,
-								sessionLabel: device.sessionLabel,
-								notes: device.notes,
-							},
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return jsonContent({
+				serial: device.serial,
+				label: device.label,
+				type: device.type,
+				status: device.status,
+				battery: device.battery,
+				firmware: device.firmware,
+				lastSeen: device.lastSeen?.toISOString() ?? null,
+				sessionLabel: device.sessionLabel,
+				notes: device.notes,
+			});
 		},
 	);
 
@@ -86,50 +89,41 @@ export function createServer(credentials: Credentials): McpServer {
 		{ serial: z.string().describe("Device serial number") },
 		async ({ serial }) => {
 			const channels = await withClient((client) => client.getAllDeviceChannels(serial));
-			return {
-				content: [
-					{
-						type: "text" as const,
-						text: JSON.stringify(
-							channels.map((channel, index) => ({
-								channel: index + 1,
-								label: channel.label,
-								value: channel.value,
-								units: channel.units,
-								status: channel.status,
-								alarmHigh: channel.alarmHigh
-									? {
-											enabled: channel.alarmHigh.enabled,
-											alarming: channel.alarmHigh.alarming,
-											value: channel.alarmHigh.value,
-										}
-									: null,
-								alarmLow: channel.alarmLow
-									? {
-											enabled: channel.alarmLow.enabled,
-											alarming: channel.alarmLow.alarming,
-											value: channel.alarmLow.value,
-										}
-									: null,
-								minimum: channel.minimum
-									? {
-											value: channel.minimum.value,
-											date: channel.minimum.date?.toISOString() ?? null,
-										}
-									: null,
-								maximum: channel.maximum
-									? {
-											value: channel.maximum.value,
-											date: channel.maximum.date?.toISOString() ?? null,
-										}
-									: null,
-							})),
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return jsonContent(
+				channels.map((channel, index) => ({
+					channel: index + 1,
+					label: channel.label,
+					value: channel.value,
+					units: channel.units,
+					status: channel.status,
+					alarmHigh: channel.alarmHigh
+						? {
+								enabled: channel.alarmHigh.enabled,
+								alarming: channel.alarmHigh.alarming,
+								value: channel.alarmHigh.value,
+							}
+						: null,
+					alarmLow: channel.alarmLow
+						? {
+								enabled: channel.alarmLow.enabled,
+								alarming: channel.alarmLow.alarming,
+								value: channel.alarmLow.value,
+							}
+						: null,
+					minimum: channel.minimum
+						? {
+								value: channel.minimum.value,
+								date: channel.minimum.date?.toISOString() ?? null,
+							}
+						: null,
+					maximum: channel.maximum
+						? {
+								value: channel.maximum.value,
+								date: channel.maximum.date?.toISOString() ?? null,
+							}
+						: null,
+				})),
+			);
 		},
 	);
 
@@ -140,14 +134,10 @@ export function createServer(credentials: Credentials): McpServer {
 		async ({ serial }) => {
 			const average = await withClient((client) => client.getAverageTemperature(serial));
 			if (!average) {
-				return {
-					content: [{ type: "text" as const, text: "No temperature readings available" }],
-				};
+				return textContent("No temperature readings available");
 			}
 
-			return {
-				content: [{ type: "text" as const, text: JSON.stringify(average, null, 2) }],
-			};
+			return jsonContent(average);
 		},
 	);
 
@@ -157,7 +147,13 @@ export function createServer(credentials: Credentials): McpServer {
 		{
 			serial: z.string().optional().describe("Filter by device serial number"),
 			event_type: z.string().optional().describe("Filter by event type"),
-			limit: z.number().optional().describe("Maximum events to return (default 50)"),
+			limit: z
+				.number()
+				.int()
+				.min(1)
+				.max(500)
+				.optional()
+				.describe("Maximum events to return (default 50)"),
 		},
 		async ({ serial, event_type, limit }) => {
 			const events = await withClient((client) =>
@@ -167,27 +163,18 @@ export function createServer(credentials: Credentials): McpServer {
 					limit,
 				}),
 			);
-			return {
-				content: [
-					{
-						type: "text" as const,
-						text: JSON.stringify(
-							events.map((event) => ({
-								id: event.id,
-								eventType: event.eventType,
-								severity: event.severity,
-								eventTime: event.eventTime.toISOString(),
-								deviceId: event.deviceId,
-								channelId: event.channelId,
-								valueBefore: event.valueBefore,
-								valueAfter: event.valueAfter,
-							})),
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return jsonContent(
+				events.map((event) => ({
+					id: event.id,
+					eventType: event.eventType,
+					severity: event.severity,
+					eventTime: event.eventTime.toISOString(),
+					deviceId: event.deviceId,
+					channelId: event.channelId,
+					valueBefore: event.valueBefore,
+					valueAfter: event.valueAfter,
+				})),
+			);
 		},
 	);
 
@@ -196,30 +183,27 @@ export function createServer(credentials: Credentials): McpServer {
 		"Get historical session archives for a device",
 		{
 			serial: z.string().describe("Device serial number"),
-			limit: z.number().optional().describe("Maximum archives to return (default 20)"),
+			limit: z
+				.number()
+				.int()
+				.min(1)
+				.max(500)
+				.optional()
+				.describe("Maximum archives to return (default 20)"),
 		},
 		async ({ serial, limit }) => {
 			const archives = await withClient((client) => client.getArchives(serial, { limit }));
-			return {
-				content: [
-					{
-						type: "text" as const,
-						text: JSON.stringify(
-							archives.map((archive) => ({
-								id: archive.id,
-								label: archive.label,
-								start: archive.start?.toISOString() ?? null,
-								end: archive.end?.toISOString() ?? null,
-								count: archive.count,
-								type: archive.type,
-								notes: archive.notes,
-							})),
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return jsonContent(
+				archives.map((archive) => ({
+					id: archive.id,
+					label: archive.label,
+					start: archive.start?.toISOString() ?? null,
+					end: archive.end?.toISOString() ?? null,
+					count: archive.count,
+					type: archive.type,
+					notes: archive.notes,
+				})),
+			);
 		},
 	);
 
@@ -229,9 +213,7 @@ export function createServer(credentials: Credentials): McpServer {
 		{},
 		async () => {
 			const guide = await withClient((client) => client.getTemperatureGuide());
-			return {
-				content: [{ type: "text" as const, text: JSON.stringify(guide, null, 2) }],
-			};
+			return jsonContent(guide);
 		},
 	);
 

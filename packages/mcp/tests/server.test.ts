@@ -12,18 +12,22 @@ const mockGetArchives = vi.fn();
 const mockGetTemperatureGuide = vi.fn();
 const mockClose = vi.fn();
 
-vi.mock("thermoworks-sdk", () => ({
-	ThermoworksCloud: class MockThermoworksCloud {
-		getDevices = mockGetDevices;
-		getDevice = mockGetDevice;
-		getAllDeviceChannels = mockGetAllDeviceChannels;
-		getAverageTemperature = mockGetAverageTemperature;
-		getEvents = mockGetEvents;
-		getArchives = mockGetArchives;
-		getTemperatureGuide = mockGetTemperatureGuide;
-		close = mockClose;
-	},
-}));
+vi.mock("thermoworks-sdk", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("thermoworks-sdk")>();
+	return {
+		...actual,
+		ThermoworksCloud: class MockThermoworksCloud {
+			getDevices = mockGetDevices;
+			getDevice = mockGetDevice;
+			getAllDeviceChannels = mockGetAllDeviceChannels;
+			getAverageTemperature = mockGetAverageTemperature;
+			getEvents = mockGetEvents;
+			getArchives = mockGetArchives;
+			getTemperatureGuide = mockGetTemperatureGuide;
+			close = mockClose;
+		},
+	};
+});
 
 const { createServer } = await import("../src/server.js");
 
@@ -54,6 +58,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
 	await cleanup();
+	expect(mockClose).toHaveBeenCalledTimes(1);
 });
 
 describe("tool registration", () => {
@@ -93,6 +98,17 @@ describe("get_devices", () => {
 		expect(data[0].label).toBe("Smoker");
 		expect(data[0].status).toBe("online");
 		expect(data[0].battery).toBe(85);
+		expect(mockClose).not.toHaveBeenCalled();
+	});
+
+	it("returns sanitized MCP error when the SDK throws", async () => {
+		mockGetDevices.mockRejectedValue(new Error("upstream unavailable"));
+
+		const result = await client.callTool({ name: "get_devices", arguments: {} });
+		const content = result.content as Array<{ type: string; text: string }>;
+
+		expect(result.isError).toBe(true);
+		expect(content[0].text).toContain("An unexpected error occurred");
 	});
 });
 

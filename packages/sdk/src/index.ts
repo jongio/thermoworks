@@ -20,6 +20,14 @@ export {
 	serializeCredentials,
 } from "./credentials.js";
 export { formatTimeAgo } from "./format.js";
+export type {
+	ChannelUpdate,
+	ChannelUpdateCallback,
+	ErrorCallback,
+	Subscription,
+	SubscriptionOptions,
+} from "./subscribe.js";
+export { createSubscription } from "./subscribe.js";
 export type { TokenCacheData } from "./token-cache.js";
 export { invalidateTokenCache, resolveTokenCachePath } from "./token-cache.js";
 export type {

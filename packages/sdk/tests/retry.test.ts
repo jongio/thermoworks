@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NetworkError } from "../src/types.js";
 
-const delayRecorder: number[] = [];
+const delayArgs: number[] = [];
 
 vi.mock("node:timers/promises", () => ({
 	setTimeout: vi.fn(async (ms: number) => {
-		delayRecorder.push(ms);
+		delayArgs.push(ms);
 	}),
 }));
 
@@ -48,6 +48,7 @@ function mockAuthSetup() {
 afterEach(() => {
 	vi.clearAllMocks();
 	vi.restoreAllMocks();
+	delayArgs.length = 0;
 });
 
 describe("computeRetryDelay", () => {
@@ -93,11 +94,13 @@ describe("computeRetryDelay", () => {
 
 	it("respects Retry-After header as HTTP date", () => {
 		vi.spyOn(Math, "random").mockReturnValue(1);
-		const futureDate = new Date(Date.now() + 5000).toUTCString();
+		// Use a round second boundary to avoid toUTCString() precision loss
+		const now = Math.floor(Date.now() / 1000) * 1000;
+		vi.spyOn(Date, "now").mockReturnValue(now);
+		const futureDate = new Date(now + 5000).toUTCString();
 		const delay = computeRetryDelay(0, 1000, 30_000, futureDate);
-		// Should be approximately 5000ms (within tolerance for timing)
-		expect(delay).toBeGreaterThan(4000);
-		expect(delay).toBeLessThanOrEqual(30_000);
+		// Retry-After is 5000ms from mocked now, which exceeds base delay of 1000ms
+		expect(delay).toBe(5000);
 	});
 
 	it("ignores invalid Retry-After header", () => {
@@ -340,7 +343,6 @@ describe("max retries configuration", () => {
 
 describe("exponential backoff timing", () => {
 	it("waits with increasing delays between retries", async () => {
-		delayRecorder.length = 0;
 		vi.spyOn(Math, "random").mockReturnValue(1); // max jitter = full delay
 
 		mockAuthSetup();
@@ -359,9 +361,9 @@ describe("exponential backoff timing", () => {
 		await session.request("GET", "documents/users/user123");
 
 		// With random=1: attempt 0 -> 100, attempt 1 -> 200, attempt 2 -> 400
-		expect(delayRecorder).toContain(100);
-		expect(delayRecorder).toContain(200);
-		expect(delayRecorder).toContain(400);
+		expect(delayArgs).toContain(100);
+		expect(delayArgs).toContain(200);
+		expect(delayArgs).toContain(400);
 		session.close();
 	});
 });

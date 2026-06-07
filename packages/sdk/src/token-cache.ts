@@ -41,6 +41,12 @@ async function getKeytar(): Promise<KeytarLike | null> {
 
 /** Resolve the token cache file path from user input or default. */
 export function resolveTokenCachePath(userPath?: string): string {
+	if (userPath != null) {
+		// Reject paths that could escape the intended directory
+		if (userPath.includes("..") || userPath.startsWith("\\\\")) {
+			throw new Error("tokenCachePath must not contain '..' or UNC paths");
+		}
+	}
 	return userPath ?? DEFAULT_CACHE_PATH;
 }
 
@@ -102,14 +108,30 @@ export async function writeTokenCache(cachePath: string, data: TokenCacheData): 
 
 	// File fallback with restricted permissions
 	try {
+		const { lstatSync } = await import("node:fs");
+		try {
+			const stat = lstatSync(cachePath);
+			if (stat.isSymbolicLink()) {
+				process.emitWarning(
+					"Token cache path is a symlink, skipping write for security",
+					"ThermoWorksSecurityWarning",
+				);
+				return;
+			}
+		} catch {
+			// File doesn't exist yet, safe to create
+		}
 		const dir = dirname(cachePath);
 		await mkdir(dir, { recursive: true, mode: 0o700 });
 		await writeFile(cachePath, `${blob}\n`, {
 			encoding: "utf8",
 			mode: 0o600,
 		});
-	} catch {
-		// Non-fatal: caching failure shouldn't break auth
+	} catch (err) {
+		process.emitWarning(
+			`Token cache write failed: ${err instanceof Error ? err.message : "unknown error"}`,
+			"ThermoWorksSecurityWarning",
+		);
 	}
 }
 

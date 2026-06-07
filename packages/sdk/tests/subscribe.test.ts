@@ -65,7 +65,7 @@ describe("createSubscription", () => {
 		const updates: ChannelUpdate[] = [];
 
 		const sub = createSubscription("ABC123", fetcher, (u) => updates.push(u), {
-			intervalMs: 1000,
+			intervalMs: 5000,
 		});
 
 		// Initial poll
@@ -73,7 +73,7 @@ describe("createSubscription", () => {
 		expect(updates).toHaveLength(1);
 
 		// Advance timer - same data returned
-		await vi.advanceTimersByTimeAsync(1000);
+		await vi.advanceTimersByTimeAsync(5000);
 		expect(updates).toHaveLength(1); // Still 1 - deduplicated
 
 		sub.unsubscribe();
@@ -87,7 +87,7 @@ describe("createSubscription", () => {
 		const updates: ChannelUpdate[] = [];
 
 		const sub = createSubscription("ABC123", fetcher, (u) => updates.push(u), {
-			intervalMs: 1000,
+			intervalMs: 5000,
 		});
 
 		// Initial poll
@@ -96,7 +96,7 @@ describe("createSubscription", () => {
 		expect(updates[0]?.value).toBe(72.5);
 
 		// Next poll with changed value
-		await vi.advanceTimersByTimeAsync(1000);
+		await vi.advanceTimersByTimeAsync(5000);
 		expect(updates).toHaveLength(2);
 		expect(updates[1]?.value).toBe(75.0);
 
@@ -111,11 +111,11 @@ describe("createSubscription", () => {
 		const updates: ChannelUpdate[] = [];
 
 		const sub = createSubscription("ABC123", fetcher, (u) => updates.push(u), {
-			intervalMs: 1000,
+			intervalMs: 5000,
 		});
 
 		await vi.advanceTimersByTimeAsync(0);
-		await vi.advanceTimersByTimeAsync(1000);
+		await vi.advanceTimersByTimeAsync(5000);
 
 		expect(updates).toHaveLength(2);
 		expect(updates[1]?.units).toBe("C");
@@ -131,11 +131,11 @@ describe("createSubscription", () => {
 		const updates: ChannelUpdate[] = [];
 
 		const sub = createSubscription("ABC123", fetcher, (u) => updates.push(u), {
-			intervalMs: 1000,
+			intervalMs: 5000,
 		});
 
 		await vi.advanceTimersByTimeAsync(0);
-		await vi.advanceTimersByTimeAsync(1000);
+		await vi.advanceTimersByTimeAsync(5000);
 
 		expect(updates).toHaveLength(2);
 		expect(updates[1]?.status).toBe("offline");
@@ -157,13 +157,13 @@ describe("createSubscription", () => {
 		const updates: ChannelUpdate[] = [];
 
 		const sub = createSubscription("ABC123", fetcher, (u) => updates.push(u), {
-			intervalMs: 1000,
+			intervalMs: 5000,
 		});
 
 		await vi.advanceTimersByTimeAsync(0);
 		expect(updates).toHaveLength(2); // Both channels fire on first poll
 
-		await vi.advanceTimersByTimeAsync(1000);
+		await vi.advanceTimersByTimeAsync(5000);
 		expect(updates).toHaveLength(3); // Only channel 2 changed
 		expect(updates[2]?.channel).toBe(2);
 		expect(updates[2]?.value).toBe(155.0);
@@ -176,7 +176,7 @@ describe("createSubscription", () => {
 		const updates: ChannelUpdate[] = [];
 
 		const sub = createSubscription("ABC123", fetcher, (u) => updates.push(u), {
-			intervalMs: 1000,
+			intervalMs: 5000,
 		});
 
 		await vi.advanceTimersByTimeAsync(0);
@@ -208,7 +208,7 @@ describe("createSubscription", () => {
 		const updates: ChannelUpdate[] = [];
 
 		const sub = createSubscription("ABC123", fetcher, (u) => updates.push(u), {
-			intervalMs: 1000,
+			intervalMs: 5000,
 			onError: (e) => errors.push(e),
 		});
 
@@ -227,7 +227,7 @@ describe("createSubscription", () => {
 
 		// Should not throw
 		const sub = createSubscription("ABC123", fetcher, (u) => updates.push(u), {
-			intervalMs: 1000,
+			intervalMs: 5000,
 		});
 
 		await vi.advanceTimersByTimeAsync(0);
@@ -245,7 +245,7 @@ describe("createSubscription", () => {
 		const errors: Error[] = [];
 
 		const sub = createSubscription("ABC123", fetcher, (u) => updates.push(u), {
-			intervalMs: 1000,
+			intervalMs: 5000,
 			onError: (e) => errors.push(e),
 		});
 
@@ -255,7 +255,7 @@ describe("createSubscription", () => {
 		expect(updates).toHaveLength(0);
 
 		// Second poll - success
-		await vi.advanceTimersByTimeAsync(1000);
+		await vi.advanceTimersByTimeAsync(5000);
 		expect(updates).toHaveLength(1);
 		expect(updates[0]?.value).toBe(80.0);
 
@@ -291,7 +291,7 @@ describe("createSubscription", () => {
 		const updates: ChannelUpdate[] = [];
 
 		const sub = createSubscription("ABC123", fetcher, (u) => updates.push(u), {
-			intervalMs: 1000,
+			intervalMs: 5000,
 		});
 
 		await vi.advanceTimersByTimeAsync(0);
@@ -299,7 +299,7 @@ describe("createSubscription", () => {
 		expect(updates[0]?.value).toBeNull();
 		expect(updates[0]?.units).toBeNull();
 
-		await vi.advanceTimersByTimeAsync(1000);
+		await vi.advanceTimersByTimeAsync(5000);
 		expect(updates).toHaveLength(2);
 		expect(updates[1]?.value).toBe(50.0);
 

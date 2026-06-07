@@ -69,7 +69,8 @@ export function createSubscription(
 	callback: ChannelUpdateCallback,
 	options?: SubscriptionOptions & { onError?: ErrorCallback },
 ): Subscription {
-	const intervalMs = options?.intervalMs ?? DEFAULT_INTERVAL_MS;
+	const MIN_INTERVAL_MS = 5_000;
+	const intervalMs = Math.max(MIN_INTERVAL_MS, options?.intervalMs ?? DEFAULT_INTERVAL_MS);
 	const onError = options?.onError;
 
 	// Track last-known state per channel number for deduplication

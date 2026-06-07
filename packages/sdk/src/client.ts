@@ -103,6 +103,7 @@ export class ThermoworksCloud {
 	private sessionPromise: Promise<AuthSession> | null = null;
 	private cachedAccountId: string | null = null;
 	private closed = false;
+	private readonly activeSubscriptions = new Set<Subscription>();
 
 	constructor(config: ThermoworksConfig) {
 		this.config = config;
@@ -766,9 +767,12 @@ export class ThermoworksCloud {
 	/** Start a monitoring session for the given device. */
 	async startSession(serial: string, label?: string): Promise<ActionResult> {
 		validateSerial(serial);
+		if (label != null && label.length > 200) {
+			throw new Error("label exceeds maximum length of 200 characters");
+		}
 		const session = await this.ensureSession();
 		const data: Record<string, string> = { deviceId: serial };
-		if (label != null) data.label = label;
+		if (label != null) data.label = sanitizeLabel(label) ?? label;
 		const result = await session.callFunction("newSessionRequest", data);
 		return toActionResult(result);
 	}
@@ -828,6 +832,9 @@ export class ThermoworksCloud {
 		validateSerial(serial);
 		if (typeof name !== "string" || name.trim().length === 0) {
 			throw new Error("name must be a non-empty string");
+		}
+		if (name.length > 200) {
+			throw new Error("name exceeds maximum length of 200 characters");
 		}
 		const session = await this.ensureSession();
 		const result = await session.callFunction("setInstrumentName", {
@@ -1050,12 +1057,22 @@ export class ThermoworksCloud {
 			throw new Error("Client is closed");
 		}
 		validateSerial(serial);
-		return createSubscription(serial, (s) => this.getAllDeviceChannels(s), callback, options);
+		const sub = createSubscription(serial, (s) => this.getAllDeviceChannels(s), callback, options);
+		const tracked: Subscription = {
+			unsubscribe: () => {
+				sub.unsubscribe();
+				this.activeSubscriptions.delete(tracked);
+			},
+		};
+		this.activeSubscriptions.add(tracked);
+		return tracked;
 	}
 
-	/** Close the client and release resources. */
+	/** Close the client and release resources. Stops all active subscriptions. */
 	close(): void {
 		this.closed = true;
+		for (const sub of this.activeSubscriptions) sub.unsubscribe();
+		this.activeSubscriptions.clear();
 		this.session?.close();
 		this.session = null;
 		this.sessionPromise = null;

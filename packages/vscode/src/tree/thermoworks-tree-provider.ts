@@ -294,19 +294,23 @@ export class ThermoworksTreeProvider
 				return [new ErrorNode("No devices found")];
 			}
 
-			const nodes: TreeNode[] = [];
+			const results = await Promise.all(
+				devices.map(async (device) => {
+					const channels = this.demoMode
+						? getDemoChannels(device.serial, this.demoMode)
+						: await this.getCachedChannels(device.serial);
+					const hasAlarm = channels.some((ch) => ch.alarmHigh?.alarming || ch.alarmLow?.alarming);
+					const firmwareOutdated = await this.checkFirmwareOutdated(device);
+					return { device, hasAlarm, firmwareOutdated };
+				}),
+			);
+
 			let alarmCount = 0;
 			let firmwareUpdateCount = 0;
-			for (const device of devices) {
-				const channels = this.demoMode
-					? getDemoChannels(device.serial, this.demoMode)
-					: await this.getCachedChannels(device.serial);
-				const hasAlarm = channels.some((ch) => ch.alarmHigh?.alarming || ch.alarmLow?.alarming);
+			const nodes: TreeNode[] = [];
+			for (const { device, hasAlarm, firmwareOutdated } of results) {
 				if (hasAlarm) alarmCount++;
-
-				const firmwareOutdated = await this.checkFirmwareOutdated(device);
 				if (firmwareOutdated) firmwareUpdateCount++;
-
 				nodes.push(new DeviceNode(device, hasAlarm, firmwareOutdated));
 			}
 			this.updateBadge(alarmCount);

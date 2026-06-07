@@ -159,12 +159,23 @@ export class TemperatureStatusBar implements vscode.Disposable {
 			const tooltipLines: string[] = ["**ThermoWorks Temperatures**", ""];
 			let overallAlarm: AlarmState = "none";
 
-			for (const deviceConfig of config.devices) {
-				const device = allDevices.find((d) => d.serial === deviceConfig.serial);
-				if (!device) continue;
+			const configuredDevices = config.devices
+				.map((dc) => ({ config: dc, device: allDevices.find((d) => d.serial === dc.serial) }))
+				.filter(
+					(x): x is { config: typeof x.config; device: NonNullable<typeof x.device> } =>
+						x.device != null,
+				);
 
-				const allChannels = await client.getAllDeviceChannels(device.serial);
-				if (this.isStale(gen)) return;
+			const channelResults = await Promise.all(
+				configuredDevices.map(({ device }) => client.getAllDeviceChannels(device.serial)),
+			);
+			if (this.isStale(gen)) return;
+
+			for (let i = 0; i < configuredDevices.length; i++) {
+				const entry = configuredDevices[i];
+				const allChannels = channelResults[i];
+				if (!entry || !allChannels) continue;
+				const deviceConfig = entry.config;
 
 				const tempChannels = allChannels.filter(
 					(ch) => ch.value != null && ch.units != null && ch.units !== "H",

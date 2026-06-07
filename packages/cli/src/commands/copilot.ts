@@ -269,45 +269,52 @@ export async function copilotStatus(): Promise<void> {
 		// before individual channel reads are permitted).
 		const allDevices = await client.getDevices();
 
+		const configuredDevices = config.devices
+			.map((dc) => ({ config: dc, device: allDevices.find((d) => d.serial === dc.serial) }))
+			.filter(
+				(x): x is { config: typeof x.config; device: NonNullable<typeof x.device> } =>
+					x.device != null,
+			);
+
+		const channelResults = await Promise.all(
+			configuredDevices.map(({ device }) => client.getAllDeviceChannels(device.serial)),
+		);
+
 		const parts: string[] = [];
 
-		for (const deviceConfig of config.devices) {
-			const device = allDevices.find((d) => d.serial === deviceConfig.serial);
-			if (!device) continue;
-
-			const allChannels = await client.getAllDeviceChannels(device.serial);
-			const tempChannels = allChannels.filter(
+		for (let i = 0; i < configuredDevices.length; i++) {
+			const entry = configuredDevices[i];
+			const channels = channelResults[i];
+			if (!entry || !channels) continue;
+			const dc = entry.config;
+			const tempChannels = channels.filter(
 				(ch) => ch.value != null && ch.units != null && ch.units !== "H",
 			);
 
-			if (deviceConfig.channels === "avg") {
+			if (dc.channels === "avg") {
 				if (tempChannels.length > 0) {
 					const sum = tempChannels.reduce((acc, ch) => acc + (ch.value ?? 0), 0);
 					const avg = Math.round(sum / tempChannels.length);
 					const units = tempChannels[0]?.units;
 					const alarmStyle = getChannelsAlarmState(tempChannels);
-					parts.push(wrapAnsi(`${deviceConfig.label}:${avg}\u00B0${units}`, alarmStyle));
+					parts.push(wrapAnsi(`${dc.label}:${avg}\u00B0${units}`, alarmStyle));
 				}
-			} else if (deviceConfig.channels.length === 1) {
-				// Single channel — no channel label needed
-				const chIdx = deviceConfig.channels[0];
-				const ch = chIdx != null ? allChannels[chIdx - 1] : undefined;
+			} else if (dc.channels.length === 1) {
+				const chIdx = dc.channels[0];
+				const ch = chIdx != null ? channels[chIdx - 1] : undefined;
 				if (ch?.value != null && ch.units != null) {
 					const alarmStyle = getChannelsAlarmState([ch]);
-					parts.push(
-						wrapAnsi(`${deviceConfig.label}:${Math.round(ch.value)}\u00B0${ch.units}`, alarmStyle),
-					);
+					parts.push(wrapAnsi(`${dc.label}:${Math.round(ch.value)}\u00B0${ch.units}`, alarmStyle));
 				}
 			} else {
-				// Multiple channels — include channel label
-				for (const chNum of deviceConfig.channels) {
-					const ch = allChannels[chNum - 1];
+				for (const chNum of dc.channels) {
+					const ch = channels[chNum - 1];
 					if (ch?.value != null && ch.units != null) {
 						const chLabel = ch.label || `Ch${chNum}`;
 						const alarmStyle = getChannelsAlarmState([ch]);
 						parts.push(
 							wrapAnsi(
-								`${deviceConfig.label}:${chLabel}:${Math.round(ch.value)}\u00B0${ch.units}`,
+								`${dc.label}:${chLabel}:${Math.round(ch.value)}\u00B0${ch.units}`,
 								alarmStyle,
 							),
 						);

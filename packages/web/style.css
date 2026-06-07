@@ -99,6 +99,9 @@ h1 {
 
 .section-heading { display: grid; gap: 0.35rem; margin-bottom: 1rem; }
 .section-heading h2 { font-size: 1.5rem; }
+.section-heading h2 a { text-decoration: none; color: inherit; }
+.section-heading h2 a:hover,
+.section-heading h2 a:focus-visible { color: var(--accent); }
 .section-desc { color: var(--muted); margin-bottom: 1.25rem; }
 
 /* Feature grid */
@@ -228,7 +231,7 @@ h1 {
   background: rgba(9, 11, 17, 0.72);
 }
 
-.site-footer a { color: var(--text); text-decoration: none; }
+.site-footer a { color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 0.4rem; }
 .site-footer a:hover,
 .site-footer a:focus-visible { color: var(--accent); }
 

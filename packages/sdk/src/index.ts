@@ -1,4 +1,13 @@
+export type { AlarmState } from "./alarm.js";
+export { escalateAlarm, getChannelAlarmState, getChannelsAlarmState } from "./alarm.js";
 export { ThermoworksCloud } from "./client.js";
+export type { DeviceEntry, StatuslineConfig } from "./config.js";
+export {
+	DEFAULT_STATUSLINE_CONFIG,
+	isValidDeviceEntry,
+	isValidStatuslineConfig,
+} from "./config.js";
+export { formatTimeAgo } from "./format.js";
 export type {
 	Account,
 	ActionResult,

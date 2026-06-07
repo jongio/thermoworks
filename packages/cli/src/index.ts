@@ -1,4 +1,7 @@
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 import { stdout } from "node:process";
+import { fileURLToPath } from "node:url";
 
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import {
@@ -110,9 +113,6 @@ async function main(): Promise<void> {
 
 		case "--version":
 		case "-v": {
-			const { readFile } = await import("node:fs/promises");
-			const { fileURLToPath } = await import("node:url");
-			const { dirname, join } = await import("node:path");
 			const dir = dirname(fileURLToPath(import.meta.url));
 			const pkg = JSON.parse(await readFile(join(dir, "..", "package.json"), "utf8"));
 			console.log(pkg.version);

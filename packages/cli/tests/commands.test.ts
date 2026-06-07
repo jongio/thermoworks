@@ -126,12 +126,14 @@ describe("devices", () => {
 				type: "smoke",
 				status: "online",
 				battery: 85,
-				lastSeen: new Date(Date.now() - 5 * 60_000), // 5 min ago
+				lastSeen: new Date("2026-01-15T12:00:00Z"),
 			}),
 		]);
 
+		vi.spyOn(Date, "now").mockReturnValue(new Date("2026-01-15T12:05:00Z").getTime());
 		const { devices } = await import("../src/commands/devices.js");
 		await devices();
+		vi.restoreAllMocks();
 
 		const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
 		expect(output).toContain("Found 1 device");

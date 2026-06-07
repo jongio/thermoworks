@@ -24,6 +24,7 @@ export type { TokenCacheData } from "./token-cache.js";
 export { invalidateTokenCache, resolveTokenCachePath } from "./token-cache.js";
 export type {
 	Account,
+	AccountInvite,
 	ActionResult,
 	Alarm,
 	AlarmSetOptions,

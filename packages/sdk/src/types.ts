@@ -398,6 +398,17 @@ export interface BillingPlan {
 	readonly isDefault: boolean;
 }
 
+// ─── Account Invites ─────────────────────────────────────────────────────────
+
+/** A pending invitation to join an account. */
+export interface AccountInvite {
+	readonly id: string;
+	readonly accountId: string;
+	readonly email?: string;
+	readonly status?: string;
+	readonly createdAt?: string;
+}
+
 // ─── Actions (Callable Functions) ────────────────────────────────────────────
 
 /** Result from a callable function invocation. */

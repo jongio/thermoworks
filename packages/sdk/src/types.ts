@@ -373,6 +373,31 @@ export interface AlarmSetOptions {
 	low?: AlarmThresholdOptions;
 }
 
+// ─── Billing & Storage ───────────────────────────────────────────────────────
+
+/** Total data storage usage for an account. */
+export interface DataUsage {
+	readonly totalBytes: number;
+	readonly formattedSize: string;
+}
+
+/** Data storage usage for a single device. */
+export interface DeviceDataUsage {
+	readonly deviceId: string;
+	readonly bytes: number;
+	readonly formattedSize: string;
+}
+
+/** Billing plan details. */
+export interface BillingPlan {
+	readonly id: string;
+	readonly name: string;
+	readonly description: string;
+	readonly monthlyAmount: number;
+	readonly deviceCount: number;
+	readonly isDefault: boolean;
+}
+
 // ─── Actions (Callable Functions) ────────────────────────────────────────────
 
 /** Result from a callable function invocation. */

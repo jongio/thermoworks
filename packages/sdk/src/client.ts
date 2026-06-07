@@ -19,10 +19,13 @@ import {
 	type Archive,
 	type ArchiveChannel,
 	type ArchiveListOptions,
+	type BillingPlan,
 	type CalibrationPoint,
 	type CalibrationRecord,
+	type DataUsage,
 	type Device,
 	type DeviceChannel,
+	type DeviceDataUsage,
 	type DeviceEvent,
 	type DeviceFilter,
 	type EventFilter,
@@ -385,6 +388,77 @@ export class ThermoworksCloud {
 			type: getString(fields, "type"),
 			createdOn: getTimestamp(fields, "createdOn"),
 			exportVersion: getNumber(fields, "exportVersion"),
+		};
+	}
+
+	/** Get total data storage usage for the authenticated user's account. */
+	async getDataUsage(): Promise<DataUsage> {
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+		const result = await session.callFunction("accountDataStorageSize", { accountId });
+		const data = result as { totalBytes?: number } | null;
+		const totalBytes = data?.totalBytes ?? 0;
+		return {
+			totalBytes,
+			formattedSize: formatBytes(totalBytes),
+		};
+	}
+
+	/** Get per-device data storage usage for the authenticated user's account. */
+	async getDataUsageByDevice(): Promise<DeviceDataUsage[]> {
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+		const result = await session.callFunction("accountDataStorageSizeByTable", { accountId });
+		const data = result as Array<{ deviceId?: string; bytes?: number }> | null;
+		if (!Array.isArray(data)) return [];
+		return data.map((entry) => {
+			const bytes = entry.bytes ?? 0;
+			return {
+				deviceId: entry.deviceId ?? "",
+				bytes,
+				formattedSize: formatBytes(bytes),
+			};
+		});
+	}
+
+	/** Get the billing plan for the authenticated user's account. */
+	async getBillingPlan(): Promise<BillingPlan | null> {
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+		const accountResponse = await session.request(
+			"GET",
+			`documents/accounts/${encodeURIComponent(accountId)}`,
+		);
+
+		if (accountResponse.status === 404) {
+			await accountResponse.text().catch(() => {});
+			return null;
+		}
+
+		const accountDoc = (await accountResponse.json()) as { fields?: FirestoreFields };
+		const accountFields = accountDoc.fields ?? {};
+		const planId = getString(accountFields, "billingPlanId");
+		if (!planId) return null;
+
+		const planResponse = await session.request(
+			"GET",
+			`documents/system/billingPlans/plans/${encodeURIComponent(planId)}`,
+		);
+
+		if (planResponse.status === 404) {
+			await planResponse.text().catch(() => {});
+			return null;
+		}
+
+		const planDoc = (await planResponse.json()) as { fields?: FirestoreFields };
+		const fields = planDoc.fields ?? {};
+		return {
+			id: planId,
+			name: getString(fields, "name") ?? "",
+			description: getString(fields, "description") ?? "",
+			monthlyAmount: getNumber(fields, "monthlyAmount") ?? 0,
+			deviceCount: getNumber(fields, "deviceCount") ?? 0,
+			isDefault: getBoolean(fields, "isDefault") ?? false,
 		};
 	}
 
@@ -1107,4 +1181,14 @@ function buildAlarmMapValue(opts: AlarmThresholdOptions): FirestoreValue {
 		mapFields.muted = { booleanValue: opts.muted };
 	}
 	return { mapValue: { fields: mapFields } };
+}
+
+const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
+
+function formatBytes(bytes: number): string {
+	if (bytes === 0) return "0 B";
+	const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), BYTE_UNITS.length - 1);
+	const value = bytes / 1024 ** exponent;
+	const formatted = exponent === 0 ? value.toString() : value.toFixed(2);
+	return `${formatted} ${BYTE_UNITS[exponent]}`;
 }

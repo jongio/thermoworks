@@ -1,6 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NetworkError } from "../src/types.js";
 
+const delayRecorder: number[] = [];
+
+vi.mock("node:timers/promises", () => ({
+	setTimeout: vi.fn(async (ms: number) => {
+		delayRecorder.push(ms);
+	}),
+}));
+
 vi.mock("undici", () => {
 	const mockRequest = vi.fn();
 	class MockAgent {
@@ -332,12 +340,7 @@ describe("max retries configuration", () => {
 
 describe("exponential backoff timing", () => {
 	it("waits with increasing delays between retries", async () => {
-		const delays: number[] = [];
-		const originalSetTimeout = globalThis.setTimeout;
-		vi.spyOn(globalThis, "setTimeout").mockImplementation((fn: any, ms?: number) => {
-			delays.push(ms ?? 0);
-			return originalSetTimeout(fn, 0); // execute immediately for test speed
-		});
+		delayRecorder.length = 0;
 		vi.spyOn(Math, "random").mockReturnValue(1); // max jitter = full delay
 
 		mockAuthSetup();
@@ -355,12 +358,10 @@ describe("exponential backoff timing", () => {
 		});
 		await session.request("GET", "documents/users/user123");
 
-		// Filter delays from retry logic (skip any 0ms from immediate callbacks)
-		const retryDelays = delays.filter((d) => d > 0);
 		// With random=1: attempt 0 -> 100, attempt 1 -> 200, attempt 2 -> 400
-		expect(retryDelays).toContain(100);
-		expect(retryDelays).toContain(200);
-		expect(retryDelays).toContain(400);
+		expect(delayRecorder).toContain(100);
+		expect(delayRecorder).toContain(200);
+		expect(delayRecorder).toContain(400);
 		session.close();
 	});
 });

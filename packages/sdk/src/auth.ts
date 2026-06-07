@@ -1,4 +1,5 @@
 import { Agent, request as undiciRequest } from "undici";
+import { setTimeout as delay } from "node:timers/promises";
 import {
 	readTokenCache,
 	resolveTokenCachePath,
@@ -154,10 +155,6 @@ async function httpRequest(
 	throw lastError ?? new NetworkError("Network request failed");
 }
 
-function delay(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 function parseExpiresIn(value: unknown): number {
 	const seconds = Number(value);
 	if (!Number.isFinite(seconds) || seconds < 0) {
@@ -247,17 +244,18 @@ export async function createAuthSession(
 	async function ensureValidToken(): Promise<string> {
 		if (!isTokenValid()) {
 			if (!refreshPromise) {
-				refreshPromise = refreshAccessToken(token.refreshToken, key, agent, retry)
-					.then((t) => {
+				refreshPromise = (async () => {
+					try {
+						const t = await refreshAccessToken(token.refreshToken, key, agent, retry);
 						token = t;
 						if (cachePath) {
-							persistToCache(cachePath, t, config.projectId);
+							await persistToCache(cachePath, t, config.projectId).catch(() => {});
 						}
 						return t;
-					})
-					.finally(() => {
+					} finally {
 						refreshPromise = null;
-					});
+					}
+				})();
 			}
 			await refreshPromise;
 		}

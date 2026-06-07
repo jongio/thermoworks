@@ -1,4 +1,4 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { CREDENTIAL_SERVICE } from "./credentials.js";
@@ -108,9 +108,8 @@ export async function writeTokenCache(cachePath: string, data: TokenCacheData): 
 
 	// File fallback with restricted permissions
 	try {
-		const { lstatSync } = await import("node:fs");
 		try {
-			const stat = lstatSync(cachePath);
+			const stat = await lstat(cachePath);
 			if (stat.isSymbolicLink()) {
 				process.emitWarning(
 					"Token cache path is a symlink, skipping write for security",

@@ -75,7 +75,7 @@ export function createSubscription(
 
 	// Track last-known state per channel number for deduplication
 	const lastState = new Map<number, string>();
-	let timer: ReturnType<typeof setInterval> | null = null;
+	let timer: ReturnType<typeof setTimeout> | null = null;
 	let stopped = false;
 
 	async function poll(): Promise<void> {
@@ -103,18 +103,22 @@ export function createSubscription(
 				onError(err instanceof Error ? err : new Error(String(err)));
 			}
 		}
+		// Self-reschedule: next poll only starts after current one completes,
+		// preventing overlap when fetchChannels takes longer than intervalMs
+		if (!stopped) {
+			timer = setTimeout(() => void poll(), intervalMs);
+		}
 	}
 
-	// Fire immediately, then schedule subsequent polls
+	// Fire immediately (self-reschedule handles subsequent polls)
 	void poll();
-	timer = setInterval(() => void poll(), intervalMs);
 
 	return {
 		unsubscribe(): void {
 			if (stopped) return;
 			stopped = true;
 			if (timer != null) {
-				clearInterval(timer);
+				clearTimeout(timer);
 				timer = null;
 			}
 			lastState.clear();

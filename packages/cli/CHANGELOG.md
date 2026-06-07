@@ -1,5 +1,20 @@
 # thermoworks
 
+## 0.3.0
+
+### Minor Changes
+
+- Parallelize per-device channel fetches in `copilot status` for faster output
+- Use shared alarm utilities from SDK (removes duplicated logic)
+- Use shared credential contract from SDK for consistent keychain access
+- Use shared config types from SDK for validation
+
+### Patch Changes
+
+- Fix static imports for `--version` flag
+- Fix flaky time-dependent test
+- Updated dependencies: thermoworks-sdk@0.3.0
+
 ## 0.2.2
 
 ### Patch Changes

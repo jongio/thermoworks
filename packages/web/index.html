@@ -96,6 +96,11 @@
               <h3>Fast &amp; lightweight</h3>
               <p>Zero install with <code>npx</code>. Smart caching keeps API calls low. Built on undici connection pooling.</p>
             </div>
+            <div class="feature-item">
+              <span class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a4 4 0 0 0-4 4c0 2 2 3 2 6h4c0-3 2-4 2-6a4 4 0 0 0-4-4z"/><line x1="10" y1="16" x2="14" y2="16"/><line x1="10" y1="19" x2="14" y2="19"/><path d="M10 22h4"/></svg></span>
+              <h3>AI agent skills</h3>
+              <p>Built-in GitHub Copilot agent skills so AI assistants understand how to use the SDK and contribute to the project.</p>
+            </div>
           </div>
         </section>
 
@@ -234,6 +239,32 @@
               alt="VS Code device panel showing firmware update available warning"
             />
           </figure>
+        </section>
+
+        <section class="card" id="agent-skills">
+          <div class="section-heading">
+            <p class="eyebrow">AI-powered</p>
+            <h2>Agent Skills</h2>
+          </div>
+          <p class="section-desc">
+            This project includes GitHub Copilot agent skills that teach AI coding assistants how to work with ThermoWorks data.
+            When you ask Copilot to read temperatures, set up alarms, or add a feature, the skills activate automatically with the right context.
+          </p>
+          <div class="package-grid">
+            <div class="package-card">
+              <h3>thermoworks</h3>
+              <p>Integration skill for reading temperatures, monitoring alarms, accessing session history, and using the CLI.</p>
+              <span>For SDK users and integrators</span>
+            </div>
+            <div class="package-card">
+              <h3>thermoworks-dev</h3>
+              <p>Development skill for adding CLI commands, VS Code features, new packages, and understanding monorepo conventions.</p>
+              <span>For contributors</span>
+            </div>
+          </div>
+          <p class="section-desc" style="margin-top: 1.5rem;">
+            Skills are validated with <a href="https://aka.ms/vally">Vally</a> evaluation suites that verify agent responses against expected behavior.
+          </p>
         </section>
 
         <section class="card" id="docs">

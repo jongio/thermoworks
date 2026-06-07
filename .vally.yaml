@@ -1,0 +1,52 @@
+# Vally configuration for ThermoWorks agent skills evaluation.
+# See https://aka.ms/vally for documentation.
+
+skills:
+  - ".github/skills/"
+
+evals:
+  - "evals/"
+
+results: "results/"
+
+evalFilenames:
+  - "eval.yaml"
+
+environments:
+  thermoworks-workspace:
+    skills:
+      - ".github/skills/thermoworks/SKILL.md"
+    files:
+      - src: packages/sdk/src
+      - src: packages/cli/src
+
+  thermoworks-dev-workspace:
+    skills:
+      - ".github/skills/thermoworks-dev/SKILL.md"
+    files:
+      - src: packages/sdk/src
+      - src: packages/cli/src
+      - src: packages/vscode/src
+
+suites:
+  smoke:
+    description: "Quick validation of both skills"
+    filter:
+      tags:
+        tier: ["smoke"]
+
+  full:
+    description: "Full evaluation of all stimuli"
+    filter:
+      tags:
+        tier: ["smoke", "integration"]
+
+  integration:
+    description: "Integration skill evaluation only"
+    evals:
+      - "evals/thermoworks/eval.yaml"
+
+  dev:
+    description: "Development skill evaluation only"
+    evals:
+      - "evals/thermoworks-dev/eval.yaml"

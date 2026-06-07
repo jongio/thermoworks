@@ -10,3 +10,5 @@ coverage
 .env.local
 .thermoworks/
 *token-cache*
+results/
+vally-results/

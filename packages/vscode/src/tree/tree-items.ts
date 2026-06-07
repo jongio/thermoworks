@@ -1,4 +1,4 @@
-import type { DeviceChannel, Device, User } from "thermoworks-sdk";
+import type { Device, DeviceChannel, User } from "thermoworks-sdk";
 import * as vscode from "vscode";
 
 type AlarmState = "none" | "low" | "high";
@@ -146,17 +146,11 @@ export class ChannelNode extends vscode.TreeItem {
 
 		switch (alarm) {
 			case "high":
-				this.iconPath = new vscode.ThemeIcon(
-					"circle-filled",
-					new vscode.ThemeColor("charts.red"),
-				);
+				this.iconPath = new vscode.ThemeIcon("circle-filled", new vscode.ThemeColor("charts.red"));
 				this.tooltip = `${label}: ${valueText} - HIGH ALARM`;
 				break;
 			case "low":
-				this.iconPath = new vscode.ThemeIcon(
-					"circle-filled",
-					new vscode.ThemeColor("charts.blue"),
-				);
+				this.iconPath = new vscode.ThemeIcon("circle-filled", new vscode.ThemeColor("charts.blue"));
 				this.tooltip = `${label}: ${valueText} - LOW ALARM`;
 				break;
 			default:
@@ -230,11 +224,12 @@ export function buildDeviceChildren(
 	}
 
 	// Temperature channels (filter out humidity-only)
-	const tempChannels = channels.filter(
-		(ch) => ch.enabled !== false && ch.units !== "H",
-	);
+	const tempChannels = channels.filter((ch) => ch.enabled !== false && ch.units !== "H");
 	for (let i = 0; i < tempChannels.length; i++) {
-		children.push(new ChannelNode(tempChannels[i]!, device.serial, i));
+		const ch = tempChannels[i];
+		if (ch) {
+			children.push(new ChannelNode(ch, device.serial, i));
+		}
 	}
 
 	// Device metadata

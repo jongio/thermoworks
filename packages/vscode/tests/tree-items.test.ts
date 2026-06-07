@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Device, DeviceChannel, User } from "thermoworks-sdk";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── VS Code mock ────────────────────────────────────────────────────────────
 
@@ -43,13 +43,13 @@ import {
 	AccountDetailNode,
 	AccountNode,
 	ActionNode,
+	buildDeviceChildren,
 	ChannelNode,
 	DeviceDetailNode,
 	DeviceNode,
 	DevicesFolderNode,
 	ErrorNode,
 	LoadingNode,
-	buildDeviceChildren,
 } from "../src/tree/tree-items";
 
 // ─── Test fixtures ───────────────────────────────────────────────────────────
@@ -185,7 +185,12 @@ describe("tree-items", () => {
 
 	describe("ActionNode", () => {
 		it("creates with command binding", () => {
-			const node = new ActionNode("Open Cloud", "thermoworks.openCloud", "link-external", "action-cloud");
+			const node = new ActionNode(
+				"Open Cloud",
+				"thermoworks.openCloud",
+				"link-external",
+				"action-cloud",
+			);
 			expect(node.label).toBe("Open Cloud");
 			expect(node.command).toEqual({ command: "thermoworks.openCloud", title: "Open Cloud" });
 			expect(node.id).toBe("action-cloud");
@@ -248,7 +253,14 @@ describe("tree-items", () => {
 
 		it("shows red icon for high alarm", () => {
 			const ch = makeChannel({
-				alarmHigh: { enabled: true, alarming: true, muted: false, value: 250, units: "F", lastNotified: null },
+				alarmHigh: {
+					enabled: true,
+					alarming: true,
+					muted: false,
+					value: 250,
+					units: "F",
+					lastNotified: null,
+				},
 			});
 			const node = new ChannelNode(ch, "ABC123", 0);
 			expect((node.iconPath as { color: { id: string } }).color.id).toBe("charts.red");
@@ -257,7 +269,14 @@ describe("tree-items", () => {
 
 		it("shows blue icon for low alarm", () => {
 			const ch = makeChannel({
-				alarmLow: { enabled: true, alarming: true, muted: false, value: 30, units: "F", lastNotified: null },
+				alarmLow: {
+					enabled: true,
+					alarming: true,
+					muted: false,
+					value: 30,
+					units: "F",
+					lastNotified: null,
+				},
 			});
 			const node = new ChannelNode(ch, "ABC123", 0);
 			expect((node.iconPath as { color: { id: string } }).color.id).toBe("charts.blue");

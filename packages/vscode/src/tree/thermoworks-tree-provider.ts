@@ -1,18 +1,17 @@
 import type { Device, DeviceChannel, User } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 import * as vscode from "vscode";
-import { DEMO_DEVICES, DEMO_LATEST_FIRMWARE, DEMO_USER, getDemoChannels } from "../demo-data";
 import type { CredentialStore } from "../credentials";
+import { DEMO_DEVICES, DEMO_LATEST_FIRMWARE, DEMO_USER, getDemoChannels } from "../demo-data";
 import {
 	AccountDetailNode,
 	AccountNode,
 	ActionNode,
-	type TreeNode,
+	buildDeviceChildren,
 	DeviceNode,
 	DevicesFolderNode,
 	ErrorNode,
-	LoadingNode,
-	buildDeviceChildren,
+	type TreeNode,
 } from "./tree-items";
 
 const DEVICE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -33,8 +32,10 @@ interface FirmwareCache {
 	fetchedAt: number;
 }
 
-export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable {
-	private readonly _onDidChangeTreeData = new vscode.EventEmitter<TreeNode | undefined | void>();
+export class ThermoworksTreeProvider
+	implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable
+{
+	private readonly _onDidChangeTreeData = new vscode.EventEmitter<TreeNode | undefined>();
 	readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
 	private readonly credentialStore: CredentialStore;
@@ -46,6 +47,7 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 	private firmwareCaches = new Map<string, FirmwareCache>();
 	private firmwareUpdateCount = 0;
 	private refreshTimer: ReturnType<typeof setInterval> | undefined;
+	private configDisposable: vscode.Disposable | undefined;
 	private disposed = false;
 	private demoMode: "normal" | "high" | "low" | false = false;
 
@@ -130,18 +132,18 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 		this.updateBadge(0);
 		await vscode.commands.executeCommand("setContext", "thermoworks.isAuthenticated", false);
 		vscode.window.showInformationMessage("ThermoWorks: Signed out.");
-		this._onDidChangeTreeData.fire();
+		this._onDidChangeTreeData.fire(undefined);
 	}
 
 	async refresh(): Promise<void> {
 		this.deviceCache = undefined;
 		this.channelCaches.clear();
-		this._onDidChangeTreeData.fire();
+		this._onDidChangeTreeData.fire(undefined);
 	}
 
-	async refreshChannelsOnly(): Promise<void> {
+	private async refreshChannelsOnly(): Promise<void> {
 		this.channelCaches.clear();
-		this._onDidChangeTreeData.fire();
+		this._onDidChangeTreeData.fire(undefined);
 	}
 
 	openCloud(): void {
@@ -151,16 +153,12 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 	enterDemoMode(mode: "normal" | "high" | "low"): void {
 		this.demoMode = mode;
 		this.stopAutoRefresh();
-		this._onDidChangeTreeData.fire();
+		this._onDidChangeTreeData.fire(undefined);
 	}
 
 	exitDemoMode(): void {
 		this.demoMode = false;
-		this._onDidChangeTreeData.fire();
-	}
-
-	isDemoActive(): boolean {
-		return this.demoMode !== false;
+		this._onDidChangeTreeData.fire(undefined);
 	}
 
 	startAutoRefresh(context: vscode.ExtensionContext): void {
@@ -183,14 +181,13 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 
 		scheduleNext();
 
-		context.subscriptions.push(
-			vscode.workspace.onDidChangeConfiguration((e) => {
-				if (e.affectsConfiguration("thermoworks.refreshInterval")) {
-					this.stopAutoRefresh();
-					this.startAutoRefresh(context);
-				}
-			}),
-		);
+		const configDisposable = vscode.workspace.onDidChangeConfiguration((e) => {
+			if (e.affectsConfiguration("thermoworks.refreshInterval")) {
+				this.startAutoRefresh(context);
+			}
+		});
+		context.subscriptions.push(configDisposable);
+		this.configDisposable = configDisposable;
 	}
 
 	async initialize(): Promise<void> {
@@ -210,7 +207,10 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 	private async getRootChildren(): Promise<TreeNode[]> {
 		// Demo mode — use fake data, no credentials needed
 		if (this.demoMode) {
-			return [new AccountNode(DEMO_USER), new DevicesFolderNode(DEMO_DEVICES.length, this.firmwareUpdateCount)];
+			return [
+				new AccountNode(DEMO_USER),
+				new DevicesFolderNode(DEMO_DEVICES.length, this.firmwareUpdateCount),
+			];
 		}
 
 		const creds = await this.credentialStore.getCredentials();
@@ -230,7 +230,10 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 
 			const devices = await this.getCachedDevices();
 
-			return [new AccountNode(this.user), new DevicesFolderNode(devices.length, this.firmwareUpdateCount)];
+			return [
+				new AccountNode(this.user),
+				new DevicesFolderNode(devices.length, this.firmwareUpdateCount),
+			];
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load data";
 			return [new ErrorNode(message)];
@@ -265,6 +268,14 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 		return children;
 	}
 
+	private async checkFirmwareOutdated(device: Device): Promise<boolean> {
+		if (this.demoMode) {
+			const latest = device.type ? DEMO_LATEST_FIRMWARE[device.type] : undefined;
+			return !!latest && !!device.firmware && device.firmware !== latest;
+		}
+		return this.isFirmwareOutdated(device);
+	}
+
 	private async getDeviceNodes(): Promise<TreeNode[]> {
 		try {
 			const devices = this.demoMode ? DEMO_DEVICES : await this.getCachedDevices();
@@ -280,18 +291,10 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 				const channels = this.demoMode
 					? getDemoChannels(device.serial, this.demoMode)
 					: await this.getCachedChannels(device.serial);
-				const hasAlarm = channels.some(
-					(ch) => ch.alarmHigh?.alarming || ch.alarmLow?.alarming,
-				);
+				const hasAlarm = channels.some((ch) => ch.alarmHigh?.alarming || ch.alarmLow?.alarming);
 				if (hasAlarm) alarmCount++;
 
-				let firmwareOutdated: boolean;
-				if (this.demoMode) {
-					const latest = device.type ? DEMO_LATEST_FIRMWARE[device.type] : undefined;
-					firmwareOutdated = !!latest && !!device.firmware && device.firmware !== latest;
-				} else {
-					firmwareOutdated = await this.isFirmwareOutdated(device);
-				}
+				const firmwareOutdated = await this.checkFirmwareOutdated(device);
 				if (firmwareOutdated) firmwareUpdateCount++;
 
 				nodes.push(new DeviceNode(device, hasAlarm, firmwareOutdated));
@@ -315,13 +318,7 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 				? getDemoChannels(serial, this.demoMode)
 				: await this.getCachedChannels(serial);
 
-			let firmwareOutdated: boolean;
-			if (this.demoMode) {
-				const latest = device.type ? DEMO_LATEST_FIRMWARE[device.type] : undefined;
-				firmwareOutdated = !!latest && !!device.firmware && device.firmware !== latest;
-			} else {
-				firmwareOutdated = await this.isFirmwareOutdated(device);
-			}
+			const firmwareOutdated = await this.checkFirmwareOutdated(device);
 
 			return buildDeviceChildren(device, channels, firmwareOutdated);
 		} catch (error) {
@@ -403,15 +400,23 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 
 	private updateBadge(alarmCount: number): void {
 		if (!this.treeView) return;
-		this.treeView.badge = alarmCount > 0
-			? { value: alarmCount, tooltip: `${alarmCount} device${alarmCount > 1 ? "s" : ""} alarming` }
-			: undefined;
+		this.treeView.badge =
+			alarmCount > 0
+				? {
+						value: alarmCount,
+						tooltip: `${alarmCount} device${alarmCount > 1 ? "s" : ""} alarming`,
+					}
+				: undefined;
 	}
 
 	private stopAutoRefresh(): void {
 		if (this.refreshTimer) {
 			clearTimeout(this.refreshTimer);
 			this.refreshTimer = undefined;
+		}
+		if (this.configDisposable) {
+			this.configDisposable.dispose();
+			this.configDisposable = undefined;
 		}
 	}
 }

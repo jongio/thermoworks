@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Device, DeviceChannel, User } from "thermoworks-sdk";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── VS Code mock ────────────────────────────────────────────────────────────
 
@@ -25,7 +25,11 @@ vi.mock("vscode", () => ({
 	ThemeColor: function ThemeColor(this: { id: string }, id: string) {
 		this.id = id;
 	},
-	ThemeIcon: function ThemeIcon(this: { id: string; color?: unknown }, id: string, color?: unknown) {
+	ThemeIcon: function ThemeIcon(
+		this: { id: string; color?: unknown },
+		id: string,
+		color?: unknown,
+	) {
 		this.id = id;
 		this.color = color;
 	},
@@ -62,7 +66,10 @@ vi.mock("vscode", () => ({
 		showErrorMessage: mockShowErrorMessage,
 		showInformationMessage: mockShowInformationMessage,
 	},
-	workspace: { getConfiguration: mockGetConfiguration, onDidChangeConfiguration: vi.fn(() => ({ dispose: () => {} })) },
+	workspace: {
+		getConfiguration: mockGetConfiguration,
+		onDidChangeConfiguration: vi.fn(() => ({ dispose: () => {} })),
+	},
 	env: { openExternal: mockOpenExternal },
 }));
 
@@ -177,15 +184,12 @@ const mockChannel: DeviceChannel = {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function createProvider(): ThermoworksTreeProvider {
-	const mockSecrets = {
+	const _mockSecrets = {
 		get: vi.fn(),
 		store: vi.fn(),
 		delete: vi.fn(),
 		onDidChange: vi.fn(() => ({ dispose: () => {} })),
 	};
-	const { CredentialStore } = vi.hoisted(() => ({
-		CredentialStore: vi.fn(),
-	}));
 
 	// Construct with a mock credential store
 	const credStore = {
@@ -227,8 +231,8 @@ describe("ThermoworksTreeProvider", () => {
 
 			const children = await provider.getChildren();
 			expect(children.length).toBe(2);
-			expect(children[0]!.label).toBe("Account");
-			expect(children[1]!.label).toBe("Devices");
+			expect(children[0]?.label).toBe("Account");
+			expect(children[1]?.label).toBe("Devices");
 		});
 
 		it("returns ErrorNode on SDK failure", async () => {
@@ -240,15 +244,13 @@ describe("ThermoworksTreeProvider", () => {
 
 			const children = await provider.getChildren();
 			expect(children.length).toBe(1);
-			expect(children[0]!.label).toBe("Network timeout");
+			expect(children[0]?.label).toBe("Network timeout");
 		});
 	});
 
 	describe("signIn", () => {
 		it("stores credentials and sets context on success", async () => {
-			mockShowInputBox
-				.mockResolvedValueOnce("user@test.com")
-				.mockResolvedValueOnce("secret");
+			mockShowInputBox.mockResolvedValueOnce("user@test.com").mockResolvedValueOnce("secret");
 			mockGetUser.mockResolvedValue(mockUser);
 			mockGetDevices.mockResolvedValue([]);
 
@@ -259,14 +261,18 @@ describe("ThermoworksTreeProvider", () => {
 			await provider.signIn();
 
 			expect(credStore.storeCredentials).toHaveBeenCalledWith("user@test.com", "secret");
-			expect(mockExecuteCommand).toHaveBeenCalledWith("setContext", "thermoworks.isAuthenticated", true);
-			expect(mockShowInformationMessage).toHaveBeenCalledWith("ThermoWorks: Signed in successfully.");
+			expect(mockExecuteCommand).toHaveBeenCalledWith(
+				"setContext",
+				"thermoworks.isAuthenticated",
+				true,
+			);
+			expect(mockShowInformationMessage).toHaveBeenCalledWith(
+				"ThermoWorks: Signed in successfully.",
+			);
 		});
 
 		it("shows error on auth failure", async () => {
-			mockShowInputBox
-				.mockResolvedValueOnce("user@test.com")
-				.mockResolvedValueOnce("wrong");
+			mockShowInputBox.mockResolvedValueOnce("user@test.com").mockResolvedValueOnce("wrong");
 			mockGetUser.mockRejectedValue(new Error("Invalid credentials"));
 
 			await provider.signIn();
@@ -283,9 +289,7 @@ describe("ThermoworksTreeProvider", () => {
 		});
 
 		it("does nothing if user cancels password input", async () => {
-			mockShowInputBox
-				.mockResolvedValueOnce("user@test.com")
-				.mockResolvedValueOnce(undefined);
+			mockShowInputBox.mockResolvedValueOnce("user@test.com").mockResolvedValueOnce(undefined);
 			await provider.signIn();
 			expect(getCredStoreMock(provider).storeCredentials).not.toHaveBeenCalled();
 		});
@@ -299,7 +303,11 @@ describe("ThermoworksTreeProvider", () => {
 			await provider.signOut();
 
 			expect(credStore.deleteCredentials).toHaveBeenCalled();
-			expect(mockExecuteCommand).toHaveBeenCalledWith("setContext", "thermoworks.isAuthenticated", false);
+			expect(mockExecuteCommand).toHaveBeenCalledWith(
+				"setContext",
+				"thermoworks.isAuthenticated",
+				false,
+			);
 			expect(mockShowInformationMessage).toHaveBeenCalledWith("ThermoWorks: Signed out.");
 		});
 	});
@@ -358,14 +366,22 @@ describe("ThermoworksTreeProvider", () => {
 			});
 
 			await provider.initialize();
-			expect(mockExecuteCommand).toHaveBeenCalledWith("setContext", "thermoworks.isAuthenticated", true);
+			expect(mockExecuteCommand).toHaveBeenCalledWith(
+				"setContext",
+				"thermoworks.isAuthenticated",
+				true,
+			);
 		});
 
 		it("sets context to false when no credentials", async () => {
 			getCredStoreMock(provider).getCredentials.mockResolvedValue(null);
 
 			await provider.initialize();
-			expect(mockExecuteCommand).toHaveBeenCalledWith("setContext", "thermoworks.isAuthenticated", false);
+			expect(mockExecuteCommand).toHaveBeenCalledWith(
+				"setContext",
+				"thermoworks.isAuthenticated",
+				false,
+			);
 		});
 	});
 

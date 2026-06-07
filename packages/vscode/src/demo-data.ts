@@ -214,12 +214,40 @@ export function getDemoChannels(serial: string, mode: DemoMode): DeviceChannel[]
 					color: "#FF6B35",
 					alarmHigh:
 						mode === "high"
-							? { enabled: true, alarming: true, muted: false, value: 275, units: "F", lastNotified: now }
-							: { enabled: true, alarming: false, muted: false, value: 275, units: "F", lastNotified: null },
+							? {
+									enabled: true,
+									alarming: true,
+									muted: false,
+									value: 275,
+									units: "F",
+									lastNotified: now,
+								}
+							: {
+									enabled: true,
+									alarming: false,
+									muted: false,
+									value: 275,
+									units: "F",
+									lastNotified: null,
+								},
 					alarmLow:
 						mode === "low"
-							? { enabled: true, alarming: true, muted: false, value: 200, units: "F", lastNotified: now }
-							: { enabled: true, alarming: false, muted: false, value: 200, units: "F", lastNotified: null },
+							? {
+									enabled: true,
+									alarming: true,
+									muted: false,
+									value: 200,
+									units: "F",
+									lastNotified: now,
+								}
+							: {
+									enabled: true,
+									alarming: false,
+									muted: false,
+									value: 200,
+									units: "F",
+									lastNotified: null,
+								},
 				}),
 				makeChannel({
 					label: "Brisket",
@@ -229,9 +257,30 @@ export function getDemoChannels(serial: string, mode: DemoMode): DeviceChannel[]
 					color: "#4ECDC4",
 					alarmHigh:
 						mode === "high"
-							? { enabled: true, alarming: true, muted: false, value: 203, units: "F", lastNotified: now }
-							: { enabled: true, alarming: false, muted: false, value: 203, units: "F", lastNotified: null },
-					alarmLow: { enabled: false, alarming: false, muted: false, value: null, units: null, lastNotified: null },
+							? {
+									enabled: true,
+									alarming: true,
+									muted: false,
+									value: 203,
+									units: "F",
+									lastNotified: now,
+								}
+							: {
+									enabled: true,
+									alarming: false,
+									muted: false,
+									value: 203,
+									units: "F",
+									lastNotified: null,
+								},
+					alarmLow: {
+						enabled: false,
+						alarming: false,
+						muted: false,
+						value: null,
+						units: null,
+						lastNotified: null,
+					},
 				}),
 				makeChannel({
 					label: "Ribs",
@@ -239,8 +288,22 @@ export function getDemoChannels(serial: string, mode: DemoMode): DeviceChannel[]
 					units: "F",
 					number: "3",
 					color: "#FFE66D",
-					alarmHigh: { enabled: true, alarming: false, muted: false, value: 200, units: "F", lastNotified: null },
-					alarmLow: { enabled: false, alarming: false, muted: false, value: null, units: null, lastNotified: null },
+					alarmHigh: {
+						enabled: true,
+						alarming: false,
+						muted: false,
+						value: 200,
+						units: "F",
+						lastNotified: null,
+					},
+					alarmLow: {
+						enabled: false,
+						alarming: false,
+						muted: false,
+						value: null,
+						units: null,
+						lastNotified: null,
+					},
 				}),
 				makeChannel({
 					label: "Ambient",
@@ -248,8 +311,22 @@ export function getDemoChannels(serial: string, mode: DemoMode): DeviceChannel[]
 					units: "F",
 					number: "4",
 					color: "#95E1D3",
-					alarmHigh: { enabled: false, alarming: false, muted: false, value: null, units: null, lastNotified: null },
-					alarmLow: { enabled: false, alarming: false, muted: false, value: null, units: null, lastNotified: null },
+					alarmHigh: {
+						enabled: false,
+						alarming: false,
+						muted: false,
+						value: null,
+						units: null,
+						lastNotified: null,
+					},
+					alarmLow: {
+						enabled: false,
+						alarming: false,
+						muted: false,
+						value: null,
+						units: null,
+						lastNotified: null,
+					},
 				}),
 			];
 
@@ -263,9 +340,30 @@ export function getDemoChannels(serial: string, mode: DemoMode): DeviceChannel[]
 					color: "#4ECDC4",
 					alarmHigh:
 						mode === "high"
-							? { enabled: true, alarming: true, muted: false, value: 425, units: "F", lastNotified: now }
-							: { enabled: true, alarming: false, muted: false, value: 425, units: "F", lastNotified: null },
-					alarmLow: { enabled: false, alarming: false, muted: false, value: null, units: null, lastNotified: null },
+							? {
+									enabled: true,
+									alarming: true,
+									muted: false,
+									value: 425,
+									units: "F",
+									lastNotified: now,
+								}
+							: {
+									enabled: true,
+									alarming: false,
+									muted: false,
+									value: 425,
+									units: "F",
+									lastNotified: null,
+								},
+					alarmLow: {
+						enabled: false,
+						alarming: false,
+						muted: false,
+						value: null,
+						units: null,
+						lastNotified: null,
+					},
 				}),
 				makeChannel({
 					label: "Roast",
@@ -273,8 +371,22 @@ export function getDemoChannels(serial: string, mode: DemoMode): DeviceChannel[]
 					units: "F",
 					number: "2",
 					color: "#FFE66D",
-					alarmHigh: { enabled: true, alarming: false, muted: false, value: 160, units: "F", lastNotified: null },
-					alarmLow: { enabled: false, alarming: false, muted: false, value: null, units: null, lastNotified: null },
+					alarmHigh: {
+						enabled: true,
+						alarming: false,
+						muted: false,
+						value: 160,
+						units: "F",
+						lastNotified: null,
+					},
+					alarmLow: {
+						enabled: false,
+						alarming: false,
+						muted: false,
+						value: null,
+						units: null,
+						lastNotified: null,
+					},
 				}),
 			];
 
@@ -286,11 +398,32 @@ export function getDemoChannels(serial: string, mode: DemoMode): DeviceChannel[]
 					units: "F",
 					number: "1",
 					color: "#6C5CE7",
-					alarmHigh: { enabled: true, alarming: false, muted: false, value: 45, units: "F", lastNotified: null },
+					alarmHigh: {
+						enabled: true,
+						alarming: false,
+						muted: false,
+						value: 45,
+						units: "F",
+						lastNotified: null,
+					},
 					alarmLow:
 						mode === "low"
-							? { enabled: true, alarming: true, muted: false, value: 32, units: "F", lastNotified: now }
-							: { enabled: true, alarming: false, muted: false, value: 32, units: "F", lastNotified: null },
+							? {
+									enabled: true,
+									alarming: true,
+									muted: false,
+									value: 32,
+									units: "F",
+									lastNotified: now,
+								}
+							: {
+									enabled: true,
+									alarming: false,
+									muted: false,
+									value: 32,
+									units: "F",
+									lastNotified: null,
+								},
 				}),
 			];
 

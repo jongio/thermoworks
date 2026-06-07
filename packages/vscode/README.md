@@ -1,10 +1,14 @@
 # ThermoWorks for VS Code
 
-Display real-time temperatures from your ThermoWorks connected devices (Smoke, Signals, Node, etc.) directly in the VS Code status bar.
+Display real-time temperatures from your ThermoWorks connected devices (Smoke, Signals, Node, etc.) directly in the VS Code status bar and side panel.
+
+![ThermoWorks panel in VS Code](../../docs/images/vscode-panel-demo.png)
 
 ## Features
 
 - 🔥 **Status Bar Temperature** — See live readings at a glance
+- 📋 **Device Panel** — Full tree view with all devices, channels, battery, and firmware info
+- 🚨 **Alarm Indicators** — Red/blue color-coded alerts with blinking status bar
 - 🔄 **Auto-Refresh** — Configurable interval (default 30s, minimum 15s)
 - 🔗 **Shared Credentials** — Works with the same login as the `thermoworks` CLI
 - 📊 **Detailed Tooltips** — Hover for per-device/channel breakdown
@@ -50,6 +54,17 @@ This saves your selection to `~/.thermoworks/config.json`, which the extension r
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `thermoworks.refreshInterval` | `30` | Refresh interval in seconds (minimum 15) |
+
+## Device Panel
+
+The extension adds a **ThermoWorks: Devices** panel to the VS Code sidebar showing:
+
+- **Account info** — email, display name, preferred units, timezone
+- **All devices** — with type, online/offline status, and alarm badges
+- **Channel readings** — color-coded (green = normal, red = high alarm, blue = low alarm)
+- **Device metadata** — battery %, last seen, firmware version
+
+The panel auto-refreshes on the same interval as the status bar.
 
 ## Status Bar
 

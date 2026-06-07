@@ -29,7 +29,9 @@ Done — your selected devices can now appear in the GitHub Copilot CLI statusli
 
 ## VS Code Extension
 
-Install the **ThermoWorks** extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jongio.thermoworks) to see live temperatures in the VS Code status bar.
+Install the **ThermoWorks** extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jongio.thermoworks) to see live temperatures in the VS Code status bar and device panel.
+
+![ThermoWorks device panel in VS Code](docs/images/vscode-panel-demo.png)
 
 The extension shares credentials and device configuration with the CLI — sign in once and both tools see your devices.
 

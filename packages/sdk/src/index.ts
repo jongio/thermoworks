@@ -26,6 +26,8 @@ export type {
 	Account,
 	ActionResult,
 	Alarm,
+	AlarmSetOptions,
+	AlarmThresholdOptions,
 	Archive,
 	ArchiveChannel,
 	ArchiveListOptions,

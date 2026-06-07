@@ -343,6 +343,28 @@ export interface SearchOptions {
 	pageSize?: number;
 }
 
+// ─── Alarm Configuration ─────────────────────────────────────────────────────
+
+/** Options for configuring a single alarm threshold. */
+export interface AlarmThresholdOptions {
+	/** Alarm trigger value (temperature or humidity). */
+	value: number;
+	/** Units for the alarm value (e.g., "F", "C"). Defaults to the device's current units if omitted. */
+	units?: string;
+	/** Whether this alarm threshold is enabled. */
+	enabled?: boolean;
+	/** Whether this alarm is muted (suppresses notifications). */
+	muted?: boolean;
+}
+
+/** Options for setting alarm thresholds on a device channel. At least one of `high` or `low` must be provided. */
+export interface AlarmSetOptions {
+	/** High alarm threshold configuration. */
+	high?: AlarmThresholdOptions;
+	/** Low alarm threshold configuration. */
+	low?: AlarmThresholdOptions;
+}
+
 // ─── Actions (Callable Functions) ────────────────────────────────────────────
 
 /** Result from a callable function invocation. */

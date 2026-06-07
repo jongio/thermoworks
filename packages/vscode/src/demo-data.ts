@@ -4,6 +4,13 @@
  */
 import type { Device, DeviceChannel, User } from "thermoworks-sdk";
 
+/** Simulated latest firmware versions per device type. */
+export const DEMO_LATEST_FIRMWARE: Record<string, string> = {
+	signals: "2.4.1",
+	smoke: "1.8.3", // Kitchen Smoke has 1.5.0 → outdated
+	node: "3.1.0",
+};
+
 export const DEMO_USER: User = {
 	userId: "demo-user-001",
 	accountId: "demo-account-001",
@@ -87,7 +94,7 @@ export const DEMO_DEVICES: Device[] = [
 		battery: 62,
 		batteryState: "normal",
 		wifiStrength: -55,
-		firmware: "1.8.3",
+		firmware: "1.5.0",
 		color: "#4ECDC4",
 		thumbnail: null,
 		deviceDisplayUnits: "F",

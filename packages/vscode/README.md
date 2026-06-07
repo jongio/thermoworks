@@ -63,8 +63,14 @@ The extension adds a **ThermoWorks: Devices** panel to the VS Code sidebar showi
 - **All devices** — with type, online/offline status, and alarm badges
 - **Channel readings** — color-coded (green = normal, red = high alarm, blue = low alarm)
 - **Device metadata** — battery %, last seen, firmware version
+- **Firmware alerts** — orange warning when a device has outdated firmware
+- **Badge count** — activity bar icon shows number of devices with active alarms
 
-The panel auto-refreshes on the same interval as the status bar.
+The panel auto-refreshes on the same interval as the status bar. Device list is cached for 5 minutes (devices rarely change), while channel data refreshes at the configured interval.
+
+### Firmware Update Detection
+
+The extension compares each device's current firmware version against the latest available version from ThermoWorks Cloud. If a device is outdated, an orange **"Firmware update available"** warning appears at the top of that device's channel list. Firmware info is cached for 1 hour.
 
 ## Status Bar
 

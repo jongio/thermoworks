@@ -1,7 +1,7 @@
 import type { Device, DeviceChannel, User } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 import * as vscode from "vscode";
-import { DEMO_DEVICES, DEMO_USER, getDemoChannels } from "../demo-data";
+import { DEMO_DEVICES, DEMO_LATEST_FIRMWARE, DEMO_USER, getDemoChannels } from "../demo-data";
 import type { CredentialStore } from "../credentials";
 import {
 	AccountDetailNode,
@@ -302,7 +302,14 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 				? getDemoChannels(serial, this.demoMode)
 				: await this.getCachedChannels(serial);
 
-			const firmwareOutdated = await this.isFirmwareOutdated(device);
+			let firmwareOutdated: boolean;
+			if (this.demoMode) {
+				const latest = device.type ? DEMO_LATEST_FIRMWARE[device.type] : undefined;
+				firmwareOutdated = !!latest && !!device.firmware && device.firmware !== latest;
+			} else {
+				firmwareOutdated = await this.isFirmwareOutdated(device);
+			}
+
 			return buildDeviceChildren(device, channels, firmwareOutdated);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load channels";

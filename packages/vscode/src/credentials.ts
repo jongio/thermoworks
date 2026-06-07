@@ -46,10 +46,14 @@ export class CredentialStore {
 				// Try new atomic format first
 				const blob = await keytar.getPassword(SERVICE_NAME, ACCOUNT_CREDENTIALS);
 				if (blob) {
-					const parsed = JSON.parse(blob) as { email?: string; password?: string };
-					if (parsed.email && parsed.password) {
-						await this.syncSecretStorage(parsed.email, parsed.password);
-						return { email: parsed.email, password: parsed.password };
+					try {
+						const parsed = JSON.parse(blob) as { email?: string; password?: string };
+						if (parsed.email && parsed.password) {
+							await this.syncSecretStorage(parsed.email, parsed.password);
+							return { email: parsed.email, password: parsed.password };
+						}
+					} catch {
+						// Corrupted keychain entry — fall through to legacy format
 					}
 				}
 

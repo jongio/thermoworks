@@ -46,6 +46,7 @@ export type {
 	SearchHit,
 	SearchOptions,
 	SearchResult,
+	ShareResult,
 	TemperatureCategory,
 	TemperatureGuide,
 	TemperatureReading,

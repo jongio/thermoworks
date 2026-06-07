@@ -32,6 +32,7 @@ import {
 	type SearchHit,
 	type SearchOptions,
 	type SearchResult,
+	type ShareResult,
 	type TemperatureCategory,
 	type TemperatureGuide,
 	type TemperatureReading,
@@ -513,6 +514,28 @@ export class ThermoworksCloud {
 		};
 	}
 
+	/** Share a device's live state publicly via a shareable link. */
+	async shareDevice(serial: string): Promise<ShareResult> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const result = await session.callFunction("publicShareDeviceState", { deviceId: serial });
+		return toShareResult(result);
+	}
+
+	/** Share an archive publicly via a shareable link. */
+	async shareArchive(serial: string, archiveId: string): Promise<ShareResult> {
+		validateSerial(serial);
+		if (!archiveId) {
+			throw new Error("archiveId is required");
+		}
+		const session = await this.ensureSession();
+		const result = await session.callFunction("publicShareArchive", {
+			archiveId,
+			deviceId: serial,
+		});
+		return toShareResult(result);
+	}
+
 	/** Experimental callable function actions. */
 	readonly actions = {
 		startSession: async (serial: string, label?: string): Promise<ActionResult> => {
@@ -926,4 +949,24 @@ function toActionResult(result: unknown): ActionResult {
 		};
 	}
 	return { success: true, data: result ?? null, error: null };
+}
+
+function toShareResult(result: unknown): ShareResult {
+	const data = result as {
+		success?: boolean;
+		publicLink?: string;
+		error?: string;
+		status?: string;
+		message?: string;
+	} | null;
+	if (data && typeof data === "object") {
+		if (data.status === "error" || data.error) {
+			return { success: false };
+		}
+		return {
+			success: data.success !== false,
+			publicLink: data.publicLink ?? undefined,
+		};
+	}
+	return { success: true };
 }

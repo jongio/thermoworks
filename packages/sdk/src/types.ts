@@ -343,6 +343,14 @@ export interface SearchOptions {
 	pageSize?: number;
 }
 
+// ─── Sharing ─────────────────────────────────────────────────────────────────
+
+/** Result from a public sharing operation. */
+export interface ShareResult {
+	readonly success: boolean;
+	readonly publicLink?: string;
+}
+
 // ─── Actions (Callable Functions) ────────────────────────────────────────────
 
 /** Result from a callable function invocation. */

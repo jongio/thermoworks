@@ -17,7 +17,6 @@ import {
 	type Archive,
 	type ArchiveChannel,
 	type ArchiveListOptions,
-	type BigQueryRef,
 	type CalibrationPoint,
 	type CalibrationRecord,
 	type Device,
@@ -25,9 +24,7 @@ import {
 	type DeviceEvent,
 	type DeviceFilter,
 	type EventFilter,
-	type FanSettings,
 	type FirmwareInfo,
-	type GatewayInfo,
 	type MinMaxReading,
 	NetworkError,
 	NotFoundError,
@@ -222,14 +219,15 @@ export class ThermoworksCloud {
 	 * Get all channels for a device. Probes all channels 1-9, skipping any gaps.
 	 */
 	async getAllDeviceChannels(serial: string): Promise<DeviceChannel[]> {
+		const results = await Promise.allSettled(
+			Array.from({ length: 9 }, (_, i) => this.getDeviceChannel(serial, i + 1)),
+		);
 		const channels: DeviceChannel[] = [];
-		for (let i = 1; i <= 9; i++) {
-			try {
-				const channel = await this.getDeviceChannel(serial, i);
-				channels.push(channel);
-			} catch (error) {
-				if (error instanceof NotFoundError) continue;
-				throw error;
+		for (const result of results) {
+			if (result.status === "fulfilled") {
+				channels.push(result.value);
+			} else if (!(result.reason instanceof NotFoundError)) {
+				throw result.reason;
 			}
 		}
 		return channels;
@@ -289,7 +287,9 @@ export class ThermoworksCloud {
 		const session = await this.ensureSession();
 		const limit = Math.min(Math.max(1, filter?.limit ?? 50), 500);
 
-		const filters: Array<{ fieldFilter: { field: { fieldPath: string }; op: string; value: { stringValue: string } } }> = [
+		const filters: Array<{
+			fieldFilter: { field: { fieldPath: string }; op: string; value: { stringValue: string } };
+		}> = [
 			{
 				fieldFilter: {
 					field: { fieldPath: "accountId" },
@@ -319,9 +319,8 @@ export class ThermoworksCloud {
 			});
 		}
 
-		const where = filters.length === 1
-			? filters[0]
-			: { compositeFilter: { op: "AND", filters: filters } };
+		const where =
+			filters.length === 1 ? filters[0] : { compositeFilter: { op: "AND", filters: filters } };
 
 		const queryBody = {
 			structuredQuery: {
@@ -369,7 +368,10 @@ export class ThermoworksCloud {
 		}
 
 		const response = await session.request("GET", path);
-		const data = (await response.json()) as { documents?: Array<{ fields?: FirestoreFields; name?: string }>; error?: { message?: string } };
+		const data = (await response.json()) as {
+			documents?: Array<{ fields?: FirestoreFields; name?: string }>;
+			error?: { message?: string };
+		};
 		if (data.error) {
 			throw new NetworkError(data.error.message ?? "Failed to list archives");
 		}
@@ -405,10 +407,14 @@ export class ThermoworksCloud {
 			`documents/devices/${encodeURIComponent(serial)}/calibration`,
 		);
 
-		const data = (await response.json()) as { documents?: Array<{ fields?: FirestoreFields; name?: string }> };
+		const data = (await response.json()) as {
+			documents?: Array<{ fields?: FirestoreFields; name?: string }>;
+		};
 		if (!data.documents) return [];
 
-		return data.documents.map((doc) => parseCalibrationRecord(doc.fields ?? {}, extractDocId(doc.name)));
+		return data.documents.map((doc) =>
+			parseCalibrationRecord(doc.fields ?? {}, extractDocId(doc.name)),
+		);
 	}
 
 	/** Get firmware info for a device type. */
@@ -484,7 +490,11 @@ export class ThermoworksCloud {
 			pageSize: Math.min(Math.max(1, options.pageSize ?? 20), 100),
 		});
 
-		const data = result as { hits?: Array<{ id?: string; score?: number; document?: Record<string, unknown> }>; totalHits?: number; page?: number } | null;
+		const data = result as {
+			hits?: Array<{ id?: string; score?: number; document?: Record<string, unknown> }>;
+			totalHits?: number;
+			page?: number;
+		} | null;
 		const hits: SearchHit[] = [];
 		if (data?.hits) {
 			for (const hit of data.hits) {
@@ -642,24 +652,30 @@ function parseDevice(fields: FirestoreFields): Device {
 		searModeEnabled: getBoolean(fields, "searModeEnabled"),
 		showSensorChannels: getBoolean(fields, "showSensorChannels"),
 		ringColors: getStringArray(fields, "ringColors"),
-		gateway: gatewayFields ? {
-			gatewayId,
-			rssi: getNumber(gatewayFields, "gatewayRSSI"),
-			lastSeen: getTimestamp(gatewayFields, "gatewayLastSeen"),
-			switchedAt: getTimestamp(gatewayFields, "gatewaySwitchLastAt"),
-			lastPacketId: getNumber(gatewayFields, "lastPacketId"),
-		} : null,
-		fan: fanMap ? {
-			connected: getBoolean(fanMap, "connected") ?? false,
-			connection: getBoolean(fanMap, "connection") ?? false,
-			setTemp: getNumber(fanMap, "setTemp"),
-			fanChannel: getString(fanMap, "fan_channel"),
-			state: getNumber(fanMap, "state"),
-		} : null,
-		bigQuery: bigQueryMap ? {
-			datasetId: getString(bigQueryMap, "datasetId") ?? "",
-			tableId: getString(bigQueryMap, "tableId") ?? "",
-		} : null,
+		gateway: gatewayFields
+			? {
+					gatewayId,
+					rssi: getNumber(gatewayFields, "gatewayRSSI"),
+					lastSeen: getTimestamp(gatewayFields, "gatewayLastSeen"),
+					switchedAt: getTimestamp(gatewayFields, "gatewaySwitchLastAt"),
+					lastPacketId: getNumber(gatewayFields, "lastPacketId"),
+				}
+			: null,
+		fan: fanMap
+			? {
+					connected: getBoolean(fanMap, "connected") ?? false,
+					connection: getBoolean(fanMap, "connection") ?? false,
+					setTemp: getNumber(fanMap, "setTemp"),
+					fanChannel: getString(fanMap, "fan_channel"),
+					state: getNumber(fanMap, "state"),
+				}
+			: null,
+		bigQuery: bigQueryMap
+			? {
+					datasetId: getString(bigQueryMap, "datasetId") ?? "",
+					tableId: getString(bigQueryMap, "tableId") ?? "",
+				}
+			: null,
 	};
 }
 
@@ -886,7 +902,12 @@ function parseCalibrationPoints(values: FirestoreValue[] | null): CalibrationPoi
 }
 
 function toActionResult(result: unknown): ActionResult {
-	const data = result as { success?: boolean; error?: string; status?: string; message?: string } | null;
+	const data = result as {
+		success?: boolean;
+		error?: string;
+		status?: string;
+		message?: string;
+	} | null;
 	if (data && typeof data === "object") {
 		// Detect error envelope: { status: "error", message: "..." }
 		if (data.status === "error" || data.error) {

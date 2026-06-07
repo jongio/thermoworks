@@ -186,7 +186,10 @@ export async function createAuthSession(
 			);
 
 			if (!response.ok) {
-				throw new NetworkError(`Cloud function call failed: HTTP ${response.status}`, response.status);
+				throw new NetworkError(
+					`Cloud function call failed: HTTP ${response.status}`,
+					response.status,
+				);
 			}
 
 			const result = await response.json();

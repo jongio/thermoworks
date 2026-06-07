@@ -1,4 +1,4 @@
-# ThermoWorks
+# 🔥 ThermoWorks Tools
 
 [![CI](https://github.com/jongio/thermoworks/actions/workflows/ci.yml/badge.svg)](https://github.com/jongio/thermoworks/actions/workflows/ci.yml)
 [![npm: thermoworks](https://img.shields.io/npm/v/thermoworks?label=thermoworks&color=cb3837)](https://www.npmjs.com/package/thermoworks)
@@ -9,25 +9,39 @@
 
 > **Disclaimer:** This project is not affiliated with, endorsed by, or connected to [ThermoWorks](https://www.thermoworks.com/) in any way. It is an unofficial, community-built tool created by ThermoWorks customers for personal use.
 
-See live temperatures from your ThermoWorks Cloud devices in the terminal, GitHub Copilot CLI statusline, VS Code status bar, or a full device panel — with color-coded alarm alerts.
+See live temperatures from your ThermoWorks Cloud devices in the terminal, GitHub Copilot CLI statusline, VS Code status bar, or a full device panel — with color-coded alarm alerts and firmware update notifications.
+
+---
+
+## Products
+
+### 🔥 VS Code Extension
+
+Full sidebar device panel + status bar integration. See all your devices, channels, battery, firmware status, and alarm states embedded in your editor.
+
+![ThermoWorks device panel in VS Code](docs/images/vscode-panel-demo.png)
+
+**Install:** Search "ThermoWorks" in VS Code Extensions, or get it from the [Marketplace](https://marketplace.visualstudio.com/items?itemName=jongio.thermoworks).
+
+### ⌨️ CLI + Copilot Statusline
+
+Live temperatures in your terminal footer while you code. Interactive wizard to pick devices and channels.
 
 ![ThermoWorks statusline in GitHub Copilot CLI](docs/images/statusline.png)
 
 ![ThermoWorks statusline with per-channel display](docs/images/statusline-channels.png)
 
-## Quick Start
+**Install:** `npx thermoworks`
 
-```bash
-# Sign in to ThermoWorks Cloud
-npx thermoworks auth login
+### 🛠️ SDK
 
-# Run the Copilot statusline setup wizard
-npx thermoworks copilot setup
-```
+Node.js SDK for programmatic access — build your own dashboards, alerts, or automations with full access to devices, channels, events, archives, calibration data, and more.
 
-Done — your selected devices can now appear in the GitHub Copilot CLI statusline and VS Code status bar. For command details, see the [CLI reference](docs/cli-reference.md).
+**Install:** `npm install thermoworks-sdk`
 
-## Features
+---
+
+## Key Features
 
 ### 🚨 Temperature Alerts
 
@@ -41,35 +55,27 @@ Instant visual alarms when temperatures cross thresholds — red for too high, b
 
 ![CLI low alarm — blue ANSI text](docs/images/cli-alarm-low.png)
 
-### 📋 VS Code Device Panel
+### ⬆️ Firmware Update Alerts
 
-Full sidebar tree view with all devices, live channel readings, battery levels, firmware info, and alarm badges — right in your editor.
+Automatically detects outdated device firmware by comparing against the latest version from ThermoWorks Cloud. Orange warning visible at every tree level — device folder, device node, and expanded details.
 
-![ThermoWorks device panel in VS Code](docs/images/vscode-panel-demo.png)
+![Firmware update alert in VS Code](docs/images/vscode-firmware-update.png)
 
-Install the **ThermoWorks** extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=jongio.thermoworks). The extension shares credentials and device configuration with the CLI — sign in once and both tools see your devices.
+### 🔔 Activity Bar Badge
 
-See the [extension README](packages/vscode/README.md) for details.
-
-### 📟 Copilot CLI Statusline
-
-Live temperatures appear in the GitHub Copilot CLI footer while you code. Run `npx thermoworks copilot setup` to pick devices and channels with an interactive wizard.
-
-### 💻 VS Code Status Bar
-
-Temperatures in the VS Code footer at a glance with configurable auto-refresh (default 30s).
+The fire icon in the VS Code Activity Bar shows a badge count of devices with active alarms — you'll know something needs attention without even opening the panel.
 
 ### 📊 Per-Channel Selection
 
 Pick averages or individual channels for multi-probe devices like the Signals 4-channel or Smoke 2-channel.
 
-### 🛠️ SDK for Custom Integrations
-
-Build your own dashboards, alerts, or automations with the [`thermoworks-sdk`](https://www.npmjs.com/package/thermoworks-sdk) Node.js package — full access to devices, channels, events, archives, calibration data, and more.
-
 ### 🔐 Secure Credential Storage
 
 Credentials stored in the OS keychain (macOS Keychain, Windows Credential Vault, libsecret). Sign in once — CLI and VS Code share access. Environment variables (`THERMOWORKS_EMAIL` / `THERMOWORKS_PASSWORD`) supported for headless environments.
+
+### 🔗 Cloud Dashboard Link
+
+One-click link to [cloud.thermoworks.com](https://cloud.thermoworks.com) from within the VS Code panel.
 
 ### 🎬 Demo Mode
 
@@ -87,18 +93,38 @@ npx thermoworks copilot setup --demo
 
 In VS Code: Command Palette → **ThermoWorks: Demo (Simulate Alarm)** — populates the full panel and status bar with fake devices.
 
+---
+
+## Quick Start
+
+```bash
+# Sign in to ThermoWorks Cloud
+npx thermoworks auth login
+
+# List your devices
+npx thermoworks devices
+
+# Run the Copilot statusline setup wizard
+npx thermoworks copilot setup
+```
+
+For command details, see the [CLI reference](docs/cli-reference.md).
+
+---
+
 ## Packages
 
 | Package | Description |
 |---------|-------------|
 | [`thermoworks`](https://www.npmjs.com/package/thermoworks) | CLI for authentication, Copilot statusline setup, device listing, and demo mode |
 | [`thermoworks-sdk`](https://www.npmjs.com/package/thermoworks-sdk) | Node.js SDK for programmatic access to ThermoWorks Cloud |
-| [ThermoWorks for VS Code](https://marketplace.visualstudio.com/items?itemName=jongio.thermoworks) | Extension with status bar, device panel, alarm indicators, and demo mode |
+| [ThermoWorks for VS Code](https://marketplace.visualstudio.com/items?itemName=jongio.thermoworks) | Extension with status bar, device panel, alarm indicators, and firmware alerts |
 
 ## Documentation
 
 - [CLI Reference](docs/cli-reference.md) — all commands, flags, and options
 - [API Reference](docs/api-reference.md) — ThermoWorks Cloud Firestore REST API
+- [VS Code Extension](packages/vscode/README.md) — panel, status bar, alarms, firmware detection
 
 ## Development
 

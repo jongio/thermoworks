@@ -29,6 +29,7 @@ pnpm lint
 
 - `packages/sdk`
 - `packages/cli`
+- `packages/vscode`
 - `packages/web`
 
 ## Pull requests

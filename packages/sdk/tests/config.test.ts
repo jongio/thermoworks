@@ -77,8 +77,8 @@ describe("isValidDeviceEntry", () => {
 		expect(isValidDeviceEntry({ serial: "ABC123", label: "", channels: [1] })).toBe(true);
 	});
 
-	it("accepts an entry with empty channels array", () => {
-		expect(isValidDeviceEntry({ serial: "ABC123", label: "Pit", channels: [] })).toBe(true);
+	it("rejects an entry with empty channels array", () => {
+		expect(isValidDeviceEntry({ serial: "ABC123", label: "Pit", channels: [] })).toBe(false);
 	});
 
 	it("rejects null", () => {

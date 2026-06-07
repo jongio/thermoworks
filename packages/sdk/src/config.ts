@@ -40,7 +40,11 @@ export function isValidDeviceEntry(entry: unknown): entry is DeviceEntry {
 	if (typeof obj.serial !== "string" || !obj.serial) return false;
 	if (typeof obj.label !== "string") return false;
 	if (obj.channels === "avg") return true;
-	if (Array.isArray(obj.channels) && obj.channels.every((ch) => typeof ch === "number"))
+	if (
+		Array.isArray(obj.channels) &&
+		obj.channels.length > 0 &&
+		obj.channels.every((ch) => typeof ch === "number")
+	)
 		return true;
 	return false;
 }

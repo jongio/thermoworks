@@ -14,6 +14,8 @@ import {
 	type Account,
 	type ActionResult,
 	type Alarm,
+	type AlarmSetOptions,
+	type AlarmThresholdOptions,
 	type Archive,
 	type ArchiveChannel,
 	type ArchiveListOptions,
@@ -254,6 +256,56 @@ export class ThermoworksCloud {
 			value: Math.round((sum / temps.length) * 10) / 10,
 			units: first.units,
 		};
+	}
+
+	/**
+	 * Set alarm thresholds on a device channel.
+	 *
+	 * Performs a partial update - only the provided fields are modified.
+	 * At least one of `high` or `low` must be specified.
+	 *
+	 * @example
+	 * ```ts
+	 * // Set a high alarm at 275°F
+	 * await client.setAlarm("ABC123", 1, {
+	 *   high: { value: 275, units: "F", enabled: true },
+	 * });
+	 *
+	 * // Set both high and low alarms
+	 * await client.setAlarm("ABC123", 1, {
+	 *   high: { value: 275, units: "F", enabled: true },
+	 *   low: { value: 32, units: "F", enabled: true },
+	 * });
+	 * ```
+	 */
+	async setAlarm(serial: string, channel: number, config: AlarmSetOptions): Promise<void> {
+		validateSerial(serial);
+		validateChannel(channel);
+
+		if (!config.high && !config.low) {
+			throw new Error("At least one of 'high' or 'low' must be provided");
+		}
+
+		const fieldPaths: string[] = [];
+		const fields: Record<string, FirestoreValue> = {};
+
+		if (config.high) {
+			fieldPaths.push("alarmHigh");
+			fields.alarmHigh = buildAlarmMapValue(config.high);
+		}
+
+		if (config.low) {
+			fieldPaths.push("alarmLow");
+			fields.alarmLow = buildAlarmMapValue(config.low);
+		}
+
+		const updateMask = fieldPaths.map((fp) => `updateMask.fieldPaths=${fp}`).join("&");
+
+		const path = `documents/devices/${encodeURIComponent(serial)}/channels/${channel}?${updateMask}`;
+		const body = { fields };
+
+		const session = await this.ensureSession();
+		await session.request("PATCH", path, body);
 	}
 
 	/** Get account metadata. */
@@ -985,4 +1037,20 @@ function toShareResult(result: unknown): ShareResult {
 		};
 	}
 	return { success: true };
+}
+
+function buildAlarmMapValue(opts: AlarmThresholdOptions): FirestoreValue {
+	const mapFields: Record<string, FirestoreValue> = {
+		value: { doubleValue: opts.value },
+	};
+	if (opts.units !== undefined) {
+		mapFields.units = { stringValue: opts.units };
+	}
+	if (opts.enabled !== undefined) {
+		mapFields.enabled = { booleanValue: opts.enabled };
+	}
+	if (opts.muted !== undefined) {
+		mapFields.muted = { booleanValue: opts.muted };
+	}
+	return { mapValue: { fields: mapFields } };
 }

@@ -85,10 +85,10 @@ describe("computeRetryDelay", () => {
 
 	it("respects Retry-After header as HTTP date", () => {
 		vi.spyOn(Math, "random").mockReturnValue(1);
-		const futureDate = new Date(Date.now() + 3000).toUTCString();
+		const futureDate = new Date(Date.now() + 5000).toUTCString();
 		const delay = computeRetryDelay(0, 1000, 30_000, futureDate);
-		// Should be approximately 3000ms (within tolerance for timing)
-		expect(delay).toBeGreaterThan(2500);
+		// Should be approximately 5000ms (within tolerance for timing)
+		expect(delay).toBeGreaterThan(4000);
 		expect(delay).toBeLessThanOrEqual(30_000);
 	});
 

@@ -1,5 +1,6 @@
 export type { AlarmState } from "./alarm.js";
 export { escalateAlarm, getChannelAlarmState, getChannelsAlarmState } from "./alarm.js";
+export type { AuthSessionOptions } from "./auth.js";
 export { ThermoworksCloud } from "./client.js";
 export type { DeviceEntry, StatuslineConfig } from "./config.js";
 export {
@@ -19,6 +20,8 @@ export {
 	serializeCredentials,
 } from "./credentials.js";
 export { formatTimeAgo } from "./format.js";
+export type { TokenCacheData } from "./token-cache.js";
+export { invalidateTokenCache, resolveTokenCachePath } from "./token-cache.js";
 export type {
 	Account,
 	ActionResult,

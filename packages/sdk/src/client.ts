@@ -572,13 +572,14 @@ export class ThermoworksCloud {
 		}
 		if (this.session) return this.session;
 		if (!this.sessionPromise) {
-			this.sessionPromise = createAuthSession(
-				this.config.email,
-				this.config.password,
-				this.config.apiKey,
-				this.config.appId,
-				this.config.retry,
-			)
+			this.sessionPromise = createAuthSession({
+				email: this.config.email,
+				password: this.config.password,
+				apiKey: this.config.apiKey,
+				appId: this.config.appId,
+				tokenCachePath: this.config.tokenCachePath,
+				retry: this.config.retry,
+			})
 				.then((s) => {
 					if (this.closed) {
 						s.close();

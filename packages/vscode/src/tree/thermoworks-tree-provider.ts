@@ -42,7 +42,6 @@ export class ThermoworksTreeProvider
 	private readonly credentialStore: CredentialStore;
 	private readonly clientManager: ClientManager;
 	private treeView: vscode.TreeView<TreeNode> | undefined;
-	private currentClient: ThermoworksCloud | undefined;
 	private user: User | undefined;
 	private deviceCache: DeviceCache | undefined;
 	private channelCaches = new Map<string, ChannelCache>();
@@ -184,13 +183,15 @@ export class ThermoworksTreeProvider
 
 		scheduleNext();
 
-		const configDisposable = vscode.workspace.onDidChangeConfiguration((e) => {
-			if (e.affectsConfiguration("thermoworks.refreshInterval")) {
-				this.startAutoRefresh(context);
-			}
-		});
-		context.subscriptions.push(configDisposable);
-		this.configDisposable = configDisposable;
+		// Register config listener only once to avoid accumulating disposed entries
+		if (!this.configDisposable) {
+			this.configDisposable = vscode.workspace.onDidChangeConfiguration((e) => {
+				if (e.affectsConfiguration("thermoworks.refreshInterval")) {
+					this.startAutoRefresh(context);
+				}
+			});
+			context.subscriptions.push(this.configDisposable);
+		}
 	}
 
 	async initialize(): Promise<void> {
@@ -203,6 +204,14 @@ export class ThermoworksTreeProvider
 		this.stopAutoRefresh();
 		this.clientManager.close();
 		this._onDidChangeTreeData.dispose();
+	}
+
+	// ─── Private: Client Access ─────────────────────────────────────────────
+
+	private async getClient(): Promise<ThermoworksCloud> {
+		const creds = await this.credentialStore.getCredentials();
+		if (!creds) throw new Error("Not authenticated");
+		return this.clientManager.getClient(creds);
 	}
 
 	// ─── Private: Tree Building ──────────────────────────────────────────────
@@ -223,8 +232,7 @@ export class ThermoworksTreeProvider
 		}
 
 		try {
-			const client = this.clientManager.getClient(creds);
-			this.currentClient = client;
+			const client = await this.getClient();
 
 			if (!this.user) {
 				this.user = await client.getUser();
@@ -337,8 +345,8 @@ export class ThermoworksTreeProvider
 			return this.deviceCache.devices;
 		}
 
-		if (!this.currentClient) throw new Error("Not authenticated");
-		const devices = await this.currentClient.getDevices();
+		const client = await this.getClient();
+		const devices = await client.getDevices();
 		this.deviceCache = { devices, fetchedAt: now };
 		return devices;
 	}
@@ -355,14 +363,14 @@ export class ThermoworksTreeProvider
 			return cached.channels;
 		}
 
-		if (!this.currentClient) throw new Error("Not authenticated");
-		const channels = await this.currentClient.getAllDeviceChannels(serial);
+		const client = await this.getClient();
+		const channels = await client.getAllDeviceChannels(serial);
 		this.channelCaches.set(serial, { channels, fetchedAt: now });
 		return channels;
 	}
 
 	private async isFirmwareOutdated(device: Device): Promise<boolean> {
-		if (!device.firmware || !device.type || !this.currentClient || this.demoMode) {
+		if (!device.firmware || !device.type || this.demoMode) {
 			return false;
 		}
 
@@ -374,7 +382,8 @@ export class ThermoworksTreeProvider
 			if (cached && now - cached.fetchedAt < FIRMWARE_CACHE_TTL_MS) {
 				latestVersion = cached.latestVersion;
 			} else {
-				const info = await this.currentClient.getFirmwareInfo(device.type);
+				const client = await this.getClient();
+				const info = await client.getFirmwareInfo(device.type);
 				latestVersion = info.version;
 				this.firmwareCaches.set(device.type, { latestVersion, fetchedAt: now });
 			}
@@ -390,7 +399,6 @@ export class ThermoworksTreeProvider
 
 	private invalidate(): void {
 		this.user = undefined;
-		this.currentClient = undefined;
 		this.deviceCache = undefined;
 		this.channelCaches.clear();
 		this.clientManager.close();
@@ -411,10 +419,6 @@ export class ThermoworksTreeProvider
 		if (this.refreshTimer) {
 			clearTimeout(this.refreshTimer);
 			this.refreshTimer = undefined;
-		}
-		if (this.configDisposable) {
-			this.configDisposable.dispose();
-			this.configDisposable = undefined;
 		}
 	}
 }

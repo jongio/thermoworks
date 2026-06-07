@@ -9,10 +9,15 @@ import { ThermoworksCloud } from "thermoworks-sdk";
 export class ClientManager {
 	private client: ThermoworksCloud | undefined;
 	private currentEmail: string | undefined;
+	private currentPassword: string | undefined;
 
 	getClient(credentials: Credentials): ThermoworksCloud {
 		// Reuse existing client if credentials haven't changed
-		if (this.client && this.currentEmail === credentials.email) {
+		if (
+			this.client &&
+			this.currentEmail === credentials.email &&
+			this.currentPassword === credentials.password
+		) {
 			return this.client;
 		}
 		// Close old client if credentials changed
@@ -22,6 +27,7 @@ export class ClientManager {
 			password: credentials.password,
 		});
 		this.currentEmail = credentials.email;
+		this.currentPassword = credentials.password;
 		return this.client;
 	}
 
@@ -29,5 +35,6 @@ export class ClientManager {
 		this.client?.close();
 		this.client = undefined;
 		this.currentEmail = undefined;
+		this.currentPassword = undefined;
 	}
 }

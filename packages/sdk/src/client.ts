@@ -29,6 +29,7 @@ import {
 	type DeviceEvent,
 	type DeviceFilter,
 	type EventFilter,
+	type FanSettings,
 	type FirmwareInfo,
 	type MinMaxReading,
 	NetworkError,
@@ -760,6 +761,39 @@ export class ThermoworksCloud {
 			deviceId: serial,
 		});
 		return toShareResult(result);
+	}
+
+	// ─── Fan Controller ──────────────────────────────────────────────────────────
+
+	/** Get the current fan/blower controller state for a device. Returns `null` if the device has no fan. */
+	async getFanState(serial: string): Promise<FanSettings | null> {
+		const device = await this.getDevice(serial);
+		return device.fan;
+	}
+
+	/** Set the fan controller target temperature. */
+	async setFanTarget(serial: string, targetTemp: number): Promise<ActionResult> {
+		validateSerial(serial);
+		if (!Number.isFinite(targetTemp)) {
+			throw new Error("targetTemp must be a finite number");
+		}
+		const session = await this.ensureSession();
+		const result = await session.callFunction("deviceStateUpdate", {
+			deviceId: serial,
+			fan: { setTemp: targetTemp },
+		});
+		return toActionResult(result);
+	}
+
+	/** Enable or disable the fan controller connection. */
+	async setFanEnabled(serial: string, enabled: boolean): Promise<ActionResult> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const result = await session.callFunction("deviceStateUpdate", {
+			deviceId: serial,
+			fan: { connection: enabled },
+		});
+		return toActionResult(result);
 	}
 
 	/**

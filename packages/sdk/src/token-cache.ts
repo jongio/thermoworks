@@ -1,9 +1,11 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import { CREDENTIAL_SERVICE } from "./credentials.js";
 
 const DEFAULT_CACHE_DIR = join(homedir(), ".thermoworks");
 const DEFAULT_CACHE_PATH = join(DEFAULT_CACHE_DIR, ".token-cache.json");
+const TOKEN_CACHE_ACCOUNT = "token-cache";
 
 /** Cached token data persisted to disk. */
 export interface TokenCacheData {
@@ -16,13 +18,52 @@ export interface TokenCacheData {
 	readonly projectId: string;
 }
 
+interface KeytarLike {
+	getPassword(service: string, account: string): Promise<string | null>;
+	setPassword(service: string, account: string, password: string): Promise<void>;
+	deletePassword(service: string, account: string): Promise<boolean>;
+}
+
+let _keytar: KeytarLike | null | undefined;
+
+async function getKeytar(): Promise<KeytarLike | null> {
+	if (_keytar !== undefined) return _keytar;
+	try {
+		// Dynamic import - @github/keytar is an optional peer dependency
+		// @ts-expect-error: keytar may not be installed
+		const mod = await import("@github/keytar");
+		_keytar = mod.default as KeytarLike;
+	} catch {
+		_keytar = null;
+	}
+	return _keytar;
+}
+
 /** Resolve the token cache file path from user input or default. */
 export function resolveTokenCachePath(userPath?: string): string {
 	return userPath ?? DEFAULT_CACHE_PATH;
 }
 
-/** Read cached tokens from disk. Returns null if cache is missing, corrupt, or malformed. */
+/**
+ * Read cached tokens. Tries OS keychain first, falls back to file.
+ * Returns null if cache is missing, corrupt, or malformed.
+ */
 export async function readTokenCache(cachePath: string): Promise<TokenCacheData | null> {
+	// Try OS keychain first (secure storage)
+	try {
+		const keytar = await getKeytar();
+		if (keytar) {
+			const blob = await keytar.getPassword(CREDENTIAL_SERVICE, TOKEN_CACHE_ACCOUNT);
+			if (blob) {
+				const parsed: unknown = JSON.parse(blob);
+				if (isValidCacheData(parsed)) return parsed;
+			}
+		}
+	} catch {
+		// Keychain unavailable, try file fallback
+	}
+
+	// File fallback for headless/CI environments
 	try {
 		const raw = await readFile(cachePath, "utf8");
 		const parsed: unknown = JSON.parse(raw);
@@ -31,17 +72,39 @@ export async function readTokenCache(cachePath: string): Promise<TokenCacheData 
 		}
 		return parsed;
 	} catch {
-		// File missing, permission error, or corrupt JSON - all treated as cache miss
 		return null;
 	}
 }
 
-/** Write token data to the cache file. Creates parent directories if needed. */
+/**
+ * Write token data to cache. Stores in OS keychain when available,
+ * falls back to file with restricted permissions.
+ */
 export async function writeTokenCache(cachePath: string, data: TokenCacheData): Promise<void> {
+	const blob = JSON.stringify(data);
+
+	// Try OS keychain first (secure storage)
+	try {
+		const keytar = await getKeytar();
+		if (keytar) {
+			await keytar.setPassword(CREDENTIAL_SERVICE, TOKEN_CACHE_ACCOUNT, blob);
+			// Remove any stale file cache when keychain is available
+			try {
+				await rm(cachePath, { force: true });
+			} catch {
+				// Non-fatal
+			}
+			return;
+		}
+	} catch {
+		// Keychain unavailable, fall through to file
+	}
+
+	// File fallback with restricted permissions
 	try {
 		const dir = dirname(cachePath);
 		await mkdir(dir, { recursive: true, mode: 0o700 });
-		await writeFile(cachePath, `${JSON.stringify(data, null, 2)}\n`, {
+		await writeFile(cachePath, `${blob}\n`, {
 			encoding: "utf8",
 			mode: 0o600,
 		});
@@ -50,8 +113,19 @@ export async function writeTokenCache(cachePath: string, data: TokenCacheData): 
 	}
 }
 
-/** Delete the token cache file (e.g., on logout or credential change). */
+/** Delete the token cache from all storage backends. */
 export async function invalidateTokenCache(cachePath?: string): Promise<void> {
+	// Clear from OS keychain
+	try {
+		const keytar = await getKeytar();
+		if (keytar) {
+			await keytar.deletePassword(CREDENTIAL_SERVICE, TOKEN_CACHE_ACCOUNT);
+		}
+	} catch {
+		// Non-fatal
+	}
+
+	// Clear file cache
 	const resolved = resolveTokenCachePath(cachePath);
 	try {
 		await rm(resolved, { force: true });

@@ -14,6 +14,11 @@ vi.mock("undici", () => {
 	};
 });
 
+// Mock keytar as unavailable so token-cache falls back to file storage in tests
+vi.mock("@github/keytar", () => {
+	throw new Error("keytar not available in test");
+});
+
 import { request as undiciRequest } from "undici";
 
 const mockRequest = vi.mocked(undiciRequest);

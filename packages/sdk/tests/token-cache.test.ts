@@ -328,17 +328,25 @@ describe("createAuthSession with token caching", () => {
 	});
 
 	it("tokenCachePath=true uses default path", async () => {
-		// If a stale cache exists at the default path, a refresh call may precede webConfig+login
-		mockRequest.mockResolvedValueOnce(mockRes(400, { error: { message: "TOKEN_EXPIRED" } }) as any);
-		mockRequest.mockResolvedValueOnce(mockRes(200, { projectId: "thermoworks-app" }) as any);
-		mockRequest.mockResolvedValueOnce(
-			mockRes(200, {
-				idToken: "tok",
-				refreshToken: "ref",
-				localId: "user1",
-				expiresIn: "3600",
-			}) as any,
-		);
+		// Use a persistent mock that handles any number of calls:
+		// whether or not a stale cache file exists at the default path,
+		// the mock always returns valid responses
+		mockRequest.mockImplementation(async (_url: unknown) => {
+			const url = String(_url);
+			if (url.includes("webConfig")) {
+				return mockRes(200, { projectId: "thermoworks-app" }) as any;
+			}
+			if (url.includes("signInWithPassword")) {
+				return mockRes(200, {
+					idToken: "tok",
+					refreshToken: "ref",
+					localId: "user1",
+					expiresIn: "3600",
+				}) as any;
+			}
+			// Token refresh or any other call
+			return mockRes(400, { error: { message: "TOKEN_EXPIRED" } }) as any;
+		});
 
 		const { createAuthSession } = await import("../src/auth.js");
 		const session = await createAuthSession({

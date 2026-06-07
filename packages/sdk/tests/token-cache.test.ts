@@ -323,6 +323,8 @@ describe("createAuthSession with token caching", () => {
 	});
 
 	it("tokenCachePath=true uses default path", async () => {
+		// If a stale cache exists at the default path, a refresh call may precede webConfig+login
+		mockRequest.mockResolvedValueOnce(mockRes(400, { error: { message: "TOKEN_EXPIRED" } }) as any);
 		mockRequest.mockResolvedValueOnce(mockRes(200, { projectId: "thermoworks-app" }) as any);
 		mockRequest.mockResolvedValueOnce(
 			mockRes(200, {
@@ -334,11 +336,11 @@ describe("createAuthSession with token caching", () => {
 		);
 
 		const { createAuthSession } = await import("../src/auth.js");
-		// This will attempt to write to the real default path, but we just confirm no crash
 		const session = await createAuthSession({
 			email: "test@example.com",
 			password: "pass",
 			tokenCachePath: true,
+			retry: { maxRetries: 0 },
 		});
 
 		expect(session.getUserId()).toBe("user1");

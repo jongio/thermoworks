@@ -28,8 +28,10 @@ import {
 	type DeviceDataUsage,
 	type DeviceEvent,
 	type DeviceFilter,
+	type DeviceHistory,
 	type EventFilter,
 	type FirmwareInfo,
+	type HistoricalReading,
 	type MinMaxReading,
 	NetworkError,
 	NotFoundError,
@@ -762,6 +764,16 @@ export class ThermoworksCloud {
 		return toShareResult(result);
 	}
 
+	/** Retrieve full historical temperature time-series data from BigQuery. */
+	async getHistory(serial: string): Promise<DeviceHistory> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const result = await session.callFunction("requestRetrieveInstrumentHistory", {
+			deviceId: serial,
+		});
+		return parseDeviceHistory(serial, result);
+	}
+
 	/**
 	 * @deprecated Use the top-level methods `startSession`, `endSession`,
 	 * `clearSession`, `resetMinMax`, and `clearEvents` instead.
@@ -1165,6 +1177,25 @@ function toShareResult(result: unknown): ShareResult {
 		};
 	}
 	return { success: true };
+}
+
+function parseDeviceHistory(serial: string, result: unknown): DeviceHistory {
+	const readings: HistoricalReading[] = [];
+	if (result && typeof result === "object" && "readings" in result) {
+		const raw = (result as { readings?: unknown }).readings;
+		if (Array.isArray(raw)) {
+			for (const entry of raw) {
+				if (entry && typeof entry === "object") {
+					const r = entry as { v?: string; ts?: string; u?: string };
+					const value = r.v != null ? Number(r.v) : Number.NaN;
+					if (!Number.isNaN(value) && r.ts && r.u) {
+						readings.push({ value, timestamp: r.ts, units: r.u });
+					}
+				}
+			}
+		}
+	}
+	return { deviceId: serial, readings };
 }
 
 function buildAlarmMapValue(opts: AlarmThresholdOptions): FirestoreValue {

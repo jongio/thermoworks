@@ -407,6 +407,21 @@ export interface ActionResult<T = unknown> {
 	readonly error: string | null;
 }
 
+// ─── History ─────────────────────────────────────────────────────────────────
+
+/** A single historical temperature reading from BigQuery time-series data. */
+export interface HistoricalReading {
+	readonly value: number;
+	readonly timestamp: string;
+	readonly units: string;
+}
+
+/** Historical readings for a device retrieved from BigQuery. */
+export interface DeviceHistory {
+	readonly deviceId: string;
+	readonly readings: HistoricalReading[];
+}
+
 // ─── Filters ─────────────────────────────────────────────────────────────────
 
 /** Options for filtering devices. */

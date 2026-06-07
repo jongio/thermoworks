@@ -40,29 +40,51 @@ async function httpRequest(
 		body?: string;
 	},
 	agent: Agent,
+	retries = 2,
 ): Promise<HttpResponse> {
-	try {
-		const {
-			statusCode,
-			headers: _h,
-			body,
-		} = await undiciRequest(url, {
-			method: options.method ?? "GET",
-			headers: options.headers,
-			body: options.body,
-			dispatcher: agent,
-		});
+	let lastError: Error | undefined;
+	for (let attempt = 0; attempt <= retries; attempt++) {
+		try {
+			const {
+				statusCode,
+				headers: _h,
+				body,
+			} = await undiciRequest(url, {
+				method: options.method ?? "GET",
+				headers: options.headers,
+				body: options.body,
+				dispatcher: agent,
+			});
 
-		const text = await body.text();
-		return {
-			ok: statusCode >= 200 && statusCode < 300,
-			status: statusCode,
-			json: async () => JSON.parse(text),
-			text: async () => text,
-		};
-	} catch (err) {
-		throw new NetworkError(err instanceof Error ? err.message : "Network request failed");
+			const text = await body.text();
+			const response: HttpResponse = {
+				ok: statusCode >= 200 && statusCode < 300,
+				status: statusCode,
+				json: async () => JSON.parse(text),
+				text: async () => text,
+			};
+
+			// Don't retry client errors (4xx) — only server errors (5xx)
+			if (statusCode >= 500 && attempt < retries) {
+				lastError = new NetworkError(`Server error: HTTP ${statusCode}`);
+				await delay(100 * 2 ** attempt);
+				continue;
+			}
+
+			return response;
+		} catch (err) {
+			lastError = new NetworkError(err instanceof Error ? err.message : "Network request failed");
+			if (attempt < retries) {
+				await delay(100 * 2 ** attempt);
+				continue;
+			}
+		}
 	}
+	throw lastError ?? new NetworkError("Network request failed");
+}
+
+function delay(ms: number): Promise<void> {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function parseExpiresIn(value: unknown): number {

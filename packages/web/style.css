@@ -138,7 +138,8 @@ h1 {
   background: rgba(9, 11, 17, 0.72);
 }
 
-.feature-icon { font-size: 1.6rem; display: block; margin-bottom: 0.5rem; }
+.feature-icon { display: block; margin-bottom: 0.6rem; color: var(--accent); }
+.feature-icon svg { display: block; }
 .feature-item h3 { font-size: 1rem; margin-bottom: 0.35rem; }
 .feature-item p { color: var(--muted); font-size: 0.9rem; margin: 0; }
 .feature-item code { font-size: 0.82rem; color: var(--accent); }

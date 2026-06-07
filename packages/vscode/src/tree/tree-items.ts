@@ -78,12 +78,18 @@ export class ActionNode extends vscode.TreeItem {
 export class DevicesFolderNode extends vscode.TreeItem {
 	readonly type = "devicesFolder" as const;
 
-	constructor(deviceCount: number) {
+	constructor(deviceCount: number, firmwareUpdateCount = 0) {
 		super("Devices", vscode.TreeItemCollapsibleState.Expanded);
 		this.id = "thermoworks-devices";
-		this.iconPath = new vscode.ThemeIcon("server");
-		this.description = `${deviceCount}`;
 		this.contextValue = "devicesFolder";
+
+		if (firmwareUpdateCount > 0) {
+			this.iconPath = new vscode.ThemeIcon("alert", new vscode.ThemeColor("charts.orange"));
+			this.description = `${deviceCount} - ${firmwareUpdateCount} update${firmwareUpdateCount > 1 ? "s" : ""} available`;
+		} else {
+			this.iconPath = new vscode.ThemeIcon("server");
+			this.description = `${deviceCount}`;
+		}
 	}
 }
 
@@ -91,7 +97,7 @@ export class DeviceNode extends vscode.TreeItem {
 	readonly type = "device" as const;
 	readonly serial: string;
 
-	constructor(device: Device, hasAlarm: boolean) {
+	constructor(device: Device, hasAlarm: boolean, firmwareOutdated = false) {
 		const label = device.label || device.serial;
 		super(label, vscode.TreeItemCollapsibleState.Collapsed);
 		this.serial = device.serial;
@@ -99,14 +105,18 @@ export class DeviceNode extends vscode.TreeItem {
 		this.contextValue = "device";
 
 		const isOnline = device.status === "online";
-		const statusEmoji = isOnline ? "" : " (Offline)";
-		this.description = `${device.type ?? "Unknown"}${statusEmoji}`;
+		const statusParts: string[] = [device.type ?? "Unknown"];
+		if (!isOnline) statusParts.push("(Offline)");
+		if (firmwareOutdated) statusParts.push("⬆️ Update");
+		this.description = statusParts.join(" ");
 
-		// Use product thumbnail image when available
-		if (device.thumbnail) {
-			this.iconPath = vscode.Uri.parse(device.thumbnail);
-		} else if (hasAlarm) {
+		// Icon priority: alarm > firmware outdated > thumbnail > online/offline
+		if (hasAlarm) {
 			this.iconPath = new vscode.ThemeIcon("warning", new vscode.ThemeColor("charts.red"));
+		} else if (firmwareOutdated) {
+			this.iconPath = new vscode.ThemeIcon("alert", new vscode.ThemeColor("charts.orange"));
+		} else if (device.thumbnail) {
+			this.iconPath = vscode.Uri.parse(device.thumbnail);
 		} else if (isOnline) {
 			this.iconPath = new vscode.ThemeIcon("pulse", new vscode.ThemeColor("charts.green"));
 		} else {

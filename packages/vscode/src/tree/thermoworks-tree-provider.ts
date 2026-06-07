@@ -44,6 +44,7 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 	private deviceCache: DeviceCache | undefined;
 	private channelCaches = new Map<string, ChannelCache>();
 	private firmwareCaches = new Map<string, FirmwareCache>();
+	private firmwareUpdateCount = 0;
 	private refreshTimer: ReturnType<typeof setInterval> | undefined;
 	private disposed = false;
 	private demoMode: "normal" | "high" | "low" | false = false;
@@ -209,7 +210,7 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 	private async getRootChildren(): Promise<TreeNode[]> {
 		// Demo mode — use fake data, no credentials needed
 		if (this.demoMode) {
-			return [new AccountNode(DEMO_USER), new DevicesFolderNode(DEMO_DEVICES.length)];
+			return [new AccountNode(DEMO_USER), new DevicesFolderNode(DEMO_DEVICES.length, this.firmwareUpdateCount)];
 		}
 
 		const creds = await this.credentialStore.getCredentials();
@@ -229,7 +230,7 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 
 			const devices = await this.getCachedDevices();
 
-			return [new AccountNode(this.user), new DevicesFolderNode(devices.length)];
+			return [new AccountNode(this.user), new DevicesFolderNode(devices.length, this.firmwareUpdateCount)];
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load data";
 			return [new ErrorNode(message)];
@@ -274,6 +275,7 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 
 			const nodes: TreeNode[] = [];
 			let alarmCount = 0;
+			let firmwareUpdateCount = 0;
 			for (const device of devices) {
 				const channels = this.demoMode
 					? getDemoChannels(device.serial, this.demoMode)
@@ -282,9 +284,20 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 					(ch) => ch.alarmHigh?.alarming || ch.alarmLow?.alarming,
 				);
 				if (hasAlarm) alarmCount++;
-				nodes.push(new DeviceNode(device, hasAlarm));
+
+				let firmwareOutdated: boolean;
+				if (this.demoMode) {
+					const latest = device.type ? DEMO_LATEST_FIRMWARE[device.type] : undefined;
+					firmwareOutdated = !!latest && !!device.firmware && device.firmware !== latest;
+				} else {
+					firmwareOutdated = await this.isFirmwareOutdated(device);
+				}
+				if (firmwareOutdated) firmwareUpdateCount++;
+
+				nodes.push(new DeviceNode(device, hasAlarm, firmwareOutdated));
 			}
 			this.updateBadge(alarmCount);
+			this.firmwareUpdateCount = firmwareUpdateCount;
 			return nodes;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load devices";

@@ -1,5 +1,5 @@
-import { Agent, request as undiciRequest } from "undici";
 import { setTimeout as delay } from "node:timers/promises";
+import { Agent, request as undiciRequest } from "undici";
 import {
 	readTokenCache,
 	resolveTokenCachePath,

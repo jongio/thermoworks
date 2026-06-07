@@ -250,42 +250,25 @@ export class ThermoworksCloud {
 	/** Get a single device by serial number. */
 	async getDevice(serial: string): Promise<Device> {
 		validateSerial(serial);
-		const session = await this.ensureSession();
-		const response = await session.request(
-			"GET",
+		const fields = await this.fetchDocFields(
 			`documents/devices/${encodeURIComponent(serial)}`,
+			`Device with serial '${serial}' not found`,
 		);
-
-		if (response.status === 404) {
-			await response.text().catch(() => {});
-			throw new NotFoundError(`Device with serial '${serial}' not found`);
-		}
-
-		const doc = (await response.json()) as { fields?: FirestoreFields };
-		if (!doc.fields) {
+		if (!fields || Object.keys(fields).length === 0) {
 			throw new NetworkError("Invalid response: missing fields");
 		}
-
-		return parseDevice(doc.fields);
+		return parseDevice(fields);
 	}
 
 	/** Get a channel reading for a device. Channels are 1-indexed. */
 	async getDeviceChannel(serial: string, channel: number): Promise<DeviceChannel> {
 		validateSerial(serial);
 		validateChannel(channel);
-		const session = await this.ensureSession();
-		const response = await session.request(
-			"GET",
+		const fields = await this.fetchDocFields(
 			`documents/devices/${encodeURIComponent(serial)}/channels/${channel}`,
+			`Channel ${channel} not found for device '${serial}'`,
 		);
-
-		if (response.status === 404) {
-			await response.text().catch(() => {});
-			throw new NotFoundError(`Channel ${channel} not found for device '${serial}'`);
-		}
-
-		const doc = (await response.json()) as { fields?: FirestoreFields };
-		return parseDeviceChannel(doc.fields ?? {});
+		return parseDeviceChannel(fields);
 	}
 
 	/**
@@ -381,19 +364,10 @@ export class ThermoworksCloud {
 	/** Get account metadata. */
 	async getAccount(): Promise<Account> {
 		const accountId = await this.resolveAccountId();
-		const session = await this.ensureSession();
-		const response = await session.request(
-			"GET",
+		const fields = await this.fetchDocFields(
 			`documents/accounts/${encodeURIComponent(accountId)}`,
+			"Account not found",
 		);
-
-		if (response.status === 404) {
-			await response.text().catch(() => {});
-			throw new NotFoundError("Account not found");
-		}
-
-		const doc = (await response.json()) as { fields?: FirestoreFields };
-		const fields = doc.fields ?? {};
 
 		return {
 			accountId,
@@ -527,9 +501,7 @@ export class ThermoworksCloud {
 			throw new Error("userId is required");
 		}
 		const accountId = await this.resolveAccountId();
-		const session = await this.ensureSession();
-		const result = await session.callFunction("userRemoteFromAccount", { userId, accountId });
-		return toActionResult(result);
+		return this.callAction("userRemoteFromAccount", { userId, accountId });
 	}
 
 	/** Get events for the authenticated user's account. */
@@ -670,19 +642,10 @@ export class ThermoworksCloud {
 
 	/** Get firmware info for a device type. */
 	async getFirmwareInfo(deviceType: string): Promise<FirmwareInfo> {
-		const session = await this.ensureSession();
-		const response = await session.request(
-			"GET",
+		const fields = await this.fetchDocFields(
 			`documents/firmware/${encodeURIComponent(deviceType)}`,
+			`Firmware info not found for type '${deviceType}'`,
 		);
-
-		if (response.status === 404) {
-			await response.text().catch(() => {});
-			throw new NotFoundError(`Firmware info not found for type '${deviceType}'`);
-		}
-
-		const doc = (await response.json()) as { fields?: FirestoreFields };
-		const fields = doc.fields ?? {};
 
 		return {
 			name: getString(fields, "name") ?? deviceType,
@@ -770,47 +733,37 @@ export class ThermoworksCloud {
 		if (label != null && label.length > 200) {
 			throw new Error("label exceeds maximum length of 200 characters");
 		}
-		const session = await this.ensureSession();
-		const data: Record<string, string> = { deviceId: serial };
+		const data: Record<string, unknown> = { deviceId: serial };
 		if (label != null) data.label = sanitizeLabel(label) ?? label;
-		const result = await session.callFunction("newSessionRequest", data);
-		return toActionResult(result);
+		return this.callAction("newSessionRequest", data);
 	}
 
 	/** End an active monitoring session for the given device. */
 	async endSession(serial: string): Promise<ActionResult> {
 		validateSerial(serial);
-		const session = await this.ensureSession();
-		const result = await session.callFunction("endSessionRequest", { deviceId: serial });
-		return toActionResult(result);
+		return this.callAction("endSessionRequest", { deviceId: serial });
 	}
 
 	/** Clear session data for the given device. */
 	async clearSession(serial: string): Promise<ActionResult> {
 		validateSerial(serial);
-		const session = await this.ensureSession();
-		const result = await session.callFunction("clearSessionRequest", { deviceId: serial });
-		return toActionResult(result);
+		return this.callAction("clearSessionRequest", { deviceId: serial });
 	}
 
 	/** Reset the min/max readings for a specific device channel. */
 	async resetMinMax(serial: string, channel: number): Promise<ActionResult> {
 		validateSerial(serial);
 		validateChannel(channel);
-		const session = await this.ensureSession();
-		const result = await session.callFunction("telemetryDeviceChannelResetMinMax", {
+		return this.callAction("telemetryDeviceChannelResetMinMax", {
 			deviceId: serial,
 			channelId: channel,
 		});
-		return toActionResult(result);
 	}
 
 	/** Clear all events for the given device. */
 	async clearEvents(serial: string): Promise<ActionResult> {
 		validateSerial(serial);
-		const session = await this.ensureSession();
-		const result = await session.callFunction("deviceClearEvents", { deviceId: serial });
-		return toActionResult(result);
+		return this.callAction("deviceClearEvents", { deviceId: serial });
 	}
 
 	/** Update device state/settings via a Cloud Function. */
@@ -819,12 +772,7 @@ export class ThermoworksCloud {
 		if (!state || typeof state !== "object" || Array.isArray(state)) {
 			throw new Error("state must be a non-null object");
 		}
-		const session = await this.ensureSession();
-		const result = await session.callFunction("deviceStateUpdate", {
-			deviceId: serial,
-			state,
-		});
-		return toActionResult(result);
+		return this.callAction("deviceStateUpdate", { deviceId: serial, state });
 	}
 
 	/** Rename a device. */
@@ -836,20 +784,13 @@ export class ThermoworksCloud {
 		if (name.length > 200) {
 			throw new Error("name exceeds maximum length of 200 characters");
 		}
-		const session = await this.ensureSession();
-		const result = await session.callFunction("setInstrumentName", {
-			deviceId: serial,
-			name,
-		});
-		return toActionResult(result);
+		return this.callAction("setInstrumentName", { deviceId: serial, name });
 	}
 
 	/** Factory reset a device. */
 	async factoryReset(serial: string): Promise<ActionResult> {
 		validateSerial(serial);
-		const session = await this.ensureSession();
-		const result = await session.callFunction("deviceFactoryReset", { deviceId: serial });
-		return toActionResult(result);
+		return this.callAction("deviceFactoryReset", { deviceId: serial });
 	}
 
 	/** Share a device's live state publicly via a shareable link. */
@@ -998,23 +939,19 @@ export class ThermoworksCloud {
 		if (!Number.isFinite(targetTemp)) {
 			throw new Error("targetTemp must be a finite number");
 		}
-		const session = await this.ensureSession();
-		const result = await session.callFunction("deviceStateUpdate", {
+		return this.callAction("deviceStateUpdate", {
 			deviceId: serial,
 			fan: { setTemp: targetTemp },
 		});
-		return toActionResult(result);
 	}
 
 	/** Enable or disable the fan controller connection. */
 	async setFanEnabled(serial: string, enabled: boolean): Promise<ActionResult> {
 		validateSerial(serial);
-		const session = await this.ensureSession();
-		const result = await session.callFunction("deviceStateUpdate", {
+		return this.callAction("deviceStateUpdate", {
 			deviceId: serial,
 			fan: { connection: enabled },
 		});
-		return toActionResult(result);
 	}
 
 	/**
@@ -1117,6 +1054,28 @@ export class ThermoworksCloud {
 		}
 		this.cachedAccountId = user.accountId;
 		return this.cachedAccountId;
+	}
+
+	/** Fetch a Firestore document and return its fields, or throw NotFoundError. */
+	private async fetchDocFields(path: string, notFoundMsg: string): Promise<FirestoreFields> {
+		const session = await this.ensureSession();
+		const response = await session.request("GET", path);
+		if (response.status === 404) {
+			await response.text().catch(() => {});
+			throw new NotFoundError(notFoundMsg);
+		}
+		const doc = (await response.json()) as { fields?: FirestoreFields };
+		return doc.fields ?? {};
+	}
+
+	/** Call a Cloud Function and return the result as an ActionResult. */
+	private async callAction(
+		functionName: string,
+		data: Record<string, unknown>,
+	): Promise<ActionResult> {
+		const session = await this.ensureSession();
+		const result = await session.callFunction(functionName, data);
+		return toActionResult(result);
 	}
 }
 

@@ -19,6 +19,7 @@ import {
 } from "./subscribe.js";
 import {
 	type Account,
+	type AccountInvite,
 	type ActionResult,
 	type Alarm,
 	type AlarmSetOptions,
@@ -470,6 +471,63 @@ export class ThermoworksCloud {
 			deviceCount: getNumber(fields, "deviceCount") ?? 0,
 			isDefault: getBoolean(fields, "isDefault") ?? false,
 		};
+	}
+
+	/** Get pending invitations for the authenticated user's account. */
+	async getInvites(): Promise<AccountInvite[]> {
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+
+		const queryBody = {
+			structuredQuery: {
+				from: [{ collectionId: "usersInvites" }],
+				where: {
+					fieldFilter: {
+						field: { fieldPath: "accountId" },
+						op: "EQUAL",
+						value: { stringValue: accountId },
+					},
+				},
+				orderBy: [{ field: { fieldPath: "__name__" }, direction: "ASCENDING" }],
+			},
+		};
+
+		const response = await session.request("POST", "documents:runQuery", queryBody);
+		const rawResults = await response.json();
+		if (!Array.isArray(rawResults)) {
+			const maybeError = rawResults as { error?: { message?: string } } | null;
+			if (maybeError?.error) {
+				throw new NetworkError(maybeError.error.message ?? "Invites query failed");
+			}
+			return [];
+		}
+
+		const results = rawResults as Array<{ document?: { fields?: FirestoreFields; name?: string } }>;
+		const invites: AccountInvite[] = [];
+		for (const result of results) {
+			if (result.document?.fields) {
+				const f = result.document.fields;
+				invites.push({
+					id: extractDocId(result.document.name),
+					accountId: getString(f, "accountId") ?? accountId,
+					email: getString(f, "email") ?? undefined,
+					status: getString(f, "status") ?? undefined,
+					createdAt: getString(f, "createdAt") ?? undefined,
+				});
+			}
+		}
+		return invites;
+	}
+
+	/** Remove a user from the authenticated user's account. */
+	async removeUser(userId: string): Promise<ActionResult> {
+		if (!userId) {
+			throw new Error("userId is required");
+		}
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+		const result = await session.callFunction("userRemoteFromAccount", { userId, accountId });
+		return toActionResult(result);
 	}
 
 	/** Get events for the authenticated user's account. */

@@ -7,6 +7,16 @@ export {
 	isValidDeviceEntry,
 	isValidStatuslineConfig,
 } from "./config.js";
+export type { Credentials } from "./credentials.js";
+export {
+	CREDENTIAL_ACCOUNT,
+	CREDENTIAL_SERVICE,
+	LEGACY_ACCOUNT_EMAIL,
+	LEGACY_ACCOUNT_PASSWORD,
+	parseCredentialBlob,
+	resolveEnvCredentials,
+	serializeCredentials,
+} from "./credentials.js";
 export { formatTimeAgo } from "./format.js";
 export type {
 	Account,

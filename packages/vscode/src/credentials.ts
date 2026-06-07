@@ -1,16 +1,16 @@
+import {
+	CREDENTIAL_ACCOUNT,
+	CREDENTIAL_SERVICE,
+	type Credentials,
+	LEGACY_ACCOUNT_EMAIL,
+	LEGACY_ACCOUNT_PASSWORD,
+	parseCredentialBlob,
+	resolveEnvCredentials,
+	serializeCredentials,
+} from "thermoworks-sdk";
 import type * as vscode from "vscode";
 
-const SERVICE_NAME = "thermoworks";
-const ACCOUNT_CREDENTIALS = "credentials";
-
-// Legacy account names for backward-compatible migration
-const LEGACY_ACCOUNT_EMAIL = "email";
-const LEGACY_ACCOUNT_PASSWORD = "password";
-
-export interface Credentials {
-	readonly email: string;
-	readonly password: string;
-}
+export type { Credentials } from "thermoworks-sdk";
 
 /**
  * Credential store that shares credentials with the ThermoWorks CLI.
@@ -33,42 +33,38 @@ export class CredentialStore {
 
 	async getCredentials(): Promise<Credentials | null> {
 		// 1. Environment variables (explicit override)
-		const envEmail = process.env.THERMOWORKS_EMAIL;
-		const envPassword = process.env.THERMOWORKS_PASSWORD;
-		if (envEmail && envPassword) {
-			return { email: envEmail, password: envPassword };
-		}
+		const envCreds = resolveEnvCredentials();
+		if (envCreds) return envCreds;
 
 		// 2. OS keychain via keytar (shared source of truth with CLI)
 		try {
 			const keytar = await loadKeytar();
 			if (keytar) {
 				// Try new atomic format first
-				const blob = await keytar.getPassword(SERVICE_NAME, ACCOUNT_CREDENTIALS);
+				const blob = await keytar.getPassword(CREDENTIAL_SERVICE, CREDENTIAL_ACCOUNT);
 				if (blob) {
-					try {
-						const parsed = JSON.parse(blob) as { email?: string; password?: string };
-						if (parsed.email && parsed.password) {
-							await this.syncSecretStorage(parsed.email, parsed.password);
-							return { email: parsed.email, password: parsed.password };
-						}
-					} catch {
-						// Corrupted keychain entry — fall through to legacy format
+					const creds = parseCredentialBlob(blob);
+					if (creds) {
+						await this.syncSecretStorage(creds.email, creds.password);
+						return creds;
 					}
 				}
 
 				// Fallback: legacy separate entries - migrate to atomic format
-				const keytarEmail = await keytar.getPassword(SERVICE_NAME, LEGACY_ACCOUNT_EMAIL);
-				const keytarPassword = await keytar.getPassword(SERVICE_NAME, LEGACY_ACCOUNT_PASSWORD);
+				const keytarEmail = await keytar.getPassword(CREDENTIAL_SERVICE, LEGACY_ACCOUNT_EMAIL);
+				const keytarPassword = await keytar.getPassword(
+					CREDENTIAL_SERVICE,
+					LEGACY_ACCOUNT_PASSWORD,
+				);
 				if (keytarEmail && keytarPassword) {
 					// Migrate to atomic format in keytar
 					await keytar.setPassword(
-						SERVICE_NAME,
-						ACCOUNT_CREDENTIALS,
-						JSON.stringify({ email: keytarEmail, password: keytarPassword }),
+						CREDENTIAL_SERVICE,
+						CREDENTIAL_ACCOUNT,
+						serializeCredentials(keytarEmail, keytarPassword),
 					);
-					await keytar.deletePassword(SERVICE_NAME, LEGACY_ACCOUNT_EMAIL);
-					await keytar.deletePassword(SERVICE_NAME, LEGACY_ACCOUNT_PASSWORD);
+					await keytar.deletePassword(CREDENTIAL_SERVICE, LEGACY_ACCOUNT_EMAIL);
+					await keytar.deletePassword(CREDENTIAL_SERVICE, LEGACY_ACCOUNT_PASSWORD);
 					await this.syncSecretStorage(keytarEmail, keytarPassword);
 					return { email: keytarEmail, password: keytarPassword };
 				}
@@ -83,22 +79,20 @@ export class CredentialStore {
 		}
 
 		// 3. VS Code SecretStorage (fallback cache when keytar unavailable)
-		const vsBlob = await this.secrets.get(`${SERVICE_NAME}.${ACCOUNT_CREDENTIALS}`);
+		const vsBlob = await this.secrets.get(`${CREDENTIAL_SERVICE}.${CREDENTIAL_ACCOUNT}`);
 		if (vsBlob) {
-			const parsed = JSON.parse(vsBlob) as { email?: string; password?: string };
-			if (parsed.email && parsed.password) {
-				return { email: parsed.email, password: parsed.password };
-			}
+			const creds = parseCredentialBlob(vsBlob);
+			if (creds) return creds;
 		}
 
 		// Legacy SecretStorage format fallback
-		const vsEmail = await this.secrets.get(`${SERVICE_NAME}.${LEGACY_ACCOUNT_EMAIL}`);
-		const vsPassword = await this.secrets.get(`${SERVICE_NAME}.${LEGACY_ACCOUNT_PASSWORD}`);
+		const vsEmail = await this.secrets.get(`${CREDENTIAL_SERVICE}.${LEGACY_ACCOUNT_EMAIL}`);
+		const vsPassword = await this.secrets.get(`${CREDENTIAL_SERVICE}.${LEGACY_ACCOUNT_PASSWORD}`);
 		if (vsEmail && vsPassword) {
 			// Migrate to atomic format
 			await this.syncSecretStorage(vsEmail, vsPassword);
-			await this.secrets.delete(`${SERVICE_NAME}.${LEGACY_ACCOUNT_EMAIL}`);
-			await this.secrets.delete(`${SERVICE_NAME}.${LEGACY_ACCOUNT_PASSWORD}`);
+			await this.secrets.delete(`${CREDENTIAL_SERVICE}.${LEGACY_ACCOUNT_EMAIL}`);
+			await this.secrets.delete(`${CREDENTIAL_SERVICE}.${LEGACY_ACCOUNT_PASSWORD}`);
 			return { email: vsEmail, password: vsPassword };
 		}
 
@@ -106,20 +100,20 @@ export class CredentialStore {
 	}
 
 	async storeCredentials(email: string, password: string): Promise<void> {
-		const blob = JSON.stringify({ email, password });
+		const blob = serializeCredentials(email, password);
 
 		// Write to keytar first (shared source of truth for CLI)
 		try {
 			const keytar = await loadKeytar();
 			if (keytar) {
-				await keytar.setPassword(SERVICE_NAME, ACCOUNT_CREDENTIALS, blob);
+				await keytar.setPassword(CREDENTIAL_SERVICE, CREDENTIAL_ACCOUNT, blob);
 			}
 		} catch {
 			// Non-fatal: CLI won't see credentials but extension works fine
 		}
 
 		// Update local SecretStorage cache
-		await this.secrets.store(`${SERVICE_NAME}.${ACCOUNT_CREDENTIALS}`, blob);
+		await this.secrets.store(`${CREDENTIAL_SERVICE}.${CREDENTIAL_ACCOUNT}`, blob);
 	}
 
 	async deleteCredentials(): Promise<void> {
@@ -127,10 +121,10 @@ export class CredentialStore {
 		try {
 			const keytar = await loadKeytar();
 			if (keytar) {
-				await keytar.deletePassword(SERVICE_NAME, ACCOUNT_CREDENTIALS);
+				await keytar.deletePassword(CREDENTIAL_SERVICE, CREDENTIAL_ACCOUNT);
 				// Clean up any legacy entries
-				await keytar.deletePassword(SERVICE_NAME, LEGACY_ACCOUNT_EMAIL);
-				await keytar.deletePassword(SERVICE_NAME, LEGACY_ACCOUNT_PASSWORD);
+				await keytar.deletePassword(CREDENTIAL_SERVICE, LEGACY_ACCOUNT_EMAIL);
+				await keytar.deletePassword(CREDENTIAL_SERVICE, LEGACY_ACCOUNT_PASSWORD);
 			}
 		} catch {
 			// Non-fatal
@@ -142,16 +136,16 @@ export class CredentialStore {
 
 	private async syncSecretStorage(email: string, password: string): Promise<void> {
 		await this.secrets.store(
-			`${SERVICE_NAME}.${ACCOUNT_CREDENTIALS}`,
-			JSON.stringify({ email, password }),
+			`${CREDENTIAL_SERVICE}.${CREDENTIAL_ACCOUNT}`,
+			serializeCredentials(email, password),
 		);
 	}
 
 	private async clearSecretStorage(): Promise<void> {
-		await this.secrets.delete(`${SERVICE_NAME}.${ACCOUNT_CREDENTIALS}`);
+		await this.secrets.delete(`${CREDENTIAL_SERVICE}.${CREDENTIAL_ACCOUNT}`);
 		// Clean up any legacy entries
-		await this.secrets.delete(`${SERVICE_NAME}.${LEGACY_ACCOUNT_EMAIL}`);
-		await this.secrets.delete(`${SERVICE_NAME}.${LEGACY_ACCOUNT_PASSWORD}`);
+		await this.secrets.delete(`${CREDENTIAL_SERVICE}.${LEGACY_ACCOUNT_EMAIL}`);
+		await this.secrets.delete(`${CREDENTIAL_SERVICE}.${LEGACY_ACCOUNT_PASSWORD}`);
 	}
 }
 

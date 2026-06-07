@@ -76,7 +76,6 @@ async function httpRequest(
 			lastError = new NetworkError(err instanceof Error ? err.message : "Network request failed");
 			if (attempt < retries) {
 				await delay(100 * 2 ** attempt);
-				continue;
 			}
 		}
 	}

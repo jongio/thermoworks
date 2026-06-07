@@ -35,6 +35,7 @@ import {
 	type DeviceDataUsage,
 	type DeviceEvent,
 	type DeviceFilter,
+	type DeviceGroup,
 	type DeviceHistory,
 	type EventFilter,
 	type FirmwareInfo,
@@ -815,6 +816,106 @@ export class ThermoworksCloud {
 			deviceId: serial,
 		});
 		return parseDeviceHistory(serial, result);
+	}
+
+	// ─── Device Groups ─────────────────────────────────────────────────────────
+
+	/**
+	 * Get device groups for the authenticated user.
+	 *
+	 * Reads the user profile's `deviceGroupOrDeviceOrder` field to identify
+	 * group references, then fetches each group's details from the account's
+	 * `deviceGroups` subcollection.
+	 */
+	async getDeviceGroups(): Promise<DeviceGroup[]> {
+		const session = await this.ensureSession();
+		const userId = session.getUserId();
+		const response = await session.request("GET", `documents/users/${userId}`);
+
+		if (response.status === 404) {
+			await response.text().catch(() => {});
+			throw new NotFoundError("User not found");
+		}
+
+		const doc = (await response.json()) as { fields?: FirestoreFields };
+		const fields = doc.fields ?? {};
+
+		const accountId = getString(fields, "accountId");
+		if (!accountId) return [];
+
+		// Parse deviceGroupOrDeviceOrder: { accountId: { "0": { id, type }, ... } }
+		const orderMap = getMapFields(fields, "deviceGroupOrDeviceOrder");
+		if (!orderMap) return [];
+
+		const accountOrderMap = getMapFields(orderMap, accountId);
+		if (!accountOrderMap) return [];
+
+		// Collect group IDs from entries with type "deviceGroup"
+		const groupIds: string[] = [];
+		for (const entry of Object.values(accountOrderMap)) {
+			if ("mapValue" in entry) {
+				const entryFields = entry.mapValue.fields ?? {};
+				const id =
+					entryFields.id && "stringValue" in entryFields.id ? entryFields.id.stringValue : null;
+				const type =
+					entryFields.type && "stringValue" in entryFields.type
+						? entryFields.type.stringValue
+						: null;
+				if (id && type === "deviceGroup") {
+					groupIds.push(id);
+				}
+			}
+		}
+
+		if (groupIds.length === 0) return [];
+
+		// Fetch each group document from the account's deviceGroups subcollection
+		const groups: DeviceGroup[] = [];
+		for (const groupId of groupIds) {
+			const groupPath = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups/${encodeURIComponent(groupId)}`;
+			const groupResponse = await session.request("GET", groupPath);
+
+			if (groupResponse.status === 404) {
+				await groupResponse.text().catch(() => {});
+				// Group referenced but document missing - include with minimal info
+				groups.push({ id: groupId, name: "", devices: [] });
+				continue;
+			}
+
+			const groupDoc = (await groupResponse.json()) as { fields?: FirestoreFields };
+			const groupFields = groupDoc.fields ?? {};
+			groups.push({
+				id: groupId,
+				name: getString(groupFields, "name") ?? "",
+				devices: getStringArray(groupFields, "devices") ?? [],
+			});
+		}
+
+		return groups;
+	}
+
+	/**
+	 * Create a new device group.
+	 *
+	 * @throws Error - This method is not yet supported as the full device group
+	 * API is not documented.
+	 */
+	async createDeviceGroup(_name: string, _devices: string[]): Promise<DeviceGroup> {
+		throw new Error(
+			"createDeviceGroup is not yet supported: the device group write API is not fully documented",
+		);
+	}
+
+	/**
+	 * Delete a device group.
+	 *
+	 * @throws Error - This method is not yet supported as the full device group
+	 * API is not documented.
+	 */
+	async deleteDeviceGroup(_groupId: string): Promise<void> {
+		throw new Error(
+			"deleteDeviceGroup is not yet supported: the device group write API is not fully documented",
+		);
 	}
 
 	/**

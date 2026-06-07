@@ -199,6 +199,20 @@ Found 2 devices:
   Signals  (signals)  [offline]  last seen 12m ago
 ```
 
+### `thermoworks mcp start`
+
+Start the MCP (Model Context Protocol) server for AI assistants. Runs over stdio.
+
+```bash
+npx thermoworks mcp start
+```
+
+Notes:
+- Launched by an MCP client (not used interactively).
+- Credentials resolved from env vars or OS keychain.
+- Exposes 7 tools: `get_devices`, `get_device`, `get_device_channels`, `get_average_temperature`, `get_events`, `get_archives`, `get_temperature_guide`.
+- See [MCP server README](../mcp/README.md) for client configuration.
+
 ### `thermoworks demo <high|low|normal>`
 
 Show demo output with alarm styling. No credentials required.

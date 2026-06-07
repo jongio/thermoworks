@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Unofficial tools for ThermoWorks Cloud — CLI, SDK, and integrations for your connected thermometers."
+      content="Unofficial tools for ThermoWorks Cloud — CLI, SDK, MCP server, and integrations for your connected thermometers."
     />
     <title>ThermoWorks Tools</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -32,8 +32,8 @@
           <p class="eyebrow">Unofficial community tools</p>
           <h1>🔥 ThermoWorks<br />Tools</h1>
           <p class="subtitle">
-            CLI, SDK, VS Code extension, and integrations for your ThermoWorks Cloud connected thermometers.
-            Check temps from the terminal, VS Code status bar, or build automations with live readings.
+            CLI, SDK, MCP server, VS Code extension, and integrations for your ThermoWorks Cloud connected thermometers.
+            Check temps from the terminal, VS Code status bar, AI assistants, or build automations with live readings.
           </p>
           <pre class="hero-install"><code>npx thermoworks</code></pre>
           <p class="disclaimer">
@@ -80,6 +80,11 @@
               <span class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m6.8 15-3.5 2"/><path d="m20.7 17-3.5-2"/><path d="M6.8 9 3.3 7"/><path d="m20.7 7-3.5 2"/><circle cx="12" cy="12" r="4"/></svg></span>
               <h3>SDK for custom integrations</h3>
               <p>Build your own dashboards, alerts, or automations with the <code>thermoworks-sdk</code> Node.js package.</p>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></span>
+              <h3>MCP server for AI assistants</h3>
+              <p>Expose device data to GitHub Copilot, Claude, and ChatGPT via the Model Context Protocol. Run <code>thermoworks mcp start</code>.</p>
             </div>
             <div class="feature-item">
               <span class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
@@ -198,6 +203,48 @@
           </figure>
         </section>
 
+        <section class="card" id="mcp">
+          <div class="section-heading">
+            <p class="eyebrow">Integration</p>
+            <h2><a href="https://www.npmjs.com/package/thermoworks-mcp">MCP Server</a></h2>
+          </div>
+          <p class="section-desc">
+            Expose your ThermoWorks device data to AI assistants via the
+            <a href="https://modelcontextprotocol.io/">Model Context Protocol</a>.
+            Works with GitHub Copilot, Claude, ChatGPT, and any MCP-compatible client.
+          </p>
+          <div class="steps">
+            <div class="step">
+              <span class="step-num">1</span>
+              <div>
+                <h3>Sign in (if not already)</h3>
+                <pre><code>npx thermoworks auth login</code></pre>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-num">2</span>
+              <div>
+                <h3>Add to your MCP client config</h3>
+                <pre><code>{
+  "mcpServers": {
+    "thermoworks": {
+      "command": "thermoworks",
+      "args": ["mcp", "start"]
+    }
+  }
+}</code></pre>
+              </div>
+            </div>
+            <div class="step">
+              <span class="step-num">3</span>
+              <div>
+                <h3>Ask your AI assistant about your devices</h3>
+                <p>7 tools available: <code>get_devices</code>, <code>get_device</code>, <code>get_device_channels</code>, <code>get_average_temperature</code>, <code>get_events</code>, <code>get_archives</code>, <code>get_temperature_guide</code></p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section class="card" id="alerts">
           <div class="section-heading">
             <p class="eyebrow">Stay informed</p>
@@ -312,7 +359,15 @@
             >
               <h3>thermoworks-sdk</h3>
               <p>Node.js SDK for ThermoWorks Cloud — devices, channels, temperatures, and auth.</p>
-              <span>View on npm →</span>
+              <span>View on npm &rarr;</span>
+            </a>
+            <a
+              class="package-card"
+              href="https://www.npmjs.com/package/thermoworks-mcp"
+            >
+              <h3>thermoworks-mcp</h3>
+              <p>MCP server for AI assistants — expose device data to Copilot, Claude, and ChatGPT.</p>
+              <span>View on npm &rarr;</span>
             </a>
             <a
               class="package-card"

@@ -1,0 +1,47 @@
+{
+	"name": "thermoworks-mcp",
+	"version": "0.1.0",
+	"description": "MCP server for ThermoWorks Cloud - expose temperature data to AI assistants",
+	"type": "module",
+	"exports": {
+		".": {
+			"import": {
+				"types": "./dist/index.d.ts",
+				"default": "./dist/index.js"
+			}
+		}
+	},
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": ["dist/", "README.md", "LICENSE"],
+	"engines": { "node": ">=18.0.0" },
+	"license": "MIT",
+	"author": "Jon Gallant",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/jongio/thermoworks",
+		"directory": "packages/mcp"
+	},
+	"keywords": ["thermoworks", "mcp", "model-context-protocol", "temperature", "iot", "copilot"],
+	"publishConfig": { "provenance": true, "access": "public" },
+	"scripts": {
+		"build": "tsup",
+		"test": "vitest run",
+		"typecheck": "tsc --noEmit",
+		"prepack": "pnpm build",
+		"clean": "rimraf dist"
+	},
+	"devDependencies": {
+		"@types/node": "^25.9.1",
+		"tsup": "^8.4.0",
+		"vitest": "^4.1.8"
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.29.0",
+		"thermoworks-sdk": "workspace:^",
+		"zod": "^4.1.12"
+	},
+	"optionalDependencies": {
+		"@github/keytar": "^7.10.6"
+	}
+}

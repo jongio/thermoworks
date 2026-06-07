@@ -50,6 +50,7 @@
 	},
 	"dependencies": {
 		"@github/keytar": "^7.10.6",
+		"thermoworks-mcp": "workspace:^",
 		"thermoworks-sdk": "workspace:^"
 	}
 }

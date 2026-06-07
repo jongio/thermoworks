@@ -13,6 +13,7 @@ import {
 	nextDemoState,
 } from "./commands/copilot.js";
 import { devices } from "./commands/devices.js";
+import { mcpStart } from "./commands/mcp.js";
 
 // Clean exit on Ctrl+C
 process.on("SIGINT", () => {
@@ -33,6 +34,7 @@ Commands:
   copilot remove   Remove statusline configuration
 
   devices          List connected devices
+  mcp start        Start MCP server for AI assistants
 
   demo <mode>      Show demo output (modes: high, low, normal)
 
@@ -92,6 +94,19 @@ async function main(): Promise<void> {
 						subcommand
 							? `Unknown copilot command: ${subcommand}`
 							: "Usage: thermoworks copilot <setup|status|remove>",
+					);
+					process.exit(1);
+			}
+			break;
+
+		case "mcp":
+			switch (subcommand) {
+				case "start":
+					await mcpStart();
+					break;
+				default:
+					console.error(
+						subcommand ? `Unknown mcp command: ${subcommand}` : "Usage: thermoworks mcp <start>",
 					);
 					process.exit(1);
 			}

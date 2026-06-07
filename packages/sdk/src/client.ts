@@ -125,6 +125,60 @@ export class ThermoworksCloud {
 		};
 	}
 
+	/** Get the authenticated user's notification preferences. */
+	async getNotificationSettings(): Promise<NotificationSettings> {
+		const user = await this.getUser();
+		return (
+			user.notificationSettings ?? {
+				enabled: false,
+				continuousAlerts: false,
+				emailNotification: false,
+				smsNotification: false,
+				deviceNotification: false,
+			}
+		);
+	}
+
+	/**
+	 * Update the authenticated user's notification preferences.
+	 *
+	 * Performs a read-merge-write to ensure unspecified fields retain
+	 * their current values (Firestore updateMask replaces the entire map).
+	 */
+	async updateNotificationSettings(settings: Partial<NotificationSettings>): Promise<void> {
+		const current = await this.getNotificationSettings();
+		const merged: NotificationSettings = { ...current, ...settings };
+
+		const session = await this.ensureSession();
+		const userId = session.getUserId();
+		const path = `documents/users/${userId}?updateMask.fieldPaths=notificationSettings`;
+		const body = {
+			fields: {
+				notificationSettings: {
+					mapValue: {
+						fields: {
+							enabled: { booleanValue: merged.enabled },
+							continuousAlerts: { booleanValue: merged.continuousAlerts },
+							emailNotification: { booleanValue: merged.emailNotification },
+							smsNotification: { booleanValue: merged.smsNotification },
+							deviceNotification: { booleanValue: merged.deviceNotification },
+						},
+					},
+				},
+			},
+		};
+
+		const response = await session.request("PATCH", path, body);
+		if (!response.ok) {
+			throw new NetworkError(
+				`Failed to update notification settings: HTTP ${response.status}`,
+				response.status,
+			);
+		}
+		// Consume the response body to release the connection
+		await response.text().catch(() => {});
+	}
+
 	/** Get all devices for the authenticated user, with optional filtering. */
 	async getDevices(filter?: DeviceFilter): Promise<Device[]> {
 		let accountId = this.cachedAccountId;

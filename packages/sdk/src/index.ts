@@ -41,6 +41,7 @@ export type {
 	DeviceDataUsage,
 	DeviceEvent,
 	DeviceFilter,
+	DeviceGroup,
 	EventFilter,
 	FanSettings,
 	FirmwareInfo,

@@ -407,6 +407,15 @@ export interface ActionResult<T = unknown> {
 	readonly error: string | null;
 }
 
+// ─── Device Groups ───────────────────────────────────────────────────────────
+
+/** A device group organizing multiple devices together. */
+export interface DeviceGroup {
+	readonly id: string;
+	readonly name: string;
+	readonly devices: string[];
+}
+
 // ─── Filters ─────────────────────────────────────────────────────────────────
 
 /** Options for filtering devices. */

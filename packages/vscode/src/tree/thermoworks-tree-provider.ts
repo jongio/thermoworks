@@ -43,6 +43,7 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 	private user: User | undefined;
 	private deviceCache: DeviceCache | undefined;
 	private channelCaches = new Map<string, ChannelCache>();
+	private firmwareCaches = new Map<string, FirmwareCache>();
 	private refreshTimer: ReturnType<typeof setInterval> | undefined;
 	private disposed = false;
 	private demoMode: "normal" | "high" | "low" | false = false;
@@ -300,7 +301,9 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 			const channels = this.demoMode
 				? getDemoChannels(serial, this.demoMode)
 				: await this.getCachedChannels(serial);
-			return buildDeviceChildren(device, channels);
+
+			const firmwareOutdated = await this.isFirmwareOutdated(device);
+			return buildDeviceChildren(device, channels, firmwareOutdated);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load channels";
 			return [new ErrorNode(message)];
@@ -337,6 +340,31 @@ export class ThermoworksTreeProvider implements vscode.TreeDataProvider<TreeNode
 		const channels = await this.client.getAllDeviceChannels(serial);
 		this.channelCaches.set(serial, { channels, fetchedAt: now });
 		return channels;
+	}
+
+	private async isFirmwareOutdated(device: Device): Promise<boolean> {
+		if (!device.firmware || !device.type || !this.client || this.demoMode) {
+			return false;
+		}
+
+		try {
+			const now = Date.now();
+			const cached = this.firmwareCaches.get(device.type);
+			let latestVersion: string;
+
+			if (cached && now - cached.fetchedAt < FIRMWARE_CACHE_TTL_MS) {
+				latestVersion = cached.latestVersion;
+			} else {
+				const info = await this.client.getFirmwareInfo(device.type);
+				latestVersion = info.version;
+				this.firmwareCaches.set(device.type, { latestVersion, fetchedAt: now });
+			}
+
+			return latestVersion !== "" && device.firmware !== latestVersion;
+		} catch {
+			// Firmware info not available for this device type - not an error
+			return false;
+		}
 	}
 
 	// ─── Private: Lifecycle ──────────────────────────────────────────────────

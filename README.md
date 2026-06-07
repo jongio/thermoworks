@@ -39,6 +39,12 @@ Node.js SDK for programmatic access — build your own dashboards, alerts, or au
 
 **Install:** `npm install thermoworks-sdk`
 
+### 🤖 MCP Server
+
+Model Context Protocol server that exposes your ThermoWorks device data to AI assistants like GitHub Copilot, Claude, and ChatGPT. Start it from the CLI:
+
+**Start:** `thermoworks mcp start`
+
 ---
 
 ## Key Features
@@ -116,14 +122,16 @@ For command details, see the [CLI reference](docs/cli-reference.md).
 
 | Package | Description |
 |---------|-------------|
-| [`thermoworks`](https://www.npmjs.com/package/thermoworks) | CLI for authentication, Copilot statusline setup, device listing, and demo mode |
+| [`thermoworks`](https://www.npmjs.com/package/thermoworks) | CLI for authentication, Copilot statusline setup, device listing, MCP server, and demo mode |
 | [`thermoworks-sdk`](https://www.npmjs.com/package/thermoworks-sdk) | Node.js SDK for programmatic access to ThermoWorks Cloud |
+| [`thermoworks-mcp`](https://www.npmjs.com/package/thermoworks-mcp) | MCP server exposing device data to AI assistants (GitHub Copilot, Claude, ChatGPT) |
 | [ThermoWorks for VS Code](https://marketplace.visualstudio.com/items?itemName=jongio.thermoworks) | Extension with status bar, device panel, alarm indicators, and firmware alerts |
 
 ## Documentation
 
 - [CLI Reference](docs/cli-reference.md) — all commands, flags, and options
 - [API Reference](docs/api-reference.md) — ThermoWorks Cloud Firestore REST API
+- [MCP Server](packages/mcp/README.md) — MCP server for AI assistants
 - [VS Code Extension](packages/vscode/README.md) — panel, status bar, alarms, firmware detection
 
 ## Development

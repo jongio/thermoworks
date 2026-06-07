@@ -740,6 +740,42 @@ export class ThermoworksCloud {
 		return toActionResult(result);
 	}
 
+	/** Update device state/settings via a Cloud Function. */
+	async updateDeviceState(serial: string, state: Record<string, unknown>): Promise<ActionResult> {
+		validateSerial(serial);
+		if (!state || typeof state !== "object" || Array.isArray(state)) {
+			throw new Error("state must be a non-null object");
+		}
+		const session = await this.ensureSession();
+		const result = await session.callFunction("deviceStateUpdate", {
+			deviceId: serial,
+			state,
+		});
+		return toActionResult(result);
+	}
+
+	/** Rename a device. */
+	async renameDevice(serial: string, name: string): Promise<ActionResult> {
+		validateSerial(serial);
+		if (typeof name !== "string" || name.trim().length === 0) {
+			throw new Error("name must be a non-empty string");
+		}
+		const session = await this.ensureSession();
+		const result = await session.callFunction("setInstrumentName", {
+			deviceId: serial,
+			name,
+		});
+		return toActionResult(result);
+	}
+
+	/** Factory reset a device. */
+	async factoryReset(serial: string): Promise<ActionResult> {
+		validateSerial(serial);
+		const session = await this.ensureSession();
+		const result = await session.callFunction("deviceFactoryReset", { deviceId: serial });
+		return toActionResult(result);
+	}
+
 	/** Share a device's live state publicly via a shareable link. */
 	async shareDevice(serial: string): Promise<ShareResult> {
 		validateSerial(serial);

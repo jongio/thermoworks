@@ -23,6 +23,7 @@ import type {
 	EventFilter,
 	FirmwareInfo,
 	MinMaxReading,
+	NotificationSettings,
 	TemperatureReading,
 	User,
 } from "thermoworks-sdk";
@@ -278,6 +279,17 @@ async function fetchProjectId(): Promise<string> {
 }
 
 // ─── Firestore document parsers ──────────────────────────────────────────────
+
+function parseNotificationSettings(fields: FirestoreFields | null): NotificationSettings | null {
+	if (!fields) return null;
+	return {
+		enabled: getBoolean(fields, "enabled") ?? false,
+		continuousAlerts: getBoolean(fields, "continuousAlerts") ?? false,
+		emailNotification: getBoolean(fields, "emailNotification") ?? false,
+		smsNotification: getBoolean(fields, "smsNotification") ?? false,
+		deviceNotification: getBoolean(fields, "deviceNotification") ?? false,
+	};
+}
 
 function parseAlarm(fields: FirestoreFields | null): Alarm | null {
 	if (!fields) return null;
@@ -604,9 +616,9 @@ export class ThermoworksWebClient {
 			use24Time: getBoolean(fields, "use24Time"),
 			lastLogin: getTimestamp(fields, "lastLogin"),
 			appVersion: getString(fields, "appVersion"),
-			accountRoles: parseBooleanMap(getMapFields(fields, "accountRoles")),
-			roles: parseBooleanMap(getMapFields(fields, "roles")),
-			notificationSettings: null,
+			accountRoles: null,
+			roles: null,
+			notificationSettings: parseNotificationSettings(getMapFields(fields, "notificationSettings")),
 		};
 	}
 
@@ -1039,6 +1051,43 @@ export class ThermoworksWebClient {
 		const maskPaths = `updateMask.fieldPaths=ch${channel}Min&updateMask.fieldPaths=ch${channel}Max`;
 		const path = `documents/devices/${encodeURIComponent(serial)}?${maskPaths}`;
 		const response = await this.firestoreRequest("PATCH", path, body as unknown as Record<string, unknown>);
+		return { success: response.ok };
+	}
+
+	async getNotificationSettings(): Promise<NotificationSettings> {
+		const user = await this.getUser();
+		return (
+			user.notificationSettings ?? {
+				enabled: false,
+				continuousAlerts: false,
+				emailNotification: false,
+				smsNotification: false,
+				deviceNotification: false,
+			}
+		);
+	}
+
+	async updateNotificationSettings(settings: Partial<NotificationSettings>): Promise<{ success: boolean }> {
+		if (!this.token) throw new AuthError("Not authenticated", "NOT_AUTHENTICATED");
+		const current = await this.getNotificationSettings();
+		const merged: NotificationSettings = { ...current, ...settings };
+		const path = `documents/users/${this.token.userId}?updateMask.fieldPaths=notificationSettings`;
+		const body = {
+			fields: {
+				notificationSettings: {
+					mapValue: {
+						fields: {
+							enabled: { booleanValue: merged.enabled },
+							continuousAlerts: { booleanValue: merged.continuousAlerts },
+							emailNotification: { booleanValue: merged.emailNotification },
+							smsNotification: { booleanValue: merged.smsNotification },
+							deviceNotification: { booleanValue: merged.deviceNotification },
+						},
+					},
+				},
+			},
+		};
+		const response = await this.firestoreRequest("PATCH", path, body);
 		return { success: response.ok };
 	}
 }

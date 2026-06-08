@@ -454,6 +454,12 @@ export interface DeviceWithChannels {
 	channels: DeviceChannel[];
 }
 
+export interface DeviceGroup {
+	id: string;
+	name: string;
+	devices: string[];
+}
+
 export class ThermoworksWebClient {
 	private token: TokenState | null = null;
 	private projectId: string | null = null;
@@ -490,6 +496,15 @@ export class ThermoworksWebClient {
 			this.token = await this.refreshPromise;
 		}
 		return this.token.accessToken;
+	}
+
+	private async getAccountId(): Promise<string> {
+		if (!this.accountId) {
+			const user = await this.getUser();
+			if (!user.accountId) throw new Error("User has no associated account");
+			this.accountId = user.accountId;
+		}
+		return this.accountId;
 	}
 
 	private get baseUrl(): string {
@@ -546,11 +561,7 @@ export class ThermoworksWebClient {
 	}
 
 	async getDevices(): Promise<Device[]> {
-		if (!this.accountId) {
-			const user = await this.getUser();
-			if (!user.accountId) return [];
-			this.accountId = user.accountId;
-		}
+		const accountId = await this.getAccountId();
 
 		const queryBody = {
 			structuredQuery: {
@@ -559,7 +570,7 @@ export class ThermoworksWebClient {
 					fieldFilter: {
 						field: { fieldPath: "accountId" },
 						op: "EQUAL",
-						value: { stringValue: this.accountId },
+						value: { stringValue: accountId },
 					},
 				},
 				orderBy: [{ field: { fieldPath: "__name__" }, direction: "ASCENDING" }],
@@ -697,11 +708,7 @@ export class ThermoworksWebClient {
 	}
 
 	async getEvents(filter?: EventFilter): Promise<DeviceEvent[]> {
-		if (!this.accountId) {
-			const user = await this.getUser();
-			if (!user.accountId) return [];
-			this.accountId = user.accountId;
-		}
+		const accountId = await this.getAccountId();
 
 		const limit = Math.min(Math.max(1, filter?.limit ?? 50), 500);
 
@@ -712,7 +719,7 @@ export class ThermoworksWebClient {
 				fieldFilter: {
 					field: { fieldPath: "accountId" },
 					op: "EQUAL",
-					value: { stringValue: this.accountId },
+					value: { stringValue: accountId },
 				},
 			},
 		];
@@ -761,6 +768,61 @@ export class ThermoworksWebClient {
 			}
 		}
 		return events;
+	}
+
+	async getDeviceGroups(): Promise<DeviceGroup[]> {
+		const accountId = await this.getAccountId();
+		const path = `documents/accounts/${accountId}/groups`;
+		const response = await this.firestoreRequest("GET", path);
+		if (!response.ok) return [];
+		const data = (await response.json()) as {
+			documents?: Array<{ fields?: FirestoreFields; name?: string }>;
+		};
+		if (!data.documents) return [];
+		return data.documents.map((doc) => ({
+			id: extractDocId(doc.name),
+			name: getString(doc.fields ?? {}, "name") ?? "Unnamed",
+			devices: getStringArray(doc.fields ?? {}, "devices") ?? [],
+		}));
+	}
+
+	async createDeviceGroup(name: string, devices: string[]): Promise<DeviceGroup> {
+		const accountId = await this.getAccountId();
+		const body = {
+			fields: {
+				name: { stringValue: name },
+				devices: {
+					arrayValue: {
+						values: devices.map((d) => ({ stringValue: d })),
+					},
+				},
+			},
+		};
+		const response = await this.firestoreRequest(
+			"POST",
+			`documents/accounts/${accountId}/groups`,
+			body,
+		);
+		if (!response.ok) {
+			throw new Error(`Failed to create device group: HTTP ${response.status}`);
+		}
+		const doc = (await response.json()) as { fields?: FirestoreFields; name?: string };
+		return {
+			id: extractDocId(doc.name),
+			name,
+			devices,
+		};
+	}
+
+	async deleteDeviceGroup(groupId: string): Promise<void> {
+		const accountId = await this.getAccountId();
+		const response = await this.firestoreRequest(
+			"DELETE",
+			`documents/accounts/${accountId}/groups/${encodeURIComponent(groupId)}`,
+		);
+		if (!response.ok) {
+			throw new Error(`Failed to delete device group: HTTP ${response.status}`);
+		}
 	}
 }
 

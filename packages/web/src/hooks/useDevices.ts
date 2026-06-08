@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 
-const POLL_INTERVAL_MS = 10_000;
+const DEFAULT_POLL_INTERVAL_MS = 10_000;
 
 interface UseDevicesResult {
 	data: DeviceWithChannels[];
@@ -12,10 +12,13 @@ interface UseDevicesResult {
 }
 
 /**
- * Hook that polls for device data every 10 seconds.
+ * Hook that polls for device data at the specified interval.
  * Only active when a client is provided (authenticated).
  */
-export function useDevices(client: ThermoworksWebClient | null): UseDevicesResult {
+export function useDevices(
+	client: ThermoworksWebClient | null,
+	pollInterval = DEFAULT_POLL_INTERVAL_MS,
+): UseDevicesResult {
 	const [data, setData] = useState<DeviceWithChannels[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -62,13 +65,13 @@ export function useDevices(client: ThermoworksWebClient | null): UseDevicesResul
 
 		fetchDevices();
 
-		intervalRef.current = setInterval(fetchDevices, POLL_INTERVAL_MS);
+		intervalRef.current = setInterval(fetchDevices, pollInterval);
 
 		return () => {
 			if (intervalRef.current) clearInterval(intervalRef.current);
 			abortRef.current?.abort();
 		};
-	}, [client, fetchDevices]);
+	}, [client, fetchDevices, pollInterval]);
 
 	return { data, isLoading, error, lastUpdated, refresh: fetchDevices };
 }

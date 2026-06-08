@@ -7,14 +7,6 @@ import { useDevices } from "../hooks/useDevices.ts";
 import { useEvents } from "../hooks/useEvents.ts";
 import { cn } from "../lib/utils.ts";
 
-const EVENT_TYPE_OPTIONS = [
-	{ value: "", label: "All types" },
-	{ value: "Low Battery Alert", label: "Low Battery" },
-	{ value: "Alarm", label: "Alarm" },
-	{ value: "Status Change", label: "Status Change" },
-	{ value: "Connection Lost", label: "Connection Lost" },
-] as const;
-
 function getEventIcon(eventType: string) {
 	const lower = eventType.toLowerCase();
 	if (lower.includes("battery")) return Battery;
@@ -100,14 +92,31 @@ export function Events() {
 	const [deviceFilter, setDeviceFilter] = useState("");
 	const [typeFilter, setTypeFilter] = useState("");
 
+	// Only pass device filter to the API (server-side); type filter is client-side
 	const filter: EventFilter | undefined = useMemo(() => {
-		const f: EventFilter = { limit: 100 };
+		const f: EventFilter = { limit: 200 };
 		if (deviceFilter) f.deviceId = deviceFilter;
-		if (typeFilter) f.eventType = typeFilter;
 		return f;
-	}, [deviceFilter, typeFilter]);
+	}, [deviceFilter]);
 
 	const { data: events, isLoading, error, lastUpdated, refresh } = useEvents(client, filter);
+
+	// Client-side type filtering (avoids Firestore composite index requirement)
+	const filteredEvents = useMemo(() => {
+		if (!typeFilter) return events;
+		return events.filter((e) =>
+			e.eventType.toLowerCase().includes(typeFilter.toLowerCase()),
+		);
+	}, [events, typeFilter]);
+
+	// Build dynamic type options from actual event data
+	const typeOptions = useMemo(() => {
+		const types = new Set<string>();
+		for (const e of events) {
+			if (e.eventType) types.add(e.eventType);
+		}
+		return Array.from(types).sort();
+	}, [events]);
 
 	const deviceLabelMap = useMemo(() => {
 		const map = new Map<string, string>();
@@ -173,9 +182,10 @@ export function Events() {
 							"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 						)}
 					>
-						{EVENT_TYPE_OPTIONS.map((opt) => (
-							<option key={opt.value} value={opt.value}>
-								{opt.label}
+						<option value="">All types</option>
+						{typeOptions.map((type) => (
+							<option key={type} value={type}>
+								{type}
 							</option>
 						))}
 					</select>
@@ -195,7 +205,7 @@ export function Events() {
 			)}
 
 			{/* Loading */}
-			{isLoading && events.length === 0 && !error && (
+			{isLoading && filteredEvents.length === 0 && !error && (
 				<div className="flex items-center justify-center py-12">
 					<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
 					<span className="ml-2 text-sm text-muted-foreground">Loading events...</span>
@@ -203,7 +213,7 @@ export function Events() {
 			)}
 
 			{/* Empty state */}
-			{!isLoading && events.length === 0 && !error && (
+			{!isLoading && filteredEvents.length === 0 && !error && (
 				<div className="text-center py-12">
 					<Activity className="mx-auto h-10 w-10 text-muted-foreground/50" aria-hidden="true" />
 					<p className="mt-3 text-muted-foreground">No events found.</p>
@@ -216,9 +226,9 @@ export function Events() {
 			)}
 
 			{/* Event list */}
-			{events.length > 0 && (
+			{filteredEvents.length > 0 && (
 				<ul className="space-y-2" aria-label="Event history">
-					{events.map((event) => (
+					{filteredEvents.map((event) => (
 						<EventRow
 							key={event.id}
 							event={event}

@@ -632,7 +632,7 @@ export class ThermoworksWebClient {
 
 	private async fetchDocFields(path: string): Promise<FirestoreFields | null> {
 		const response = await this.firestoreRequest("GET", path);
-		if (response.status === 404) return null;
+		if (response.status === 404 || response.status === 403) return null;
 		if (!response.ok) {
 			throw new Error(`Firestore request failed: HTTP ${response.status}`);
 		}

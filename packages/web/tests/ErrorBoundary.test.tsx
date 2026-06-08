@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ErrorBoundary } from "../src/components/ErrorBoundary.tsx";
 
@@ -43,25 +43,28 @@ describe("ErrorBoundary", () => {
 		expect(screen.getByText(/encountered an unexpected error/i)).toBeInTheDocument();
 	});
 
-	it("displays the error message in a pre block", () => {
+	it("displays the error message in technical details", () => {
 		render(
 			<ErrorBoundary>
 				<ThrowingComponent message="Connection timeout" />
 			</ErrorBoundary>,
 		);
 
-		const pre = screen.getByText("Connection timeout");
+		// Expand technical details to reveal the error message
+		fireEvent.click(screen.getByRole("button", { name: /technical details/i }));
+
+		const pre = screen.getByText(/Connection timeout/);
 		expect(pre.tagName).toBe("PRE");
 	});
 
-	it("renders a Reload button", () => {
+	it("renders a Try again button", () => {
 		render(
 			<ErrorBoundary>
 				<ThrowingComponent message="oops" />
 			</ErrorBoundary>,
 		);
 
-		expect(screen.getByRole("button", { name: /reload/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
 	});
 
 	it("renders custom fallback prop when provided", () => {

@@ -5,7 +5,7 @@ import { cn } from "../lib/utils.ts";
 export function BottomNav() {
 	return (
 		<nav
-			className="fixed inset-x-0 bottom-0 z-20 flex md:hidden border-t border-border bg-card"
+			className="fixed inset-x-0 bottom-0 z-20 flex md:hidden border-t border-border bg-card pb-[env(safe-area-inset-bottom)]"
 			aria-label="Mobile navigation"
 		>
 			{navigationItems.map((item) => (
@@ -15,7 +15,8 @@ export function BottomNav() {
 					end={item.path === "/"}
 					className={({ isActive }) =>
 						cn(
-							"relative flex flex-1 flex-col items-center gap-0.5 py-2 text-xs font-medium",
+							"relative flex flex-1 flex-col items-center gap-0.5 py-3 text-xs font-medium",
+							"min-h-[44px] touch-manipulation",
 							"transition-colors duration-150",
 							"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
 							isActive

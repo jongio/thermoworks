@@ -11,6 +11,8 @@ interface DeviceListProps {
 	lastUpdated: Date | null;
 	onRefresh: () => void;
 	client: ThermoworksWebClient;
+	/** When true, the empty state reflects a search filter with no matches. */
+	isFiltering?: boolean;
 }
 
 export function DeviceList({
@@ -20,6 +22,7 @@ export function DeviceList({
 	lastUpdated,
 	onRefresh,
 	client,
+	isFiltering = false,
 }: DeviceListProps) {
 	return (
 		<div className="space-y-4">
@@ -66,10 +69,14 @@ export function DeviceList({
 			{/* Empty state */}
 			{!isLoading && data.length === 0 && !error && (
 				<div className="text-center py-12">
-					<p className="text-muted-foreground">No devices found.</p>
-					<p className="text-sm text-muted-foreground mt-1">
-						Make sure your devices are registered in ThermoWorks Cloud.
+					<p className="text-muted-foreground">
+						{isFiltering ? "No devices match your search." : "No devices found."}
 					</p>
+					{!isFiltering && (
+						<p className="text-sm text-muted-foreground mt-1">
+							Make sure your devices are registered in ThermoWorks Cloud.
+						</p>
+					)}
 				</div>
 			)}
 

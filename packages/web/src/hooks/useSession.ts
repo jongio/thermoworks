@@ -38,10 +38,22 @@ export function useSession(
 	const [elapsed, setElapsed] = useState("00:00:00");
 	const [error, setError] = useState<string | null>(null);
 	const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+	// Prevents re-sync from overriding optimistic updates until server catches up
+	const optimisticOverrideRef = useRef<boolean | null>(null);
 
 	// Sync with external device data (e.g., when device re-fetched)
 	useEffect(() => {
-		setIsActive(sessionStart !== null);
+		const serverActive = sessionStart !== null;
+		// If we have an optimistic override, only clear it once the server agrees
+		if (optimisticOverrideRef.current !== null) {
+			if (serverActive === optimisticOverrideRef.current) {
+				// Server caught up with our optimistic state — clear override
+				optimisticOverrideRef.current = null;
+			}
+			// Otherwise ignore server state (it's stale)
+			return;
+		}
+		setIsActive(serverActive);
 		setStartTime(sessionStart);
 		setLabel(sessionLabel ?? "");
 	}, [sessionStart, sessionLabel]);
@@ -71,6 +83,7 @@ export function useSession(
 				const result = await client.startSession(serial, newLabel);
 				if (result.success) {
 					const now = new Date();
+					optimisticOverrideRef.current = true;
 					setIsActive(true);
 					setStartTime(now);
 					setLabel(newLabel ?? "");
@@ -90,6 +103,7 @@ export function useSession(
 		try {
 			const result = await client.endSession(serial);
 			if (result.success) {
+				optimisticOverrideRef.current = false;
 				setIsActive(false);
 				setStartTime(null);
 			} else {

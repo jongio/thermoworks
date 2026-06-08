@@ -5,11 +5,16 @@ import { LoginForm } from "./components/LoginForm.tsx";
 import { ThemeToggle } from "./components/ThemeToggle.tsx";
 import { UnitToggle } from "./components/UnitToggle.tsx";
 import { TemperatureUnitProvider } from "./context/TemperatureUnitContext.tsx";
-import { useDevices } from "./hooks/useDevices.ts";
-import type { ThermoworksWebClient } from "./lib/api.ts";
+import { ThermoworksWebClient } from "./lib/api.ts";
+
+// Try to restore session from sessionStorage on app load
+function createRestoredClient(): ThermoworksWebClient | null {
+	const client = new ThermoworksWebClient();
+	return client.isAuthenticated ? client : null;
+}
 
 export function App() {
-	const [client, setClient] = useState<ThermoworksWebClient | null>(null);
+	const [client, setClient] = useState<ThermoworksWebClient | null>(createRestoredClient);
 	const [showLogin, setShowLogin] = useState(false);
 
 	function handleLogout() {

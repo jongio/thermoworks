@@ -522,11 +522,48 @@ export interface DeviceGroup {
 	devices: string[];
 }
 
+const TOKEN_STORAGE_KEY = "thermoworks-session";
+
 export class ThermoworksWebClient {
 	private token: TokenState | null = null;
 	private projectId: string | null = null;
 	private accountId: string | null = null;
 	private refreshPromise: Promise<TokenState> | null = null;
+
+	constructor() {
+		// Restore session from sessionStorage on creation
+		try {
+			const stored = sessionStorage.getItem(TOKEN_STORAGE_KEY);
+			if (stored) {
+				const parsed = JSON.parse(stored) as { token: TokenState; projectId: string };
+				if (parsed.token && parsed.token.expiresAt > Date.now()) {
+					this.token = parsed.token;
+					this.projectId = parsed.projectId;
+				} else if (parsed.token?.refreshToken) {
+					// Token expired but we have a refresh token — store it and refresh on next request
+					this.token = parsed.token;
+					this.projectId = parsed.projectId;
+				} else {
+					sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+				}
+			}
+		} catch {
+			// Storage unavailable or corrupted — start fresh
+		}
+	}
+
+	private persistSession(): void {
+		try {
+			if (this.token && this.projectId) {
+				sessionStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({
+					token: this.token,
+					projectId: this.projectId,
+				}));
+			}
+		} catch {
+			// Storage unavailable — session won't persist across refresh
+		}
+	}
 
 	async login(email: string, password: string): Promise<void> {
 		const [token, projectId] = await Promise.all([
@@ -535,6 +572,7 @@ export class ThermoworksWebClient {
 		]);
 		this.token = token;
 		this.projectId = projectId;
+		this.persistSession();
 	}
 
 	get isAuthenticated(): boolean {
@@ -545,6 +583,7 @@ export class ThermoworksWebClient {
 		this.token = null;
 		this.accountId = null;
 		this.refreshPromise = null;
+		try { sessionStorage.removeItem(TOKEN_STORAGE_KEY); } catch {}
 	}
 
 	private async ensureToken(): Promise<string> {
@@ -556,6 +595,7 @@ export class ThermoworksWebClient {
 				});
 			}
 			this.token = await this.refreshPromise;
+			this.persistSession();
 		}
 		return this.token.accessToken;
 	}

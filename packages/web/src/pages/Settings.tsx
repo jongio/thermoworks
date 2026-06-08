@@ -1,7 +1,7 @@
 import { Settings as SettingsIcon } from "lucide-react";
 import { useOutletContext } from "react-router-dom";
-import { AccountPanel } from "../components/AccountPanel.tsx";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
+import { UserManagement } from "../components/UserManagement.tsx";
 
 export function Settings() {
 	const { client } = useOutletContext<AppOutletContext>();
@@ -13,7 +13,12 @@ export function Settings() {
 				<h1 className="text-lg font-semibold tracking-tight">Settings</h1>
 			</div>
 
-			<AccountPanel client={client} />
+			<section aria-labelledby="users-heading">
+				<h2 id="users-heading" className="sr-only">
+					User Management
+				</h2>
+				<UserManagement client={client} />
+			</section>
 		</div>
 	);
 }

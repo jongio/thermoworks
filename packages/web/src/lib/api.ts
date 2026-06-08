@@ -11,6 +11,7 @@
  * SDK and web. See docs/xray/xray-report-2026-06-07.md § XRAY-002.
  */
 import type {
+	AccountInvite,
 	Alarm,
 	AlarmSetOptions,
 	AlarmThresholdOptions,
@@ -149,6 +150,17 @@ function getStringArray(fields: FirestoreFields, key: string): string[] | null {
 		return result.length > 0 ? result : null;
 	}
 	return null;
+}
+
+function parseBooleanMap(fields: FirestoreFields | null): Record<string, boolean> | null {
+	if (!fields) return null;
+	const result: Record<string, boolean> = {};
+	for (const [key, value] of Object.entries(fields)) {
+		if ("booleanValue" in value) {
+			result[key] = value.booleanValue;
+		}
+	}
+	return Object.keys(result).length > 0 ? result : null;
 }
 
 // ─── Temperature guide types ─────────────────────────────────────────────────
@@ -592,8 +604,8 @@ export class ThermoworksWebClient {
 			use24Time: getBoolean(fields, "use24Time"),
 			lastLogin: getTimestamp(fields, "lastLogin"),
 			appVersion: getString(fields, "appVersion"),
-			accountRoles: null,
-			roles: null,
+			accountRoles: parseBooleanMap(getMapFields(fields, "accountRoles")),
+			roles: parseBooleanMap(getMapFields(fields, "roles")),
 			notificationSettings: null,
 		};
 	}
@@ -779,6 +791,53 @@ export class ThermoworksWebClient {
 	async shareArchive(serial: string, archiveId: string): Promise<{ shareUrl: string }> {
 		const baseUrl = `${window.location.origin}${window.location.pathname}`;
 		return { shareUrl: `${baseUrl}#/share/archive/${serial}/${archiveId}` };
+	}
+
+	async getInvites(): Promise<AccountInvite[]> {
+		const accountId = await this.getAccountId();
+
+		const queryBody = {
+			structuredQuery: {
+				from: [{ collectionId: "usersInvites" }],
+				where: {
+					fieldFilter: {
+						field: { fieldPath: "accountId" },
+						op: "EQUAL",
+						value: { stringValue: accountId },
+					},
+				},
+				orderBy: [{ field: { fieldPath: "__name__" }, direction: "ASCENDING" }],
+			},
+		};
+
+		const response = await this.firestoreRequest("POST", "documents:runQuery", queryBody);
+		const rawResults = await response.json();
+		if (!Array.isArray(rawResults)) return [];
+
+		const results = rawResults as Array<{
+			document?: { fields?: FirestoreFields; name?: string };
+		}>;
+		const invites: AccountInvite[] = [];
+		for (const result of results) {
+			if (result.document?.fields) {
+				const f = result.document.fields;
+				invites.push({
+					id: extractDocId(result.document.name),
+					accountId: getString(f, "accountId") ?? accountId,
+					email: getString(f, "email") ?? undefined,
+					status: getString(f, "status") ?? undefined,
+					createdAt: getString(f, "createdAt") ?? undefined,
+				});
+			}
+		}
+		return invites;
+	}
+
+	async removeUser(userId: string): Promise<{ success: boolean }> {
+		const accountId = await this.getAccountId();
+		const path = `documents/accounts/${encodeURIComponent(accountId)}/users/${encodeURIComponent(userId)}`;
+		const response = await this.firestoreRequest("DELETE", path);
+		return { success: response.ok };
 	}
 
 	async getEvents(filter?: EventFilter): Promise<DeviceEvent[]> {

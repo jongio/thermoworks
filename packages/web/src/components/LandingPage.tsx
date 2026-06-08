@@ -1,13 +1,34 @@
-import { ExternalLink, Github, Package, Terminal } from "lucide-react";
+import {
+	BarChart3,
+	BellRing,
+	Bot,
+	Code,
+	ExternalLink,
+	Github,
+	Globe,
+	Lock,
+	Package,
+	RefreshCw,
+	Terminal,
+	Wrench,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { cn } from "../lib/utils.ts";
 
 interface LandingPageProps {
 	onSignIn: () => void;
 }
 
-const products = [
+const products: {
+	icon: LucideIcon;
+	title: string;
+	description: string;
+	command: string | null;
+	link: string;
+	linkLabel: string;
+}[] = [
 	{
-		emoji: "🔥",
+		icon: Code,
 		title: "VS Code Extension",
 		description:
 			"Full sidebar device panel + status bar integration. See devices, channels, battery, firmware status, and alarm states in your editor.",
@@ -16,7 +37,7 @@ const products = [
 		linkLabel: "Marketplace",
 	},
 	{
-		emoji: "⌨️",
+		icon: Terminal,
 		title: "CLI + Statusline",
 		description:
 			"Live temperatures in your terminal footer while you code. Interactive wizard to pick devices and channels. 14 commands for monitoring, alarms, sessions, and data export.",
@@ -25,7 +46,7 @@ const products = [
 		linkLabel: "npm: thermoworks",
 	},
 	{
-		emoji: "🌐",
+		icon: Globe,
 		title: "Web Dashboard",
 		description:
 			"Real-time temperature dashboard with history graphs, alarm color coding, light/dark theme, and public share viewer - all in the browser.",
@@ -34,7 +55,7 @@ const products = [
 		linkLabel: "Open Dashboard",
 	},
 	{
-		emoji: "🛠️",
+		icon: Wrench,
 		title: "SDK",
 		description:
 			"Node.js SDK for programmatic access - build your own dashboards, alerts, or automations with full access to devices, channels, events, and archives.",
@@ -43,7 +64,7 @@ const products = [
 		linkLabel: "npm: thermoworks-sdk",
 	},
 	{
-		emoji: "🤖",
+		icon: Bot,
 		title: "MCP Server",
 		description:
 			"Model Context Protocol server that exposes your ThermoWorks device data to AI assistants like GitHub Copilot, Claude, and ChatGPT.",
@@ -53,27 +74,27 @@ const products = [
 	},
 ];
 
-const features = [
+const features: { icon: LucideIcon; title: string; description: string }[] = [
 	{
-		emoji: "🚨",
+		icon: BellRing,
 		title: "Temperature Alerts",
 		description:
 			"Instant visual alarms when temperatures cross thresholds - red for too high, blue for too low.",
 	},
 	{
-		emoji: "⬆️",
+		icon: RefreshCw,
 		title: "Firmware Updates",
 		description:
 			"Automatically detects outdated device firmware by comparing against the latest version from ThermoWorks Cloud.",
 	},
 	{
-		emoji: "🔐",
+		icon: Lock,
 		title: "Secure Credentials",
 		description:
 			"Credentials stored in the OS keychain. Sign in once - CLI and VS Code share access. Env vars supported for headless environments.",
 	},
 	{
-		emoji: "📊",
+		icon: BarChart3,
 		title: "Per-Channel Selection",
 		description:
 			"Pick averages or individual channels for multi-probe devices like the Signals 4-channel or Smoke 2-channel.",
@@ -134,7 +155,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
 								key={product.title}
 								className="rounded-lg border border-border bg-card p-5"
 							>
-								<div className="text-2xl">{product.emoji}</div>
+								<product.icon className="h-6 w-6 text-primary" />
 								<h3 className="mt-2 font-semibold">{product.title}</h3>
 								<p className="mt-1 text-sm text-muted-foreground">
 									{product.description}
@@ -170,7 +191,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
 					<div className="mt-10 grid gap-6 sm:grid-cols-2">
 						{features.map((feature) => (
 							<div key={feature.title} className="flex gap-4">
-								<div className="text-2xl">{feature.emoji}</div>
+								<feature.icon className="h-6 w-6 shrink-0 text-primary" />
 								<div>
 									<h3 className="font-semibold">{feature.title}</h3>
 									<p className="mt-1 text-sm text-muted-foreground">

@@ -676,16 +676,17 @@ export class ThermoworksWebClient {
 	}
 
 	async getAllDeviceChannels(serial: string): Promise<DeviceChannel[]> {
-		const results = await Promise.allSettled(
-			Array.from({ length: 9 }, (_, i) => this.getDeviceChannel(serial, i + 1)),
-		);
-		const channels: DeviceChannel[] = [];
-		for (const result of results) {
-			if (result.status === "fulfilled" && result.value !== null) {
-				channels.push(result.value);
-			}
-		}
-		return channels;
+		// Use a collection list query instead of 9 individual GETs to avoid 404 noise
+		const path = `documents/devices/${encodeURIComponent(serial)}/channels?pageSize=9`;
+		const response = await this.firestoreRequest("GET", path);
+		if (!response.ok) return [];
+		const data = (await response.json()) as {
+			documents?: Array<{ fields?: FirestoreFields }>;
+		};
+		if (!data.documents) return [];
+		return data.documents
+			.map((doc) => (doc.fields ? parseDeviceChannel(doc.fields) : null))
+			.filter((ch): ch is DeviceChannel => ch !== null);
 	}
 
 	async getDevicesWithChannels(): Promise<DeviceWithChannels[]> {

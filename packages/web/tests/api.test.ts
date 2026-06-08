@@ -612,26 +612,18 @@ describe("ThermoworksWebClient", () => {
 	// ─── getAllDeviceChannels ───────────────────────────────────────────────
 
 	describe("getAllDeviceChannels", () => {
-		it("fetches channels 1-9 and returns fulfilled non-null results", async () => {
+		it("fetches channel collection and returns parsed results", async () => {
 			const client = await createAuthenticatedClient();
 
-			// Channels 1-4 have data, 5-9 are 404
-			for (let i = 1; i <= 9; i++) {
-				if (i <= 4) {
-					mockFetch.mockResolvedValueOnce(jsonResponse({
-						fields: {
-							number: { stringValue: String(i) },
-							value: { doubleValue: 100 + i },
-							units: { stringValue: "F" },
-							label: { stringValue: `Channel ${i}` },
-							status: { stringValue: "active" },
-							enabled: { booleanValue: true },
-						},
-					}));
-				} else {
-					mockFetch.mockResolvedValueOnce(errorResponse(404));
-				}
-			}
+			// Single collection GET returns documents array
+			mockFetch.mockResolvedValueOnce(jsonResponse({
+				documents: [
+					{ fields: { number: { stringValue: "1" }, value: { doubleValue: 101 }, units: { stringValue: "F" }, label: { stringValue: "Channel 1" }, status: { stringValue: "active" }, enabled: { booleanValue: true } } },
+					{ fields: { number: { stringValue: "2" }, value: { doubleValue: 102 }, units: { stringValue: "F" }, label: { stringValue: "Channel 2" }, status: { stringValue: "active" }, enabled: { booleanValue: true } } },
+					{ fields: { number: { stringValue: "3" }, value: { doubleValue: 103 }, units: { stringValue: "F" }, label: { stringValue: "Channel 3" }, status: { stringValue: "active" }, enabled: { booleanValue: true } } },
+					{ fields: { number: { stringValue: "4" }, value: { doubleValue: 104 }, units: { stringValue: "F" }, label: { stringValue: "Channel 4" }, status: { stringValue: "active" }, enabled: { booleanValue: true } } },
+				],
+			}));
 
 			const channels = await client.getAllDeviceChannels("SN-001");
 			expect(channels).toHaveLength(4);
@@ -641,72 +633,77 @@ describe("ThermoworksWebClient", () => {
 			expect(channels[3].value).toBe(104);
 		});
 
-		it("handles all channels being 404", async () => {
+		it("returns empty array when no channels exist", async () => {
 			const client = await createAuthenticatedClient();
-			for (let i = 0; i < 9; i++) {
-				mockFetch.mockResolvedValueOnce(errorResponse(404));
-			}
+			mockFetch.mockResolvedValueOnce(jsonResponse({}));
 
 			const channels = await client.getAllDeviceChannels("SN-EMPTY");
 			expect(channels).toEqual([]);
 		});
 
+		it("returns empty array on HTTP error", async () => {
+			const client = await createAuthenticatedClient();
+			mockFetch.mockResolvedValueOnce(errorResponse(500));
+
+			const channels = await client.getAllDeviceChannels("SN-ERR");
+			expect(channels).toEqual([]);
+		});
+
 		it("parses alarm and min/max data on channels", async () => {
 			const client = await createAuthenticatedClient();
+			// Single collection GET returns documents array with one channel
 			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: {
-					number: { stringValue: "1" },
-					value: { doubleValue: 165.5 },
-					units: { stringValue: "F" },
-					label: { stringValue: "Meat" },
-					enabled: { booleanValue: true },
-					status: { stringValue: "active" },
-					alarmHigh: {
-						mapValue: {
-							fields: {
-								enabled: { booleanValue: true },
-								alarming: { booleanValue: false },
-								value: { doubleValue: 200.0 },
-								units: { stringValue: "F" },
-							},
-						},
-					},
-					alarmLow: {
-						mapValue: {
-							fields: {
-								enabled: { booleanValue: true },
-								alarming: { booleanValue: false },
-								value: { doubleValue: 32.0 },
-								units: { stringValue: "F" },
-							},
-						},
-					},
-					minimum: {
-						mapValue: {
-							fields: {
-								reading: {
-									mapValue: { fields: { value: { doubleValue: 40.0 }, units: { stringValue: "F" } } },
+				documents: [{
+					fields: {
+						number: { stringValue: "1" },
+						value: { doubleValue: 165.5 },
+						units: { stringValue: "F" },
+						label: { stringValue: "Meat" },
+						enabled: { booleanValue: true },
+						status: { stringValue: "active" },
+						alarmHigh: {
+							mapValue: {
+								fields: {
+									enabled: { booleanValue: true },
+									alarming: { booleanValue: false },
+									value: { doubleValue: 200.0 },
+									units: { stringValue: "F" },
 								},
-								dateReading: { timestampValue: "2026-06-01T10:00:00Z" },
 							},
 						},
-					},
-					maximum: {
-						mapValue: {
-							fields: {
-								reading: {
-									mapValue: { fields: { value: { doubleValue: 190.0 }, units: { stringValue: "F" } } },
+						alarmLow: {
+							mapValue: {
+								fields: {
+									enabled: { booleanValue: true },
+									alarming: { booleanValue: false },
+									value: { doubleValue: 32.0 },
+									units: { stringValue: "F" },
 								},
-								dateReading: { timestampValue: "2026-06-01T14:00:00Z" },
+							},
+						},
+						minimum: {
+							mapValue: {
+								fields: {
+									reading: {
+										mapValue: { fields: { value: { doubleValue: 40.0 }, units: { stringValue: "F" } } },
+									},
+									dateReading: { timestampValue: "2026-06-01T10:00:00Z" },
+								},
+							},
+						},
+						maximum: {
+							mapValue: {
+								fields: {
+									reading: {
+										mapValue: { fields: { value: { doubleValue: 190.0 }, units: { stringValue: "F" } } },
+									},
+									dateReading: { timestampValue: "2026-06-01T14:00:00Z" },
+								},
 							},
 						},
 					},
-				},
+				}],
 			}));
-			// Remaining 8 channels 404
-			for (let i = 0; i < 8; i++) {
-				mockFetch.mockResolvedValueOnce(errorResponse(404));
-			}
 
 			const channels = await client.getAllDeviceChannels("SN-001");
 			expect(channels).toHaveLength(1);
@@ -741,13 +738,12 @@ describe("ThermoworksWebClient", () => {
 			mockFetch.mockResolvedValueOnce(jsonResponse([
 				{ document: { fields: { serial: { stringValue: "SN-A" } } } },
 			]));
-			// getAllDeviceChannels for SN-A (9 channel fetches)
+			// getAllDeviceChannels for SN-A (single collection GET)
 			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { number: { stringValue: "1" }, value: { doubleValue: 72 }, units: { stringValue: "F" } },
+				documents: [
+					{ fields: { number: { stringValue: "1" }, value: { doubleValue: 72 }, units: { stringValue: "F" } } },
+				],
 			}));
-			for (let i = 0; i < 8; i++) {
-				mockFetch.mockResolvedValueOnce(errorResponse(404));
-			}
 
 			const result = await client.getDevicesWithChannels();
 			expect(result).toHaveLength(1);

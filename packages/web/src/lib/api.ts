@@ -628,10 +628,32 @@ export class ThermoworksWebClient {
 		if (!fields) {
 			return { id: accountId, name: null, plan: null, devicesUsed: 0, devicesLimit: 0 };
 		}
+
+		// Fetch billing plan name via billingPlanId reference
+		let planName: string | null = null;
+		const planId = getString(fields, "billingPlanId");
+		if (planId) {
+			const planFields = await this.fetchDocFields(
+				`documents/system/billingPlans/plans/${encodeURIComponent(planId)}`,
+			);
+			if (planFields) {
+				planName = getString(planFields, "name");
+				// Use plan's deviceCount as the limit
+				const deviceCount = getNumber(planFields, "deviceCount");
+				return {
+					id: accountId,
+					name: getString(fields, "name"),
+					plan: planName,
+					devicesUsed: getNumber(fields, "devicesUsed") ?? 0,
+					devicesLimit: deviceCount ?? getNumber(fields, "devicesLimit") ?? 0,
+				};
+			}
+		}
+
 		return {
 			id: accountId,
 			name: getString(fields, "name"),
-			plan: getString(fields, "plan"),
+			plan: planName,
 			devicesUsed: getNumber(fields, "devicesUsed") ?? 0,
 			devicesLimit: getNumber(fields, "devicesLimit") ?? 0,
 		};

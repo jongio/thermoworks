@@ -441,17 +441,24 @@ describe("ThermoworksWebClient", () => {
 			mockFetch.mockResolvedValueOnce(jsonResponse({
 				fields: {
 					name: { stringValue: "My Account" },
-					plan: { stringValue: "pro" },
+					billingPlanId: { stringValue: "plan-pro" },
 					devicesUsed: { integerValue: "3" },
-					devicesLimit: { integerValue: "10" },
+				},
+			}));
+			// billing plan lookup
+			mockFetch.mockResolvedValueOnce(jsonResponse({
+				fields: {
+					name: { stringValue: "Pro" },
+					deviceCount: { integerValue: "10" },
 				},
 			}));
 
 			const account = await client.getAccount();
 			expect(account.id).toBe("acc-99");
 			expect(account.name).toBe("My Account");
-			expect(account.plan).toBe("pro");
+			expect(account.plan).toBe("Pro");
 			expect(account.devicesUsed).toBe(3);
+			expect(account.devicesLimit).toBe(10);
 			expect(account.devicesLimit).toBe(10);
 		});
 

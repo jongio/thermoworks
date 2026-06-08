@@ -83,8 +83,12 @@ export function AccountPanel({ client }: AccountPanelProps) {
 					)}
 					<dt className="text-muted-foreground">Account ID</dt>
 					<dd className="font-mono text-xs break-all">{account.id}</dd>
-					<dt className="text-muted-foreground">Plan</dt>
-					<dd>{account.plan ?? "Unknown"}</dd>
+					{account.plan && (
+						<>
+							<dt className="text-muted-foreground">Plan</dt>
+							<dd>{account.plan}</dd>
+						</>
+					)}
 				</dl>
 
 				{/* Device usage */}

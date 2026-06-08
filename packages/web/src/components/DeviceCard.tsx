@@ -1,9 +1,10 @@
-import { Battery, ChevronDown, ChevronUp, Loader2, Signal, Thermometer, Wifi } from "lucide-react";
+import { Battery, ChevronDown, ChevronUp, Signal, Thermometer, Wifi } from "lucide-react";
 import React, { Suspense, useState } from "react";
 import { useArchiveData } from "../hooks/useArchiveData.ts";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { ChannelReading } from "./ChannelReading.tsx";
+import { ChartSkeleton } from "./Skeleton.tsx";
 
 const TemperatureChart = React.lazy(() => import("./TemperatureChart"));
 
@@ -135,21 +136,10 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 			{/* Chart panel */}
 			{showChart && (
 				<div className="mt-3 pt-3 border-t border-border">
-					{archiveLoading && (
-						<div className="flex items-center justify-center py-6">
-							<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-							<span className="ml-2 text-xs text-muted-foreground">Loading history...</span>
-						</div>
-					)}
+					{archiveLoading && <ChartSkeleton />}
 					{archiveError && <div className="text-xs text-destructive py-2">{archiveError}</div>}
 					{!archiveLoading && !archiveError && archiveChannels && (
-						<Suspense
-							fallback={
-								<div className="flex items-center justify-center py-6">
-									<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-								</div>
-							}
-						>
+						<Suspense fallback={<ChartSkeleton />}>
 							<TemperatureChart channels={archiveChannels} />
 						</Suspense>
 					)}

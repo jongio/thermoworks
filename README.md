@@ -25,13 +25,19 @@ Full sidebar device panel + status bar integration. See all your devices, channe
 
 ### ⌨️ CLI + Copilot Statusline
 
-Live temperatures in your terminal footer while you code. Interactive wizard to pick devices and channels.
+Live temperatures in your terminal footer while you code. Interactive wizard to pick devices and channels. 14 commands for device monitoring, alarms, sessions, data export, and more.
 
 ![ThermoWorks statusline in GitHub Copilot CLI](docs/images/statusline.png)
 
 ![ThermoWorks statusline with per-channel display](docs/images/statusline-channels.png)
 
 **Install:** `npx thermoworks`
+
+### 🌐 Web Dashboard
+
+Real-time temperature dashboard with Recharts history graphs, alarm color coding, light/dark theme, and public share viewer — all in the browser. Built with React 19, Vite, and Tailwind CSS.
+
+**Run:** `pnpm --filter thermoworks-web dev`
 
 ### 🛠️ SDK
 
@@ -41,19 +47,33 @@ Node.js SDK for programmatic access — build your own dashboards, alerts, or au
 
 ### 🤖 MCP Server
 
-Model Context Protocol server that exposes your ThermoWorks device data to AI assistants like GitHub Copilot, Claude, and ChatGPT. Start it from the CLI:
+Model Context Protocol server that exposes your ThermoWorks device data to AI assistants like GitHub Copilot, Claude, and ChatGPT.
 
 **Start:** `thermoworks mcp start`
 
-### 🌐 Web Dashboard
+---
 
-Local web dashboard with real-time temperature display, history charts, alarm color coding, and public share viewer. Built with React 19, Vite, and Tailwind CSS.
+## Quick Start
 
-**Run:** `pnpm --filter thermoworks-web dev`
+```bash
+# Sign in to ThermoWorks Cloud
+npx thermoworks auth login
+
+# List your devices with channel readings
+npx thermoworks devices
+
+# Watch temperatures live (auto-refresh)
+npx thermoworks watch
+
+# Run the Copilot statusline setup wizard
+npx thermoworks copilot setup
+```
+
+For command details, see the [CLI reference](docs/cli-reference.md).
 
 ---
 
-## Key Features
+## Feature Highlights
 
 ### 🚨 Temperature Alerts
 
@@ -73,10 +93,6 @@ Automatically detects outdated device firmware by comparing against the latest v
 
 ![Firmware update alert in VS Code](docs/images/vscode-firmware-update.png)
 
-### 🔔 Activity Bar Badge
-
-The fire icon in the VS Code Activity Bar shows a badge count of devices with active alarms — you'll know something needs attention without even opening the panel.
-
 ### 📊 Per-Channel Selection
 
 Pick averages or individual channels for multi-probe devices like the Signals 4-channel or Smoke 2-channel.
@@ -84,6 +100,10 @@ Pick averages or individual channels for multi-probe devices like the Signals 4-
 ### 🔐 Secure Credential Storage
 
 Credentials stored in the OS keychain (macOS Keychain, Windows Credential Vault, libsecret). Sign in once — CLI and VS Code share access. Environment variables (`THERMOWORKS_EMAIL` / `THERMOWORKS_PASSWORD`) supported for headless environments.
+
+### 🔔 Activity Bar Badge
+
+The fire icon in the VS Code Activity Bar shows a badge count of devices with active alarms — you'll know something needs attention without even opening the panel.
 
 ### 🔗 Cloud Dashboard Link
 
@@ -107,23 +127,6 @@ In VS Code: Command Palette → **ThermoWorks: Demo (Simulate Alarm)** — popul
 
 ---
 
-## Quick Start
-
-```bash
-# Sign in to ThermoWorks Cloud
-npx thermoworks auth login
-
-# List your devices
-npx thermoworks devices
-
-# Run the Copilot statusline setup wizard
-npx thermoworks copilot setup
-```
-
-For command details, see the [CLI reference](docs/cli-reference.md).
-
----
-
 ## Packages
 
 | Package | Description |
@@ -137,6 +140,7 @@ For command details, see the [CLI reference](docs/cli-reference.md).
 ## Documentation
 
 - [CLI Reference](docs/cli-reference.md) - all commands, flags, and options
+- [SDK Examples](docs/sdk-examples.md) - real-world usage cookbook
 - [API Reference](docs/api-reference.md) - ThermoWorks Cloud Firestore REST API
 - [MCP Server](packages/mcp/README.md) - MCP server for AI assistants
 - [VS Code Extension](packages/vscode/README.md) - panel, status bar, alarms, firmware detection

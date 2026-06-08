@@ -34,6 +34,11 @@ const DEFAULT_API_KEY = "AIzaSyCf079iccUFc1k7VHdGXng22zXDy8Y3KEY";
 const DEFAULT_APP_ID = "1:78998049458:web:b41e9d405d8c7de95eefab";
 const REFERER = "https://cloud.thermoworks.com/";
 
+// In dev, the Vite proxy sets the Referer header server-side.
+// In production, suppress the browser's Referer entirely so it doesn't
+// send the hosting domain (which Firebase would reject).
+const REFERRER_POLICY: ReferrerPolicy = isDev ? "strict-origin-when-cross-origin" : "no-referrer";
+
 const EXPIRY_BUFFER_MS = 60_000;
 
 // ─── Firestore field parsers ─────────────────────────────────────────────────
@@ -126,6 +131,7 @@ async function login(email: string, password: string): Promise<TokenState> {
 	const url = `${IDENTITY_HOST}/v1/accounts:signInWithPassword?key=${DEFAULT_API_KEY}`;
 	const response = await fetch(url, {
 		method: "POST",
+		referrerPolicy: REFERRER_POLICY,
 		headers: {
 			"content-type": "application/json",
 			referer: REFERER,
@@ -160,6 +166,7 @@ async function refreshAccessToken(refreshToken: string): Promise<TokenState> {
 	const url = `${TOKEN_HOST}/v1/token?key=${DEFAULT_API_KEY}`;
 	const response = await fetch(url, {
 		method: "POST",
+		referrerPolicy: REFERRER_POLICY,
 		headers: {
 			"content-type": "application/json",
 			referer: REFERER,
@@ -192,6 +199,7 @@ async function refreshAccessToken(refreshToken: string): Promise<TokenState> {
 async function fetchProjectId(): Promise<string> {
 	const url = `${FIREBASE_HOST}/v1alpha/projects/-/apps/${DEFAULT_APP_ID}/webConfig`;
 	const response = await fetch(url, {
+		referrerPolicy: REFERRER_POLICY,
 		headers: {
 			accept: "application/json",
 			"x-goog-api-key": DEFAULT_API_KEY,
@@ -617,6 +625,7 @@ async function publicFirestoreGet(path: string): Promise<FirestoreFields | null>
 	const projectId = await getProjectId();
 	const url = `${FIRESTORE_HOST}/v1/projects/${projectId}/databases/(default)/${path}?key=${DEFAULT_API_KEY}`;
 	const response = await fetch(url, {
+		referrerPolicy: REFERRER_POLICY,
 		headers: { referer: REFERER },
 	});
 	if (response.status === 404) return null;
@@ -638,6 +647,7 @@ async function getProjectId(): Promise<string> {
 	if (!cachedProjectId) {
 		const url = `${FIREBASE_HOST}/v1alpha/projects/-/apps/${DEFAULT_APP_ID}/webConfig`;
 		const response = await fetch(url, {
+			referrerPolicy: REFERRER_POLICY,
 			headers: {
 				accept: "application/json",
 				"x-goog-api-key": DEFAULT_API_KEY,

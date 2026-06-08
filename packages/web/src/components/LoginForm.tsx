@@ -6,10 +6,6 @@ interface LoginFormProps {
 	onLogin: (client: ThermoworksWebClient) => void;
 }
 
-const isLocalhost =
-	typeof window !== "undefined" &&
-	(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-
 export function LoginForm({ onLogin }: LoginFormProps) {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
@@ -42,33 +38,6 @@ export function LoginForm({ onLogin }: LoginFormProps) {
 		} finally {
 			setIsLoading(false);
 		}
-	}
-
-	if (!isLocalhost) {
-		return (
-			<div className="flex min-h-screen items-center justify-center p-4">
-				<div className="w-full max-w-sm space-y-6 text-center">
-					<h1 className="text-2xl font-bold tracking-tight">ThermoWorks Dashboard</h1>
-					<p className="text-sm text-muted-foreground">
-						Sign-in requires running the dashboard locally due to Firebase API restrictions.
-					</p>
-					<div className="rounded-lg border border-border bg-muted/50 p-4 text-left">
-						<p className="text-xs font-medium text-muted-foreground mb-2">Run locally:</p>
-						<code className="block text-sm font-mono">
-							git clone https://github.com/jongio/thermoworks.git
-						</code>
-						<code className="block text-sm font-mono mt-1">cd thermoworks && pnpm install</code>
-						<code className="block text-sm font-mono mt-1">pnpm --filter thermoworks-web dev</code>
-					</div>
-					<p className="text-xs text-muted-foreground">
-						Then open{" "}
-						<a href="http://localhost:4200" className="text-primary hover:underline">
-							http://localhost:4200
-						</a>
-					</p>
-				</div>
-			</div>
-		);
 	}
 
 	return (

@@ -160,7 +160,13 @@ export function DeviceDetail() {
 				{enabledChannels.length > 0 ? (
 					<div className="grid gap-3 sm:grid-cols-2">
 						{enabledChannels.map((channel, idx) => (
-							<ChannelReading key={channel.number ?? idx} channel={channel} />
+							<ChannelReading
+								key={channel.number ?? idx}
+								channel={channel}
+								client={client}
+								serial={serial}
+								onAlarmSaved={refresh}
+							/>
 						))}
 					</div>
 				) : (

@@ -12,6 +12,8 @@
  */
 import type {
 	Alarm,
+	AlarmSetOptions,
+	AlarmThresholdOptions,
 	Archive,
 	ArchiveChannel,
 	Device,
@@ -847,28 +849,31 @@ export class ThermoworksWebClient {
 		}
 	}
 
-	/** Set the fan controller target temperature for a Billows-compatible device. */
-	async setFanTarget(serial: string, targetTemp: number): Promise<{ success: boolean }> {
-		const body = {
-			fields: {
-				fan: { mapValue: { fields: { setTemp: { doubleValue: targetTemp } } } },
-			},
-		};
-		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=fan.setTemp`;
-		const response = await this.firestoreRequest("PATCH", path, body);
-		return { success: response.ok };
-	}
+	async setAlarm(serial: string, channel: number, config: AlarmSetOptions): Promise<void> {
+		if (!config.high && !config.low) {
+			throw new Error("At least one of 'high' or 'low' must be provided");
+		}
 
-	/** Enable or disable the fan controller connection for a Billows-compatible device. */
-	async setFanEnabled(serial: string, enabled: boolean): Promise<{ success: boolean }> {
-		const body = {
-			fields: {
-				fan: { mapValue: { fields: { connection: { booleanValue: enabled } } } },
-			},
-		};
-		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=fan.connection`;
-		const response = await this.firestoreRequest("PATCH", path, body);
-		return { success: response.ok };
+		const fieldPaths: string[] = [];
+		const fields: Record<string, FirestoreValue> = {};
+
+		if (config.high) {
+			fieldPaths.push("alarmHigh");
+			fields.alarmHigh = buildAlarmMapValue(config.high);
+		}
+
+		if (config.low) {
+			fieldPaths.push("alarmLow");
+			fields.alarmLow = buildAlarmMapValue(config.low);
+		}
+
+		const updateMask = fieldPaths.map((fp) => `updateMask.fieldPaths=${fp}`).join("&");
+		const path = `documents/devices/${encodeURIComponent(serial)}/channels/${channel}?${updateMask}`;
+		const response = await this.firestoreRequest("PATCH", path, { fields });
+
+		if (!response.ok) {
+			throw new Error(`Failed to set alarm: HTTP ${response.status}`);
+		}
 	}
 }
 
@@ -885,6 +890,22 @@ function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {
 		valueAfter: getString(fields, "valueAfter"),
 		groups: getStringArray(fields, "groups"),
 	};
+}
+
+function buildAlarmMapValue(opts: AlarmThresholdOptions): FirestoreValue {
+	const mapFields: Record<string, FirestoreValue> = {
+		value: { doubleValue: opts.value },
+	};
+	if (opts.units !== undefined) {
+		mapFields.units = { stringValue: opts.units };
+	}
+	if (opts.enabled !== undefined) {
+		mapFields.enabled = { booleanValue: opts.enabled };
+	}
+	if (opts.muted !== undefined) {
+		mapFields.muted = { booleanValue: opts.muted };
+	}
+	return { mapValue: { fields: mapFields } };
 }
 
 async function publicFirestoreGet(path: string): Promise<FirestoreFields | null> {

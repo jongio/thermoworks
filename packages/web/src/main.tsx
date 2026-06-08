@@ -5,6 +5,7 @@ import { App } from "./App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import "./index.css";
 import { Dashboard } from "./pages/Dashboard.tsx";
+import { DeviceDetail } from "./pages/DeviceDetail.tsx";
 import { Devices } from "./pages/Devices.tsx";
 import { Events } from "./pages/Events.tsx";
 import { Guide } from "./pages/Guide.tsx";
@@ -25,6 +26,7 @@ createRoot(root).render(
 					<Route element={<App />}>
 						<Route index element={<Dashboard />} />
 						<Route path="devices" element={<Devices />} />
+						<Route path="device/:serial" element={<DeviceDetail />} />
 						<Route path="events" element={<Events />} />
 						<Route path="guide" element={<Guide />} />
 						<Route path="settings" element={<Settings />} />

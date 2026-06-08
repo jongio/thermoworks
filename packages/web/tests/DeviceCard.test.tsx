@@ -1,5 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { DeviceCard } from "../src/components/DeviceCard.tsx";
 import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";
@@ -25,7 +26,11 @@ function makeMockClient(): ThermoworksWebClient {
 }
 
 function renderWithProvider(ui: ReactNode) {
-	return render(<TemperatureUnitProvider>{ui}</TemperatureUnitProvider>);
+	return render(
+		<MemoryRouter>
+			<TemperatureUnitProvider>{ui}</TemperatureUnitProvider>
+		</MemoryRouter>,
+	);
 }
 
 function makeDevice(overrides: Partial<DeviceWithChannels["device"]> = {}): DeviceWithChannels {

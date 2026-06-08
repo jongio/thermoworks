@@ -1,9 +1,9 @@
-import { ArrowLeft, Battery, Edit3, RotateCcw, Share2, Signal, Wifi } from "lucide-react";
-import React, { Suspense } from "react";
+import { ArrowLeft, Battery, RotateCcw, Share2, Signal, Wifi } from "lucide-react";
+import React, { Suspense, useCallback } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { ChannelReading } from "../components/ChannelReading.tsx";
-import { FanController } from "../components/FanController.tsx";
+import { InlineEdit } from "../components/InlineEdit.tsx";
 import { ChartSkeleton } from "../components/Skeleton.tsx";
 import { useArchiveData } from "../hooks/useArchiveData.ts";
 import { useDevice } from "../hooks/useDevice.ts";
@@ -33,6 +33,18 @@ export function DeviceDetail() {
 	} = useArchiveData(client, serial ?? "", !!data);
 
 	const archiveChannels = archives[0]?.channels ?? null;
+
+	const handleRename = useCallback(
+		async (newName: string) => {
+			if (!client || !serial) return { success: false };
+			const result = await client.renameDevice(serial, newName);
+			if (result.success) {
+				refresh();
+			}
+			return result;
+		},
+		[client, serial, refresh],
+	);
 
 	if (isLoading && !data) {
 		return (
@@ -102,7 +114,7 @@ export function DeviceDetail() {
 			<header className="space-y-2">
 				<div className="flex items-start justify-between gap-4">
 					<div className="min-w-0">
-						<h1 className="text-2xl font-bold tracking-tight truncate">{name}</h1>
+						<InlineEdit value={name} onSave={handleRename} />
 						<p className="text-sm text-muted-foreground mt-0.5">
 							{device.type ?? device.device ?? "Device"} - <span className="font-mono">{device.serial}</span>
 						</p>
@@ -193,19 +205,6 @@ export function DeviceDetail() {
 					Actions
 				</h2>
 				<div className="flex flex-wrap gap-2">
-					<button
-						type="button"
-						disabled
-						className={cn(
-							"inline-flex items-center gap-1.5 rounded-md px-3 py-2",
-							"text-sm border border-border",
-							"disabled:opacity-50 disabled:cursor-not-allowed",
-						)}
-						title="Coming soon"
-					>
-						<Edit3 className="h-4 w-4" />
-						Rename
-					</button>
 					<button
 						type="button"
 						disabled

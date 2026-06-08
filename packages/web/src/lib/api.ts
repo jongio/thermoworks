@@ -708,6 +708,13 @@ export class ThermoworksWebClient {
 		return { success: response.ok };
 	}
 
+	async renameDevice(serial: string, name: string): Promise<{ success: boolean }> {
+		const body = { fields: { label: { stringValue: name } } };
+		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=label`;
+		const response = await this.firestoreRequest("PATCH", path, body);
+		return { success: response.ok };
+	}
+
 	async shareDevice(serial: string): Promise<{ shareUrl: string }> {
 		const body = { fields: { shared: { booleanValue: true } } };
 		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=shared`;

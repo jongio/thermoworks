@@ -161,7 +161,8 @@ describe("DeviceDetail", () => {
 
 		renderDetailPage("TW-001");
 
-		expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Kitchen Probe");
+		expect(screen.getByText("Kitchen Probe")).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /rename kitchen probe/i })).toBeInTheDocument();
 		expect(screen.getByText(/ThermaQ WiFi/)).toBeInTheDocument();
 		expect(screen.getByText("TW-001")).toBeInTheDocument();
 		expect(screen.getByText("Online")).toBeInTheDocument();
@@ -234,7 +235,7 @@ describe("DeviceDetail", () => {
 		expect(screen.getByText("INVALID-SERIAL")).toBeInTheDocument();
 	});
 
-	it("renders quick action buttons as disabled", () => {
+	it("renders remaining quick action buttons as disabled", () => {
 		mockUseDevice.mockReturnValue({
 			data: makeDeviceData(),
 			isLoading: false,
@@ -244,11 +245,13 @@ describe("DeviceDetail", () => {
 
 		renderDetailPage("TW-001");
 
-		const renameBtn = screen.getByRole("button", { name: /rename/i });
+		// Rename is now functional via InlineEdit (not a disabled button)
+		expect(screen.getByRole("button", { name: /rename kitchen probe/i })).toBeEnabled();
+
+		// Share and Reset are still coming soon (disabled)
 		const shareBtn = screen.getByRole("button", { name: /share/i });
 		const resetBtn = screen.getByRole("button", { name: /reset/i });
 
-		expect(renameBtn).toBeDisabled();
 		expect(shareBtn).toBeDisabled();
 		expect(resetBtn).toBeDisabled();
 	});

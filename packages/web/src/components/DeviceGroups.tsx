@@ -41,13 +41,13 @@ export function DeviceGroups({
 				</button>
 
 				{groups.map((group) => (
-					<div key={group.id} className="inline-flex items-center gap-0.5">
+					<div key={group.id} className="group/grp inline-flex items-center gap-0.5">
 						<button
 							type="button"
 							onClick={() => onSelectGroup(group.id)}
 							className={cn(
-								"inline-flex items-center rounded-l-md px-3 py-1.5 text-sm font-medium",
-								"border border-r-0 transition-colors",
+								"inline-flex items-center rounded-md px-3 py-1.5 text-sm font-medium",
+								"border transition-colors",
 								"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 								activeGroupId === group.id
 									? "bg-primary text-primary-foreground border-primary"
@@ -62,15 +62,14 @@ export function DeviceGroups({
 							onClick={() => onDeleteGroup(group.id)}
 							title={`Delete group "${group.name}"`}
 							className={cn(
-								"inline-flex items-center rounded-r-md px-1.5 py-1.5",
-								"border transition-colors",
+								"inline-flex items-center rounded-md px-1.5 py-1.5",
+								"border border-border transition-all",
+								"text-muted-foreground hover:bg-destructive/10 hover:text-destructive",
 								"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-								activeGroupId === group.id
-									? "bg-primary text-primary-foreground border-primary hover:bg-primary/80"
-									: "bg-background text-muted-foreground border-border hover:bg-destructive/10 hover:text-destructive",
+								"opacity-0 group-hover/grp:opacity-100 focus-visible:opacity-100",
 							)}
 						>
-							<Trash2 className="h-3.5 w-3.5" />
+							<Trash2 className="h-3 w-3" />
 						</button>
 					</div>
 				))}

@@ -1138,14 +1138,14 @@ function parseCalibrationRecord(fields: FirestoreFields, id: string): Calibratio
 function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {
 	return {
 		id,
-		eventType: getString(fields, "eventType") ?? "",
+		eventType: getString(fields, "eventType") ?? getString(fields, "EventType") ?? "",
 		severity: getNumber(fields, "severity") ?? 0,
-		eventTime: getTimestamp(fields, "eventTime") ?? new Date(0),
-		deviceId: getString(fields, "deviceId") ?? "",
-		channelId: getString(fields, "channelId"),
-		accountId: getString(fields, "accountId") ?? "",
-		valueBefore: getString(fields, "valueBefore"),
-		valueAfter: getString(fields, "valueAfter"),
+		eventTime: getTimestamp(fields, "EventTime") ?? getTimestamp(fields, "eventTime") ?? new Date(0),
+		deviceId: getString(fields, "deviceId") ?? getString(fields, "DeviceId") ?? "",
+		channelId: getString(fields, "channelId") ?? getString(fields, "ChannelId"),
+		accountId: getString(fields, "accountId") ?? getString(fields, "AccountId") ?? "",
+		valueBefore: getString(fields, "valueBefore") ?? getString(fields, "ValueBefore"),
+		valueAfter: getString(fields, "valueAfter") ?? getString(fields, "ValueAfter"),
 		groups: getStringArray(fields, "groups"),
 	};
 }

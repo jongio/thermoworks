@@ -629,33 +629,31 @@ export class ThermoworksWebClient {
 			return { id: accountId, name: null, plan: null, devicesUsed: 0, devicesLimit: 0 };
 		}
 
-		// Fetch billing plan name via billingPlanId reference
+		// Try to fetch billing plan name via billingPlanId reference
 		let planName: string | null = null;
+		let deviceLimit = getNumber(fields, "devicesLimit") ?? 0;
 		const planId = getString(fields, "billingPlanId");
 		if (planId) {
-			const planFields = await this.fetchDocFields(
-				`documents/system/billingPlans/plans/${encodeURIComponent(planId)}`,
-			);
-			if (planFields) {
-				planName = getString(planFields, "name");
-				// Use plan's deviceCount as the limit
-				const deviceCount = getNumber(planFields, "deviceCount");
-				return {
-					id: accountId,
-					name: getString(fields, "name"),
-					plan: planName,
-					devicesUsed: getNumber(fields, "devicesUsed") ?? 0,
-					devicesLimit: deviceCount ?? getNumber(fields, "devicesLimit") ?? 0,
-				};
+			try {
+				const planFields = await this.fetchDocFields(
+					`documents/system/billingPlans/plans/${encodeURIComponent(planId)}`,
+				);
+				if (planFields) {
+					planName = getString(planFields, "name");
+					const planDeviceCount = getNumber(planFields, "deviceCount");
+					if (planDeviceCount != null) deviceLimit = planDeviceCount;
+				}
+			} catch {
+				// Plan lookup failed — continue with null plan name
 			}
 		}
 
 		return {
 			id: accountId,
-			name: getString(fields, "name"),
-			plan: planName,
-			devicesUsed: getNumber(fields, "devicesUsed") ?? 0,
-			devicesLimit: getNumber(fields, "devicesLimit") ?? 0,
+			name: getString(fields, "name") ?? getString(fields, "accountName"),
+			plan: planName ?? getString(fields, "planName") ?? getString(fields, "plan"),
+			devicesUsed: getNumber(fields, "devicesUsed") ?? getNumber(fields, "deviceCount") ?? 0,
+			devicesLimit: deviceLimit,
 		};
 	}
 

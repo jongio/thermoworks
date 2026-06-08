@@ -16,6 +16,8 @@ export function Settings() {
 				<h1 className="text-lg font-semibold tracking-tight">Settings</h1>
 			</div>
 
+			<AccountPanel client={client} />
+
 			{/* Temperature Unit */}
 			<section className="rounded-lg border border-border bg-card p-4">
 				<h2 className="text-sm font-medium mb-3">Temperature Unit</h2>
@@ -42,7 +44,6 @@ export function Settings() {
 				</p>
 			</section>
 
-			<AccountPanel client={client} />
 			<NotificationPrefs client={client} />
 		</div>
 	);

@@ -26,6 +26,33 @@ import type {
 	User,
 } from "thermoworks-sdk";
 
+interface CalibrationPoint {
+	referenceTemp: number;
+	measuredTemp: number;
+	units: string;
+}
+
+interface CalibrationRecord {
+	id: string;
+	date: Date | null;
+	source: string;
+	result: string;
+	ambientTemp: number | null;
+	ambientUnits: string | null;
+	points: CalibrationPoint[];
+}
+
+export type { CalibrationRecord, CalibrationPoint };
+
+interface HistoricalReading {
+	timestamp: Date;
+	channels: Record<string, number>;
+}
+
+export interface DeviceHistory {
+	readings: HistoricalReading[];
+}
+
 const isDev = import.meta.env.DEV;
 
 const IDENTITY_HOST = isDev ? "/api/identity" : "https://identitytoolkit.googleapis.com";
@@ -875,6 +902,85 @@ export class ThermoworksWebClient {
 			throw new Error(`Failed to set alarm: HTTP ${response.status}`);
 		}
 	}
+
+	async getCalibration(serial: string): Promise<CalibrationRecord[]> {
+		const path = `documents/devices/${encodeURIComponent(serial)}/calibration`;
+		const response = await this.firestoreRequest("GET", path);
+		if (!response.ok) return [];
+
+		const data = (await response.json()) as {
+			documents?: Array<{ fields?: FirestoreFields; name?: string }>;
+		};
+		if (!data.documents) return [];
+
+		return data.documents.map((doc) =>
+			parseCalibrationRecord(doc.fields ?? {}, extractDocId(doc.name)),
+		);
+	}
+
+	async getHistory(serial: string): Promise<DeviceHistory> {
+		const path = `documents/devices/${encodeURIComponent(serial)}/history?pageSize=500&orderBy=timestamp%20desc`;
+		const response = await this.firestoreRequest("GET", path);
+		if (!response.ok) return { readings: [] };
+
+		const data = (await response.json()) as {
+			documents?: Array<{ fields?: FirestoreFields }>;
+		};
+		if (!data.documents) return { readings: [] };
+
+		const readings: HistoricalReading[] = data.documents.map((doc) => {
+			const fields = doc.fields ?? {};
+			const channels: Record<string, number> = {};
+			const channelMap = getMapFields(fields, "channels");
+			if (channelMap) {
+				for (const [key, val] of Object.entries(channelMap)) {
+					if ("doubleValue" in val) channels[key] = val.doubleValue;
+					else if ("integerValue" in val) channels[key] = Number(val.integerValue);
+				}
+			}
+			return {
+				timestamp: getTimestamp(fields, "timestamp") ?? new Date(),
+				channels,
+			};
+		});
+
+		return { readings };
+	}
+
+	async resetMinMax(serial: string, channel: number): Promise<{ success: boolean }> {
+		const body = {
+			fields: {
+				[`ch${channel}Min`]: { nullValue: null as unknown },
+				[`ch${channel}Max`]: { nullValue: null as unknown },
+			},
+		};
+		const maskPaths = `updateMask.fieldPaths=ch${channel}Min&updateMask.fieldPaths=ch${channel}Max`;
+		const path = `documents/devices/${encodeURIComponent(serial)}?${maskPaths}`;
+		const response = await this.firestoreRequest("PATCH", path, body as unknown as Record<string, unknown>);
+		return { success: response.ok };
+	}
+}
+
+function parseCalibrationRecord(fields: FirestoreFields, id: string): CalibrationRecord {
+	const pointsRaw = getArray(fields, "points") ?? [];
+	const points: CalibrationPoint[] = pointsRaw.map((p) => {
+		if (!("mapValue" in p)) return { referenceTemp: 0, measuredTemp: 0, units: "F" };
+		const pf = p.mapValue.fields ?? {};
+		return {
+			referenceTemp: getNumber(pf, "referenceTemp") ?? 0,
+			measuredTemp: getNumber(pf, "measuredTemp") ?? 0,
+			units: getString(pf, "units") ?? "F",
+		};
+	});
+	return {
+		id,
+		date: getTimestamp(fields, "calibratedAt"),
+		source: getString(fields, "source") ?? "manual",
+		result: getString(fields, "result") ?? "unknown",
+		ambientTemp: getNumber(fields, "ambientTemp"),
+		ambientUnits: getString(fields, "ambientUnits"),
+		points,
+	};
 }
 
 function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {

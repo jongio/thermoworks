@@ -32,6 +32,11 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
 	const { request } = event;
 
+	// Only handle http/https requests — skip chrome-extension://, etc.
+	if (!request.url.startsWith("http")) {
+		return;
+	}
+
 	// Skip non-GET and API requests — never serve stale data.
 	if (request.method !== "GET" || request.url.includes("/api/")) {
 		return;

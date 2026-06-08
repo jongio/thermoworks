@@ -3,6 +3,11 @@ import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 
 const DEFAULT_POLL_INTERVAL_MS = 10_000;
 
+interface UseDevicesOptions {
+	/** Polling interval in milliseconds. Defaults to 10000ms. */
+	pollingInterval?: number;
+}
+
 interface UseDevicesResult {
 	data: DeviceWithChannels[];
 	isLoading: boolean;
@@ -12,13 +17,14 @@ interface UseDevicesResult {
 }
 
 /**
- * Hook that polls for device data at the specified interval.
+ * Hook that polls for device data at a configurable interval.
  * Only active when a client is provided (authenticated).
  */
 export function useDevices(
 	client: ThermoworksWebClient | null,
-	pollInterval = DEFAULT_POLL_INTERVAL_MS,
+	options: UseDevicesOptions = {},
 ): UseDevicesResult {
+	const { pollingInterval = DEFAULT_POLL_INTERVAL_MS } = options;
 	const [data, setData] = useState<DeviceWithChannels[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -65,13 +71,13 @@ export function useDevices(
 
 		fetchDevices();
 
-		intervalRef.current = setInterval(fetchDevices, pollInterval);
+		intervalRef.current = setInterval(fetchDevices, pollingInterval);
 
 		return () => {
 			if (intervalRef.current) clearInterval(intervalRef.current);
 			abortRef.current?.abort();
 		};
-	}, [client, fetchDevices, pollInterval]);
+	}, [client, fetchDevices, pollingInterval]);
 
 	return { data, isLoading, error, lastUpdated, refresh: fetchDevices };
 }

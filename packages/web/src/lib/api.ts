@@ -824,6 +824,28 @@ export class ThermoworksWebClient {
 			throw new Error(`Failed to delete device group: HTTP ${response.status}`);
 		}
 	}
+
+	async updateDeviceState(serial: string, state: Record<string, unknown>): Promise<{ success: boolean }> {
+		const fields: Record<string, FirestoreValue> = {};
+		for (const [key, value] of Object.entries(state)) {
+			if (typeof value === "string") fields[key] = { stringValue: value };
+			else if (typeof value === "number") fields[key] = { doubleValue: value };
+			else if (typeof value === "boolean") fields[key] = { booleanValue: value };
+		}
+		const maskPaths = Object.keys(fields)
+			.map((k) => `updateMask.fieldPaths=${k}`)
+			.join("&");
+		const path = `documents/devices/${encodeURIComponent(serial)}?${maskPaths}`;
+		const response = await this.firestoreRequest("PATCH", path, { fields });
+		return { success: response.ok };
+	}
+
+	async factoryReset(serial: string): Promise<{ success: boolean }> {
+		const body = { fields: { factoryReset: { booleanValue: true } } };
+		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=factoryReset`;
+		const response = await this.firestoreRequest("PATCH", path, body);
+		return { success: response.ok };
+	}
 }
 
 function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {

@@ -3,6 +3,7 @@ import React, { Suspense } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { ChannelReading } from "../components/ChannelReading.tsx";
+import { DeviceSettings } from "../components/DeviceSettings.tsx";
 import { ChartSkeleton } from "../components/Skeleton.tsx";
 import { useArchiveData } from "../hooks/useArchiveData.ts";
 import { useDevice } from "../hooks/useDevice.ts";
@@ -223,6 +224,14 @@ export function DeviceDetail() {
 					</button>
 				</div>
 			</section>
+
+			{/* Device settings */}
+			<DeviceSettings
+				client={client}
+				serial={device.serial}
+				timezone={null}
+				preferredUnits={device.deviceDisplayUnits}
+			/>
 		</div>
 	);
 }

@@ -4,6 +4,7 @@ import {
 	Bot,
 	Code,
 	ExternalLink,
+	FlaskConical,
 	Github,
 	Globe,
 	Lock,
@@ -38,7 +39,7 @@ const products: {
 	},
 	{
 		icon: Terminal,
-		title: "CLI + Statusline",
+		title: "CLI",
 		description:
 			"Live temperatures in your terminal footer while you code. Interactive wizard to pick devices and channels. 14 commands for monitoring, alarms, sessions, and data export.",
 		command: "npx thermoworks",
@@ -71,6 +72,15 @@ const products: {
 		command: "npx thermoworks mcp start",
 		link: "https://www.npmjs.com/package/thermoworks",
 		linkLabel: "npm: thermoworks",
+	},
+	{
+		icon: FlaskConical,
+		title: "Agent Skills & Evals",
+		description:
+			"Two GitHub Copilot agent skills (integration + contributor) with a full Vally evaluation framework - 12 stimuli across 2 specs with CI integration.",
+		command: null,
+		link: "https://github.com/jongio/thermoworks/tree/main/.github/skills",
+		linkLabel: "Skills on GitHub",
 	},
 ];
 

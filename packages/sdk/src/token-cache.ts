@@ -1,6 +1,6 @@
 import { lstat, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { homedir, tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { CREDENTIAL_SERVICE } from "./credentials.js";
 
 const DEFAULT_CACHE_DIR = join(homedir(), ".thermoworks");
@@ -46,6 +46,17 @@ export function resolveTokenCachePath(userPath?: string): string {
 		if (userPath.includes("..") || userPath.startsWith("\\\\")) {
 			throw new Error("tokenCachePath must not contain '..' or UNC paths");
 		}
+		// Ensure the resolved path is within the user's home directory or temp directory
+		const resolved = resolve(userPath);
+		const home = homedir();
+		const tmp = tmpdir();
+		const isWithinHome =
+			resolved.startsWith(home + "/") || resolved.startsWith(home + "\\") || resolved === home;
+		const isWithinTmp =
+			resolved.startsWith(tmp + "/") || resolved.startsWith(tmp + "\\") || resolved === tmp;
+		if (!isWithinHome && !isWithinTmp) {
+			throw new Error("tokenCachePath must be within the user home directory");
+		}
 	}
 	return userPath ?? DEFAULT_CACHE_PATH;
 }
@@ -65,8 +76,11 @@ export async function readTokenCache(cachePath: string): Promise<TokenCacheData 
 				if (isValidCacheData(parsed)) return parsed;
 			}
 		}
-	} catch {
-		// Keychain unavailable, try file fallback
+	} catch (err) {
+		process.emitWarning(
+			`Keychain read failed: ${err instanceof Error ? err.message : "unknown error"}`,
+			"ThermoWorksSecurityWarning",
+		);
 	}
 
 	// File fallback for headless/CI environments
@@ -102,11 +116,17 @@ export async function writeTokenCache(cachePath: string, data: TokenCacheData): 
 			}
 			return;
 		}
-	} catch {
-		// Keychain unavailable, fall through to file
+	} catch (err) {
+		process.emitWarning(
+			`Keychain unavailable, using plaintext file cache at ${cachePath}. ` +
+				`Tokens are protected by file permissions (0o600) but not encrypted at rest. ` +
+				`Install @github/keytar for secure OS keychain storage. ` +
+				`(${err instanceof Error ? err.message : "unknown error"})`,
+			"ThermoWorksSecurityWarning",
+		);
 	}
 
-	// File fallback with restricted permissions
+	// File fallback with restricted permissions (plaintext - see warning above)
 	try {
 		try {
 			const stat = await lstat(cachePath);

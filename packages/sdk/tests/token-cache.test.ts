@@ -143,8 +143,11 @@ describe("token-cache module", () => {
 
 	describe("resolveTokenCachePath", () => {
 		it("returns custom path when provided", async () => {
+			const { homedir } = await import("node:os");
+			const { join } = await import("node:path");
 			const { resolveTokenCachePath } = await import("../src/token-cache.js");
-			expect(resolveTokenCachePath("/custom/path.json")).toBe("/custom/path.json");
+			const customPath = join(homedir(), ".thermoworks", "custom-cache.json");
+			expect(resolveTokenCachePath(customPath)).toBe(customPath);
 		});
 
 		it("returns default path when no argument", async () => {
@@ -152,6 +155,15 @@ describe("token-cache module", () => {
 			const result = resolveTokenCachePath();
 			expect(result).toContain(".thermoworks");
 			expect(result).toContain(".token-cache.json");
+		});
+
+		it("rejects paths outside home and temp directories", async () => {
+			const { resolveTokenCachePath } = await import("../src/token-cache.js");
+			// Use a path that's outside both homedir and tmpdir on all platforms
+			const evilPath = process.platform === "win32" ? "D:\\evil\\cache.json" : "/opt/evil-cache.json";
+			expect(() => resolveTokenCachePath(evilPath)).toThrow(
+				"tokenCachePath must be within the user home directory",
+			);
 		});
 	});
 });

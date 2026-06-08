@@ -52,7 +52,7 @@ function toChannelUpdate(serial: string, ch: DeviceChannel): ChannelUpdate {
 }
 
 /** Dependency: a function that fetches all channels for a device serial. */
-export type ChannelFetcher = (serial: string) => Promise<DeviceChannel[]>;
+export type ChannelFetcher = (serial: string, signal?: AbortSignal) => Promise<DeviceChannel[]>;
 
 /**
  * Create a polling subscription that monitors a device's channels for changes.
@@ -77,11 +77,13 @@ export function createSubscription(
 	const lastState = new Map<number, string>();
 	let timer: ReturnType<typeof setTimeout> | null = null;
 	let stopped = false;
+	let abortController: AbortController | null = null;
 
 	async function poll(): Promise<void> {
 		if (stopped) return;
+		abortController = new AbortController();
 		try {
-			const channels = await fetchChannels(serial);
+			const channels = await fetchChannels(serial, abortController.signal);
 			if (stopped) return;
 
 			for (const ch of channels) {
@@ -102,6 +104,8 @@ export function createSubscription(
 			if (onError) {
 				onError(err instanceof Error ? err : new Error(String(err)));
 			}
+		} finally {
+			abortController = null;
 		}
 		// Self-reschedule: next poll only starts after current one completes,
 		// preventing overlap when fetchChannels takes longer than intervalMs
@@ -121,6 +125,9 @@ export function createSubscription(
 				clearTimeout(timer);
 				timer = null;
 			}
+			// Abort any in-flight fetch to prevent resource leaks
+			abortController?.abort();
+			abortController = null;
 			lastState.clear();
 		},
 	};

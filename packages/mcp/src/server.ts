@@ -13,6 +13,9 @@ function resolveCredentials(): { email: string; password: string } {
 		);
 	}
 
+	// Clear password from environment to prevent leaking to child processes
+	delete process.env.THERMOWORKS_PASSWORD;
+
 	return { email, password };
 }
 

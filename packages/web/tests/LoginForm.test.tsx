@@ -72,7 +72,7 @@ describe("LoginForm", () => {
 		fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
 
 		await waitFor(() => {
-			expect(screen.getByRole("alert")).toHaveTextContent("Network error");
+			expect(screen.getByRole("alert")).toHaveTextContent("Login failed. Please try again.");
 		});
 	});
 

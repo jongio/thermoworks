@@ -14,6 +14,8 @@ const FIREBASE_HOST = "https://firebase.googleapis.com";
 const FIRESTORE_HOST = "https://firestore.googleapis.com";
 const FUNCTIONS_HOST = "https://us-central1-thermoworks-cloud-production.cloudfunctions.net";
 
+// Firebase client-side API key (public identifier, not a secret).
+// Security is enforced by Firebase Security Rules server-side.
 const DEFAULT_API_KEY = "AIzaSyCf079iccUFc1k7VHdGXng22zXDy8Y3KEY";
 const DEFAULT_APP_ID = "1:78998049458:web:b41e9d405d8c7de95eefab";
 const REFERER = "https://cloud.thermoworks.com/";
@@ -91,6 +93,9 @@ function isRetryableStatus(statusCode: number): boolean {
 	return RETRYABLE_STATUS_CODES.has(statusCode) || statusCode >= 500;
 }
 
+// Maximum response body size (10 MB) to prevent OOM from malicious/corrupted responses
+const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+
 async function httpRequest(
 	url: string,
 	options: {
@@ -119,7 +124,18 @@ async function httpRequest(
 				dispatcher: agent,
 			});
 
+			// Guard against oversized responses to prevent OOM
+			const contentLength = responseHeaders["content-length"];
+			if (contentLength && Number(contentLength) > MAX_RESPONSE_BYTES) {
+				await body.dump();
+				throw new NetworkError("Response too large");
+			}
+
 			const text = await body.text();
+			if (text.length > MAX_RESPONSE_BYTES) {
+				throw new NetworkError("Response too large");
+			}
+
 			const normalizedHeaders: Record<string, string | string[] | undefined> = {};
 			if (responseHeaders && typeof responseHeaders === "object") {
 				for (const [key, value] of Object.entries(responseHeaders)) {

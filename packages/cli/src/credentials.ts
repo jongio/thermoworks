@@ -63,8 +63,11 @@ export async function getCredentials(): Promise<Credentials | null> {
 			await keytar.deletePassword(CREDENTIAL_SERVICE, LEGACY_ACCOUNT_PASSWORD);
 			return { email: legacyEmail, password: legacyPassword };
 		}
-	} catch {
-		// Keychain not available (e.g., headless CI, container)
+	} catch (err) {
+		process.emitWarning(
+			`Keychain access failed: ${err instanceof Error ? err.message : "unknown error"}`,
+			"ThermoWorksSecurityWarning",
+		);
 	}
 
 	return null;

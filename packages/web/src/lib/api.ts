@@ -28,6 +28,8 @@ const TOKEN_HOST = isDev ? "/api/token" : "https://securetoken.googleapis.com";
 const FIREBASE_HOST = isDev ? "/api/firebase" : "https://firebase.googleapis.com";
 const FIRESTORE_HOST = isDev ? "/api/firestore" : "https://firestore.googleapis.com";
 
+// Firebase client-side API key (public identifier, not a secret).
+// Security is enforced by Firebase Security Rules server-side.
 const DEFAULT_API_KEY = "AIzaSyCf079iccUFc1k7VHdGXng22zXDy8Y3KEY";
 const DEFAULT_APP_ID = "1:78998049458:web:b41e9d405d8c7de95eefab";
 const REFERER = "https://cloud.thermoworks.com/";
@@ -436,6 +438,7 @@ export class ThermoworksWebClient {
 	private token: TokenState | null = null;
 	private projectId: string | null = null;
 	private accountId: string | null = null;
+	private refreshPromise: Promise<TokenState> | null = null;
 
 	async login(email: string, password: string): Promise<void> {
 		const [token, projectId] = await Promise.all([
@@ -453,12 +456,18 @@ export class ThermoworksWebClient {
 	logout(): void {
 		this.token = null;
 		this.accountId = null;
+		this.refreshPromise = null;
 	}
 
 	private async ensureToken(): Promise<string> {
 		if (!this.token) throw new AuthError("Not authenticated", "NOT_AUTHENTICATED");
 		if (Date.now() >= this.token.expiresAt - EXPIRY_BUFFER_MS) {
-			this.token = await refreshAccessToken(this.token.refreshToken);
+			if (!this.refreshPromise) {
+				this.refreshPromise = refreshAccessToken(this.token.refreshToken).finally(() => {
+					this.refreshPromise = null;
+				});
+			}
+			this.token = await this.refreshPromise;
 		}
 		return this.token.accessToken;
 	}

@@ -1,5 +1,10 @@
+import { createHash } from "node:crypto";
 import type { Credentials } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
+
+function hashCredentials(credentials: Credentials): string {
+	return createHash("sha256").update(`${credentials.email}\0${credentials.password}`).digest("hex");
+}
 
 /**
  * Manages a shared ThermoworksCloud instance for the VS Code extension.
@@ -8,16 +13,12 @@ import { ThermoworksCloud } from "thermoworks-sdk";
  */
 export class ClientManager {
 	private client: ThermoworksCloud | undefined;
-	private currentEmail: string | undefined;
-	private currentPassword: string | undefined;
+	private credentialHash: string | undefined;
 
 	getClient(credentials: Credentials): ThermoworksCloud {
+		const hash = hashCredentials(credentials);
 		// Reuse existing client if credentials haven't changed
-		if (
-			this.client &&
-			this.currentEmail === credentials.email &&
-			this.currentPassword === credentials.password
-		) {
+		if (this.client && this.credentialHash === hash) {
 			return this.client;
 		}
 		// Close old client if credentials changed
@@ -26,15 +27,13 @@ export class ClientManager {
 			email: credentials.email,
 			password: credentials.password,
 		});
-		this.currentEmail = credentials.email;
-		this.currentPassword = credentials.password;
+		this.credentialHash = hash;
 		return this.client;
 	}
 
 	close(): void {
 		this.client?.close();
 		this.client = undefined;
-		this.currentEmail = undefined;
-		this.currentPassword = undefined;
+		this.credentialHash = undefined;
 	}
 }

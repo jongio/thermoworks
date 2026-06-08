@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import type { Archive, TemperatureReading } from "thermoworks-sdk";
 import * as vscode from "vscode";
 import type { ClientManager } from "./client-manager";
@@ -243,8 +244,8 @@ function getWebviewHtml(webview: vscode.Webview): string {
 		<div id="message" class="message loading">Loading...</div>
 	</div>
 
-	<script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
-	<script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+	<script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+	<script nonce="${nonce}" src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js" integrity="sha384-cVMg8E3QFwTvGCDuK+ET4PD341jF3W8nO1auiXfuZNQkzbUUiBGLsIQUE+b1mxws" crossorigin="anonymous"></script>
 	<script nonce="${nonce}">
 		(function() {
 			const vscode = acquireVsCodeApi();
@@ -373,10 +374,5 @@ function getWebviewHtml(webview: vscode.Webview): string {
 }
 
 function getNonce(): string {
-	const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-	let nonce = "";
-	for (let i = 0; i < 32; i++) {
-		nonce += chars.charAt(Math.floor(Math.random() * chars.length));
-	}
-	return nonce;
+	return randomBytes(24).toString("base64url");
 }

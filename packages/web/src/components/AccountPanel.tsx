@@ -73,16 +73,25 @@ export function AccountPanel({ client }: AccountPanelProps) {
 			</div>
 
 			<div className="rounded-lg border border-border bg-card p-4 space-y-4">
-				{/* Account details */}
 				<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-					{account.name && (
+					{user.email && (
 						<>
-							<dt className="text-muted-foreground">Name</dt>
-							<dd>{account.name}</dd>
+							<dt className="text-muted-foreground">Email</dt>
+							<dd>{user.email}</dd>
 						</>
 					)}
-					<dt className="text-muted-foreground">Account ID</dt>
-					<dd className="font-mono text-xs break-all">{account.id}</dd>
+					{user.displayName && (
+						<>
+							<dt className="text-muted-foreground">Name</dt>
+							<dd>{user.displayName}</dd>
+						</>
+					)}
+					{user.timeZone && (
+						<>
+							<dt className="text-muted-foreground">Timezone</dt>
+							<dd>{user.timeZone}</dd>
+						</>
+					)}
 					{account.plan && (
 						<>
 							<dt className="text-muted-foreground">Plan</dt>
@@ -122,27 +131,6 @@ export function AccountPanel({ client }: AccountPanelProps) {
 						</div>
 					</div>
 				)}
-			</div>
-
-			{/* User info */}
-			<div className="rounded-lg border border-border bg-card p-4 space-y-2">
-				<h3 className="text-sm font-medium">User</h3>
-				<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-					{user.email && (
-						<>
-							<dt className="text-muted-foreground">Email</dt>
-							<dd>{user.email}</dd>
-						</>
-					)}
-					{user.timeZone && (
-						<>
-							<dt className="text-muted-foreground">Timezone</dt>
-							<dd>{user.timeZone}</dd>
-						</>
-					)}
-					<dt className="text-muted-foreground">Units</dt>
-					<dd>{user.preferredUnits === "C" ? "Celsius" : "Fahrenheit"}</dd>
-				</dl>
 			</div>
 
 			{/* Management link */}

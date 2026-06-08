@@ -4,7 +4,7 @@ import { useArchiveData } from "../hooks/useArchiveData.ts";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { ChannelReading } from "./ChannelReading.tsx";
-import { ChartSkeleton } from "./Skeleton.tsx";
+import { SessionControls } from "./SessionControls.tsx";
 
 const TemperatureChart = React.lazy(() => import("./TemperatureChart"));
 
@@ -107,6 +107,14 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 			) : (
 				<p className="text-sm text-muted-foreground italic">No active channels</p>
 			)}
+
+			{/* Session controls */}
+			<SessionControls
+				client={client}
+				serial={device.serial}
+				sessionStart={device.sessionStart}
+				sessionLabel={device.sessionLabel}
+			/>
 
 			{/* History toggle button */}
 			<button

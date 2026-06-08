@@ -630,30 +630,28 @@ export class ThermoworksWebClient {
 		return data.documents.map((doc) => parseArchive(doc.fields ?? {}, extractDocId(doc.name)));
 	}
 
-	async getTemperatureGuide(): Promise<TemperatureGuide> {
-		const fields = await this.fetchDocFields("documents/resources/temperatureGuide");
-		if (!fields) return { categories: [] };
+	async startSession(serial: string, label?: string): Promise<{ success: boolean }> {
+		const body = {
+			fields: {
+				sessionActive: { booleanValue: true },
+				sessionLabel: { stringValue: label ?? "" },
+				sessionStart: { timestampValue: new Date().toISOString() },
+			},
+		};
+		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=sessionActive&updateMask.fieldPaths=sessionLabel&updateMask.fieldPaths=sessionStart`;
+		const response = await this.firestoreRequest("PATCH", path, body);
+		return { success: response.ok };
+	}
 
-		const categoriesRaw = getArray(fields, "categories") ?? [];
-		const categories: TemperatureCategory[] = categoriesRaw.map((cat) => {
-			if (!("mapValue" in cat)) return { name: "", items: [] };
-			const catFields = cat.mapValue.fields ?? {};
-			const name = getString(catFields, "name") ?? "";
-			const itemsRaw = getArray(catFields, "items") ?? [];
-			const items: TemperatureGuideItem[] = itemsRaw.map((item) => {
-				if (!("mapValue" in item)) return { name: "", temp: 0, units: "F" };
-				const itemFields = item.mapValue.fields ?? {};
-				return {
-					name: getString(itemFields, "name") ?? "",
-					temp: getNumber(itemFields, "temp") ?? 0,
-					units: getString(itemFields, "units") ?? "F",
-					doneness: getString(itemFields, "doneness") ?? undefined,
-				};
-			});
-			return { name, items };
-		});
-
-		return { categories };
+	async endSession(serial: string): Promise<{ success: boolean }> {
+		const body = {
+			fields: {
+				sessionActive: { booleanValue: false },
+			},
+		};
+		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=sessionActive`;
+		const response = await this.firestoreRequest("PATCH", path, body);
+		return { success: response.ok };
 	}
 }
 

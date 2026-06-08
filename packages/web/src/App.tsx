@@ -21,7 +21,7 @@ export function App() {
 
 	if (!client) {
 		if (showLogin) {
-			return <LoginForm onLogin={setClient} />;
+			return <LoginForm onLogin={setClient} onBack={() => setShowLogin(false)} />;
 		}
 		return <LandingPage onSignIn={() => setShowLogin(true)} />;
 	}

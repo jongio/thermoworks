@@ -4,13 +4,14 @@ import { cn } from "../lib/utils.ts";
 
 interface LoginFormProps {
 	onLogin: (client: ThermoworksWebClient) => void;
+	onBack: () => void;
 }
 
 const isLocalhost =
 	typeof window !== "undefined" &&
 	(window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
 
-export function LoginForm({ onLogin }: LoginFormProps) {
+export function LoginForm({ onLogin, onBack }: LoginFormProps) {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
@@ -66,6 +67,13 @@ export function LoginForm({ onLogin }: LoginFormProps) {
 							http://localhost:4200
 						</a>
 					</p>
+					<button
+						type="button"
+						onClick={onBack}
+						className="text-sm text-primary hover:underline"
+					>
+						← Back
+					</button>
 				</div>
 			</div>
 		);

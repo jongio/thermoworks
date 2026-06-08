@@ -22,7 +22,7 @@ async function getMockClient() {
 
 describe("LoginForm", () => {
 	it("renders email and password fields with sign-in button", () => {
-		render(<LoginForm onLogin={vi.fn()} />);
+		render(<LoginForm onBack={vi.fn()} onLogin={vi.fn()} />);
 
 		expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
 		expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
@@ -30,7 +30,7 @@ describe("LoginForm", () => {
 	});
 
 	it("renders the heading and description", () => {
-		render(<LoginForm onLogin={vi.fn()} />);
+		render(<LoginForm onBack={vi.fn()} onLogin={vi.fn()} />);
 
 		expect(screen.getByText("ThermoWorks Dashboard")).toBeInTheDocument();
 		expect(screen.getByText(/thermoworks cloud account/i)).toBeInTheDocument();
@@ -42,7 +42,7 @@ describe("LoginForm", () => {
 			.fn()
 			.mockRejectedValue(new AuthError("Auth failed", "INVALID_LOGIN_CREDENTIALS"));
 
-		render(<LoginForm onLogin={vi.fn()} />);
+		render(<LoginForm onBack={vi.fn()} onLogin={vi.fn()} />);
 
 		fireEvent.change(screen.getByLabelText(/email/i), {
 			target: { value: "test@example.com" },
@@ -61,7 +61,7 @@ describe("LoginForm", () => {
 		const MockClient = await getMockClient();
 		MockClient.prototype.login = vi.fn().mockRejectedValue(new Error("Network error"));
 
-		render(<LoginForm onLogin={vi.fn()} />);
+		render(<LoginForm onBack={vi.fn()} onLogin={vi.fn()} />);
 
 		fireEvent.change(screen.getByLabelText(/email/i), {
 			target: { value: "test@example.com" },
@@ -81,7 +81,7 @@ describe("LoginForm", () => {
 		MockClient.prototype.login = vi.fn().mockResolvedValue(undefined);
 		const onLogin = vi.fn();
 
-		render(<LoginForm onLogin={onLogin} />);
+		render(<LoginForm onBack={vi.fn()} onLogin={onLogin} />);
 
 		fireEvent.change(screen.getByLabelText(/email/i), {
 			target: { value: "user@example.com" },
@@ -98,7 +98,7 @@ describe("LoginForm", () => {
 
 	it("does not submit with empty fields", () => {
 		const onLogin = vi.fn();
-		render(<LoginForm onLogin={onLogin} />);
+		render(<LoginForm onBack={vi.fn()} onLogin={onLogin} />);
 
 		fireEvent.click(screen.getByRole("button", { name: /sign in/i }));
 

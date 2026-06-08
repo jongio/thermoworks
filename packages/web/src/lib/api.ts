@@ -18,6 +18,7 @@ import type {
 	DeviceChannel,
 	DeviceEvent,
 	EventFilter,
+	FirmwareInfo,
 	MinMaxReading,
 	TemperatureReading,
 	User,
@@ -667,6 +668,20 @@ export class ThermoworksWebClient {
 		});
 
 		return { categories };
+	}
+
+	/** Fetch firmware info for a device type. Returns null if not found. */
+	async getFirmwareInfo(deviceType: string): Promise<FirmwareInfo | null> {
+		const fields = await this.fetchDocFields(
+			`documents/firmware/${encodeURIComponent(deviceType)}`,
+		);
+		if (!fields) return null;
+		return {
+			name: getString(fields, "name") ?? deviceType,
+			version: getString(fields, "version") ?? "",
+			location: getString(fields, "location") ?? "",
+			md5: getString(fields, "md5") ?? "",
+		};
 	}
 
 	async startSession(serial: string, label?: string): Promise<{ success: boolean }> {

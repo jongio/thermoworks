@@ -1,10 +1,11 @@
-import { Battery, ChevronDown, ChevronUp, Signal, Thermometer, Wifi } from "lucide-react";
+import { Battery, ChevronDown, ChevronUp, Thermometer, Wifi } from "lucide-react";
 import React, { Suspense, useState } from "react";
 import { Link } from "react-router-dom";
 import { useArchiveData } from "../hooks/useArchiveData.ts";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { ChannelReading } from "./ChannelReading.tsx";
+import { FirmwareStatus } from "./FirmwareStatus.tsx";
 import { SessionControls } from "./SessionControls.tsx";
 import { ShareButton } from "./ShareButton.tsx";
 import { ChartSkeleton } from "./Skeleton.tsx";
@@ -100,9 +101,11 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 					</span>
 				)}
 				{device.firmware && (
-					<span className="inline-flex items-center gap-1">
-						<Signal className="h-3 w-3" />v{device.firmware}
-					</span>
+					<FirmwareStatus
+						currentVersion={device.firmware}
+						deviceType={device.type ?? device.device}
+						client={client}
+					/>
 				)}
 			</div>
 

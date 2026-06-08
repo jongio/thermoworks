@@ -159,7 +159,7 @@ describe("DeviceCard", () => {
 		};
 		render(<DeviceCard item={item} client={makeMockClient()} />);
 
-		const reading = screen.getByText("200°F");
+		const reading = screen.getByText("200.0°F");
 		expect(reading).toHaveClass("text-alarm-high");
 	});
 
@@ -199,7 +199,7 @@ describe("DeviceCard", () => {
 		};
 		render(<DeviceCard item={item} client={makeMockClient()} />);
 
-		const reading = screen.getByText("28°F");
+		const reading = screen.getByText("28.0°F");
 		expect(reading).toHaveClass("text-alarm-low");
 	});
 

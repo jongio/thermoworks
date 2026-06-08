@@ -1,6 +1,7 @@
 import type { DeviceChannel } from "thermoworks-sdk";
+import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";
 import { type AlarmState, getChannelAlarmState } from "../lib/api.ts";
-import { cn, formatTemp } from "../lib/utils.ts";
+import { cn } from "../lib/utils.ts";
 
 interface ChannelReadingProps {
 	channel: DeviceChannel;
@@ -29,6 +30,7 @@ function alarmBgClass(state: AlarmState): string {
 }
 
 export function ChannelReading({ channel }: ChannelReadingProps) {
+	const { formatTemp } = useTemperatureUnit();
 	const alarmState = getChannelAlarmState(channel);
 	const label = channel.label ?? `Ch ${channel.number ?? "?"}`;
 	const hasReading = channel.value != null && channel.units != null;
@@ -43,7 +45,7 @@ export function ChannelReading({ channel }: ChannelReadingProps) {
 			<span className="text-sm text-muted-foreground truncate mr-2">{label}</span>
 			{hasReading ? (
 				<span className={cn("text-lg tabular-nums font-mono", alarmColorClass(alarmState))}>
-					{formatTemp(channel.value)}°{channel.units}
+					{formatTemp(channel.value, channel.units)}
 				</span>
 			) : (
 				<span className="text-sm text-muted-foreground">--</span>

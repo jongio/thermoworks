@@ -11,7 +11,7 @@ import {
 	YAxis,
 } from "recharts";
 import type { ArchiveChannel } from "thermoworks-sdk";
-import { formatTemp } from "../lib/utils.ts";
+import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";
 
 interface TemperatureChartProps {
 	channels: ArchiveChannel[];
@@ -65,29 +65,31 @@ function formatTooltipTime(timestamp: number): string {
  * Renders a line per channel with alarm threshold reference lines.
  */
 export function TemperatureChart({ channels }: TemperatureChartProps) {
+	const { unit, convert } = useTemperatureUnit();
+
 	const enabledChannels = useMemo(
 		() => channels.filter((ch) => ch.enabled !== false && ch.recentReadings.length > 0),
 		[channels],
 	);
 
-	const { data, thresholds, units } = useMemo(() => {
+	const { data, thresholds } = useMemo(() => {
 		// Build a time-indexed map for all readings across channels
 		const timeMap = new Map<number, ChartDataPoint>();
-		let primaryUnits = "";
 
 		for (let i = 0; i < enabledChannels.length; i++) {
 			const ch = enabledChannels[i];
 			if (!ch) continue;
 			const key = `ch_${ch.number ?? i}`;
-			if (!primaryUnits && ch.units) primaryUnits = ch.units;
+			const sourceUnit = ch.units ?? "F";
 
 			for (const reading of ch.recentReadings) {
 				const time = reading.timestamp.getTime();
+				const convertedValue = convert(reading.value, sourceUnit);
 				const existing = timeMap.get(time);
 				if (existing) {
-					existing[key] = reading.value;
+					existing[key] = convertedValue;
 				} else {
-					timeMap.set(time, { time, [key]: reading.value });
+					timeMap.set(time, { time, [key]: convertedValue });
 				}
 			}
 		}
@@ -99,24 +101,25 @@ export function TemperatureChart({ channels }: TemperatureChartProps) {
 		const thresholdLines: ThresholdLine[] = [];
 		for (const ch of enabledChannels) {
 			const label = ch.label ?? `Ch ${ch.number ?? "?"}`;
+			const sourceUnit = ch.units ?? "F";
 			if (ch.alarmHigh?.enabled && ch.alarmHigh.value != null) {
 				thresholdLines.push({
-					value: ch.alarmHigh.value,
+					value: convert(ch.alarmHigh.value, sourceUnit),
 					type: "high",
 					label: `${label} high`,
 				});
 			}
 			if (ch.alarmLow?.enabled && ch.alarmLow.value != null) {
 				thresholdLines.push({
-					value: ch.alarmLow.value,
+					value: convert(ch.alarmLow.value, sourceUnit),
 					type: "low",
 					label: `${label} low`,
 				});
 			}
 		}
 
-		return { data: sorted, thresholds: thresholdLines, units: primaryUnits };
-	}, [enabledChannels]);
+		return { data: sorted, thresholds: thresholdLines };
+	}, [enabledChannels, convert]);
 
 	if (enabledChannels.length === 0 || data.length === 0) {
 		return (
@@ -146,7 +149,7 @@ export function TemperatureChart({ channels }: TemperatureChartProps) {
 						tick={{ fontSize: 11 }}
 						stroke="currentColor"
 						opacity={0.4}
-						unit={units ? `°${units}` : ""}
+						unit={`°${unit}`}
 					/>
 					<Tooltip
 						labelFormatter={(label) => formatTooltipTime(Number(label))}
@@ -156,7 +159,7 @@ export function TemperatureChart({ channels }: TemperatureChartProps) {
 							borderRadius: "0.375rem",
 							fontSize: "0.75rem",
 						}}
-						formatter={(value) => [`${formatTemp(value as number)}°${units}`, undefined]}
+						formatter={(value) => [`${(value as number).toFixed(1)}°${unit}`, undefined]}
 					/>
 					<Legend wrapperStyle={{ fontSize: "0.75rem", paddingTop: "0.5rem" }} />
 

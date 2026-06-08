@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { DeviceCard } from "../src/components/DeviceCard.tsx";
+import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../src/lib/api.ts";
 
 // Mock the useArchiveData hook to avoid real API calls
@@ -20,6 +22,10 @@ vi.mock("../src/components/TemperatureChart", () => ({
 
 function makeMockClient(): ThermoworksWebClient {
 	return { isAuthenticated: true } as unknown as ThermoworksWebClient;
+}
+
+function renderWithProvider(ui: ReactNode) {
+	return render(<TemperatureUnitProvider>{ui}</TemperatureUnitProvider>);
 }
 
 function makeDevice(overrides: Partial<DeviceWithChannels["device"]> = {}): DeviceWithChannels {
@@ -98,7 +104,7 @@ function makeDevice(overrides: Partial<DeviceWithChannels["device"]> = {}): Devi
 describe("DeviceCard", () => {
 	it("renders device name, type, status, and battery", () => {
 		const item = makeDevice();
-		render(<DeviceCard item={item} client={makeMockClient()} />);
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
 
 		expect(screen.getByText("Kitchen Probe")).toBeInTheDocument();
 		expect(screen.getByText("ThermaQ WiFi")).toBeInTheDocument();
@@ -108,7 +114,7 @@ describe("DeviceCard", () => {
 
 	it("falls back to serial when label is null", () => {
 		const item = makeDevice({ label: null });
-		render(<DeviceCard item={item} client={makeMockClient()} />);
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
 
 		// Serial shows as the heading title when label is null
 		const heading = screen.getByRole("heading", { level: 3 });
@@ -117,7 +123,7 @@ describe("DeviceCard", () => {
 
 	it("renders channel readings", () => {
 		const item = makeDevice();
-		render(<DeviceCard item={item} client={makeMockClient()} />);
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
 
 		expect(screen.getByText("Probe 1")).toBeInTheDocument();
 		expect(screen.getByText("72.5°F")).toBeInTheDocument();
@@ -157,7 +163,7 @@ describe("DeviceCard", () => {
 				},
 			],
 		};
-		render(<DeviceCard item={item} client={makeMockClient()} />);
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
 
 		const reading = screen.getByText("200.0°F");
 		expect(reading).toHaveClass("text-alarm-high");
@@ -197,7 +203,7 @@ describe("DeviceCard", () => {
 				},
 			],
 		};
-		render(<DeviceCard item={item} client={makeMockClient()} />);
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
 
 		const reading = screen.getByText("28.0°F");
 		expect(reading).toHaveClass("text-alarm-low");
@@ -205,7 +211,7 @@ describe("DeviceCard", () => {
 
 	it("Show History button toggles chart visibility", () => {
 		const item = makeDevice();
-		render(<DeviceCard item={item} client={makeMockClient()} />);
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
 
 		const btn = screen.getByRole("button", { name: /show history/i });
 		expect(btn).toBeInTheDocument();
@@ -222,7 +228,7 @@ describe("DeviceCard", () => {
 			...makeDevice(),
 			channels: [],
 		};
-		render(<DeviceCard item={item} client={makeMockClient()} />);
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
 
 		expect(screen.getByText("No active channels")).toBeInTheDocument();
 	});
@@ -275,7 +281,7 @@ describe("DeviceCard", () => {
 				},
 			],
 		};
-		render(<DeviceCard item={item} client={makeMockClient()} />);
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
 
 		expect(screen.getByText("Active")).toBeInTheDocument();
 		expect(screen.queryByText("Disabled")).not.toBeInTheDocument();

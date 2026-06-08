@@ -5,6 +5,8 @@ import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { ChannelReading } from "./ChannelReading.tsx";
 import { SessionControls } from "./SessionControls.tsx";
+import { ShareButton } from "./ShareButton.tsx";
+import { ChartSkeleton } from "./Skeleton.tsx";
 
 const TemperatureChart = React.lazy(() => import("./TemperatureChart"));
 
@@ -71,6 +73,7 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 					aria-label={`Status: ${status.label}`}
 					role="status"
 				>
+					<ShareButton serial={device.serial} client={client} />
 					<span className={cn("h-2 w-2 rounded-full", status.color)} title={status.label} />
 					<span className="text-xs text-muted-foreground">{status.label}</span>
 				</div>

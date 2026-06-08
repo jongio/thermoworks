@@ -47,13 +47,29 @@ This saves your selection to `~/.thermoworks/config.json`, which the extension r
 | `ThermoWorks: Login` | Enter your ThermoWorks Cloud credentials |
 | `ThermoWorks: Logout` | Clear stored credentials |
 | `ThermoWorks: Refresh Temperatures` | Force an immediate temperature refresh |
+| `ThermoWorks: Cycle to Next Device` | Manually advance to the next device in cycle mode |
 | `ThermoWorks: Demo (Simulate Alarm)` | Show fake data with selectable alarm state (for testing/screenshots) |
+| `ThermoWorks: Sign In` | Sign in from the tree panel welcome view |
+| `ThermoWorks: Sign Out` | Sign out from the tree panel (right-click on account node) |
+| `ThermoWorks: Refresh Panel` | Refresh the device tree panel (toolbar button or context menu) |
+| `ThermoWorks: Open Cloud Dashboard` | Open [cloud.thermoworks.com](https://cloud.thermoworks.com) in the browser |
+| `ThermoWorks: Show Event Details` | Show full details for a device event |
+| `ThermoWorks: Show Archive Details` | Open a detailed view of an archived session |
+| `ThermoWorks: Refresh Archives` | Reload the archives list for a device |
+| `ThermoWorks: Configure Alarm` | Set high/low alarm thresholds on a device channel |
+| `ThermoWorks: Show Temperature Chart` | Open an inline temperature chart for a device |
+| `ThermoWorks: Start Session` | Start a monitoring session on the selected device |
+| `ThermoWorks: End Session` | End an active monitoring session |
 
 ## Settings
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `thermoworks.refreshInterval` | `30` | Refresh interval in seconds (minimum 15) |
+| `thermoworks.refreshInterval` | `60` | Temperature refresh interval in seconds (minimum 15) |
+| `thermoworks.statusBarMode` | `single` | Status bar display mode: `single` shows the first device, `cycle` rotates through devices, `all` shows all devices compactly |
+| `thermoworks.cycleInterval` | `5` | Seconds between device rotations in cycle mode (minimum 1) |
+| `thermoworks.eventsLimit` | `20` | Maximum number of events to display in the Events panel (1-500) |
+| `thermoworks.notifications` | `true` | Show desktop notifications when a temperature alarm triggers |
 
 ## Device Panel
 

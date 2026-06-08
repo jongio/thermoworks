@@ -90,14 +90,37 @@ client.close();
 | `getDeviceChannel(serial, channel)` | `Promise<DeviceChannel>` | Get one channel reading; `channel` is 1-indexed |
 | `getAllDeviceChannels(serial)` | `Promise<DeviceChannel[]>` | Get all device channels until the first missing channel |
 | `getAverageTemperature(serial)` | `Promise<{ value: number; units: string } \| null>` | Average temperature across readable temperature channels |
+| `setAlarm(serial, channel, config)` | `Promise<void>` | Set high/low alarm thresholds on a device channel |
 | `getEvents(filter?)` | `Promise<DeviceEvent[]>` | Get device events with optional filtering |
-| `getDeviceEvents(serial, limit?)` | `Promise<DeviceEvent[]>` | Convenience — events for a single device |
+| `getDeviceEvents(serial, limit?)` | `Promise<DeviceEvent[]>` | Convenience - events for a single device |
+| `clearEvents(serial)` | `Promise<ActionResult>` | Clear all events for a device |
 | `getArchives(serial, options?)` | `Promise<Archive[]>` | List session archives for a device |
 | `getArchive(serial, archiveId)` | `Promise<Archive>` | Get a single archive session |
 | `getCalibration(serial)` | `Promise<CalibrationRecord[]>` | Get calibration records for a device |
 | `getFirmwareInfo(deviceType)` | `Promise<FirmwareInfo>` | Get latest firmware info for a device type |
 | `getTemperatureGuide()` | `Promise<TemperatureGuide>` | Get the USDA temperature guide |
+| `getHistory(serial)` | `Promise<DeviceHistory>` | Retrieve full historical temperature time-series data |
 | `search(query, options)` | `Promise<SearchResult>` | Search across devices and data |
+| `startSession(serial, label?)` | `Promise<ActionResult>` | Start a monitoring session on a device |
+| `endSession(serial)` | `Promise<ActionResult>` | End an active monitoring session |
+| `clearSession(serial)` | `Promise<ActionResult>` | Clear session data for a device |
+| `resetMinMax(serial, channel)` | `Promise<ActionResult>` | Reset min/max readings for a device channel |
+| `getDataUsage()` | `Promise<DataUsage>` | Get total data storage usage for the account |
+| `getDataUsageByDevice()` | `Promise<DeviceDataUsage[]>` | Get per-device data storage usage |
+| `getBillingPlan()` | `Promise<BillingPlan \| null>` | Get the billing plan for the account |
+| `getInvites()` | `Promise<AccountInvite[]>` | Get pending invitations for the account |
+| `removeUser(userId)` | `Promise<ActionResult>` | Remove a user from the account |
+| `getNotificationSettings()` | `Promise<NotificationSettings>` | Get the user's notification preferences |
+| `updateNotificationSettings(settings)` | `Promise<void>` | Update notification preferences (read-merge-write) |
+| `updateDeviceState(serial, state)` | `Promise<ActionResult>` | Update device state/settings via Cloud Function |
+| `renameDevice(serial, name)` | `Promise<ActionResult>` | Rename a device |
+| `factoryReset(serial)` | `Promise<ActionResult>` | Factory reset a device |
+| `shareDevice(serial)` | `Promise<ShareResult>` | Share a device's live state via a public link |
+| `shareArchive(serial, archiveId)` | `Promise<ShareResult>` | Share an archive via a public link |
+| `getDeviceGroups()` | `Promise<DeviceGroup[]>` | Get device groups for the authenticated user |
+| `getFanState(serial)` | `Promise<FanSettings \| null>` | Get fan/blower controller state (null if no fan) |
+| `setFanTarget(serial, targetTemp)` | `Promise<ActionResult>` | Set the fan controller target temperature |
+| `setFanEnabled(serial, enabled)` | `Promise<ActionResult>` | Enable or disable the fan controller |
 | `close()` | `void` | Release the underlying authenticated session |
 
 ### Filtering Devices

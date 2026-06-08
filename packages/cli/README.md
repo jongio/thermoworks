@@ -143,6 +143,30 @@ Possible output includes:
 - `Stored email: you@example.com (password missing)`
 - `Not logged in. Run: thermoworks auth login`
 
+### `thermoworks alarm set`
+
+Set alarm thresholds on a device channel.
+
+```bash
+npx thermoworks alarm set <serial> <channel> --high <temp> --low <temp>
+```
+
+### `thermoworks alarm clear`
+
+Clear alarm thresholds on a device channel.
+
+```bash
+npx thermoworks alarm clear <serial> <channel>
+```
+
+### `thermoworks calibration <serial>`
+
+Show NIST-traceable calibration data for a device.
+
+```bash
+npx thermoworks calibration M100009168
+```
+
 ### `thermoworks copilot setup [--dev]`
 
 Run the interactive setup wizard.
@@ -199,6 +223,79 @@ Found 2 devices:
   Signals  (signals)  [offline]  last seen 12m ago
 ```
 
+### `thermoworks watch`
+
+Continuously monitor temperatures with live refresh.
+
+```bash
+npx thermoworks watch
+npx thermoworks watch --device M100009168 --interval 5
+```
+
+Options:
+- `--device SN` — Watch a specific device by serial number
+- `--interval N` — Refresh interval in seconds (default: 10)
+
+### `thermoworks events`
+
+Show device event history (alarms, status changes).
+
+```bash
+npx thermoworks events
+npx thermoworks events --device M100009168 --limit 50
+```
+
+### `thermoworks archives <serial>`
+
+List archived sessions for a device.
+
+```bash
+npx thermoworks archives M100009168
+npx thermoworks archives M100009168 --id <archive-id> --limit 10
+```
+
+### `thermoworks firmware`
+
+Show firmware versions and available updates for all devices.
+
+```bash
+npx thermoworks firmware
+npx thermoworks firmware --device M100009168
+```
+
+### `thermoworks session start|end|clear`
+
+Manage monitoring sessions on a device.
+
+```bash
+npx thermoworks session start <serial> --label "Brisket cook"
+npx thermoworks session end <serial>
+npx thermoworks session clear <serial> --yes
+```
+
+### `thermoworks export <serial>`
+
+Export archive readings to CSV or JSON.
+
+```bash
+npx thermoworks export M100009168
+npx thermoworks export M100009168 --archive <id> --format csv --output readings.csv
+```
+
+Options:
+- `--archive ID` — Export a specific archive (default: latest)
+- `--format FMT` — Output format: `csv` or `json` (default: `json`)
+- `--output PATH` — Write to file (default: stdout)
+
+### `thermoworks guide [category]`
+
+Show the temperature guide (safe cooking temps from USDA).
+
+```bash
+npx thermoworks guide
+npx thermoworks guide beef
+```
+
 ### `thermoworks mcp start`
 
 Start the MCP (Model Context Protocol) server for AI assistants. Runs over stdio.
@@ -225,10 +322,14 @@ npx thermoworks demo normal  # no color
 
 ### Global options
 
-```bash
-npx thermoworks --help
-npx thermoworks --version
-```
+| Flag | Description |
+|------|-------------|
+| `--json` | Output machine-readable JSON (for scripting) |
+| `--no-channels` | Hide channel readings in `devices` output |
+| `--help`, `-h` | Show the help message |
+| `--version`, `-v` | Show the version number |
+
+For detailed option docs, see the [full CLI reference](../../docs/cli-reference.md).
 
 ## Requirements
 

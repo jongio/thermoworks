@@ -45,6 +45,12 @@ Model Context Protocol server that exposes your ThermoWorks device data to AI as
 
 **Start:** `thermoworks mcp start`
 
+### 🌐 Web Dashboard
+
+Local web dashboard with real-time temperature display, history charts, alarm color coding, and public share viewer. Built with React 19, Vite, and Tailwind CSS.
+
+**Run:** `pnpm --filter thermoworks-web dev`
+
 ---
 
 ## Key Features
@@ -125,14 +131,16 @@ For command details, see the [CLI reference](docs/cli-reference.md).
 | [`thermoworks`](https://www.npmjs.com/package/thermoworks) | CLI for authentication, Copilot statusline setup, device listing, MCP server, and demo mode |
 | [`thermoworks-sdk`](https://www.npmjs.com/package/thermoworks-sdk) | Node.js SDK for programmatic access to ThermoWorks Cloud |
 | [`thermoworks-mcp`](https://www.npmjs.com/package/thermoworks-mcp) | MCP server exposing device data to AI assistants (GitHub Copilot, Claude, ChatGPT) |
+| [`thermoworks-web`](packages/web) | Local web dashboard with real-time temperature display, history charts, and public share viewer |
 | [ThermoWorks for VS Code](https://marketplace.visualstudio.com/items?itemName=jongio.thermoworks) | Extension with status bar, device panel, alarm indicators, and firmware alerts |
 
 ## Documentation
 
-- [CLI Reference](docs/cli-reference.md) — all commands, flags, and options
-- [API Reference](docs/api-reference.md) — ThermoWorks Cloud Firestore REST API
-- [MCP Server](packages/mcp/README.md) — MCP server for AI assistants
-- [VS Code Extension](packages/vscode/README.md) — panel, status bar, alarms, firmware detection
+- [CLI Reference](docs/cli-reference.md) - all commands, flags, and options
+- [API Reference](docs/api-reference.md) - ThermoWorks Cloud Firestore REST API
+- [MCP Server](packages/mcp/README.md) - MCP server for AI assistants
+- [VS Code Extension](packages/vscode/README.md) - panel, status bar, alarms, firmware detection
+- [Web Dashboard](packages/web/README.md) - local web app with real-time temps and charts
 
 ## Development
 

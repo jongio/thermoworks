@@ -3,7 +3,7 @@ import React, { Suspense } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { ChannelReading } from "../components/ChannelReading.tsx";
-import { DeviceSettings } from "../components/DeviceSettings.tsx";
+import { FanController } from "../components/FanController.tsx";
 import { ChartSkeleton } from "../components/Skeleton.tsx";
 import { useArchiveData } from "../hooks/useArchiveData.ts";
 import { useDevice } from "../hooks/useDevice.ts";
@@ -25,7 +25,7 @@ function statusIndicator(status: string | null): { color: string; label: string 
 export function DeviceDetail() {
 	const { serial } = useParams<{ serial: string }>();
 	const { client } = useOutletContext<AppOutletContext>();
-	const { data, isLoading, error } = useDevice(client, serial ?? "");
+	const { data, isLoading, error, refresh } = useDevice(client, serial ?? "");
 	const {
 		archives,
 		isLoading: archiveLoading,
@@ -155,6 +155,16 @@ export function DeviceDetail() {
 					<p className="text-sm text-muted-foreground italic">No active channels</p>
 				)}
 			</section>
+
+			{/* Fan controller section (Billows-compatible devices only) */}
+			{device.fan && (
+				<section aria-labelledby="fan-heading">
+					<h2 id="fan-heading" className="text-lg font-semibold mb-3">
+						Fan Controller
+					</h2>
+					<FanController client={client} serial={device.serial} fan={device.fan} onUpdated={refresh} />
+				</section>
+			)}
 
 			{/* History section */}
 			<section aria-labelledby="history-heading">

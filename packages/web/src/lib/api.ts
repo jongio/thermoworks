@@ -840,24 +840,26 @@ export class ThermoworksWebClient {
 		}
 	}
 
-	async updateDeviceState(serial: string, state: Record<string, unknown>): Promise<{ success: boolean }> {
-		const fields: Record<string, FirestoreValue> = {};
-		for (const [key, value] of Object.entries(state)) {
-			if (typeof value === "string") fields[key] = { stringValue: value };
-			else if (typeof value === "number") fields[key] = { doubleValue: value };
-			else if (typeof value === "boolean") fields[key] = { booleanValue: value };
-		}
-		const maskPaths = Object.keys(fields)
-			.map((k) => `updateMask.fieldPaths=${k}`)
-			.join("&");
-		const path = `documents/devices/${encodeURIComponent(serial)}?${maskPaths}`;
-		const response = await this.firestoreRequest("PATCH", path, { fields });
+	/** Set the fan controller target temperature for a Billows-compatible device. */
+	async setFanTarget(serial: string, targetTemp: number): Promise<{ success: boolean }> {
+		const body = {
+			fields: {
+				fan: { mapValue: { fields: { setTemp: { doubleValue: targetTemp } } } },
+			},
+		};
+		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=fan.setTemp`;
+		const response = await this.firestoreRequest("PATCH", path, body);
 		return { success: response.ok };
 	}
 
-	async factoryReset(serial: string): Promise<{ success: boolean }> {
-		const body = { fields: { factoryReset: { booleanValue: true } } };
-		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=factoryReset`;
+	/** Enable or disable the fan controller connection for a Billows-compatible device. */
+	async setFanEnabled(serial: string, enabled: boolean): Promise<{ success: boolean }> {
+		const body = {
+			fields: {
+				fan: { mapValue: { fields: { connection: { booleanValue: enabled } } } },
+			},
+		};
+		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=fan.connection`;
 		const response = await this.firestoreRequest("PATCH", path, body);
 		return { success: response.ok };
 	}

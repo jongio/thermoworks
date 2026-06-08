@@ -156,7 +156,7 @@ describe("useDevices", () => {
 		const getDevicesWithChannels = vi.fn().mockResolvedValue(mockDevices);
 		const client = createMockClient({ getDevicesWithChannels });
 
-		renderHook(() => useDevices(client, 5_000));
+		renderHook(() => useDevices(client, { pollingInterval: 5_000 }));
 
 		await vi.advanceTimersByTimeAsync(0);
 		expect(getDevicesWithChannels).toHaveBeenCalledTimes(1);

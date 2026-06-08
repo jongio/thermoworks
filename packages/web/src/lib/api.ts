@@ -26,6 +26,14 @@ import type {
 	User,
 } from "thermoworks-sdk";
 
+export interface AccountInfo {
+	id: string;
+	name: string | null;
+	plan: string | null;
+	devicesUsed: number;
+	devicesLimit: number;
+}
+
 interface CalibrationPoint {
 	referenceTemp: number;
 	measuredTemp: number;
@@ -587,6 +595,21 @@ export class ThermoworksWebClient {
 			accountRoles: null,
 			roles: null,
 			notificationSettings: null,
+		};
+	}
+
+	async getAccount(): Promise<AccountInfo> {
+		const accountId = await this.getAccountId();
+		const fields = await this.fetchDocFields(`documents/accounts/${accountId}`);
+		if (!fields) {
+			return { id: accountId, name: null, plan: null, devicesUsed: 0, devicesLimit: 0 };
+		}
+		return {
+			id: accountId,
+			name: getString(fields, "name"),
+			plan: getString(fields, "plan"),
+			devicesUsed: getNumber(fields, "devicesUsed") ?? 0,
+			devicesLimit: getNumber(fields, "devicesLimit") ?? 0,
 		};
 	}
 

@@ -27,11 +27,24 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: pnpm/action-setup@fe02b34f77f8bc703c22d82ef19c587e31e8e696 # v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter thermoworks-web build
+
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
 
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
         with:
-          path: packages/web
+          path: packages/web/dist
 
       - name: Deploy to GitHub Pages
         id: deployment

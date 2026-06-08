@@ -6,6 +6,16 @@
     <meta name="description" content="ThermoWorks Cloud dashboard - real-time temperature monitoring" />
     <title>ThermoWorks Dashboard</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script>
+      // SPA redirect recovery for GitHub Pages
+      (function () {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, '', redirect);
+        }
+      })();
+    </script>
   </head>
   <body class="min-h-screen bg-background text-foreground antialiased">
     <div id="root"></div>

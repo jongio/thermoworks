@@ -1,6 +1,7 @@
 import { LogOut } from "lucide-react";
 import { useState } from "react";
 import { DeviceList } from "./components/DeviceList.tsx";
+import { LandingPage } from "./components/LandingPage.tsx";
 import { LoginForm } from "./components/LoginForm.tsx";
 import { ThemeToggle } from "./components/ThemeToggle.tsx";
 import { useDevices } from "./hooks/useDevices.ts";
@@ -9,15 +10,20 @@ import { cn } from "./lib/utils.ts";
 
 export function App() {
 	const [client, setClient] = useState<ThermoworksWebClient | null>(null);
+	const [showLogin, setShowLogin] = useState(false);
 	const { data, isLoading, error, lastUpdated, refresh } = useDevices(client);
 
 	function handleLogout() {
 		client?.logout();
 		setClient(null);
+		setShowLogin(false);
 	}
 
 	if (!client) {
-		return <LoginForm onLogin={setClient} />;
+		if (showLogin) {
+			return <LoginForm onLogin={setClient} />;
+		}
+		return <LandingPage onSignIn={() => setShowLogin(true)} />;
 	}
 
 	return (

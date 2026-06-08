@@ -782,7 +782,7 @@ export class ThermoworksWebClient {
 	}
 
 	async getTemperatureGuide(): Promise<TemperatureGuide> {
-		const fields = await this.fetchDocFields("documents/resources/temperatureGuide");
+		const fields = await this.fetchDocFields("documents/content/temperatureGuide");
 		if (!fields) return { categories: [] };
 
 		const categoriesRaw = getArray(fields, "categories") ?? [];

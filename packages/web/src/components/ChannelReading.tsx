@@ -1,6 +1,6 @@
 import type { DeviceChannel } from "thermoworks-sdk";
 import { type AlarmState, getChannelAlarmState } from "../lib/api.ts";
-import { cn } from "../lib/utils.ts";
+import { cn, formatTemp } from "../lib/utils.ts";
 
 interface ChannelReadingProps {
 	channel: DeviceChannel;
@@ -43,7 +43,7 @@ export function ChannelReading({ channel }: ChannelReadingProps) {
 			<span className="text-sm text-muted-foreground truncate mr-2">{label}</span>
 			{hasReading ? (
 				<span className={cn("text-lg tabular-nums font-mono", alarmColorClass(alarmState))}>
-					{channel.value}°{channel.units}
+					{formatTemp(channel.value)}°{channel.units}
 				</span>
 			) : (
 				<span className="text-sm text-muted-foreground">--</span>

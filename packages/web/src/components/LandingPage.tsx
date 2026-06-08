@@ -11,6 +11,7 @@ const products = [
 		title: "VS Code Extension",
 		description:
 			"Full sidebar device panel + status bar integration. See devices, channels, battery, firmware status, and alarm states in your editor.",
+		command: null,
 		link: "https://marketplace.visualstudio.com/items?itemName=jongio.thermoworks",
 		linkLabel: "Marketplace",
 	},
@@ -19,32 +20,36 @@ const products = [
 		title: "CLI + Statusline",
 		description:
 			"Live temperatures in your terminal footer while you code. Interactive wizard to pick devices and channels. 14 commands for monitoring, alarms, sessions, and data export.",
+		command: "npx thermoworks",
 		link: "https://www.npmjs.com/package/thermoworks",
-		linkLabel: "npm",
+		linkLabel: "npm: thermoworks",
 	},
 	{
 		emoji: "🌐",
 		title: "Web Dashboard",
 		description:
 			"Real-time temperature dashboard with history graphs, alarm color coding, light/dark theme, and public share viewer - all in the browser.",
-		link: null,
-		linkLabel: null,
+		command: null,
+		link: "https://jongio.github.io/thermoworks/",
+		linkLabel: "Open Dashboard",
 	},
 	{
 		emoji: "🛠️",
 		title: "SDK",
 		description:
 			"Node.js SDK for programmatic access - build your own dashboards, alerts, or automations with full access to devices, channels, events, and archives.",
+		command: "npm install thermoworks-sdk",
 		link: "https://www.npmjs.com/package/thermoworks-sdk",
-		linkLabel: "npm",
+		linkLabel: "npm: thermoworks-sdk",
 	},
 	{
 		emoji: "🤖",
 		title: "MCP Server",
 		description:
 			"Model Context Protocol server that exposes your ThermoWorks device data to AI assistants like GitHub Copilot, Claude, and ChatGPT.",
-		link: null,
-		linkLabel: null,
+		command: "npx thermoworks mcp start",
+		link: "https://www.npmjs.com/package/thermoworks",
+		linkLabel: "npm: thermoworks",
 	},
 ];
 
@@ -134,19 +139,24 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
 								<p className="mt-1 text-sm text-muted-foreground">
 									{product.description}
 								</p>
-								{product.link && (
-									<a
-										href={product.link}
-										target="_blank"
-										rel="noopener noreferrer"
-										className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline"
-									>
-										{product.linkLabel}
-										<ExternalLink className="h-3 w-3" />
-									</a>
-								)}
-							</div>
-						))}
+									{product.command && (
+										<code className="mt-2 block rounded bg-muted px-2 py-1 text-xs font-mono">
+											{product.command}
+										</code>
+									)}
+									{product.link && (
+										<a
+											href={product.link}
+											target="_blank"
+											rel="noopener noreferrer"
+											className="mt-3 inline-flex items-center gap-1 text-sm text-primary hover:underline"
+										>
+											{product.linkLabel}
+											<ExternalLink className="h-3 w-3" />
+										</a>
+									)}
+								</div>
+							))}
 					</div>
 				</div>
 			</section>

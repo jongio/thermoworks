@@ -1,6 +1,8 @@
 # ThermoWorks Web Dashboard
 
-Local web dashboard with real-time temperature display for ThermoWorks Cloud devices.
+Real-time temperature dashboard for ThermoWorks Cloud devices.
+
+**Live:** [jongio.github.io/thermoworks](https://jongio.github.io/thermoworks/)
 
 ## Tech Stack
 

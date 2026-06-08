@@ -4,7 +4,7 @@ import { useParams } from "react-router-dom";
 import type { Archive, ArchiveChannel } from "thermoworks-sdk";
 import { ShareError, ShareHeader, ShareLoading } from "../components/ShareLayout.tsx";
 import { getPublicArchive } from "../lib/api.ts";
-import { cn } from "../lib/utils.ts";
+import { cn, formatTemp } from "../lib/utils.ts";
 
 export function SharedArchiveView() {
 	const { serial, archiveId } = useParams<{ serial: string; archiveId: string }>();
@@ -138,7 +138,7 @@ function ArchiveChannelCard({ channel }: { channel: ArchiveChannel }) {
 				<span className="text-sm font-medium">{label}</span>
 				{hasValue && (
 					<span className="text-lg font-mono tabular-nums">
-						{channel.value}°{channel.units}
+						{formatTemp(channel.value)}°{channel.units}
 					</span>
 				)}
 			</div>
@@ -148,12 +148,12 @@ function ArchiveChannelCard({ channel }: { channel: ArchiveChannel }) {
 				<div className="flex gap-3 text-xs text-muted-foreground">
 					{channel.minimum?.value != null && (
 						<span>
-							Min: {channel.minimum.value}°{channel.minimum.units ?? channel.units}
+							Min: {formatTemp(channel.minimum.value)}°{channel.minimum.units ?? channel.units}
 						</span>
 					)}
 					{channel.maximum?.value != null && (
 						<span>
-							Max: {channel.maximum.value}°{channel.maximum.units ?? channel.units}
+							Max: {formatTemp(channel.maximum.value)}°{channel.maximum.units ?? channel.units}
 						</span>
 					)}
 				</div>

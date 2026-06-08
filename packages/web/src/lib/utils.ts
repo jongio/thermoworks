@@ -5,3 +5,9 @@ import { twMerge } from "tailwind-merge";
 export function cn(...inputs: ClassValue[]): string {
 	return twMerge(clsx(inputs));
 }
+
+/** Format a temperature value to one decimal place. */
+export function formatTemp(value: number | null | undefined): string {
+	if (value == null) return "--";
+	return value.toFixed(1);
+}

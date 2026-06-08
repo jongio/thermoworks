@@ -11,6 +11,7 @@ import {
 	YAxis,
 } from "recharts";
 import type { ArchiveChannel } from "thermoworks-sdk";
+import { formatTemp } from "../lib/utils.ts";
 
 interface TemperatureChartProps {
 	channels: ArchiveChannel[];
@@ -155,7 +156,7 @@ export function TemperatureChart({ channels }: TemperatureChartProps) {
 							borderRadius: "0.375rem",
 							fontSize: "0.75rem",
 						}}
-						formatter={(value) => [`${value ?? ""}°${units}`, undefined]}
+						formatter={(value) => [`${formatTemp(value as number)}°${units}`, undefined]}
 					/>
 					<Legend wrapperStyle={{ fontSize: "0.75rem", paddingTop: "0.5rem" }} />
 

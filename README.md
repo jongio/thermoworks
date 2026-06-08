@@ -37,7 +37,16 @@ Live temperatures in your terminal footer while you code. Interactive wizard to 
 
 Real-time temperature dashboard with Recharts history graphs, alarm color coding, light/dark theme, and public share viewer — all in the browser. Built with React 19, Vite, and Tailwind CSS.
 
-**Run:** `pnpm --filter thermoworks-web dev`
+**Live:** [jongio.github.io/thermoworks](https://jongio.github.io/thermoworks/)
+
+**Run locally:**
+
+```bash
+# Clone and start the dev server
+git clone https://github.com/jongio/thermoworks.git
+cd thermoworks && pnpm install
+pnpm --filter thermoworks-web dev
+```
 
 ### 🛠️ SDK
 
@@ -49,7 +58,15 @@ Node.js SDK for programmatic access — build your own dashboards, alerts, or au
 
 Model Context Protocol server that exposes your ThermoWorks device data to AI assistants like GitHub Copilot, Claude, and ChatGPT.
 
-**Start:** `thermoworks mcp start`
+**Start:**
+
+```bash
+# Via npx (no install needed)
+npx thermoworks mcp start
+
+# Or if installed globally
+thermoworks mcp start
+```
 
 ---
 

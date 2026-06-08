@@ -21,10 +21,12 @@ import type {
 	User,
 } from "thermoworks-sdk";
 
-const IDENTITY_HOST = "https://identitytoolkit.googleapis.com";
-const TOKEN_HOST = "https://securetoken.googleapis.com";
-const FIREBASE_HOST = "https://firebase.googleapis.com";
-const FIRESTORE_HOST = "https://firestore.googleapis.com";
+const isDev = import.meta.env.DEV;
+
+const IDENTITY_HOST = isDev ? "/api/identity" : "https://identitytoolkit.googleapis.com";
+const TOKEN_HOST = isDev ? "/api/token" : "https://securetoken.googleapis.com";
+const FIREBASE_HOST = isDev ? "/api/firebase" : "https://firebase.googleapis.com";
+const FIRESTORE_HOST = isDev ? "/api/firestore" : "https://firestore.googleapis.com";
 
 const DEFAULT_API_KEY = "AIzaSyCf079iccUFc1k7VHdGXng22zXDy8Y3KEY";
 const DEFAULT_APP_ID = "1:78998049458:web:b41e9d405d8c7de95eefab";

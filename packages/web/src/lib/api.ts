@@ -111,6 +111,24 @@ function getStringArray(fields: FirestoreFields, key: string): string[] | null {
 	return null;
 }
 
+// ─── Temperature guide types ─────────────────────────────────────────────────
+
+export interface TemperatureGuideItem {
+	name: string;
+	temp: number;
+	units: string;
+	doneness?: string;
+}
+
+export interface TemperatureCategory {
+	name: string;
+	items: TemperatureGuideItem[];
+}
+
+export interface TemperatureGuide {
+	categories: TemperatureCategory[];
+}
+
 // ─── Token state ─────────────────────────────────────────────────────────────
 
 interface TokenState {
@@ -610,6 +628,32 @@ export class ThermoworksWebClient {
 		if (!data.documents) return [];
 
 		return data.documents.map((doc) => parseArchive(doc.fields ?? {}, extractDocId(doc.name)));
+	}
+
+	async getTemperatureGuide(): Promise<TemperatureGuide> {
+		const fields = await this.fetchDocFields("documents/resources/temperatureGuide");
+		if (!fields) return { categories: [] };
+
+		const categoriesRaw = getArray(fields, "categories") ?? [];
+		const categories: TemperatureCategory[] = categoriesRaw.map((cat) => {
+			if (!("mapValue" in cat)) return { name: "", items: [] };
+			const catFields = cat.mapValue.fields ?? {};
+			const name = getString(catFields, "name") ?? "";
+			const itemsRaw = getArray(catFields, "items") ?? [];
+			const items: TemperatureGuideItem[] = itemsRaw.map((item) => {
+				if (!("mapValue" in item)) return { name: "", temp: 0, units: "F" };
+				const itemFields = item.mapValue.fields ?? {};
+				return {
+					name: getString(itemFields, "name") ?? "",
+					temp: getNumber(itemFields, "temp") ?? 0,
+					units: getString(itemFields, "units") ?? "F",
+					doneness: getString(itemFields, "doneness") ?? undefined,
+				};
+			});
+			return { name, items };
+		});
+
+		return { categories };
 	}
 }
 

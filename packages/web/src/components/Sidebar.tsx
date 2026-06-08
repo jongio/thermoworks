@@ -94,7 +94,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
 			{/* Footer actions */}
 			<div className="border-t border-border p-2 space-y-1">
 				<ConnectionStatus />
-				<div className={cn("flex items-center", collapsed ? "justify-center" : "px-1 gap-1")}>
+				<div className={cn("flex items-center flex-wrap", collapsed ? "flex-col gap-1" : "px-1 gap-1")}>
 					<ThemeToggle />
 					<NotificationToggle />
 					<button

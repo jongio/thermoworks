@@ -6,6 +6,7 @@ import { DeviceList } from "../components/DeviceList.tsx";
 import { RefreshSelector } from "../components/RefreshSelector.tsx";
 import { SearchBar } from "../components/SearchBar.tsx";
 import { StreamingIndicator } from "../components/StreamingIndicator.tsx";
+import { useAlarmNotifications } from "../hooks/useAlarmNotifications.ts";
 import { useDeviceGroups } from "../hooks/useDeviceGroups.ts";
 import { useDevices } from "../hooks/useDevices.ts";
 import { useRefreshInterval } from "../hooks/useRefreshInterval.ts";
@@ -27,6 +28,7 @@ export function Dashboard() {
 	const { client } = useOutletContext<AppOutletContext>();
 	const { data, isLoading, error, lastUpdated, refresh } = useDevices(client);
 	const { groups, createGroup, deleteGroup } = useDeviceGroups(client);
+	useAlarmNotifications(data);
 	const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
 
 	const groupFilteredData = useMemo(() => {

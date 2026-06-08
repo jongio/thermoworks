@@ -4,6 +4,7 @@ import { NavLink } from "react-router-dom";
 import { navigationItems } from "../lib/navigation.ts";
 import { cn } from "../lib/utils.ts";
 import { ConnectionStatus } from "./ConnectionStatus.tsx";
+import { NotificationToggle } from "./NotificationToggle.tsx";
 import { ThemeToggle } from "./ThemeToggle.tsx";
 
 const STORAGE_KEY = "thermoworks-sidebar-collapsed";
@@ -95,6 +96,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
 				<ConnectionStatus />
 				<div className={cn("flex items-center", collapsed ? "justify-center" : "px-1 gap-1")}>
 					<ThemeToggle />
+					<NotificationToggle />
 					<button
 						type="button"
 						onClick={onLogout}

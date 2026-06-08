@@ -16,6 +16,8 @@ import type {
 	ArchiveChannel,
 	Device,
 	DeviceChannel,
+	DeviceEvent,
+	EventFilter,
 	MinMaxReading,
 	TemperatureReading,
 	User,
@@ -630,29 +632,87 @@ export class ThermoworksWebClient {
 		return data.documents.map((doc) => parseArchive(doc.fields ?? {}, extractDocId(doc.name)));
 	}
 
-	async startSession(serial: string, label?: string): Promise<{ success: boolean }> {
-		const body = {
-			fields: {
-				sessionActive: { booleanValue: true },
-				sessionLabel: { stringValue: label ?? "" },
-				sessionStart: { timestampValue: new Date().toISOString() },
-			},
-		};
-		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=sessionActive&updateMask.fieldPaths=sessionLabel&updateMask.fieldPaths=sessionStart`;
-		const response = await this.firestoreRequest("PATCH", path, body);
-		return { success: response.ok };
-	}
+	async getEvents(filter?: EventFilter): Promise<DeviceEvent[]> {
+		if (!this.accountId) {
+			const user = await this.getUser();
+			if (!user.accountId) return [];
+			this.accountId = user.accountId;
+		}
 
-	async endSession(serial: string): Promise<{ success: boolean }> {
-		const body = {
-			fields: {
-				sessionActive: { booleanValue: false },
+		const limit = Math.min(Math.max(1, filter?.limit ?? 50), 500);
+
+		const filters: Array<{
+			fieldFilter: { field: { fieldPath: string }; op: string; value: { stringValue: string } };
+		}> = [
+			{
+				fieldFilter: {
+					field: { fieldPath: "accountId" },
+					op: "EQUAL",
+					value: { stringValue: this.accountId },
+				},
+			},
+		];
+
+		if (filter?.deviceId) {
+			filters.push({
+				fieldFilter: {
+					field: { fieldPath: "deviceId" },
+					op: "EQUAL",
+					value: { stringValue: filter.deviceId },
+				},
+			});
+		}
+
+		if (filter?.eventType) {
+			filters.push({
+				fieldFilter: {
+					field: { fieldPath: "EventType" },
+					op: "EQUAL",
+					value: { stringValue: filter.eventType },
+				},
+			});
+		}
+
+		const where =
+			filters.length === 1 ? filters[0] : { compositeFilter: { op: "AND", filters } };
+
+		const queryBody = {
+			structuredQuery: {
+				from: [{ collectionId: "events" }],
+				where,
+				orderBy: [{ field: { fieldPath: "EventTime" }, direction: "DESCENDING" }],
+				limit,
 			},
 		};
-		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=sessionActive`;
-		const response = await this.firestoreRequest("PATCH", path, body);
-		return { success: response.ok };
+
+		const response = await this.firestoreRequest("POST", "documents:runQuery", queryBody);
+		const rawResults = await response.json();
+		if (!Array.isArray(rawResults)) return [];
+
+		const results = rawResults as Array<{ document?: { fields?: FirestoreFields; name?: string } }>;
+		const events: DeviceEvent[] = [];
+		for (const result of results) {
+			if (result.document?.fields) {
+				events.push(parseDeviceEvent(result.document.fields, extractDocId(result.document.name)));
+			}
+		}
+		return events;
 	}
+}
+
+function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {
+	return {
+		id,
+		eventType: getString(fields, "eventType") ?? "",
+		severity: getNumber(fields, "severity") ?? 0,
+		eventTime: getTimestamp(fields, "eventTime") ?? new Date(0),
+		deviceId: getString(fields, "deviceId") ?? "",
+		channelId: getString(fields, "channelId"),
+		accountId: getString(fields, "accountId") ?? "",
+		valueBefore: getString(fields, "valueBefore"),
+		valueAfter: getString(fields, "valueAfter"),
+		groups: getStringArray(fields, "groups"),
+	};
 }
 
 async function publicFirestoreGet(path: string): Promise<FirestoreFields | null> {

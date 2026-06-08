@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { HashRouter, Route, Routes } from "react-router-dom";
 import { App } from "./App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import "./index.css";
@@ -13,13 +13,13 @@ if (!root) throw new Error("Root element not found");
 createRoot(root).render(
 	<StrictMode>
 		<ErrorBoundary>
-			<BrowserRouter>
+			<HashRouter>
 				<Routes>
 					<Route path="/" element={<App />} />
 					<Route path="/share/device/:serial" element={<SharedDeviceView />} />
 					<Route path="/share/archive/:serial/:archiveId" element={<SharedArchiveView />} />
 				</Routes>
-			</BrowserRouter>
+			</HashRouter>
 		</ErrorBoundary>
 	</StrictMode>,
 );

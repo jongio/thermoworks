@@ -1,7 +1,7 @@
-import { Check, ChevronDown, LogOut, Plus, User as UserIcon, X } from "lucide-react";
+import { Check, ChevronDown, LogOut, Plus, X } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
-import { useClickOutside } from "../hooks/useClickOutside.ts";
 import type { StoredAccount } from "../hooks/useAccounts.ts";
+import { useClickOutside } from "../hooks/useClickOutside.ts";
 import { cn } from "../lib/utils.ts";
 
 interface AccountSwitcherProps {
@@ -18,7 +18,7 @@ interface AccountSwitcherProps {
 function emailInitials(email: string): string {
 	const local = email.split("@")[0] ?? "";
 	if (local.length < 2) return local.toUpperCase() || "?";
-	return (local[0]! + local[local.length - 1]!).toUpperCase();
+	return ((local[0] ?? "") + (local[local.length - 1] ?? "")).toUpperCase();
 }
 
 /** Deterministic hue from a string for avatar color. */
@@ -42,12 +42,16 @@ export function AccountSwitcher({
 	const [open, setOpen] = useState(false);
 	const containerRef = useRef<HTMLDivElement>(null);
 
-	useClickOutside(containerRef, useCallback(() => setOpen(false), []));
+	useClickOutside(
+		containerRef,
+		useCallback(() => setOpen(false), []),
+	);
 
 	const activeAccount = accounts.find((a) => a.id === activeAccountId);
 	if (!activeAccount && accounts.length === 0) return null;
 
-	const displayAccount = activeAccount ?? accounts[0]!;
+	const displayAccount = activeAccount ?? accounts[0];
+	if (!displayAccount) return null;
 	const hue = stringToHue(displayAccount.email);
 
 	return (
@@ -76,9 +80,7 @@ export function AccountSwitcher({
 				</span>
 				{!collapsed && (
 					<>
-						<span className="flex-1 truncate text-left text-xs">
-							{displayAccount.email}
-						</span>
+						<span className="flex-1 truncate text-left text-xs">{displayAccount.email}</span>
 						<ChevronDown
 							className={cn(
 								"h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform",
@@ -102,9 +104,7 @@ export function AccountSwitcher({
 					aria-label="Account switcher"
 				>
 					<div className="p-1">
-						<p className="px-2 py-1 text-xs font-medium text-muted-foreground">
-							Accounts
-						</p>
+						<p className="px-2 py-1 text-xs font-medium text-muted-foreground">Accounts</p>
 						<ul className="space-y-0.5">
 							{accounts.map((account) => {
 								const isActive = account.id === activeAccountId;
@@ -131,9 +131,7 @@ export function AccountSwitcher({
 												className="flex flex-1 items-center gap-2 min-w-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
 												role="menuitem"
 												aria-label={
-													isActive
-														? `${account.email} (current)`
-														: `Switch to ${account.email}`
+													isActive ? `${account.email} (current)` : `Switch to ${account.email}`
 												}
 											>
 												<span
@@ -149,10 +147,7 @@ export function AccountSwitcher({
 													{account.displayName ?? account.email}
 												</span>
 												{isActive && (
-													<Check
-														className="h-3.5 w-3.5 shrink-0 text-primary"
-														aria-hidden="true"
-													/>
+													<Check className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
 												)}
 											</button>
 											{/* Remove button (don't show for active account) */}

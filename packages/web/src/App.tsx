@@ -30,14 +30,8 @@ export function App() {
 	const [{ client, showOnboarding }, setAppState] = useState(createInitialAppState);
 	const [showLogin, setShowLogin] = useState(false);
 
-	const {
-		accounts,
-		activeAccountId,
-		addAccount,
-		switchAccount,
-		removeAccount,
-		clearAllAccounts,
-	} = useAccounts();
+	const { accounts, activeAccountId, addAccount, switchAccount, removeAccount, clearAllAccounts } =
+		useAccounts();
 
 	function handleLogin(nextClient: ThermoworksWebClient, email: string) {
 		addAccount(email, nextClient);
@@ -55,9 +49,10 @@ export function App() {
 			removeAccount(activeAccountId);
 			// After remove, switch to the next most recently used account
 			const remaining = accounts.filter((a) => a.id !== activeAccountId);
-			if (remaining.length > 0) {
-				const sorted = [...remaining].sort((a, b) => b.lastUsed - a.lastUsed);
-				const nextClient = switchAccount(sorted[0]!.id);
+			const sorted = [...remaining].sort((a, b) => b.lastUsed - a.lastUsed);
+			const nextId = sorted[0]?.id;
+			if (nextId) {
+				const nextClient = switchAccount(nextId);
 				setAppState({
 					client: nextClient,
 					showOnboarding: false,

@@ -123,7 +123,7 @@ export function useAccounts(): UseAccountsResult {
 	const activeAccountId = readActiveId();
 	const activeAccount = accounts.find((a) => a.id === activeAccountId) ?? null;
 
-	const addAccount = useCallback((email: string, client: ThermoworksWebClient) => {
+	const addAccount = useCallback((email: string, _client: ThermoworksWebClient) => {
 		// Extract token from sessionStorage (client just persisted it)
 		let tokenData: { token: TokenData; projectId: string } | null = null;
 		try {
@@ -186,9 +186,11 @@ export function useAccounts(): UseAccountsResult {
 				// Switch to most recently used remaining account, or clear
 				if (filtered.length > 0) {
 					const sorted = [...filtered].sort((a, b) => b.lastUsed - a.lastUsed);
-						const next = sorted[0]!;
-					writeActiveId(next.id);
-					writeSessionToken(next.token, next.projectId);
+					const next = sorted[0];
+					if (next) {
+						writeActiveId(next.id);
+						writeSessionToken(next.token, next.projectId);
+					}
 				} else {
 					writeActiveId(null);
 					try {

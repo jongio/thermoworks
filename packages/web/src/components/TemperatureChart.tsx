@@ -407,7 +407,10 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 						{/* Primary session channel lines */}
 						{enabledChannels.map((ch, idx) => {
 							const key = `ch_${ch.number ?? idx}`;
-							const color = ch.color || FALLBACK_COLORS[idx % FALLBACK_COLORS.length] || "#6b7280";
+							const rawColor = ch.color;
+							const color = (rawColor && rawColor !== "none" && rawColor !== "transparent")
+								? rawColor
+								: FALLBACK_COLORS[idx % FALLBACK_COLORS.length] || "#6b7280";
 							const name = ch.label ?? `Ch ${ch.number ?? idx + 1}`;
 
 							return (
@@ -437,8 +440,10 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 								.filter((ch) => ch.enabled !== false && ch.recentReadings.length > 0)
 								.map((ch, chIdx) => {
 									const key = `s${sessionIdx}_ch_${ch.number ?? chIdx}`;
-									const color =
-										ch.color || FALLBACK_COLORS[chIdx % FALLBACK_COLORS.length] || "#6b7280";
+									const rawOvColor = ch.color;
+									const color = (rawOvColor && rawOvColor !== "none" && rawOvColor !== "transparent")
+										? rawOvColor
+										: FALLBACK_COLORS[chIdx % FALLBACK_COLORS.length] || "#6b7280";
 									const name = `S${sessionIdx + 1}: ${ch.label ?? `Ch ${ch.number ?? chIdx + 1}`}`;
 
 									return (

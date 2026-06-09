@@ -142,14 +142,15 @@ export function DataUsage() {
 			{hasNoUsage && (
 				<div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
 					<HardDrive className="mx-auto h-10 w-10 text-muted-foreground/60" aria-hidden="true" />
-					<h2 className="mt-4 text-base font-semibold">No data usage yet</h2>
+					<h2 className="mt-4 text-base font-semibold">Usage data unavailable</h2>
 					<p className="mt-2 text-sm text-muted-foreground">
-						Start syncing devices to see storage usage totals and device-level breakdowns.
+						Storage usage details are not available for your account plan.
+						Device counts and account info are shown on the Settings page.
 					</p>
 				</div>
 			)}
 
-			{(usage || plan) && (
+			{(usage || plan) && !hasNoUsage && (
 				<div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
 					<section className="rounded-lg border border-border bg-card p-5">
 						<div className="flex items-start justify-between gap-4">
@@ -230,6 +231,7 @@ export function DataUsage() {
 				</div>
 			)}
 
+			{!hasNoUsage && (
 			<section className="rounded-lg border border-border bg-card p-5">
 				<div className="flex items-center justify-between gap-3">
 					<div>
@@ -272,6 +274,7 @@ export function DataUsage() {
 					</ul>
 				)}
 			</section>
+		)}
 		</div>
 	);
 }

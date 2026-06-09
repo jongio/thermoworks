@@ -1,7 +1,12 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import type { BillingPlan, DataUsage, DeviceDataUsage, ThermoworksWebClient } from "../src/lib/api.ts";
+import type {
+	BillingPlan,
+	DataUsage,
+	DeviceDataUsage,
+	ThermoworksWebClient,
+} from "../src/lib/api.ts";
 import { DataUsage as DataUsagePage } from "../src/pages/DataUsage.tsx";
 
 const BASE_USAGE: DataUsage = {
@@ -40,9 +45,7 @@ const BASE_PLAN: BillingPlan = {
 	renewalDate: new Date("2026-06-30T00:00:00Z"),
 };
 
-function createMockClient(
-	overrides: Partial<ThermoworksWebClient> = {},
-): ThermoworksWebClient {
+function createMockClient(overrides: Partial<ThermoworksWebClient> = {}): ThermoworksWebClient {
 	return {
 		isAuthenticated: true,
 		getDataUsage: vi.fn().mockResolvedValue(BASE_USAGE),
@@ -113,7 +116,13 @@ describe("DataUsage page", () => {
 		expect(await screen.findByRole("list", { name: "Per-device data usage" })).toBeInTheDocument();
 		expect(screen.getByText("Kitchen Signals")).toBeInTheDocument();
 		expect(screen.getByText("Patio Node")).toBeInTheDocument();
-		expect(screen.getByRole("progressbar", { name: "Kitchen Signals usage" })).toHaveAttribute("aria-valuenow", "75");
-		expect(screen.getByRole("progressbar", { name: "Patio Node usage" })).toHaveAttribute("aria-valuenow", "25");
+		expect(screen.getByRole("progressbar", { name: "Kitchen Signals usage" })).toHaveAttribute(
+			"aria-valuenow",
+			"75",
+		);
+		expect(screen.getByRole("progressbar", { name: "Patio Node usage" })).toHaveAttribute(
+			"aria-valuenow",
+			"25",
+		);
 	});
 });

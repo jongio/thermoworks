@@ -1,5 +1,12 @@
 import type { LucideIcon } from "lucide-react";
-import { Activity, BookOpen, Database, LayoutDashboard, Settings, ThermometerSun } from "lucide-react";
+import {
+	Activity,
+	BookOpen,
+	Database,
+	LayoutDashboard,
+	Settings,
+	ThermometerSun,
+} from "lucide-react";
 
 export interface NavItem {
 	label: string;

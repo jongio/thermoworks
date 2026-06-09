@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, useCallback, useEffect, useState } from "react";
 
 export type TemperatureUnit = "F" | "C";
 
@@ -39,7 +39,9 @@ export const TemperatureUnitContext = createContext<TemperatureUnitContextValue 
 
 export function TemperatureUnitProvider({ children }: { children: ReactNode }) {
 	const [unit, setUnit] = useState<TemperatureUnit>(getInitialUnit);
-	const [hasExplicitPreference, setHasExplicitPreference] = useState(hasStoredTemperatureUnitPreference);
+	const [hasExplicitPreference, setHasExplicitPreference] = useState(
+		hasStoredTemperatureUnitPreference,
+	);
 
 	const updateUnit = useCallback((nextUnit: TemperatureUnit) => {
 		setHasExplicitPreference(true);
@@ -61,8 +63,8 @@ export function TemperatureUnitProvider({ children }: { children: ReactNode }) {
 		(value: number, fromUnit: string): number => {
 			const normalizedFrom = fromUnit.toUpperCase();
 			if (normalizedFrom === unit) return value;
-			if (unit === "C") return (value - 32) * 5 / 9;
-			return value * 9 / 5 + 32;
+			if (unit === "C") return ((value - 32) * 5) / 9;
+			return (value * 9) / 5 + 32;
 		},
 		[unit],
 	);
@@ -76,7 +78,9 @@ export function TemperatureUnitProvider({ children }: { children: ReactNode }) {
 	);
 
 	return (
-		<TemperatureUnitContext.Provider value={{ unit, setUnit: updateUnit, toggleUnit, convert, formatTemp }}>
+		<TemperatureUnitContext.Provider
+			value={{ unit, setUnit: updateUnit, toggleUnit, convert, formatTemp }}
+		>
 			{children}
 		</TemperatureUnitContext.Provider>
 	);

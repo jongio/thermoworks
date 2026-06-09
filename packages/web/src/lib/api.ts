@@ -79,7 +79,7 @@ interface CalibrationRecord {
 	points: CalibrationPoint[];
 }
 
-export type { CalibrationRecord, CalibrationPoint };
+export type { CalibrationPoint, CalibrationRecord };
 
 interface HistoricalReading {
 	timestamp: Date;
@@ -183,7 +183,10 @@ function getStringArray(fields: FirestoreFields, key: string): string[] | null {
 	return null;
 }
 
-function getNestedFields(fields: FirestoreFields | null, ...path: string[]): FirestoreFields | null {
+function getNestedFields(
+	fields: FirestoreFields | null,
+	...path: string[]
+): FirestoreFields | null {
 	let current = fields;
 	for (const segment of path) {
 		if (!current) return null;
@@ -659,10 +662,13 @@ export class ThermoworksWebClient {
 	private persistSession(): void {
 		try {
 			if (this.token && this.projectId) {
-				sessionStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({
-					token: this.token,
-					projectId: this.projectId,
-				}));
+				sessionStorage.setItem(
+					TOKEN_STORAGE_KEY,
+					JSON.stringify({
+						token: this.token,
+						projectId: this.projectId,
+					}),
+				);
 			}
 		} catch {
 			// Storage unavailable — session won't persist across refresh
@@ -687,7 +693,9 @@ export class ThermoworksWebClient {
 		this.token = null;
 		this.accountId = null;
 		this.refreshPromise = null;
-		try { sessionStorage.removeItem(TOKEN_STORAGE_KEY); } catch {}
+		try {
+			sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+		} catch {}
 	}
 
 	private async ensureToken(): Promise<string> {
@@ -922,7 +930,9 @@ export class ThermoworksWebClient {
 
 	async getBillingPlan(): Promise<BillingPlan | null> {
 		const accountId = await this.getAccountId();
-		const accountFields = await this.fetchDocFields(`documents/accounts/${encodeURIComponent(accountId)}`);
+		const accountFields = await this.fetchDocFields(
+			`documents/accounts/${encodeURIComponent(accountId)}`,
+		);
 		if (!accountFields) return null;
 
 		const billingPlanId = getString(accountFields, "billingPlanId");
@@ -934,9 +944,7 @@ export class ThermoworksWebClient {
 		if (!planFields) return null;
 
 		return {
-			name:
-				getFirstString(planFields, "label", "name", "description") ??
-				billingPlanId,
+			name: getFirstString(planFields, "label", "name", "description") ?? billingPlanId,
 			tier: getFirstString(planFields, "tier", "id") ?? billingPlanId,
 			storageLimitBytes: resolveStorageLimitBytes(planFields, accountFields),
 			deviceLimit:
@@ -1257,8 +1265,7 @@ export class ThermoworksWebClient {
 			});
 		}
 
-		const where =
-			filters.length === 1 ? filters[0] : { compositeFilter: { op: "AND", filters } };
+		const where = filters.length === 1 ? filters[0] : { compositeFilter: { op: "AND", filters } };
 
 		const queryBody = {
 			structuredQuery: {
@@ -1418,7 +1425,11 @@ export class ThermoworksWebClient {
 		};
 		const maskPaths = `updateMask.fieldPaths=ch${channel}Min&updateMask.fieldPaths=ch${channel}Max`;
 		const path = `documents/devices/${encodeURIComponent(serial)}?${maskPaths}`;
-		const response = await this.firestoreRequest("PATCH", path, body as unknown as Record<string, unknown>);
+		const response = await this.firestoreRequest(
+			"PATCH",
+			path,
+			body as unknown as Record<string, unknown>,
+		);
 		return { success: response.ok };
 	}
 
@@ -1435,7 +1446,9 @@ export class ThermoworksWebClient {
 		);
 	}
 
-	async updateNotificationSettings(settings: Partial<NotificationSettings>): Promise<{ success: boolean }> {
+	async updateNotificationSettings(
+		settings: Partial<NotificationSettings>,
+	): Promise<{ success: boolean }> {
 		if (!this.token) throw new AuthError("Not authenticated", "NOT_AUTHENTICATED");
 		const current = await this.getNotificationSettings();
 		const merged: NotificationSettings = { ...current, ...settings };
@@ -1487,7 +1500,8 @@ function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {
 		id,
 		eventType: getString(fields, "eventType") ?? getString(fields, "EventType") ?? "",
 		severity: getNumber(fields, "severity") ?? 0,
-		eventTime: getTimestamp(fields, "EventTime") ?? getTimestamp(fields, "eventTime") ?? new Date(0),
+		eventTime:
+			getTimestamp(fields, "EventTime") ?? getTimestamp(fields, "eventTime") ?? new Date(0),
 		deviceId: getString(fields, "deviceId") ?? getString(fields, "DeviceId") ?? "",
 		channelId: getString(fields, "channelId") ?? getString(fields, "ChannelId"),
 		accountId: getString(fields, "accountId") ?? getString(fields, "AccountId") ?? "",

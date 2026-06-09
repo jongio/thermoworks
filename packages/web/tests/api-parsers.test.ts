@@ -59,12 +59,14 @@ afterEach(() => {
 describe("getString parser (via getUser)", () => {
 	it("extracts stringValue fields", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				email: { stringValue: "hello@example.com" },
-				displayName: { stringValue: "John Doe" },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					email: { stringValue: "hello@example.com" },
+					displayName: { stringValue: "John Doe" },
+				},
+			}),
+		);
 
 		const user = await client.getUser();
 		expect(user.email).toBe("hello@example.com");
@@ -83,12 +85,14 @@ describe("getString parser (via getUser)", () => {
 
 	it("returns null for nullValue fields", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				email: { nullValue: null },
-				displayName: { nullValue: null },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					email: { nullValue: null },
+					displayName: { nullValue: null },
+				},
+			}),
+		);
 
 		const user = await client.getUser();
 		expect(user.email).toBeNull();
@@ -97,11 +101,13 @@ describe("getString parser (via getUser)", () => {
 
 	it("returns null when field has wrong type (integerValue for string)", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				email: { integerValue: "42" },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					email: { integerValue: "42" },
+				},
+			}),
+		);
 
 		const user = await client.getUser();
 		expect(user.email).toBeNull();
@@ -114,16 +120,20 @@ describe("getNumber parser (via getAccount)", () => {
 	it("extracts integerValue as number", async () => {
 		const client = await makeClient();
 		// getAccountId -> getUser
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acc-1" } },
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acc-1" } },
+			}),
+		);
 		// getAccount doc
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				devicesUsed: { integerValue: "5" },
-				devicesLimit: { integerValue: "20" },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					devicesUsed: { integerValue: "5" },
+					devicesLimit: { integerValue: "20" },
+				},
+			}),
+		);
 
 		const account = await client.getAccount();
 		expect(account.devicesUsed).toBe(5);
@@ -132,15 +142,19 @@ describe("getNumber parser (via getAccount)", () => {
 
 	it("extracts doubleValue as number", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acc-1" } },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				devicesUsed: { doubleValue: 3.5 },
-				devicesLimit: { doubleValue: 10.0 },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acc-1" } },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					devicesUsed: { doubleValue: 3.5 },
+					devicesLimit: { doubleValue: 10.0 },
+				},
+			}),
+		);
 
 		const account = await client.getAccount();
 		expect(account.devicesUsed).toBe(3.5);
@@ -149,9 +163,11 @@ describe("getNumber parser (via getAccount)", () => {
 
 	it("returns null (defaulting to 0) for missing number fields", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acc-1" } },
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acc-1" } },
+			}),
+		);
 		mockFetch.mockResolvedValueOnce(jsonResponse({ fields: {} }));
 
 		const account = await client.getAccount();
@@ -165,11 +181,13 @@ describe("getNumber parser (via getAccount)", () => {
 describe("getBoolean parser (via getUser)", () => {
 	it("extracts booleanValue", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				use24Time: { booleanValue: true },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					use24Time: { booleanValue: true },
+				},
+			}),
+		);
 
 		const user = await client.getUser();
 		expect(user.use24Time).toBe(true);
@@ -185,11 +203,13 @@ describe("getBoolean parser (via getUser)", () => {
 
 	it("returns null when field has wrong type (stringValue for boolean)", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				use24Time: { stringValue: "true" },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					use24Time: { stringValue: "true" },
+				},
+			}),
+		);
 
 		const user = await client.getUser();
 		expect(user.use24Time).toBeNull();
@@ -201,11 +221,13 @@ describe("getBoolean parser (via getUser)", () => {
 describe("getTimestamp parser (via getUser)", () => {
 	it("parses valid ISO timestamp to Date", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				lastLogin: { timestampValue: "2026-06-08T14:30:00.000Z" },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					lastLogin: { timestampValue: "2026-06-08T14:30:00.000Z" },
+				},
+			}),
+		);
 
 		const user = await client.getUser();
 		expect(user.lastLogin).toEqual(new Date("2026-06-08T14:30:00.000Z"));
@@ -213,11 +235,13 @@ describe("getTimestamp parser (via getUser)", () => {
 
 	it("returns null for invalid timestamp string", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				lastLogin: { timestampValue: "not-a-date" },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					lastLogin: { timestampValue: "not-a-date" },
+				},
+			}),
+		);
 
 		const user = await client.getUser();
 		expect(user.lastLogin).toBeNull();
@@ -237,18 +261,20 @@ describe("getTimestamp parser (via getUser)", () => {
 describe("getMapFields parser (via getUser accountRoles)", () => {
 	it("extracts nested map fields", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				accountRoles: {
-					mapValue: {
-						fields: {
-							admin: { booleanValue: true },
-							viewer: { booleanValue: false },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					accountRoles: {
+						mapValue: {
+							fields: {
+								admin: { booleanValue: true },
+								viewer: { booleanValue: false },
+							},
 						},
 					},
 				},
-			},
-		}));
+			}),
+		);
 
 		const user = await client.getUser();
 		expect(user.accountRoles).toEqual({ admin: true, viewer: false });
@@ -256,11 +282,13 @@ describe("getMapFields parser (via getUser accountRoles)", () => {
 
 	it("returns null when map has no fields key", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				accountRoles: { mapValue: {} },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					accountRoles: { mapValue: {} },
+				},
+			}),
+		);
 
 		const user = await client.getUser();
 		expect(user.accountRoles).toBeNull();
@@ -268,11 +296,13 @@ describe("getMapFields parser (via getUser accountRoles)", () => {
 
 	it("returns null when field is not a mapValue", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				accountRoles: { stringValue: "not a map" },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					accountRoles: { stringValue: "not a map" },
+				},
+			}),
+		);
 
 		const user = await client.getUser();
 		expect(user.accountRoles).toBeNull();
@@ -284,17 +314,17 @@ describe("getMapFields parser (via getUser accountRoles)", () => {
 describe("getArray parser (via getTemperatureGuide categories)", () => {
 	it("extracts array values", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				categories: {
-					arrayValue: {
-						values: [
-							{ mapValue: { fields: { name: { stringValue: "Beef" } } } },
-						],
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					categories: {
+						arrayValue: {
+							values: [{ mapValue: { fields: { name: { stringValue: "Beef" } } } }],
+						},
 					},
 				},
-			},
-		}));
+			}),
+		);
 
 		const guide = await client.getTemperatureGuide();
 		expect(guide.categories).toHaveLength(1);
@@ -303,11 +333,13 @@ describe("getArray parser (via getTemperatureGuide categories)", () => {
 
 	it("returns empty categories when arrayValue has no values key", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				categories: { arrayValue: {} },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					categories: { arrayValue: {} },
+				},
+			}),
+		);
 
 		const guide = await client.getTemperatureGuide();
 		expect(guide.categories).toEqual([]);
@@ -315,11 +347,13 @@ describe("getArray parser (via getTemperatureGuide categories)", () => {
 
 	it("returns empty categories when field is not an arrayValue", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				categories: { stringValue: "not an array" },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					categories: { stringValue: "not an array" },
+				},
+			}),
+		);
 
 		const guide = await client.getTemperatureGuide();
 		expect(guide.categories).toEqual([]);
@@ -332,28 +366,32 @@ describe("getStringArray parser (via getDevices ringColors)", () => {
 	it("extracts string array values", async () => {
 		const client = await makeClient();
 		// getAccountId -> getUser
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acc-1" } },
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acc-1" } },
+			}),
+		);
 		// getDevices query
-		mockFetch.mockResolvedValueOnce(jsonResponse([
-			{
-				document: {
-					fields: {
-						serial: { stringValue: "SN-RING" },
-						ringColors: {
-							arrayValue: {
-								values: [
-									{ stringValue: "#FF0000" },
-									{ stringValue: "#00FF00" },
-									{ stringValue: "#0000FF" },
-								],
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse([
+				{
+					document: {
+						fields: {
+							serial: { stringValue: "SN-RING" },
+							ringColors: {
+								arrayValue: {
+									values: [
+										{ stringValue: "#FF0000" },
+										{ stringValue: "#00FF00" },
+										{ stringValue: "#0000FF" },
+									],
+								},
 							},
 						},
 					},
 				},
-			},
-		]));
+			]),
+		);
 
 		const devices = await client.getDevices();
 		expect(devices[0].ringColors).toEqual(["#FF0000", "#00FF00", "#0000FF"]);
@@ -361,26 +399,27 @@ describe("getStringArray parser (via getDevices ringColors)", () => {
 
 	it("returns null when array has no string values", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acc-1" } },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse([
-			{
-				document: {
-					fields: {
-						serial: { stringValue: "SN-001" },
-						ringColors: {
-							arrayValue: {
-								values: [
-									{ integerValue: "1" },
-									{ integerValue: "2" },
-								],
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acc-1" } },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse([
+				{
+					document: {
+						fields: {
+							serial: { stringValue: "SN-001" },
+							ringColors: {
+								arrayValue: {
+									values: [{ integerValue: "1" }, { integerValue: "2" }],
+								},
 							},
 						},
 					},
 				},
-			},
-		]));
+			]),
+		);
 
 		const devices = await client.getDevices();
 		expect(devices[0].ringColors).toBeNull();
@@ -388,19 +427,23 @@ describe("getStringArray parser (via getDevices ringColors)", () => {
 
 	it("returns null when arrayValue has no values", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acc-1" } },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse([
-			{
-				document: {
-					fields: {
-						serial: { stringValue: "SN-001" },
-						ringColors: { arrayValue: {} },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acc-1" } },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse([
+				{
+					document: {
+						fields: {
+							serial: { stringValue: "SN-001" },
+							ringColors: { arrayValue: {} },
+						},
 					},
 				},
-			},
-		]));
+			]),
+		);
 
 		const devices = await client.getDevices();
 		expect(devices[0].ringColors).toBeNull();
@@ -412,19 +455,21 @@ describe("getStringArray parser (via getDevices ringColors)", () => {
 describe("parseBooleanMap parser (via getUser roles)", () => {
 	it("extracts only boolean entries from map", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				roles: {
-					mapValue: {
-						fields: {
-							admin: { booleanValue: true },
-							label: { stringValue: "not a bool" },
-							editor: { booleanValue: false },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					roles: {
+						mapValue: {
+							fields: {
+								admin: { booleanValue: true },
+								label: { stringValue: "not a bool" },
+								editor: { booleanValue: false },
+							},
 						},
 					},
 				},
-			},
-		}));
+			}),
+		);
 
 		const user = await client.getUser();
 		// Only boolean entries should be included
@@ -433,17 +478,19 @@ describe("parseBooleanMap parser (via getUser roles)", () => {
 
 	it("returns null when map has no boolean entries", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				roles: {
-					mapValue: {
-						fields: {
-							name: { stringValue: "only strings" },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					roles: {
+						mapValue: {
+							fields: {
+								name: { stringValue: "only strings" },
+							},
 						},
 					},
 				},
-			},
-		}));
+			}),
+		);
 
 		const user = await client.getUser();
 		expect(user.roles).toBeNull();
@@ -455,19 +502,23 @@ describe("parseBooleanMap parser (via getUser roles)", () => {
 describe("sanitizeLabel (via getDevices label)", () => {
 	it("strips control characters from device labels", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acc-1" } },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse([
-			{
-				document: {
-					fields: {
-						serial: { stringValue: "SN-CTRL" },
-						label: { stringValue: "My\x1b[31mRed\x1b[0m Smoker" },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acc-1" } },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse([
+				{
+					document: {
+						fields: {
+							serial: { stringValue: "SN-CTRL" },
+							label: { stringValue: "My\x1b[31mRed\x1b[0m Smoker" },
+						},
 					},
 				},
-			},
-		]));
+			]),
+		);
 
 		const devices = await client.getDevices();
 		expect(devices[0].label).toBe("MyRed Smoker");
@@ -475,19 +526,23 @@ describe("sanitizeLabel (via getDevices label)", () => {
 
 	it("strips null bytes and other control chars from labels", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acc-1" } },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse([
-			{
-				document: {
-					fields: {
-						serial: { stringValue: "SN-NULL" },
-						label: { stringValue: "Clean\x00\x01\x02Label" },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acc-1" } },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse([
+				{
+					document: {
+						fields: {
+							serial: { stringValue: "SN-NULL" },
+							label: { stringValue: "Clean\x00\x01\x02Label" },
+						},
 					},
 				},
-			},
-		]));
+			]),
+		);
 
 		const devices = await client.getDevices();
 		expect(devices[0].label).toBe("CleanLabel");
@@ -495,18 +550,22 @@ describe("sanitizeLabel (via getDevices label)", () => {
 
 	it("returns null for null label", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acc-1" } },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse([
-			{
-				document: {
-					fields: {
-						serial: { stringValue: "SN-NOLABEL" },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acc-1" } },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse([
+				{
+					document: {
+						fields: {
+							serial: { stringValue: "SN-NOLABEL" },
+						},
 					},
 				},
-			},
-		]));
+			]),
+		);
 
 		const devices = await client.getDevices();
 		expect(devices[0].label).toBeNull();
@@ -518,16 +577,18 @@ describe("sanitizeLabel (via getDevices label)", () => {
 describe("extractDocId (via getArchives document name parsing)", () => {
 	it("extracts last segment from document name path", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			documents: [
-				{
-					name: "projects/thermoworks-cloud/databases/(default)/documents/devices/SN-1/archive/archive-id-123",
-					fields: {
-						label: { stringValue: "Test Archive" },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				documents: [
+					{
+						name: "projects/thermoworks-cloud/databases/(default)/documents/devices/SN-1/archive/archive-id-123",
+						fields: {
+							label: { stringValue: "Test Archive" },
+						},
 					},
-				},
-			],
-		}));
+				],
+			}),
+		);
 
 		const archives = await client.getArchives("SN-1");
 		expect(archives[0].id).toBe("archive-id-123");
@@ -535,13 +596,15 @@ describe("extractDocId (via getArchives document name parsing)", () => {
 
 	it("handles missing name field (returns empty string)", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			documents: [
-				{
-					fields: { label: { stringValue: "No Name" } },
-				},
-			],
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				documents: [
+					{
+						fields: { label: { stringValue: "No Name" } },
+					},
+				],
+			}),
+		);
 
 		const archives = await client.getArchives("SN-1");
 		expect(archives[0].id).toBe("");
@@ -553,55 +616,57 @@ describe("extractDocId (via getArchives document name parsing)", () => {
 describe("parseArchiveChannel recentReadings (via getArchives)", () => {
 	it("parses recentReadings array from archive channels", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			documents: [
-				{
-					name: "projects/p/databases/(default)/documents/devices/SN-1/archive/arc-readings",
-					fields: {
-						channels: {
-							arrayValue: {
-								values: [
-									{
-										mapValue: {
-											fields: {
-												number: { stringValue: "1" },
-												label: { stringValue: "Probe" },
-												units: { stringValue: "F" },
-												value: { doubleValue: 165 },
-												recentReadings: {
-													arrayValue: {
-														values: [
-															{
-																mapValue: {
-																	fields: {
-																		value: { doubleValue: 160.0 },
-																		timestamp: { timestampValue: "2026-06-01T10:00:00Z" },
-																		units: { stringValue: "F" },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				documents: [
+					{
+						name: "projects/p/databases/(default)/documents/devices/SN-1/archive/arc-readings",
+						fields: {
+							channels: {
+								arrayValue: {
+									values: [
+										{
+											mapValue: {
+												fields: {
+													number: { stringValue: "1" },
+													label: { stringValue: "Probe" },
+													units: { stringValue: "F" },
+													value: { doubleValue: 165 },
+													recentReadings: {
+														arrayValue: {
+															values: [
+																{
+																	mapValue: {
+																		fields: {
+																			value: { doubleValue: 160.0 },
+																			timestamp: { timestampValue: "2026-06-01T10:00:00Z" },
+																			units: { stringValue: "F" },
+																		},
 																	},
 																},
-															},
-															{
-																mapValue: {
-																	fields: {
-																		value: { doubleValue: 165.5 },
-																		timestamp: { timestampValue: "2026-06-01T10:05:00Z" },
-																		units: { stringValue: "F" },
+																{
+																	mapValue: {
+																		fields: {
+																			value: { doubleValue: 165.5 },
+																			timestamp: { timestampValue: "2026-06-01T10:05:00Z" },
+																			units: { stringValue: "F" },
+																		},
 																	},
 																},
-															},
-														],
+															],
+														},
 													},
 												},
 											},
 										},
-									},
-								],
+									],
+								},
 							},
 						},
 					},
-				},
-			],
-		}));
+				],
+			}),
+		);
 
 		const archives = await client.getArchives("SN-1");
 		const channel = archives[0].channels![0];
@@ -614,62 +679,64 @@ describe("parseArchiveChannel recentReadings (via getArchives)", () => {
 
 	it("skips incomplete reading entries (missing required fields)", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			documents: [
-				{
-					name: "projects/p/databases/(default)/documents/devices/SN-1/archive/arc-bad",
-					fields: {
-						channels: {
-							arrayValue: {
-								values: [
-									{
-										mapValue: {
-											fields: {
-												number: { stringValue: "1" },
-												recentReadings: {
-													arrayValue: {
-														values: [
-															// Missing timestamp - should be skipped
-															{
-																mapValue: {
-																	fields: {
-																		value: { doubleValue: 100 },
-																		units: { stringValue: "F" },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				documents: [
+					{
+						name: "projects/p/databases/(default)/documents/devices/SN-1/archive/arc-bad",
+						fields: {
+							channels: {
+								arrayValue: {
+									values: [
+										{
+											mapValue: {
+												fields: {
+													number: { stringValue: "1" },
+													recentReadings: {
+														arrayValue: {
+															values: [
+																// Missing timestamp - should be skipped
+																{
+																	mapValue: {
+																		fields: {
+																			value: { doubleValue: 100 },
+																			units: { stringValue: "F" },
+																		},
 																	},
 																},
-															},
-															// Missing value - should be skipped
-															{
-																mapValue: {
-																	fields: {
-																		timestamp: { timestampValue: "2026-06-01T10:00:00Z" },
-																		units: { stringValue: "F" },
+																// Missing value - should be skipped
+																{
+																	mapValue: {
+																		fields: {
+																			timestamp: { timestampValue: "2026-06-01T10:00:00Z" },
+																			units: { stringValue: "F" },
+																		},
 																	},
 																},
-															},
-															// Valid
-															{
-																mapValue: {
-																	fields: {
-																		value: { doubleValue: 155 },
-																		timestamp: { timestampValue: "2026-06-01T10:10:00Z" },
-																		units: { stringValue: "F" },
+																// Valid
+																{
+																	mapValue: {
+																		fields: {
+																			value: { doubleValue: 155 },
+																			timestamp: { timestampValue: "2026-06-01T10:10:00Z" },
+																			units: { stringValue: "F" },
+																		},
 																	},
 																},
-															},
-														],
+															],
+														},
 													},
 												},
 											},
 										},
-									},
-								],
+									],
+								},
 							},
 						},
 					},
-				},
-			],
-		}));
+				],
+			}),
+		);
 
 		const archives = await client.getArchives("SN-1");
 		const channel = archives[0].channels![0];
@@ -683,18 +750,20 @@ describe("parseArchiveChannel recentReadings (via getArchives)", () => {
 describe("parseNotificationSettings (via getUser)", () => {
 	it("defaults missing booleans to false", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				notificationSettings: {
-					mapValue: {
-						fields: {
-							// Only "enabled" is present
-							enabled: { booleanValue: true },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					notificationSettings: {
+						mapValue: {
+							fields: {
+								// Only "enabled" is present
+								enabled: { booleanValue: true },
+							},
 						},
 					},
 				},
-			},
-		}));
+			}),
+		);
 
 		const user = await client.getUser();
 		expect(user.notificationSettings).toEqual({
@@ -712,21 +781,25 @@ describe("parseNotificationSettings (via getUser)", () => {
 describe("parseDevice edge cases", () => {
 	it("handles alternate field names (battery_state vs batteryState, wifi_stength vs wifiStrength)", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acc-1" } },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse([
-			{
-				document: {
-					fields: {
-						serial: { stringValue: "SN-ALT" },
-						battery_state: { stringValue: "charging" },
-						wifi_stength: { integerValue: "-55" },
-						last_seen: { timestampValue: "2026-06-08T10:00:00Z" },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acc-1" } },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse([
+				{
+					document: {
+						fields: {
+							serial: { stringValue: "SN-ALT" },
+							battery_state: { stringValue: "charging" },
+							wifi_stength: { integerValue: "-55" },
+							last_seen: { timestampValue: "2026-06-08T10:00:00Z" },
+						},
 					},
 				},
-			},
-		]));
+			]),
+		);
 
 		const devices = await client.getDevices();
 		expect(devices[0].batteryState).toBe("charging");
@@ -736,20 +809,24 @@ describe("parseDevice edge cases", () => {
 
 	it("prefers first field name variant (battery_state over batteryState)", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acc-1" } },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse([
-			{
-				document: {
-					fields: {
-						serial: { stringValue: "SN-BOTH" },
-						battery_state: { stringValue: "first" },
-						batteryState: { stringValue: "second" },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acc-1" } },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse([
+				{
+					document: {
+						fields: {
+							serial: { stringValue: "SN-BOTH" },
+							battery_state: { stringValue: "first" },
+							batteryState: { stringValue: "second" },
+						},
 					},
 				},
-			},
-		]));
+			]),
+		);
 
 		const devices = await client.getDevices();
 		expect(devices[0].batteryState).toBe("first");
@@ -757,12 +834,12 @@ describe("parseDevice edge cases", () => {
 
 	it("returns empty serial when serial field is missing", async () => {
 		const client = await makeClient();
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acc-1" } },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse([
-			{ document: { fields: {} } },
-		]));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acc-1" } },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(jsonResponse([{ document: { fields: {} } }]));
 
 		const devices = await client.getDevices();
 		expect(devices[0].serial).toBe("");

@@ -1,8 +1,11 @@
-import { useEffect } from "react";
 import type { RefObject } from "react";
+import { useEffect } from "react";
 
 /** Close a dropdown or popover when a click occurs outside the referenced element. */
-export function useClickOutside(ref: RefObject<HTMLElement | null>, onClickOutside: () => void): void {
+export function useClickOutside(
+	ref: RefObject<HTMLElement | null>,
+	onClickOutside: () => void,
+): void {
 	useEffect(() => {
 		function handlePointerDown(event: PointerEvent) {
 			if (ref.current && !ref.current.contains(event.target as Node)) {

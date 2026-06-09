@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type {
-	BillingPlan,
-	DataUsage,
-	DeviceDataUsage,
-	ThermoworksWebClient,
-} from "../lib/api.ts";
+import type { BillingPlan, DataUsage, DeviceDataUsage, ThermoworksWebClient } from "../lib/api.ts";
 
 interface UseDataUsageResult {
 	usage: DataUsage | null;

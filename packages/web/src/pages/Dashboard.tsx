@@ -36,10 +36,12 @@ export function Dashboard() {
 	}, [data, groups, activeGroupId]);
 
 	const searchMatchDevice = useCallback(matchDevice, []);
-	const { query, setQuery, results: filteredData, isFiltering } = useSearch(
-		groupFilteredData,
-		searchMatchDevice,
-	);
+	const {
+		query,
+		setQuery,
+		results: filteredData,
+		isFiltering,
+	} = useSearch(groupFilteredData, searchMatchDevice);
 
 	return (
 		<div className="space-y-4">

@@ -1,6 +1,3 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
-import type { EventFilter } from "thermoworks-sdk";
 import {
 	Activity,
 	AlertTriangle,
@@ -11,15 +8,18 @@ import {
 	RefreshCw,
 	Square,
 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useOutletContext } from "react-router-dom";
+import type { EventFilter } from "thermoworks-sdk";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { useDevices } from "../hooks/useDevices.ts";
 import { useEvents } from "../hooks/useEvents.ts";
 import { useSessionActivity } from "../hooks/useSessionActivity.ts";
 import {
+	type ActivityItem,
 	mergeActivityItems,
 	SESSION_ENDED_TYPE,
 	SESSION_STARTED_TYPE,
-	type ActivityItem,
 	type SessionActivityItem,
 	toEventActivityItems,
 } from "../lib/activity.ts";

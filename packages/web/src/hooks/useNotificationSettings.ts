@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import type { ThermoworksWebClient } from "../lib/api.ts";
 import type { NotificationSettings } from "thermoworks-sdk";
+import type { ThermoworksWebClient } from "../lib/api.ts";
 
 type SettingKey = keyof NotificationSettings;
 

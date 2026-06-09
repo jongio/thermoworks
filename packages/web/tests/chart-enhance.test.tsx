@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TemperatureChart } from "../src/components/TemperatureChart.tsx";
 import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";
-import { downloadCSV } from "../src/lib/export.ts";
 import type { ChartDataPoint } from "../src/lib/export.ts";
+import { downloadCSV } from "../src/lib/export.ts";
 
 // Mock ResizeObserver so Recharts' ResponsiveContainer renders children in jsdom
 class MockResizeObserver {

@@ -1,7 +1,7 @@
 import { ExternalLink, Loader2, User as UserIcon } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { AccountInfo, ThermoworksWebClient } from "../lib/api.ts";
 import type { User } from "thermoworks-sdk";
+import type { AccountInfo, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { Skeleton } from "./Skeleton.tsx";
 
@@ -22,10 +22,7 @@ export function AccountPanel({ client }: AccountPanelProps) {
 
 		async function load() {
 			try {
-				const [account, user] = await Promise.all([
-					client.getAccount(),
-					client.getUser(),
-				]);
+				const [account, user] = await Promise.all([client.getAccount(), client.getUser()]);
 				if (!cancelled) {
 					setState({ status: "loaded", account, user });
 				}

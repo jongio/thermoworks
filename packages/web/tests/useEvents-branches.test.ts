@@ -1,8 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EventFilter } from "thermoworks-sdk";
-import type { ThermoworksWebClient } from "../src/lib/api.ts";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useEvents } from "../src/hooks/useEvents.ts";
+import type { ThermoworksWebClient } from "../src/lib/api.ts";
 
 function createMockClient(overrides: Partial<ThermoworksWebClient> = {}): ThermoworksWebClient {
 	return {
@@ -52,10 +52,12 @@ describe("useEvents - branch coverage", () => {
 		const getEvents = vi.fn().mockResolvedValue([{ id: "e1" }]);
 		const client = createMockClient({ getEvents });
 
-		const { result, rerender } = renderHook(
-			({ c, f }) => useEvents(c, f),
-			{ initialProps: { c: client as ThermoworksWebClient | null, f: undefined as EventFilter | undefined } },
-		);
+		const { result, rerender } = renderHook(({ c, f }) => useEvents(c, f), {
+			initialProps: {
+				c: client as ThermoworksWebClient | null,
+				f: undefined as EventFilter | undefined,
+			},
+		});
 
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
@@ -166,10 +168,9 @@ describe("useEvents - branch coverage", () => {
 		const filter1: EventFilter = { deviceId: "DEV-1", eventType: "Alarm" };
 		const filter2: EventFilter = { deviceId: "DEV-2", limit: 10 };
 
-		const { rerender } = renderHook(
-			({ f }) => useEvents(client, f),
-			{ initialProps: { f: filter1 as EventFilter | undefined } },
-		);
+		const { rerender } = renderHook(({ f }) => useEvents(client, f), {
+			initialProps: { f: filter1 as EventFilter | undefined },
+		});
 
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);

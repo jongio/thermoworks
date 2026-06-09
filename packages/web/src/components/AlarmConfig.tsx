@@ -1,6 +1,6 @@
-import type { AlarmSetOptions } from "thermoworks-sdk";
 import { Bell, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { AlarmSetOptions } from "thermoworks-sdk";
 import type { ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 
@@ -136,7 +136,17 @@ export function AlarmConfig({
 		} finally {
 			setSaving(false);
 		}
-	}, [form, client, serial, channelNumber, channelUnits, currentHighValue, currentLowValue, onClose, onSaved]);
+	}, [
+		form,
+		client,
+		serial,
+		channelNumber,
+		channelUnits,
+		currentHighValue,
+		currentLowValue,
+		onClose,
+		onSaved,
+	]);
 
 	return (
 		<div

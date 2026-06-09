@@ -28,10 +28,14 @@ export function useKeyboardShortcuts() {
 
 	const shortcuts: Shortcut[] = [
 		{ key: "r", description: "Refresh page", action: () => window.location.reload() },
-		{ key: "/", description: "Focus search bar", action: () => {
-			const searchInput = document.querySelector<HTMLInputElement>('[data-search-input]');
-			searchInput?.focus();
-		}},
+		{
+			key: "/",
+			description: "Focus search bar",
+			action: () => {
+				const searchInput = document.querySelector<HTMLInputElement>("[data-search-input]");
+				searchInput?.focus();
+			},
+		},
 		{ key: "?", description: "Show shortcuts help", action: () => setShowHelp((prev) => !prev) },
 		{ key: "Escape", description: "Close modals/panels", action: () => setShowHelp(false) },
 		...navigationItems.map((item, i) => ({

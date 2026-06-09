@@ -118,7 +118,8 @@ export function DeviceDetail() {
 					<div className="min-w-0">
 						<InlineEdit value={name} onSave={handleRename} />
 						<p className="text-sm text-muted-foreground mt-0.5">
-							{device.type ?? device.device ?? "Device"} - <span className="font-mono">{device.serial}</span>
+							{device.type ?? device.device ?? "Device"} -{" "}
+							<span className="font-mono">{device.serial}</span>
 						</p>
 					</div>
 					<div
@@ -135,7 +136,16 @@ export function DeviceDetail() {
 				<div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
 					{device.battery != null && (
 						<span className="inline-flex items-center gap-1">
-							<Battery className={cn("h-4 w-4", device.battery > 75 ? "text-green-500" : device.battery > 25 ? "text-yellow-500" : "text-red-500")} />
+							<Battery
+								className={cn(
+									"h-4 w-4",
+									device.battery > 75
+										? "text-green-500"
+										: device.battery > 25
+											? "text-yellow-500"
+											: "text-red-500",
+								)}
+							/>
 							{device.battery}%
 						</span>
 					)}
@@ -147,8 +157,7 @@ export function DeviceDetail() {
 					)}
 					{device.firmware && (
 						<span className="inline-flex items-center gap-1">
-							<Signal className="h-4 w-4" />
-							v{device.firmware}
+							<Signal className="h-4 w-4" />v{device.firmware}
 						</span>
 					)}
 				</div>
@@ -182,7 +191,12 @@ export function DeviceDetail() {
 					<h2 id="fan-heading" className="text-lg font-semibold mb-3">
 						Fan Controller
 					</h2>
-					<FanController client={client} serial={device.serial} fan={device.fan} onUpdated={refresh} />
+					<FanController
+						client={client}
+						serial={device.serial}
+						fan={device.fan}
+						onUpdated={refresh}
+					/>
 				</section>
 			)}
 
@@ -192,9 +206,7 @@ export function DeviceDetail() {
 					History
 				</h2>
 				{archiveLoading && <ChartSkeleton />}
-				{archiveError && (
-					<div className="text-sm text-destructive py-2">{archiveError}</div>
-				)}
+				{archiveError && <div className="text-sm text-destructive py-2">{archiveError}</div>}
 				{!archiveLoading && !archiveError && archiveChannels && (
 					<Suspense fallback={<ChartSkeleton />}>
 						<TemperatureChart channels={archiveChannels} />

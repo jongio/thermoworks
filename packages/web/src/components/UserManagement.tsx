@@ -41,10 +41,7 @@ export function UserManagement({ client }: UserManagementProps) {
 		setIsLoading(true);
 		setError(null);
 		try {
-			const [userData, inviteData] = await Promise.all([
-				client.getUser(),
-				client.getInvites(),
-			]);
+			const [userData, inviteData] = await Promise.all([client.getUser(), client.getInvites()]);
 			setUser(userData);
 			setInvites(inviteData);
 		} catch (err) {
@@ -128,16 +125,11 @@ export function UserManagement({ client }: UserManagementProps) {
 			) : (
 				<div className="divide-y divide-border rounded-md border border-border">
 					{invites.map((invite) => (
-						<div
-							key={invite.id}
-							className="flex items-center justify-between gap-4 px-4 py-3"
-						>
+						<div key={invite.id} className="flex items-center justify-between gap-4 px-4 py-3">
 							<div className="flex items-center gap-3 min-w-0">
 								<Mail className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
 								<div className="min-w-0">
-									<p className="text-sm font-medium truncate">
-										{invite.email ?? "Unknown email"}
-									</p>
+									<p className="text-sm font-medium truncate">{invite.email ?? "Unknown email"}</p>
 									<p className="text-xs text-muted-foreground">
 										{statusLabel(invite.status)} &middot; {formatDate(invite.createdAt)}
 									</p>

@@ -136,9 +136,7 @@ export function DeviceSettings({ client, serial, timezone, preferredUnits }: Dev
 						</button>
 
 						{saveError && <p className="text-xs text-destructive">{saveError}</p>}
-						{saveSuccess && (
-							<p className="text-xs text-green-600">Settings saved successfully.</p>
-						)}
+						{saveSuccess && <p className="text-xs text-green-600">Settings saved successfully.</p>}
 					</div>
 
 					{/* Danger Zone */}

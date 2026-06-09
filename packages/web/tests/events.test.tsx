@@ -1,9 +1,9 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Archive, DeviceEvent, EventFilter } from "thermoworks-sdk";
-import type { DeviceWithChannels, ThermoworksWebClient } from "../src/lib/api.ts";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useEvents } from "../src/hooks/useEvents.ts";
+import type { DeviceWithChannels, ThermoworksWebClient } from "../src/lib/api.ts";
 import { Events } from "../src/pages/Events.tsx";
 
 const observerInstances: MockIntersectionObserver[] = [];

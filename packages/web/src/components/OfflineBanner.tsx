@@ -23,9 +23,7 @@ export function OfflineBanner() {
 			)}
 		>
 			<WifiOff className="h-4 w-4 shrink-0" aria-hidden="true" />
-			<p className="text-sm font-medium">
-				You're offline. Data may be outdated.
-			</p>
+			<p className="text-sm font-medium">You're offline. Data may be outdated.</p>
 		</div>
 	);
 }

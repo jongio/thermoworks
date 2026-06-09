@@ -26,10 +26,7 @@ interface UseRetryResult<T> {
  * Delay formula: `baseDelay * 2^attempt` (capped internally to prevent
  * runaway timers if maxAttempts is set high).
  */
-export function useRetry<T>(
-	fn: () => Promise<T>,
-	options?: UseRetryOptions,
-): UseRetryResult<T> {
+export function useRetry<T>(fn: () => Promise<T>, options?: UseRetryOptions): UseRetryResult<T> {
 	const { maxAttempts = 3, delay = 1000 } = options ?? {};
 	const [isRetrying, setIsRetrying] = useState(false);
 	const [attempts, setAttempts] = useState(0);

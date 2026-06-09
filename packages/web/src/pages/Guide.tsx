@@ -1,10 +1,10 @@
-import { useState, useMemo } from "react";
-import { useOutletContext } from "react-router-dom";
 import { Beef, Bird, Drumstick, Fish, Search, Thermometer } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
-import type { TemperatureCategory, TemperatureGuide } from "../lib/api.ts";
 import { useTemperatureGuide } from "../hooks/useTemperatureGuide.ts";
 import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";
+import type { TemperatureCategory, TemperatureGuide } from "../lib/api.ts";
 
 // ─── Fallback guide (shown when API returns empty) ───────────────────────────
 
@@ -79,9 +79,7 @@ function CategorySection({ category }: { category: TemperatureCategory }) {
 						<span className="text-sm">
 							{item.name}
 							{item.doneness ? (
-								<span className="ml-1 text-xs text-muted-foreground">
-									({item.doneness})
-								</span>
+								<span className="ml-1 text-xs text-muted-foreground">({item.doneness})</span>
 							) : null}
 						</span>
 						<span className="font-mono text-sm font-medium">
@@ -127,9 +125,7 @@ export function Guide() {
 				<h1 className="text-lg font-semibold tracking-tight">Temperature Guide</h1>
 			</div>
 
-			{error ? (
-				<p className="text-sm text-destructive">{error}</p>
-			) : null}
+			{error ? <p className="text-sm text-destructive">{error}</p> : null}
 
 			<div className="relative">
 				<Search
@@ -149,9 +145,7 @@ export function Guide() {
 			{isLoading ? (
 				<p className="text-sm text-muted-foreground">Loading guide...</p>
 			) : filteredCategories.length === 0 ? (
-				<p className="text-sm text-muted-foreground">
-					No results found for "{search}"
-				</p>
+				<p className="text-sm text-muted-foreground">No results found for "{search}"</p>
 			) : (
 				<div className="grid gap-4 md:grid-cols-2">
 					{filteredCategories.map((cat) => (

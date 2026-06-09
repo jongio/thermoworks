@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DeviceWithChannels, ThermoworksWebClient } from "../src/lib/api.ts";
 import { useDevices } from "../src/hooks/useDevices.ts";
+import type { DeviceWithChannels, ThermoworksWebClient } from "../src/lib/api.ts";
 
 function createMockClient(overrides: Partial<ThermoworksWebClient> = {}): ThermoworksWebClient {
 	return {

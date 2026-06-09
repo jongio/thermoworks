@@ -16,7 +16,15 @@ interface ToggleRowProps {
 	onToggle: (field: SettingKey) => void;
 }
 
-function ToggleRow({ label, description, checked, disabled, saving, field, onToggle }: ToggleRowProps) {
+function ToggleRow({
+	label,
+	description,
+	checked,
+	disabled,
+	saving,
+	field,
+	onToggle,
+}: ToggleRowProps) {
 	const id = `notif-${field}`;
 	return (
 		<div className="flex items-start justify-between gap-4 py-3">
@@ -27,7 +35,9 @@ function ToggleRow({ label, description, checked, disabled, saving, field, onTog
 				<p className="text-xs text-muted-foreground">{description}</p>
 			</div>
 			<div className="flex items-center gap-2">
-				{saving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-hidden="true" />}
+				{saving && (
+					<Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-hidden="true" />
+				)}
 				<button
 					id={id}
 					type="button"
@@ -104,9 +114,7 @@ export function NotificationPrefs({ client }: NotificationPrefsProps) {
 	}
 
 	if (error) {
-		return (
-			<p className="py-4 text-sm text-destructive">{error}</p>
-		);
+		return <p className="py-4 text-sm text-destructive">{error}</p>;
 	}
 
 	return (
@@ -131,9 +139,7 @@ export function NotificationPrefs({ client }: NotificationPrefsProps) {
 					/>
 				))}
 			</div>
-			{saveError && (
-				<p className="mt-2 text-xs text-destructive">{saveError}</p>
-			)}
+			{saveError && <p className="mt-2 text-xs text-destructive">{saveError}</p>}
 		</section>
 	);
 }

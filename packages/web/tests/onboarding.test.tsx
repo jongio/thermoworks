@@ -70,12 +70,17 @@ function makeDevice(overrides: Partial<Device> = {}): Device {
 	};
 }
 
-function makeMockClient(devices: Device[] = [makeDevice(), makeDevice({
-	serial: "TW-002",
-	label: "Kitchen Probe",
-	type: "Smoke",
-	device: "smoke",
-})]): ThermoworksWebClient {
+function makeMockClient(
+	devices: Device[] = [
+		makeDevice(),
+		makeDevice({
+			serial: "TW-002",
+			label: "Kitchen Probe",
+			type: "Smoke",
+			device: "smoke",
+		}),
+	],
+): ThermoworksWebClient {
 	return {
 		isAuthenticated: true,
 		getDevices: vi.fn().mockResolvedValue(devices),

@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	type AlarmState,
 	AuthError,
-	ThermoworksWebClient,
 	getChannelAlarmState,
 	getPublicArchive,
 	getPublicDevice,
 	getPublicDeviceChannels,
+	ThermoworksWebClient,
 } from "../src/lib/api.ts";
 
 // ─── Fetch mock infrastructure ──────────────────────────────────────────────
@@ -101,8 +101,22 @@ describe("getChannelAlarmState", () => {
 			estimatedAlarmStatus: null,
 			rateOfChange: null,
 			rateOfChangeUnit: null,
-			alarmHigh: { enabled: true, alarming: true, muted: null, value: 180, units: "F", lastNotified: null },
-			alarmLow: { enabled: true, alarming: false, muted: null, value: 32, units: "F", lastNotified: null },
+			alarmHigh: {
+				enabled: true,
+				alarming: true,
+				muted: null,
+				value: 180,
+				units: "F",
+				lastNotified: null,
+			},
+			alarmLow: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 32,
+				units: "F",
+				lastNotified: null,
+			},
 			minimum: null,
 			maximum: null,
 		};
@@ -126,8 +140,22 @@ describe("getChannelAlarmState", () => {
 			estimatedAlarmStatus: null,
 			rateOfChange: null,
 			rateOfChangeUnit: null,
-			alarmHigh: { enabled: true, alarming: false, muted: null, value: 180, units: "F", lastNotified: null },
-			alarmLow: { enabled: true, alarming: true, muted: null, value: 32, units: "F", lastNotified: null },
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 180,
+				units: "F",
+				lastNotified: null,
+			},
+			alarmLow: {
+				enabled: true,
+				alarming: true,
+				muted: null,
+				value: 32,
+				units: "F",
+				lastNotified: null,
+			},
 			minimum: null,
 			maximum: null,
 		};
@@ -151,8 +179,22 @@ describe("getChannelAlarmState", () => {
 			estimatedAlarmStatus: null,
 			rateOfChange: null,
 			rateOfChangeUnit: null,
-			alarmHigh: { enabled: true, alarming: false, muted: null, value: 180, units: "F", lastNotified: null },
-			alarmLow: { enabled: true, alarming: false, muted: null, value: 32, units: "F", lastNotified: null },
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 180,
+				units: "F",
+				lastNotified: null,
+			},
+			alarmLow: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 32,
+				units: "F",
+				lastNotified: null,
+			},
 			minimum: null,
 			maximum: null,
 		};
@@ -161,10 +203,25 @@ describe("getChannelAlarmState", () => {
 
 	it("returns 'none' when alarms are null", () => {
 		const channel = {
-			value: 100, units: "F", label: null, status: null, type: null, number: null,
-			enabled: null, color: null, lastSeen: null, lastTelemetrySaved: null, lastEventId: null,
-			showAvgTemp: null, estimatedAlarmStatus: null, rateOfChange: null, rateOfChangeUnit: null,
-			alarmHigh: null, alarmLow: null, minimum: null, maximum: null,
+			value: 100,
+			units: "F",
+			label: null,
+			status: null,
+			type: null,
+			number: null,
+			enabled: null,
+			color: null,
+			lastSeen: null,
+			lastTelemetrySaved: null,
+			lastEventId: null,
+			showAvgTemp: null,
+			estimatedAlarmStatus: null,
+			rateOfChange: null,
+			rateOfChangeUnit: null,
+			alarmHigh: null,
+			alarmLow: null,
+			minimum: null,
+			maximum: null,
 		};
 		expect(getChannelAlarmState(channel)).toBe("none");
 	});
@@ -186,8 +243,22 @@ describe("getChannelAlarmState", () => {
 			estimatedAlarmStatus: null,
 			rateOfChange: null,
 			rateOfChangeUnit: null,
-			alarmHigh: { enabled: true, alarming: true, muted: null, value: 180, units: "F", lastNotified: null },
-			alarmLow: { enabled: true, alarming: true, muted: null, value: 32, units: "F", lastNotified: null },
+			alarmHigh: {
+				enabled: true,
+				alarming: true,
+				muted: null,
+				value: 180,
+				units: "F",
+				lastNotified: null,
+			},
+			alarmLow: {
+				enabled: true,
+				alarming: true,
+				muted: null,
+				value: 32,
+				units: "F",
+				lastNotified: null,
+			},
 			minimum: null,
 			maximum: null,
 		};
@@ -314,14 +385,14 @@ describe("ThermoworksWebClient", () => {
 			await client.login("test@example.com", "pass");
 
 			// Next call triggers refresh, then the actual request
-			mockFetch
-				.mockResolvedValueOnce(jsonResponse(REFRESH_RESPONSE))
-				.mockResolvedValueOnce(jsonResponse({
+			mockFetch.mockResolvedValueOnce(jsonResponse(REFRESH_RESPONSE)).mockResolvedValueOnce(
+				jsonResponse({
 					fields: {
 						accountId: { stringValue: "acc-1" },
 						email: { stringValue: "test@example.com" },
 					},
-				}));
+				}),
+			);
 
 			const user = await client.getUser();
 			expect(user.email).toBe("test@example.com");
@@ -354,33 +425,35 @@ describe("ThermoworksWebClient", () => {
 	describe("getUser", () => {
 		it("fetches user document and parses all fields", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: {
-					accountId: { stringValue: "acc-42" },
-					email: { stringValue: "user@test.com" },
-					displayName: { stringValue: "Test User" },
-					timeZone: { stringValue: "America/Denver" },
-					preferredUnits: { stringValue: "F" },
-					locale: { stringValue: "en-US" },
-					photoURL: { stringValue: "https://example.com/photo.png" },
-					use24Time: { booleanValue: false },
-					lastLogin: { timestampValue: "2026-01-01T00:00:00Z" },
-					appVersion: { stringValue: "2.0.1" },
-					accountRoles: { mapValue: { fields: { admin: { booleanValue: true } } } },
-					roles: { mapValue: { fields: { owner: { booleanValue: true } } } },
-					notificationSettings: {
-						mapValue: {
-							fields: {
-								enabled: { booleanValue: true },
-								continuousAlerts: { booleanValue: false },
-								emailNotification: { booleanValue: true },
-								smsNotification: { booleanValue: false },
-								deviceNotification: { booleanValue: true },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: {
+						accountId: { stringValue: "acc-42" },
+						email: { stringValue: "user@test.com" },
+						displayName: { stringValue: "Test User" },
+						timeZone: { stringValue: "America/Denver" },
+						preferredUnits: { stringValue: "F" },
+						locale: { stringValue: "en-US" },
+						photoURL: { stringValue: "https://example.com/photo.png" },
+						use24Time: { booleanValue: false },
+						lastLogin: { timestampValue: "2026-01-01T00:00:00Z" },
+						appVersion: { stringValue: "2.0.1" },
+						accountRoles: { mapValue: { fields: { admin: { booleanValue: true } } } },
+						roles: { mapValue: { fields: { owner: { booleanValue: true } } } },
+						notificationSettings: {
+							mapValue: {
+								fields: {
+									enabled: { booleanValue: true },
+									continuousAlerts: { booleanValue: false },
+									emailNotification: { booleanValue: true },
+									smsNotification: { booleanValue: false },
+									deviceNotification: { booleanValue: true },
+								},
 							},
 						},
 					},
-				},
-			}));
+				}),
+			);
 
 			const user = await client.getUser();
 			expect(user.userId).toBe("user-123");
@@ -435,24 +508,30 @@ describe("ThermoworksWebClient", () => {
 		it("fetches and parses account document", async () => {
 			const client = await createAuthenticatedClient();
 			// getAccountId -> getUser
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-99" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-99" } },
+				}),
+			);
 			// getAccount doc fetch
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: {
-					name: { stringValue: "My Account" },
-					billingPlanId: { stringValue: "plan-pro" },
-					devicesUsed: { integerValue: "3" },
-				},
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: {
+						name: { stringValue: "My Account" },
+						billingPlanId: { stringValue: "plan-pro" },
+						devicesUsed: { integerValue: "3" },
+					},
+				}),
+			);
 			// billing plan lookup
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: {
-					name: { stringValue: "Pro" },
-					deviceCount: { integerValue: "10" },
-				},
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: {
+						name: { stringValue: "Pro" },
+						deviceCount: { integerValue: "10" },
+					},
+				}),
+			);
 
 			const account = await client.getAccount();
 			expect(account.id).toBe("acc-99");
@@ -465,9 +544,11 @@ describe("ThermoworksWebClient", () => {
 
 		it("returns defaults when account document not found", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-99" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-99" } },
+				}),
+			);
 			mockFetch.mockResolvedValueOnce(errorResponse(404));
 
 			const account = await client.getAccount();
@@ -484,34 +565,38 @@ describe("ThermoworksWebClient", () => {
 		it("queries Firestore with account filter and parses devices", async () => {
 			const client = await createAuthenticatedClient();
 			// getAccountId -> getUser
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			// runQuery
-			mockFetch.mockResolvedValueOnce(jsonResponse([
-				{
-					document: {
-						fields: {
-							serial: { stringValue: "SN-001" },
-							label: { stringValue: "Smoker" },
-							type: { stringValue: "signals" },
-							status: { stringValue: "online" },
-							battery: { integerValue: "95" },
-							firmware: { stringValue: "1.0.2" },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse([
+					{
+						document: {
+							fields: {
+								serial: { stringValue: "SN-001" },
+								label: { stringValue: "Smoker" },
+								type: { stringValue: "signals" },
+								status: { stringValue: "online" },
+								battery: { integerValue: "95" },
+								firmware: { stringValue: "1.0.2" },
+							},
 						},
 					},
-				},
-				{
-					document: {
-						fields: {
-							serial: { stringValue: "SN-002" },
-							label: { stringValue: "Oven" },
-							type: { stringValue: "node" },
-							status: { stringValue: "offline" },
+					{
+						document: {
+							fields: {
+								serial: { stringValue: "SN-002" },
+								label: { stringValue: "Oven" },
+								type: { stringValue: "node" },
+								status: { stringValue: "offline" },
+							},
 						},
 					},
-				},
-			]));
+				]),
+			);
 
 			const devices = await client.getDevices();
 			expect(devices).toHaveLength(2);
@@ -533,9 +618,11 @@ describe("ThermoworksWebClient", () => {
 
 		it("returns empty array when response is not an array", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			mockFetch.mockResolvedValueOnce(jsonResponse({ notAnArray: true }));
 
 			const devices = await client.getDevices();
@@ -544,14 +631,18 @@ describe("ThermoworksWebClient", () => {
 
 		it("skips results without document fields", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
-			mockFetch.mockResolvedValueOnce(jsonResponse([
-				{ readTime: "2026-01-01T00:00:00Z" }, // no document
-				{ document: {} }, // no fields
-				{ document: { fields: { serial: { stringValue: "SN-003" } } } },
-			]));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse([
+					{ readTime: "2026-01-01T00:00:00Z" }, // no document
+					{ document: {} }, // no fields
+					{ document: { fields: { serial: { stringValue: "SN-003" } } } },
+				]),
+			);
 
 			const devices = await client.getDevices();
 			expect(devices).toHaveLength(1);
@@ -560,40 +651,44 @@ describe("ThermoworksWebClient", () => {
 
 		it("parses device with gateway, fan, and bigQuery nested maps", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
-			mockFetch.mockResolvedValueOnce(jsonResponse([
-				{
-					document: {
-						fields: {
-							serial: { stringValue: "SN-GW" },
-							gatewayId: { stringValue: "gw-123" },
-							gatewayRSSI: { integerValue: "-45" },
-							gatewayLastSeen: { timestampValue: "2026-06-01T12:00:00Z" },
-							fan: {
-								mapValue: {
-									fields: {
-										connected: { booleanValue: true },
-										connection: { booleanValue: true },
-										setTemp: { doubleValue: 225.0 },
-										fan_channel: { stringValue: "ch1" },
-										state: { integerValue: "2" },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse([
+					{
+						document: {
+							fields: {
+								serial: { stringValue: "SN-GW" },
+								gatewayId: { stringValue: "gw-123" },
+								gatewayRSSI: { integerValue: "-45" },
+								gatewayLastSeen: { timestampValue: "2026-06-01T12:00:00Z" },
+								fan: {
+									mapValue: {
+										fields: {
+											connected: { booleanValue: true },
+											connection: { booleanValue: true },
+											setTemp: { doubleValue: 225.0 },
+											fan_channel: { stringValue: "ch1" },
+											state: { integerValue: "2" },
+										},
 									},
 								},
-							},
-							bigQuery: {
-								mapValue: {
-									fields: {
-										datasetId: { stringValue: "ds-1" },
-										tableId: { stringValue: "tbl-1" },
+								bigQuery: {
+									mapValue: {
+										fields: {
+											datasetId: { stringValue: "ds-1" },
+											tableId: { stringValue: "tbl-1" },
+										},
 									},
 								},
 							},
 						},
 					},
-				},
-			]));
+				]),
+			);
 
 			const devices = await client.getDevices();
 			expect(devices[0].gateway).toEqual({
@@ -624,14 +719,52 @@ describe("ThermoworksWebClient", () => {
 			const client = await createAuthenticatedClient();
 
 			// Single collection GET returns documents array
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				documents: [
-					{ fields: { number: { stringValue: "1" }, value: { doubleValue: 101 }, units: { stringValue: "F" }, label: { stringValue: "Channel 1" }, status: { stringValue: "active" }, enabled: { booleanValue: true } } },
-					{ fields: { number: { stringValue: "2" }, value: { doubleValue: 102 }, units: { stringValue: "F" }, label: { stringValue: "Channel 2" }, status: { stringValue: "active" }, enabled: { booleanValue: true } } },
-					{ fields: { number: { stringValue: "3" }, value: { doubleValue: 103 }, units: { stringValue: "F" }, label: { stringValue: "Channel 3" }, status: { stringValue: "active" }, enabled: { booleanValue: true } } },
-					{ fields: { number: { stringValue: "4" }, value: { doubleValue: 104 }, units: { stringValue: "F" }, label: { stringValue: "Channel 4" }, status: { stringValue: "active" }, enabled: { booleanValue: true } } },
-				],
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					documents: [
+						{
+							fields: {
+								number: { stringValue: "1" },
+								value: { doubleValue: 101 },
+								units: { stringValue: "F" },
+								label: { stringValue: "Channel 1" },
+								status: { stringValue: "active" },
+								enabled: { booleanValue: true },
+							},
+						},
+						{
+							fields: {
+								number: { stringValue: "2" },
+								value: { doubleValue: 102 },
+								units: { stringValue: "F" },
+								label: { stringValue: "Channel 2" },
+								status: { stringValue: "active" },
+								enabled: { booleanValue: true },
+							},
+						},
+						{
+							fields: {
+								number: { stringValue: "3" },
+								value: { doubleValue: 103 },
+								units: { stringValue: "F" },
+								label: { stringValue: "Channel 3" },
+								status: { stringValue: "active" },
+								enabled: { booleanValue: true },
+							},
+						},
+						{
+							fields: {
+								number: { stringValue: "4" },
+								value: { doubleValue: 104 },
+								units: { stringValue: "F" },
+								label: { stringValue: "Channel 4" },
+								status: { stringValue: "active" },
+								enabled: { booleanValue: true },
+							},
+						},
+					],
+				}),
+			);
 
 			const channels = await client.getAllDeviceChannels("SN-001");
 			expect(channels).toHaveLength(4);
@@ -660,58 +793,66 @@ describe("ThermoworksWebClient", () => {
 		it("parses alarm and min/max data on channels", async () => {
 			const client = await createAuthenticatedClient();
 			// Single collection GET returns documents array with one channel
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				documents: [{
-					fields: {
-						number: { stringValue: "1" },
-						value: { doubleValue: 165.5 },
-						units: { stringValue: "F" },
-						label: { stringValue: "Meat" },
-						enabled: { booleanValue: true },
-						status: { stringValue: "active" },
-						alarmHigh: {
-							mapValue: {
-								fields: {
-									enabled: { booleanValue: true },
-									alarming: { booleanValue: false },
-									value: { doubleValue: 200.0 },
-									units: { stringValue: "F" },
-								},
-							},
-						},
-						alarmLow: {
-							mapValue: {
-								fields: {
-									enabled: { booleanValue: true },
-									alarming: { booleanValue: false },
-									value: { doubleValue: 32.0 },
-									units: { stringValue: "F" },
-								},
-							},
-						},
-						minimum: {
-							mapValue: {
-								fields: {
-									reading: {
-										mapValue: { fields: { value: { doubleValue: 40.0 }, units: { stringValue: "F" } } },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					documents: [
+						{
+							fields: {
+								number: { stringValue: "1" },
+								value: { doubleValue: 165.5 },
+								units: { stringValue: "F" },
+								label: { stringValue: "Meat" },
+								enabled: { booleanValue: true },
+								status: { stringValue: "active" },
+								alarmHigh: {
+									mapValue: {
+										fields: {
+											enabled: { booleanValue: true },
+											alarming: { booleanValue: false },
+											value: { doubleValue: 200.0 },
+											units: { stringValue: "F" },
+										},
 									},
-									dateReading: { timestampValue: "2026-06-01T10:00:00Z" },
 								},
-							},
-						},
-						maximum: {
-							mapValue: {
-								fields: {
-									reading: {
-										mapValue: { fields: { value: { doubleValue: 190.0 }, units: { stringValue: "F" } } },
+								alarmLow: {
+									mapValue: {
+										fields: {
+											enabled: { booleanValue: true },
+											alarming: { booleanValue: false },
+											value: { doubleValue: 32.0 },
+											units: { stringValue: "F" },
+										},
 									},
-									dateReading: { timestampValue: "2026-06-01T14:00:00Z" },
+								},
+								minimum: {
+									mapValue: {
+										fields: {
+											reading: {
+												mapValue: {
+													fields: { value: { doubleValue: 40.0 }, units: { stringValue: "F" } },
+												},
+											},
+											dateReading: { timestampValue: "2026-06-01T10:00:00Z" },
+										},
+									},
+								},
+								maximum: {
+									mapValue: {
+										fields: {
+											reading: {
+												mapValue: {
+													fields: { value: { doubleValue: 190.0 }, units: { stringValue: "F" } },
+												},
+											},
+											dateReading: { timestampValue: "2026-06-01T14:00:00Z" },
+										},
+									},
 								},
 							},
 						},
-					},
-				}],
-			}));
+					],
+				}),
+			);
 
 			const channels = await client.getAllDeviceChannels("SN-001");
 			expect(channels).toHaveLength(1);
@@ -739,19 +880,29 @@ describe("ThermoworksWebClient", () => {
 		it("returns devices paired with their channels", async () => {
 			const client = await createAuthenticatedClient();
 			// getAccountId -> getUser
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			// getDevices query
-			mockFetch.mockResolvedValueOnce(jsonResponse([
-				{ document: { fields: { serial: { stringValue: "SN-A" } } } },
-			]));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse([{ document: { fields: { serial: { stringValue: "SN-A" } } } }]),
+			);
 			// getAllDeviceChannels for SN-A (single collection GET)
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				documents: [
-					{ fields: { number: { stringValue: "1" }, value: { doubleValue: 72 }, units: { stringValue: "F" } } },
-				],
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					documents: [
+						{
+							fields: {
+								number: { stringValue: "1" },
+								value: { doubleValue: 72 },
+								units: { stringValue: "F" },
+							},
+						},
+					],
+				}),
+			);
 
 			const result = await client.getDevicesWithChannels();
 			expect(result).toHaveLength(1);
@@ -766,37 +917,39 @@ describe("ThermoworksWebClient", () => {
 	describe("getArchives", () => {
 		it("fetches archive list with pagination", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				documents: [
-					{
-						name: "projects/p/databases/(default)/documents/devices/SN-1/archive/arc-1",
-						fields: {
-							start: { timestampValue: "2026-01-01T00:00:00Z" },
-							end: { timestampValue: "2026-01-01T06:00:00Z" },
-							count: { integerValue: "1200" },
-							type: { stringValue: "session" },
-							label: { stringValue: "Brisket Cook" },
-							createdOn: { timestampValue: "2026-01-01T06:00:00Z" },
-							channels: {
-								arrayValue: {
-									values: [
-										{
-											mapValue: {
-												fields: {
-													number: { stringValue: "1" },
-													label: { stringValue: "Meat" },
-													units: { stringValue: "F" },
-													value: { doubleValue: 203 },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					documents: [
+						{
+							name: "projects/p/databases/(default)/documents/devices/SN-1/archive/arc-1",
+							fields: {
+								start: { timestampValue: "2026-01-01T00:00:00Z" },
+								end: { timestampValue: "2026-01-01T06:00:00Z" },
+								count: { integerValue: "1200" },
+								type: { stringValue: "session" },
+								label: { stringValue: "Brisket Cook" },
+								createdOn: { timestampValue: "2026-01-01T06:00:00Z" },
+								channels: {
+									arrayValue: {
+										values: [
+											{
+												mapValue: {
+													fields: {
+														number: { stringValue: "1" },
+														label: { stringValue: "Meat" },
+														units: { stringValue: "F" },
+														value: { doubleValue: 203 },
+													},
 												},
 											},
-										},
-									],
+										],
+									},
 								},
 							},
 						},
-					},
-				],
-			}));
+					],
+				}),
+			);
 
 			const archives = await client.getArchives("SN-1", 10);
 			expect(archives).toHaveLength(1);
@@ -843,70 +996,72 @@ describe("ThermoworksWebClient", () => {
 	describe("getTemperatureGuide", () => {
 		it("parses nested category/item structure", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: {
-					categories: {
-						arrayValue: {
-							values: [
-								{
-									mapValue: {
-										fields: {
-											name: { stringValue: "Beef" },
-											items: {
-												arrayValue: {
-													values: [
-														{
-															mapValue: {
-																fields: {
-																	name: { stringValue: "Medium Rare" },
-																	temp: { integerValue: "130" },
-																	units: { stringValue: "F" },
-																	doneness: { stringValue: "pink center" },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: {
+						categories: {
+							arrayValue: {
+								values: [
+									{
+										mapValue: {
+											fields: {
+												name: { stringValue: "Beef" },
+												items: {
+													arrayValue: {
+														values: [
+															{
+																mapValue: {
+																	fields: {
+																		name: { stringValue: "Medium Rare" },
+																		temp: { integerValue: "130" },
+																		units: { stringValue: "F" },
+																		doneness: { stringValue: "pink center" },
+																	},
 																},
 															},
-														},
-														{
-															mapValue: {
-																fields: {
-																	name: { stringValue: "Well Done" },
-																	temp: { doubleValue: 160.0 },
-																	units: { stringValue: "F" },
+															{
+																mapValue: {
+																	fields: {
+																		name: { stringValue: "Well Done" },
+																		temp: { doubleValue: 160.0 },
+																		units: { stringValue: "F" },
+																	},
 																},
 															},
-														},
-													],
+														],
+													},
 												},
 											},
 										},
 									},
-								},
-								{
-									mapValue: {
-										fields: {
-											name: { stringValue: "Poultry" },
-											items: {
-												arrayValue: {
-													values: [
-														{
-															mapValue: {
-																fields: {
-																	name: { stringValue: "Chicken" },
-																	temp: { integerValue: "165" },
-																	units: { stringValue: "F" },
+									{
+										mapValue: {
+											fields: {
+												name: { stringValue: "Poultry" },
+												items: {
+													arrayValue: {
+														values: [
+															{
+																mapValue: {
+																	fields: {
+																		name: { stringValue: "Chicken" },
+																		temp: { integerValue: "165" },
+																		units: { stringValue: "F" },
+																	},
 																},
 															},
-														},
-													],
+														],
+													},
 												},
 											},
 										},
 									},
-								},
-							],
+								],
+							},
 						},
 					},
-				},
-			}));
+				}),
+			);
 
 			const guide = await client.getTemperatureGuide();
 			expect(guide.categories).toHaveLength(2);
@@ -933,18 +1088,20 @@ describe("ThermoworksWebClient", () => {
 
 		it("handles non-map values in categories array", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: {
-					categories: {
-						arrayValue: {
-							values: [
-								{ stringValue: "not a map" },
-								{ mapValue: { fields: { name: { stringValue: "Valid" } } } },
-							],
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: {
+						categories: {
+							arrayValue: {
+								values: [
+									{ stringValue: "not a map" },
+									{ mapValue: { fields: { name: { stringValue: "Valid" } } } },
+								],
+							},
 						},
 					},
-				},
-			}));
+				}),
+			);
 
 			const guide = await client.getTemperatureGuide();
 			expect(guide.categories).toHaveLength(2);
@@ -958,14 +1115,16 @@ describe("ThermoworksWebClient", () => {
 	describe("getFirmwareInfo", () => {
 		it("fetches and parses firmware document", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: {
-					name: { stringValue: "Signals" },
-					version: { stringValue: "2.3.1" },
-					location: { stringValue: "https://fw.example.com/signals-2.3.1.bin" },
-					md5: { stringValue: "abc123def456" },
-				},
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: {
+						name: { stringValue: "Signals" },
+						version: { stringValue: "2.3.1" },
+						location: { stringValue: "https://fw.example.com/signals-2.3.1.bin" },
+						md5: { stringValue: "abc123def456" },
+					},
+				}),
+			);
 
 			const fw = await client.getFirmwareInfo("signals");
 			expect(fw).toEqual({
@@ -1082,28 +1241,32 @@ describe("ThermoworksWebClient", () => {
 		it("builds query with accountId filter and parses results", async () => {
 			const client = await createAuthenticatedClient();
 			// getAccountId -> getUser
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			// runQuery
-			mockFetch.mockResolvedValueOnce(jsonResponse([
-				{
-					document: {
-						name: "projects/p/databases/(default)/documents/events/evt-1",
-						fields: {
-							eventType: { stringValue: "High Temperature Alert" },
-							severity: { integerValue: "3" },
-							eventTime: { timestampValue: "2026-06-01T10:00:00Z" },
-							deviceId: { stringValue: "SN-001" },
-							channelId: { stringValue: "1" },
-							accountId: { stringValue: "acc-1" },
-							valueBefore: { stringValue: "170" },
-							valueAfter: { stringValue: "205" },
-							groups: { arrayValue: { values: [{ stringValue: "grp-1" }] } },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse([
+					{
+						document: {
+							name: "projects/p/databases/(default)/documents/events/evt-1",
+							fields: {
+								eventType: { stringValue: "High Temperature Alert" },
+								severity: { integerValue: "3" },
+								eventTime: { timestampValue: "2026-06-01T10:00:00Z" },
+								deviceId: { stringValue: "SN-001" },
+								channelId: { stringValue: "1" },
+								accountId: { stringValue: "acc-1" },
+								valueBefore: { stringValue: "170" },
+								valueAfter: { stringValue: "205" },
+								groups: { arrayValue: { values: [{ stringValue: "grp-1" }] } },
+							},
 						},
 					},
-				},
-			]));
+				]),
+			);
 
 			const events = await client.getEvents();
 			expect(events).toHaveLength(1);
@@ -1119,9 +1282,11 @@ describe("ThermoworksWebClient", () => {
 
 		it("builds composite filter with deviceId and eventType", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			mockFetch.mockResolvedValueOnce(jsonResponse([]));
 
 			await client.getEvents({ deviceId: "SN-001", eventType: "alarm", limit: 10 });
@@ -1142,9 +1307,11 @@ describe("ThermoworksWebClient", () => {
 
 		it("respects limit clamping (1-500)", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			mockFetch.mockResolvedValueOnce(jsonResponse([]));
 
 			await client.getEvents({ limit: 9999 });
@@ -1154,9 +1321,11 @@ describe("ThermoworksWebClient", () => {
 
 		it("returns empty array on non-array response", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			mockFetch.mockResolvedValueOnce(jsonResponse({ notAnArray: true }));
 
 			const events = await client.getEvents();
@@ -1213,9 +1382,9 @@ describe("ThermoworksWebClient", () => {
 			const client = await createAuthenticatedClient();
 			mockFetch.mockResolvedValueOnce(errorResponse(400));
 
-			await expect(
-				client.setAlarm("SN-001", 1, { high: { value: 200 } }),
-			).rejects.toThrow("Failed to set alarm");
+			await expect(client.setAlarm("SN-001", 1, { high: { value: 200 } })).rejects.toThrow(
+				"Failed to set alarm",
+			);
 		});
 	});
 
@@ -1298,44 +1467,46 @@ describe("ThermoworksWebClient", () => {
 	describe("getCalibration", () => {
 		it("fetches calibration records and parses points", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				documents: [
-					{
-						name: "projects/p/databases/(default)/documents/devices/SN-1/calibration/cal-1",
-						fields: {
-							calibratedAt: { timestampValue: "2026-03-15T09:00:00Z" },
-							source: { stringValue: "ice-bath" },
-							result: { stringValue: "pass" },
-							ambientTemp: { doubleValue: 72.0 },
-							ambientUnits: { stringValue: "F" },
-							points: {
-								arrayValue: {
-									values: [
-										{
-											mapValue: {
-												fields: {
-													referenceTemp: { doubleValue: 32.0 },
-													measuredTemp: { doubleValue: 32.1 },
-													units: { stringValue: "F" },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					documents: [
+						{
+							name: "projects/p/databases/(default)/documents/devices/SN-1/calibration/cal-1",
+							fields: {
+								calibratedAt: { timestampValue: "2026-03-15T09:00:00Z" },
+								source: { stringValue: "ice-bath" },
+								result: { stringValue: "pass" },
+								ambientTemp: { doubleValue: 72.0 },
+								ambientUnits: { stringValue: "F" },
+								points: {
+									arrayValue: {
+										values: [
+											{
+												mapValue: {
+													fields: {
+														referenceTemp: { doubleValue: 32.0 },
+														measuredTemp: { doubleValue: 32.1 },
+														units: { stringValue: "F" },
+													},
 												},
 											},
-										},
-										{
-											mapValue: {
-												fields: {
-													referenceTemp: { doubleValue: 212.0 },
-													measuredTemp: { doubleValue: 211.8 },
-													units: { stringValue: "F" },
+											{
+												mapValue: {
+													fields: {
+														referenceTemp: { doubleValue: 212.0 },
+														measuredTemp: { doubleValue: 211.8 },
+														units: { stringValue: "F" },
+													},
 												},
 											},
-										},
-									],
+										],
+									},
 								},
 							},
 						},
-					},
-				],
-			}));
+					],
+				}),
+			);
 
 			const records = await client.getCalibration("SN-1");
 			expect(records).toHaveLength(1);
@@ -1346,7 +1517,11 @@ describe("ThermoworksWebClient", () => {
 			expect(records[0].date).toEqual(new Date("2026-03-15T09:00:00Z"));
 			expect(records[0].points).toHaveLength(2);
 			expect(records[0].points[0]).toEqual({ referenceTemp: 32.0, measuredTemp: 32.1, units: "F" });
-			expect(records[0].points[1]).toEqual({ referenceTemp: 212.0, measuredTemp: 211.8, units: "F" });
+			expect(records[0].points[1]).toEqual({
+				referenceTemp: 212.0,
+				measuredTemp: 211.8,
+				units: "F",
+			});
 		});
 
 		it("returns empty array on HTTP error", async () => {
@@ -1363,35 +1538,37 @@ describe("ThermoworksWebClient", () => {
 	describe("getHistory", () => {
 		it("fetches and parses historical readings with channel data", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				documents: [
-					{
-						fields: {
-							timestamp: { timestampValue: "2026-06-01T12:00:00Z" },
-							channels: {
-								mapValue: {
-									fields: {
-										ch1: { doubleValue: 165.5 },
-										ch2: { integerValue: "225" },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					documents: [
+						{
+							fields: {
+								timestamp: { timestampValue: "2026-06-01T12:00:00Z" },
+								channels: {
+									mapValue: {
+										fields: {
+											ch1: { doubleValue: 165.5 },
+											ch2: { integerValue: "225" },
+										},
 									},
 								},
 							},
 						},
-					},
-					{
-						fields: {
-							timestamp: { timestampValue: "2026-06-01T12:05:00Z" },
-							channels: {
-								mapValue: {
-									fields: {
-										ch1: { doubleValue: 167.0 },
+						{
+							fields: {
+								timestamp: { timestampValue: "2026-06-01T12:05:00Z" },
+								channels: {
+									mapValue: {
+										fields: {
+											ch1: { doubleValue: 167.0 },
+										},
 									},
 								},
 							},
 						},
-					},
-				],
-			}));
+					],
+				}),
+			);
 
 			const history = await client.getHistory("SN-001");
 			expect(history.readings).toHaveLength(2);
@@ -1438,22 +1615,26 @@ describe("ThermoworksWebClient", () => {
 	describe("getInvites", () => {
 		it("queries usersInvites collection and parses results", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
-			mockFetch.mockResolvedValueOnce(jsonResponse([
-				{
-					document: {
-						name: "projects/p/databases/(default)/documents/usersInvites/inv-1",
-						fields: {
-							accountId: { stringValue: "acc-1" },
-							email: { stringValue: "invitee@test.com" },
-							status: { stringValue: "pending" },
-							createdAt: { stringValue: "2026-05-01" },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse([
+					{
+						document: {
+							name: "projects/p/databases/(default)/documents/usersInvites/inv-1",
+							fields: {
+								accountId: { stringValue: "acc-1" },
+								email: { stringValue: "invitee@test.com" },
+								status: { stringValue: "pending" },
+								createdAt: { stringValue: "2026-05-01" },
+							},
 						},
 					},
-				},
-			]));
+				]),
+			);
 
 			const invites = await client.getInvites();
 			expect(invites).toHaveLength(1);
@@ -1464,9 +1645,11 @@ describe("ThermoworksWebClient", () => {
 
 		it("returns empty array on non-array response", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			mockFetch.mockResolvedValueOnce(jsonResponse({}));
 
 			const invites = await client.getInvites();
@@ -1479,9 +1662,11 @@ describe("ThermoworksWebClient", () => {
 	describe("removeUser", () => {
 		it("sends DELETE to user path under account", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			mockFetch.mockResolvedValueOnce(jsonResponse({}));
 
 			const result = await client.removeUser("user-456");
@@ -1498,20 +1683,26 @@ describe("ThermoworksWebClient", () => {
 	describe("getDeviceGroups", () => {
 		it("fetches and parses groups", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				documents: [
-					{
-						name: "projects/p/databases/(default)/documents/accounts/acc-1/groups/grp-1",
-						fields: {
-							name: { stringValue: "BBQ Setup" },
-							devices: { arrayValue: { values: [{ stringValue: "SN-001" }, { stringValue: "SN-002" }] } },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					documents: [
+						{
+							name: "projects/p/databases/(default)/documents/accounts/acc-1/groups/grp-1",
+							fields: {
+								name: { stringValue: "BBQ Setup" },
+								devices: {
+									arrayValue: { values: [{ stringValue: "SN-001" }, { stringValue: "SN-002" }] },
+								},
+							},
 						},
-					},
-				],
-			}));
+					],
+				}),
+			);
 
 			const groups = await client.getDeviceGroups();
 			expect(groups).toHaveLength(1);
@@ -1522,9 +1713,11 @@ describe("ThermoworksWebClient", () => {
 
 		it("returns empty array on HTTP error", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			mockFetch.mockResolvedValueOnce(errorResponse(500));
 
 			const groups = await client.getDeviceGroups();
@@ -1535,16 +1728,20 @@ describe("ThermoworksWebClient", () => {
 	describe("createDeviceGroup", () => {
 		it("sends POST with group data and returns parsed result", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				name: "projects/p/databases/(default)/documents/accounts/acc-1/groups/grp-new",
-				fields: {
-					name: { stringValue: "New Group" },
-					devices: { arrayValue: { values: [{ stringValue: "SN-001" }] } },
-				},
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					name: "projects/p/databases/(default)/documents/accounts/acc-1/groups/grp-new",
+					fields: {
+						name: { stringValue: "New Group" },
+						devices: { arrayValue: { values: [{ stringValue: "SN-001" }] } },
+					},
+				}),
+			);
 
 			const group = await client.createDeviceGroup("New Group", ["SN-001"]);
 			expect(group.id).toBe("grp-new");
@@ -1554,9 +1751,11 @@ describe("ThermoworksWebClient", () => {
 
 		it("throws on HTTP error", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			mockFetch.mockResolvedValueOnce(errorResponse(400));
 
 			await expect(client.createDeviceGroup("Bad", [])).rejects.toThrow(
@@ -1568,9 +1767,11 @@ describe("ThermoworksWebClient", () => {
 	describe("deleteDeviceGroup", () => {
 		it("sends DELETE request for group", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			mockFetch.mockResolvedValueOnce(jsonResponse({}));
 
 			await client.deleteDeviceGroup("grp-1");
@@ -1581,9 +1782,11 @@ describe("ThermoworksWebClient", () => {
 
 		it("throws on HTTP error", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: { accountId: { stringValue: "acc-1" } },
-			}));
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
 			mockFetch.mockResolvedValueOnce(errorResponse(404));
 
 			await expect(client.deleteDeviceGroup("grp-x")).rejects.toThrow(
@@ -1597,21 +1800,23 @@ describe("ThermoworksWebClient", () => {
 	describe("getNotificationSettings", () => {
 		it("returns user notification settings", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: {
-					notificationSettings: {
-						mapValue: {
-							fields: {
-								enabled: { booleanValue: true },
-								continuousAlerts: { booleanValue: true },
-								emailNotification: { booleanValue: false },
-								smsNotification: { booleanValue: true },
-								deviceNotification: { booleanValue: false },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: {
+						notificationSettings: {
+							mapValue: {
+								fields: {
+									enabled: { booleanValue: true },
+									continuousAlerts: { booleanValue: true },
+									emailNotification: { booleanValue: false },
+									smsNotification: { booleanValue: true },
+									deviceNotification: { booleanValue: false },
+								},
 							},
 						},
 					},
-				},
-			}));
+				}),
+			);
 
 			const settings = await client.getNotificationSettings();
 			expect(settings).toEqual({
@@ -1642,21 +1847,23 @@ describe("ThermoworksWebClient", () => {
 		it("merges partial settings and sends PATCH", async () => {
 			const client = await createAuthenticatedClient();
 			// First call: getNotificationSettings -> getUser
-			mockFetch.mockResolvedValueOnce(jsonResponse({
-				fields: {
-					notificationSettings: {
-						mapValue: {
-							fields: {
-								enabled: { booleanValue: true },
-								continuousAlerts: { booleanValue: false },
-								emailNotification: { booleanValue: false },
-								smsNotification: { booleanValue: false },
-								deviceNotification: { booleanValue: false },
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: {
+						notificationSettings: {
+							mapValue: {
+								fields: {
+									enabled: { booleanValue: true },
+									continuousAlerts: { booleanValue: false },
+									emailNotification: { booleanValue: false },
+									smsNotification: { booleanValue: false },
+									deviceNotification: { booleanValue: false },
+								},
 							},
 						},
 					},
-				},
-			}));
+				}),
+			);
 			// PATCH response
 			mockFetch.mockResolvedValueOnce(jsonResponse({}));
 
@@ -1674,9 +1881,7 @@ describe("ThermoworksWebClient", () => {
 
 		it("throws when not authenticated", async () => {
 			const client = new ThermoworksWebClient();
-			await expect(
-				client.updateNotificationSettings({ enabled: true }),
-			).rejects.toThrow(AuthError);
+			await expect(client.updateNotificationSettings({ enabled: true })).rejects.toThrow(AuthError);
 		});
 	});
 });
@@ -1690,31 +1895,39 @@ describe("ThermoworksWebClient data usage", () => {
 	it("fetches total usage with plan limits and billing period", async () => {
 		const client = await createAuthenticatedClient();
 
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acct-usage" } },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			result: { totalBytes: 3_221_225_472 },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				billingPlanId: { stringValue: "plan-pro" },
-				periodStart: { timestampValue: "2026-06-01T00:00:00Z" },
-				currentPeriodEnd: { timestampValue: "2026-06-30T00:00:00Z" },
-				devicesUsed: { integerValue: "2" },
-			},
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				dataLoggerSettings: {
-					mapValue: {
-						fields: {
-							storageLimitBytes: { integerValue: "4294967296" },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acct-usage" } },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				result: { totalBytes: 3_221_225_472 },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					billingPlanId: { stringValue: "plan-pro" },
+					periodStart: { timestampValue: "2026-06-01T00:00:00Z" },
+					currentPeriodEnd: { timestampValue: "2026-06-30T00:00:00Z" },
+					devicesUsed: { integerValue: "2" },
+				},
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					dataLoggerSettings: {
+						mapValue: {
+							fields: {
+								storageLimitBytes: { integerValue: "4294967296" },
+							},
 						},
 					},
 				},
-			},
-		}));
+			}),
+		);
 
 		const usage = await client.getDataUsage();
 
@@ -1731,35 +1944,41 @@ describe("ThermoworksWebClient data usage", () => {
 	it("fetches and enriches per-device usage from callable functions", async () => {
 		const client = await createAuthenticatedClient();
 
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acct-usage" } },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			result: [
-				{ deviceId: "SN-001", bytes: 1_048_576 },
-				{ deviceId: "dev-2", bytes: 524_288 },
-			],
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse([
-			{
-				document: {
-					fields: {
-						serial: { stringValue: "SN-001" },
-						label: { stringValue: "Kitchen Signals" },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acct-usage" } },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				result: [
+					{ deviceId: "SN-001", bytes: 1_048_576 },
+					{ deviceId: "dev-2", bytes: 524_288 },
+				],
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse([
+				{
+					document: {
+						fields: {
+							serial: { stringValue: "SN-001" },
+							label: { stringValue: "Kitchen Signals" },
+						},
 					},
 				},
-			},
-			{
-				document: {
-					fields: {
-						serial: { stringValue: "SN-002" },
-						deviceId: { stringValue: "dev-2" },
-						label: { stringValue: "Patio Node" },
-						lastTelemetrySaved: { timestampValue: "2026-06-08T20:00:00Z" },
+				{
+					document: {
+						fields: {
+							serial: { stringValue: "SN-002" },
+							deviceId: { stringValue: "dev-2" },
+							label: { stringValue: "Patio Node" },
+							lastTelemetrySaved: { timestampValue: "2026-06-08T20:00:00Z" },
+						},
 					},
 				},
-			},
-		]));
+			]),
+		);
 
 		const deviceUsage = await client.getDataUsageByDevice();
 
@@ -1785,33 +2004,39 @@ describe("ThermoworksWebClient data usage", () => {
 	it("fetches billing plan metadata for the usage dashboard", async () => {
 		const client = await createAuthenticatedClient();
 
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: { accountId: { stringValue: "acct-usage" } },
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				billingPlanId: { stringValue: "plan-pro" },
-				renewalDate: { timestampValue: "2026-06-30T00:00:00Z" },
-				devicesLimit: { integerValue: "10" },
-			},
-		}));
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				label: { stringValue: "ThermoWorks Pro" },
-				tier: { stringValue: "pro" },
-				deviceCount: { integerValue: "10" },
-				monthlyAmount: { integerValue: "999" },
-				currency: { stringValue: "USD" },
-				dataLoggerSettings: {
-					mapValue: {
-						fields: {
-							storageLimitBytes: { integerValue: "4294967296" },
-							retentionDays: { integerValue: "90" },
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: { accountId: { stringValue: "acct-usage" } },
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					billingPlanId: { stringValue: "plan-pro" },
+					renewalDate: { timestampValue: "2026-06-30T00:00:00Z" },
+					devicesLimit: { integerValue: "10" },
+				},
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					label: { stringValue: "ThermoWorks Pro" },
+					tier: { stringValue: "pro" },
+					deviceCount: { integerValue: "10" },
+					monthlyAmount: { integerValue: "999" },
+					currency: { stringValue: "USD" },
+					dataLoggerSettings: {
+						mapValue: {
+							fields: {
+								storageLimitBytes: { integerValue: "4294967296" },
+								retentionDays: { integerValue: "90" },
+							},
 						},
 					},
 				},
-			},
-		}));
+			}),
+		);
 
 		const plan = await client.getBillingPlan();
 
@@ -1850,14 +2075,16 @@ describe("getPublicDevice", () => {
 		// getProjectId
 		mockFetch.mockResolvedValueOnce(jsonResponse(PROJECT_ID_RESPONSE));
 		// publicFirestoreGet
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				serial: { stringValue: "SN-PUB" },
-				label: { stringValue: "Public Smoker" },
-				public: { booleanValue: true },
-				status: { stringValue: "online" },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					serial: { stringValue: "SN-PUB" },
+					label: { stringValue: "Public Smoker" },
+					public: { booleanValue: true },
+					status: { stringValue: "online" },
+				},
+			}),
+		);
 
 		const device = await getPublicDevice("SN-PUB");
 		expect(device).not.toBeNull();
@@ -1867,12 +2094,14 @@ describe("getPublicDevice", () => {
 
 	it("returns null if device exists but public=false", async () => {
 		mockFetch.mockResolvedValueOnce(jsonResponse(PROJECT_ID_RESPONSE));
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				serial: { stringValue: "SN-PRIV" },
-				public: { booleanValue: false },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					serial: { stringValue: "SN-PRIV" },
+					public: { booleanValue: false },
+				},
+			}),
+		);
 
 		const device = await getPublicDevice("SN-PRIV");
 		expect(device).toBeNull();
@@ -1911,13 +2140,15 @@ describe("getPublicDeviceChannels", () => {
 		// cachedProjectId may persist - mock both calls)
 		mockFetch.mockResolvedValueOnce(jsonResponse(PROJECT_ID_RESPONSE));
 		// Channel 1: has data
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				number: { stringValue: "1" },
-				value: { doubleValue: 155 },
-				units: { stringValue: "F" },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					number: { stringValue: "1" },
+					value: { doubleValue: 155 },
+					units: { stringValue: "F" },
+				},
+			}),
+		);
 		// Channels 2-9: 404
 		for (let i = 0; i < 8; i++) {
 			mockFetch.mockResolvedValueOnce(errorResponse(404));
@@ -1947,14 +2178,16 @@ describe("getPublicArchive", () => {
 	it("fetches public archive when public=true", async () => {
 		// Note: cachedProjectId is already populated by earlier getPublicDevice tests,
 		// so getProjectId() won't make a fetch call - only the archive fetch happens.
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				start: { timestampValue: "2026-01-01T00:00:00Z" },
-				end: { timestampValue: "2026-01-01T06:00:00Z" },
-				label: { stringValue: "Public Cook" },
-				public: { booleanValue: true },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					start: { timestampValue: "2026-01-01T00:00:00Z" },
+					end: { timestampValue: "2026-01-01T06:00:00Z" },
+					label: { stringValue: "Public Cook" },
+					public: { booleanValue: true },
+				},
+			}),
+		);
 
 		const archive = await getPublicArchive("SN-001", "arc-pub");
 		expect(archive).not.toBeNull();
@@ -1963,12 +2196,14 @@ describe("getPublicArchive", () => {
 	});
 
 	it("returns null when archive exists but public=false", async () => {
-		mockFetch.mockResolvedValueOnce(jsonResponse({
-			fields: {
-				label: { stringValue: "Private Cook" },
-				public: { booleanValue: false },
-			},
-		}));
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				fields: {
+					label: { stringValue: "Private Cook" },
+					public: { booleanValue: false },
+				},
+			}),
+		);
 
 		const archive = await getPublicArchive("SN-001", "arc-priv");
 		expect(archive).toBeNull();

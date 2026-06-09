@@ -80,9 +80,13 @@ export function DataUsage() {
 
 	const limitBytes = usage?.limitBytes || plan?.storageLimitBytes || 0;
 	const usagePercent = limitBytes > 0 && usage ? (usage.totalBytes / limitBytes) * 100 : 0;
-	const usageTone =
-		usagePercent >= 90 ? "danger" : usagePercent >= 70 ? "warning" : "default";
-	const hasNoUsage = !isLoading && !error && (!!usage || !!plan) && (usage?.totalBytes ?? 0) === 0 && deviceUsage.length === 0;
+	const usageTone = usagePercent >= 90 ? "danger" : usagePercent >= 70 ? "warning" : "default";
+	const hasNoUsage =
+		!isLoading &&
+		!error &&
+		(!!usage || !!plan) &&
+		(usage?.totalBytes ?? 0) === 0 &&
+		deviceUsage.length === 0;
 
 	return (
 		<div className="space-y-6">
@@ -108,7 +112,10 @@ export function DataUsage() {
 						"disabled:pointer-events-none disabled:opacity-50",
 					)}
 				>
-					<RefreshCw className={cn("h-3.5 w-3.5", isLoading && "animate-spin")} aria-hidden="true" />
+					<RefreshCw
+						className={cn("h-3.5 w-3.5", isLoading && "animate-spin")}
+						aria-hidden="true"
+					/>
 					Refresh
 				</button>
 			</div>
@@ -176,11 +183,7 @@ export function DataUsage() {
 								)}
 							</div>
 
-							<UsageProgressBar
-								label="Storage usage"
-								percent={usagePercent}
-								tone={usageTone}
-							/>
+							<UsageProgressBar label="Storage usage" percent={usagePercent} tone={usageTone} />
 						</div>
 					</section>
 

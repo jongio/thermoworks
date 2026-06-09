@@ -190,7 +190,10 @@ describe("InlineEdit", () => {
 		it("disables inputs during save", async () => {
 			let resolvePromise: (v: { success: boolean }) => void;
 			const onSave = vi.fn().mockImplementation(
-				() => new Promise((resolve) => { resolvePromise = resolve; }),
+				() =>
+					new Promise((resolve) => {
+						resolvePromise = resolve;
+					}),
 			);
 			render(<InlineEdit value="Kitchen Probe" onSave={onSave} />);
 			fireEvent.click(screen.getByRole("button", { name: /rename/i }));

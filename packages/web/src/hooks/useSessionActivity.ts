@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ThermoworksWebClient } from "../lib/api.ts";
 import {
 	mergeItemsById,
 	type SessionActivityItem,
 	toSessionActivityItems,
 } from "../lib/activity.ts";
+import type { ThermoworksWebClient } from "../lib/api.ts";
 
 const POLL_INTERVAL_MS = 30_000;
 const MAX_ARCHIVE_PAGE_SIZE = 500;
@@ -39,6 +39,7 @@ export function useSessionActivity(
 	const requestIdRef = useRef(0);
 	const limitRef = useRef(ARCHIVE_PAGE_STEP);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: refs are stable
 	const fetchActivity = useCallback(
 		async (options: { limit?: number; merge?: boolean; loadingMore?: boolean } = {}) => {
 			if (!client?.isAuthenticated || sortedSerials.length === 0) {
@@ -120,6 +121,7 @@ export function useSessionActivity(
 		await fetchActivity({ limit: nextLimit, loadingMore: true });
 	}, [fetchActivity, hasMore, isLoadingMore]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset state on filter change
 	useEffect(() => {
 		limitRef.current = ARCHIVE_PAGE_STEP;
 		setData([]);
@@ -130,6 +132,7 @@ export function useSessionActivity(
 		setIsLoadingMore(false);
 	}, [client, serialKey, sortedSerials.length]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: polling setup with stable refs
 	useEffect(() => {
 		if (!client?.isAuthenticated || sortedSerials.length === 0) {
 			return;

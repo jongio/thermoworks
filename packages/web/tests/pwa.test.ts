@@ -30,9 +30,7 @@ describe("PWA manifest", () => {
 	it("has the full favicon and PWA icon set", () => {
 		expect(manifest.icons.length).toBeGreaterThanOrEqual(5);
 
-		const sizes = manifest.icons.map(
-			(i: { sizes: string }) => i.sizes,
-		);
+		const sizes = manifest.icons.map((i: { sizes: string }) => i.sizes);
 		expect(sizes).toContain("16x16");
 		expect(sizes).toContain("32x32");
 		expect(sizes).toContain("192x192");
@@ -49,8 +47,7 @@ describe("PWA manifest", () => {
 	it("marks installable PNG icons as maskable", () => {
 		const installIcons = manifest.icons.filter(
 			(icon: { type: string; sizes: string }) =>
-				icon.type === "image/png" &&
-				(icon.sizes === "192x192" || icon.sizes === "512x512"),
+				icon.type === "image/png" && (icon.sizes === "192x192" || icon.sizes === "512x512"),
 		);
 
 		expect(installIcons).toHaveLength(2);
@@ -122,10 +119,7 @@ describe("service worker", () => {
 });
 
 describe("service worker registration", () => {
-	const main = readFileSync(
-		resolve(WEB_ROOT, "src", "main.tsx"),
-		"utf-8",
-	);
+	const main = readFileSync(resolve(WEB_ROOT, "src", "main.tsx"), "utf-8");
 
 	it("checks for serviceWorker support before registering", () => {
 		expect(main).toContain('"serviceWorker" in navigator');

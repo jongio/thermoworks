@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DeviceHistory } from "../lib/api.ts";
-import type { ThermoworksWebClient } from "../lib/api.ts";
+import type { DeviceHistory, ThermoworksWebClient } from "../lib/api.ts";
 
 interface UseHistoryResult {
 	history: DeviceHistory | null;

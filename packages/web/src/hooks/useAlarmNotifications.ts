@@ -11,11 +11,7 @@ function alarmKey(serial: string, channelIndex: number, state: "low" | "high"): 
 }
 
 /** Build the notification body from channel data and alarm direction. */
-function buildBody(
-	channel: DeviceChannel,
-	index: number,
-	state: "low" | "high",
-): string {
+function buildBody(channel: DeviceChannel, index: number, state: "low" | "high"): string {
 	const label = channel.label ?? `Channel ${index + 1}`;
 	const temp = channel.value != null ? channel.value.toFixed(1) : "??";
 	const units = channel.units ?? "F";

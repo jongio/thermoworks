@@ -49,7 +49,10 @@ function PointsTable({ points, label }: { points: CalibrationPoint[]; label: str
 					</thead>
 					<tbody>
 						{points.map((point, idx) => (
-							<tr key={`${point.channel}-${idx}`} className="border-b border-border/50 last:border-0">
+							<tr
+								key={`${point.channel}-${idx}`}
+								className="border-b border-border/50 last:border-0"
+							>
 								<td className="py-1.5 pr-3 tabular-nums">{point.channel}</td>
 								<td className="py-1.5 pr-3 tabular-nums font-mono">
 									{formatTemp(point.referenceValue, point.units)}
@@ -85,13 +88,9 @@ function CalibrationRecordCard({ record }: { record: CalibrationRecord }) {
 		<div className="rounded-md border border-border p-4">
 			<div className="flex items-start justify-between gap-3">
 				<div className="min-w-0">
-					<p className="text-sm font-medium truncate">
-						{formatDate(record.calibrationDate)}
-					</p>
+					<p className="text-sm font-medium truncate">{formatDate(record.calibrationDate)}</p>
 					{record.performedBy && (
-						<p className="text-xs text-muted-foreground mt-0.5">
-							By: {record.performedBy}
-						</p>
+						<p className="text-xs text-muted-foreground mt-0.5">By: {record.performedBy}</p>
 					)}
 				</div>
 				{record.result && (
@@ -108,23 +107,15 @@ function CalibrationRecordCard({ record }: { record: CalibrationRecord }) {
 
 			{(record.referenceDetail || record.statedAccuracy) && (
 				<div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-					{record.referenceDetail && (
-						<span>Ref: {record.referenceDetail}</span>
-					)}
-					{record.statedAccuracy && (
-						<span>Accuracy: {record.statedAccuracy}</span>
-					)}
+					{record.referenceDetail && <span>Ref: {record.referenceDetail}</span>}
+					{record.statedAccuracy && <span>Accuracy: {record.statedAccuracy}</span>}
 				</div>
 			)}
 
 			{(record.ambientTemperature || record.ambientHumidity) && (
 				<div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-					{record.ambientTemperature && (
-						<span>Ambient: {record.ambientTemperature}</span>
-					)}
-					{record.ambientHumidity && (
-						<span>Humidity: {record.ambientHumidity}</span>
-					)}
+					{record.ambientTemperature && <span>Ambient: {record.ambientTemperature}</span>}
+					{record.ambientHumidity && <span>Humidity: {record.ambientHumidity}</span>}
 				</div>
 			)}
 

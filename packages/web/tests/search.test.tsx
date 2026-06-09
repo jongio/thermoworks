@@ -1,5 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { act, renderHook } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SearchBar } from "../src/components/SearchBar.tsx";
 import { useSearch } from "../src/hooks/useSearch.ts";
@@ -152,10 +151,9 @@ describe("useSearch", () => {
 	});
 
 	it("updates results when items change", async () => {
-		const { result, rerender } = renderHook(
-			({ list }) => useSearch(list, matchItem),
-			{ initialProps: { list: items } },
-		);
+		const { result, rerender } = renderHook(({ list }) => useSearch(list, matchItem), {
+			initialProps: { list: items },
+		});
 
 		act(() => {
 			result.current.setQuery("smoker");

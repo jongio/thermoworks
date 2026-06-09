@@ -58,7 +58,9 @@ describe("NotificationPrefs", () => {
 			});
 
 			expect(screen.getByText(/master toggle for all notification channels/i)).toBeInTheDocument();
-			expect(screen.getByText(/keep alerting until the alarm condition clears/i)).toBeInTheDocument();
+			expect(
+				screen.getByText(/keep alerting until the alarm condition clears/i),
+			).toBeInTheDocument();
 			expect(screen.getByText(/receive alarm alerts via email/i)).toBeInTheDocument();
 			expect(screen.getByText(/receive alarm alerts via text message/i)).toBeInTheDocument();
 			expect(screen.getByText(/receive alarm alerts on your mobile device/i)).toBeInTheDocument();
@@ -79,9 +81,18 @@ describe("NotificationPrefs", () => {
 				render(<NotificationPrefs client={client} />);
 			});
 
-			expect(screen.getByRole("switch", { name: /enable notifications/i })).toHaveAttribute("aria-checked", "true");
-			expect(screen.getByRole("switch", { name: /continuous alerts/i })).toHaveAttribute("aria-checked", "false");
-			expect(screen.getByRole("switch", { name: /email notifications/i })).toHaveAttribute("aria-checked", "true");
+			expect(screen.getByRole("switch", { name: /enable notifications/i })).toHaveAttribute(
+				"aria-checked",
+				"true",
+			);
+			expect(screen.getByRole("switch", { name: /continuous alerts/i })).toHaveAttribute(
+				"aria-checked",
+				"false",
+			);
+			expect(screen.getByRole("switch", { name: /email notifications/i })).toHaveAttribute(
+				"aria-checked",
+				"true",
+			);
 		});
 	});
 

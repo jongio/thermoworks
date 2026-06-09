@@ -50,20 +50,18 @@ export function App() {
 
 	return (
 		<TemperatureUnitProvider>
-			<>
-				<AppLayout client={client} onLogout={handleLogout} />
-				{showOnboarding && (
-					<OnboardingWizard
-						client={client}
-						onComplete={() =>
-							setAppState((current) => ({
-								...current,
-								showOnboarding: false,
-							}))
-						}
-					/>
-				)}
-			</>
+			<AppLayout client={client} onLogout={handleLogout} />
+			{showOnboarding && (
+				<OnboardingWizard
+					client={client}
+					onComplete={() =>
+						setAppState((current) => ({
+							...current,
+							showOnboarding: false,
+						}))
+					}
+				/>
+			)}
 		</TemperatureUnitProvider>
 	);
 }

@@ -193,9 +193,7 @@ function CreateGroupDialog({ devices, onSubmit, onClose }: CreateGroupDialogProp
 									className="rounded border-border"
 								/>
 								<span>{item.device.label ?? item.device.serial}</span>
-								<span className="text-xs text-muted-foreground ml-auto">
-									{item.device.serial}
-								</span>
+								<span className="text-xs text-muted-foreground ml-auto">{item.device.serial}</span>
 							</label>
 						))}
 					</div>

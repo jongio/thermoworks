@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
 import type { CalibrationRecord } from "thermoworks-sdk";
-import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";
+import { describe, expect, it } from "vitest";
 import { CalibrationView } from "../src/components/CalibrationView.tsx";
+import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";
 
 function makeRecord(overrides: Partial<CalibrationRecord> = {}): CalibrationRecord {
 	return {

@@ -17,12 +17,7 @@ describe("DeviceSettings", () => {
 		it("renders collapsed by default with Settings heading", () => {
 			const client = makeMockClient();
 			render(
-				<DeviceSettings
-					client={client}
-					serial="TW-001"
-					timezone={null}
-					preferredUnits={null}
-				/>,
+				<DeviceSettings client={client} serial="TW-001" timezone={null} preferredUnits={null} />,
 			);
 
 			expect(screen.getByRole("heading", { name: /settings/i })).toBeInTheDocument();
@@ -32,12 +27,7 @@ describe("DeviceSettings", () => {
 		it("expands when header is clicked", () => {
 			const client = makeMockClient();
 			render(
-				<DeviceSettings
-					client={client}
-					serial="TW-001"
-					timezone={null}
-					preferredUnits={null}
-				/>,
+				<DeviceSettings client={client} serial="TW-001" timezone={null} preferredUnits={null} />,
 			);
 
 			fireEvent.click(screen.getByRole("button", { name: /settings/i }));
@@ -49,12 +39,7 @@ describe("DeviceSettings", () => {
 		it("collapses when header is clicked again", () => {
 			const client = makeMockClient();
 			render(
-				<DeviceSettings
-					client={client}
-					serial="TW-001"
-					timezone={null}
-					preferredUnits={null}
-				/>,
+				<DeviceSettings client={client} serial="TW-001" timezone={null} preferredUnits={null} />,
 			);
 
 			const toggle = screen.getByRole("button", { name: /settings/i });
@@ -115,12 +100,7 @@ describe("DeviceSettings", () => {
 			} as unknown as Partial<ThermoworksWebClient>);
 
 			render(
-				<DeviceSettings
-					client={client}
-					serial="TW-001"
-					timezone={null}
-					preferredUnits={null}
-				/>,
+				<DeviceSettings client={client} serial="TW-001" timezone={null} preferredUnits={null} />,
 			);
 
 			fireEvent.click(screen.getByRole("button", { name: /settings/i }));
@@ -134,14 +114,7 @@ describe("DeviceSettings", () => {
 
 		it("omits timezone from state when field is empty", async () => {
 			const client = makeMockClient();
-			render(
-				<DeviceSettings
-					client={client}
-					serial="TW-001"
-					timezone={null}
-					preferredUnits="F"
-				/>,
-			);
+			render(<DeviceSettings client={client} serial="TW-001" timezone={null} preferredUnits="F" />);
 
 			fireEvent.click(screen.getByRole("button", { name: /settings/i }));
 
@@ -159,12 +132,7 @@ describe("DeviceSettings", () => {
 		it("disables factory reset button until serial is typed", () => {
 			const client = makeMockClient();
 			render(
-				<DeviceSettings
-					client={client}
-					serial="TW-001"
-					timezone={null}
-					preferredUnits={null}
-				/>,
+				<DeviceSettings client={client} serial="TW-001" timezone={null} preferredUnits={null} />,
 			);
 
 			fireEvent.click(screen.getByRole("button", { name: /settings/i }));
@@ -176,12 +144,7 @@ describe("DeviceSettings", () => {
 		it("enables factory reset button when serial matches", () => {
 			const client = makeMockClient();
 			render(
-				<DeviceSettings
-					client={client}
-					serial="TW-001"
-					timezone={null}
-					preferredUnits={null}
-				/>,
+				<DeviceSettings client={client} serial="TW-001" timezone={null} preferredUnits={null} />,
 			);
 
 			fireEvent.click(screen.getByRole("button", { name: /settings/i }));
@@ -196,12 +159,7 @@ describe("DeviceSettings", () => {
 		it("calls factoryReset when confirmed", async () => {
 			const client = makeMockClient();
 			render(
-				<DeviceSettings
-					client={client}
-					serial="TW-001"
-					timezone={null}
-					preferredUnits={null}
-				/>,
+				<DeviceSettings client={client} serial="TW-001" timezone={null} preferredUnits={null} />,
 			);
 
 			fireEvent.click(screen.getByRole("button", { name: /settings/i }));
@@ -219,12 +177,7 @@ describe("DeviceSettings", () => {
 		it("shows success message after factory reset", async () => {
 			const client = makeMockClient();
 			render(
-				<DeviceSettings
-					client={client}
-					serial="TW-001"
-					timezone={null}
-					preferredUnits={null}
-				/>,
+				<DeviceSettings client={client} serial="TW-001" timezone={null} preferredUnits={null} />,
 			);
 
 			fireEvent.click(screen.getByRole("button", { name: /settings/i }));
@@ -245,12 +198,7 @@ describe("DeviceSettings", () => {
 			} as unknown as Partial<ThermoworksWebClient>);
 
 			render(
-				<DeviceSettings
-					client={client}
-					serial="TW-001"
-					timezone={null}
-					preferredUnits={null}
-				/>,
+				<DeviceSettings client={client} serial="TW-001" timezone={null} preferredUnits={null} />,
 			);
 
 			fireEvent.click(screen.getByRole("button", { name: /settings/i }));
@@ -268,12 +216,7 @@ describe("DeviceSettings", () => {
 		it("does not call factoryReset when serial does not match", () => {
 			const client = makeMockClient();
 			render(
-				<DeviceSettings
-					client={client}
-					serial="TW-001"
-					timezone={null}
-					preferredUnits={null}
-				/>,
+				<DeviceSettings client={client} serial="TW-001" timezone={null} preferredUnits={null} />,
 			);
 
 			fireEvent.click(screen.getByRole("button", { name: /settings/i }));
@@ -291,12 +234,7 @@ describe("DeviceSettings", () => {
 		it("shows danger zone warning text", () => {
 			const client = makeMockClient();
 			render(
-				<DeviceSettings
-					client={client}
-					serial="TW-001"
-					timezone={null}
-					preferredUnits={null}
-				/>,
+				<DeviceSettings client={client} serial="TW-001" timezone={null} preferredUnits={null} />,
 			);
 
 			fireEvent.click(screen.getByRole("button", { name: /settings/i }));

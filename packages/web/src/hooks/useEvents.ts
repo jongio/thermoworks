@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DeviceEvent, EventFilter } from "thermoworks-sdk";
-import type { ThermoworksWebClient } from "../lib/api.ts";
 import { mergeItemsById, toEventActivityItems } from "../lib/activity.ts";
+import type { ThermoworksWebClient } from "../lib/api.ts";
 
 const POLL_INTERVAL_MS = 30_000;
 const MAX_PAGE_SIZE = 500;
@@ -111,6 +111,7 @@ export function useEvents(
 		await fetchEvents({ limit: nextLimit, loadingMore: true });
 	}, [fetchEvents, hasMore, isLoadingMore]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset state on filter change
 	useEffect(() => {
 		limitRef.current = baseLimit;
 		setData([]);

@@ -1,11 +1,11 @@
 import { Bell, List, Monitor, Thermometer } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { hasStoredTemperatureUnitPreference } from "../context/TemperatureUnitContext.tsx";
-import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";
 import {
 	hasStoredNotificationPreference,
 	setNotificationsEnabled,
 } from "../hooks/useAlarmNotifications.ts";
+import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";
 import type { ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 
@@ -84,7 +84,8 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 	const [devices, setDevices] = useState<DeviceSummary[]>([]);
 	const [isLoadingDevices, setIsLoadingDevices] = useState(true);
 	const [deviceError, setDeviceError] = useState<string | null>(null);
-	const [notificationStatus, setNotificationStatus] = useState<NotificationStatus>(getNotificationStatus);
+	const [notificationStatus, setNotificationStatus] =
+		useState<NotificationStatus>(getNotificationStatus);
 	const [isEnablingNotifications, setIsEnablingNotifications] = useState(false);
 	const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -93,7 +94,8 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 		setIsLoadingDevices(true);
 		setDeviceError(null);
 
-		client.getDevices()
+		client
+			.getDevices()
 			.then((nextDevices) => {
 				if (cancelled) return;
 				setDevices(nextDevices);
@@ -117,9 +119,8 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 		const dialog = dialogRef.current;
 		if (!dialog) return;
 
-		const previousActiveElement = document.activeElement instanceof HTMLElement
-			? document.activeElement
-			: null;
+		const previousActiveElement =
+			document.activeElement instanceof HTMLElement ? document.activeElement : null;
 		const previousOverflow = document.body.style.overflow;
 		document.body.style.overflow = "hidden";
 
@@ -157,6 +158,7 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 		};
 	}, []);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: dialogRef is stable
 	useEffect(() => {
 		const dialog = dialogRef.current;
 		if (!dialog) return;
@@ -216,7 +218,8 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 		() => [
 			{
 				title: "Choose your temperature unit",
-				description: "Pick the unit you want to see throughout the app. You can change it again later.",
+				description:
+					"Pick the unit you want to see throughout the app. You can change it again later.",
 				icon: Thermometer,
 				content: (
 					<div className="grid gap-3 sm:grid-cols-2">
@@ -233,7 +236,9 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 							)}
 						>
 							<div className="text-base font-semibold">Use Fahrenheit</div>
-							<p className="mt-1 text-sm text-muted-foreground">Best for classic BBQ and smoking workflows.</p>
+							<p className="mt-1 text-sm text-muted-foreground">
+								Best for classic BBQ and smoking workflows.
+							</p>
 						</button>
 						<button
 							type="button"
@@ -248,21 +253,27 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 							)}
 						>
 							<div className="text-base font-semibold">Use Celsius</div>
-							<p className="mt-1 text-sm text-muted-foreground">Ideal if you prefer metric cooking and ambient temps.</p>
+							<p className="mt-1 text-sm text-muted-foreground">
+								Ideal if you prefer metric cooking and ambient temps.
+							</p>
 						</button>
 					</div>
 				),
 			},
 			{
 				title: "Your devices at a glance",
-				description: "Every device you own appears here. Start with the first one, then drill into details any time.",
+				description:
+					"Every device you own appears here. Start with the first one, then drill into details any time.",
 				icon: Monitor,
 				content: isLoadingDevices ? (
 					<div className="rounded-xl border border-border bg-muted/40 px-4 py-6 text-sm text-muted-foreground">
 						Loading your devices...
 					</div>
 				) : deviceError ? (
-					<div className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-6 text-sm text-destructive" role="alert">
+					<div
+						className="rounded-xl border border-destructive/50 bg-destructive/10 px-4 py-6 text-sm text-destructive"
+						role="alert"
+					>
 						{deviceError}
 					</div>
 				) : devices.length === 0 ? (
@@ -304,36 +315,36 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 			},
 			{
 				title: "Set alarms for your cook",
-				description: "High and low alarms help you catch target temps fast without hovering over the dashboard.",
+				description:
+					"High and low alarms help you catch target temps fast without hovering over the dashboard.",
 				icon: Bell,
 				content: (
 					<div className="rounded-xl border border-border bg-muted/40 px-4 py-4">
 						<ul className="space-y-3 text-sm text-muted-foreground">
 							<li>
-								<span className="font-medium text-foreground">High alarms</span>
-								{" "}
-								let you know when food or ambient temps climb past your target.
+								<span className="font-medium text-foreground">High alarms</span> let you know when
+								food or ambient temps climb past your target.
 							</li>
 							<li>
-								<span className="font-medium text-foreground">Low alarms</span>
-								{" "}
-								warn you when a pit cools off or a probe drops unexpectedly.
+								<span className="font-medium text-foreground">Low alarms</span> warn you when a pit
+								cools off or a probe drops unexpectedly.
 							</li>
-							<li>
-								Open any device to adjust alarms per channel whenever you're ready.
-							</li>
+							<li>Open any device to adjust alarms per channel whenever you're ready.</li>
 						</ul>
 					</div>
 				),
 			},
 			{
 				title: "Stay ahead with notifications",
-				description: "Turn on browser alerts so alarm events can reach you while the app runs in the background.",
+				description:
+					"Turn on browser alerts so alarm events can reach you while the app runs in the background.",
 				icon: List,
 				content: (
 					<div className="space-y-3">
 						<div className="rounded-xl border border-border bg-muted/40 px-4 py-4">
-							<p className="text-sm text-muted-foreground">{getNotificationMessage(notificationStatus)}</p>
+							<p className="text-sm text-muted-foreground">
+								{getNotificationMessage(notificationStatus)}
+							</p>
 						</div>
 						<button
 							type="button"
@@ -394,7 +405,12 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 						<p className="text-sm font-medium text-muted-foreground">
 							Step {stepIndex + 1} of {steps.length}
 						</p>
-						<div className="mt-2 flex items-center gap-2" aria-label="Onboarding progress">
+						{/* biome-ignore lint/a11y/useSemanticElements: progress dots don't fit standard nav */}
+						<div
+							className="mt-2 flex items-center gap-2"
+							role="group"
+							aria-label="Onboarding progress"
+						>
 							{steps.map((step, index) => (
 								<span
 									key={step.title}

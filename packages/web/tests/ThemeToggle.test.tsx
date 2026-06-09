@@ -34,7 +34,7 @@ describe("ThemeToggle", () => {
 	it("renders the toggle button", () => {
 		render(<ThemeToggle />);
 
-		const btn = screen.getByRole("button", { name: /switch to .+ theme/i });
+		const btn = screen.getByRole("button", { name: /theme:.+click to switch/i });
 		expect(btn).toBeInTheDocument();
 	});
 
@@ -45,36 +45,37 @@ describe("ThemeToggle", () => {
 		expect(document.documentElement.classList.contains("light")).toBe(false);
 	});
 
-	it("toggles to light theme on click", () => {
+	it("cycles from system to light on first click", () => {
 		render(<ThemeToggle />);
 
-		const btn = screen.getByRole("button", { name: /switch to light theme/i });
+		const btn = screen.getByRole("button", { name: /theme:.+click to switch/i });
 		fireEvent.click(btn);
 
 		expect(document.documentElement.classList.contains("light")).toBe(true);
 		expect(document.documentElement.classList.contains("dark")).toBe(false);
+		expect(localStorageStore["thermoworks-theme"]).toBe("light");
 	});
 
-	it("toggles back to dark theme on second click", () => {
+	it("cycles from light to dark on second click", () => {
+		localStorageStore["thermoworks-theme"] = "light";
 		render(<ThemeToggle />);
 
-		const btn = screen.getByRole("button", { name: /switch to light theme/i });
+		const btn = screen.getByRole("button", { name: /theme:.+click to switch/i });
 		fireEvent.click(btn);
-
-		const btnAfter = screen.getByRole("button", { name: /switch to dark theme/i });
-		fireEvent.click(btnAfter);
 
 		expect(document.documentElement.classList.contains("dark")).toBe(true);
 		expect(document.documentElement.classList.contains("light")).toBe(false);
+		expect(localStorageStore["thermoworks-theme"]).toBe("dark");
 	});
 
-	it("persists theme choice to localStorage", () => {
+	it("cycles from dark to system on third click", () => {
+		localStorageStore["thermoworks-theme"] = "dark";
 		render(<ThemeToggle />);
 
-		const btn = screen.getByRole("button", { name: /switch to light theme/i });
+		const btn = screen.getByRole("button", { name: /theme:.+click to switch/i });
 		fireEvent.click(btn);
 
-		expect(localStorageStore["thermoworks-theme"]).toBe("light");
+		expect(localStorageStore["thermoworks-theme"]).toBe("system");
 	});
 
 	it("restores saved theme from localStorage", () => {
@@ -82,6 +83,6 @@ describe("ThemeToggle", () => {
 		render(<ThemeToggle />);
 
 		expect(document.documentElement.classList.contains("light")).toBe(true);
-		expect(screen.getByRole("button", { name: /switch to dark theme/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /theme: light/i })).toBeInTheDocument();
 	});
 });

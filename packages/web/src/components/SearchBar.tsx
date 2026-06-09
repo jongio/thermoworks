@@ -36,6 +36,7 @@ export function SearchBar({ value, onChange, placeholder = "Search devices..." }
 				onChange={(e) => onChange(e.target.value)}
 				placeholder={placeholder}
 				aria-label={placeholder}
+				data-search-input
 				className={cn(
 					"w-full rounded-md border border-border bg-background py-2 pl-9",
 					value ? "pr-9" : "pr-3",

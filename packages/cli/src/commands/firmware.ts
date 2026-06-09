@@ -63,7 +63,7 @@ export async function firmware(
 			}),
 		);
 		for (const result of results_fw) {
-			if (result.status === "fulfilled") {
+			if (result.status === "fulfilled" && result.value.info) {
 				firmwareMap.set(result.value.type, result.value.info);
 			}
 		}

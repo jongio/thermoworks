@@ -1,17 +1,16 @@
 import { ArrowLeft, Battery, RotateCcw, Share2, Signal, Wifi } from "lucide-react";
-import React, { Suspense, useCallback } from "react";
+import { useCallback } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { ChannelReading } from "../components/ChannelReading.tsx";
 import { DeviceSettings } from "../components/DeviceSettings.tsx";
 import { FanController } from "../components/FanController.tsx";
+import { HistoryViewer } from "../components/HistoryViewer.tsx";
 import { InlineEdit } from "../components/InlineEdit.tsx";
 import { ChartSkeleton } from "../components/Skeleton.tsx";
-import { useArchiveData } from "../hooks/useArchiveData.ts";
 import { useDevice } from "../hooks/useDevice.ts";
+import { useHistory } from "../hooks/useHistory.ts";
 import { cn } from "../lib/utils.ts";
-
-const TemperatureChart = React.lazy(() => import("../components/TemperatureChart"));
 
 function statusIndicator(status: string | null): { color: string; label: string } {
 	switch (status) {
@@ -29,12 +28,10 @@ export function DeviceDetail() {
 	const { client } = useOutletContext<AppOutletContext>();
 	const { data, isLoading, error, refresh } = useDevice(client, serial ?? "");
 	const {
-		archives,
-		isLoading: archiveLoading,
-		error: archiveError,
-	} = useArchiveData(client, serial ?? "", !!data);
-
-	const archiveChannels = archives[0]?.channels ?? null;
+		history,
+		isLoading: historyLoading,
+		error: historyError,
+	} = useHistory(client, serial ?? "", !!data);
 
 	const handleRename = useCallback(
 		async (newName: string) => {
@@ -205,16 +202,14 @@ export function DeviceDetail() {
 				<h2 id="history-heading" className="text-lg font-semibold mb-3">
 					History
 				</h2>
-				{archiveLoading && <ChartSkeleton />}
-				{archiveError && <div className="text-sm text-destructive py-2">{archiveError}</div>}
-				{!archiveLoading && !archiveError && archiveChannels && (
-					<Suspense fallback={<ChartSkeleton />}>
-						<TemperatureChart channels={archiveChannels} />
-					</Suspense>
+				{historyLoading && <ChartSkeleton />}
+				{historyError && <div className="text-sm text-destructive py-2">{historyError}</div>}
+				{!historyLoading && !historyError && history && (
+					<HistoryViewer history={history} />
 				)}
-				{!archiveLoading && !archiveError && !archiveChannels && (
+				{!historyLoading && !historyError && !history && (
 					<div className="text-sm text-muted-foreground text-center py-8 border border-border rounded-md">
-						No archive history found for this device
+						No history data found for this device
 					</div>
 				)}
 			</section>

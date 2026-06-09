@@ -1,6 +1,7 @@
 import { Calendar, Clock } from "lucide-react";
 import React, { Suspense, useMemo, useState } from "react";
-import type { ArchiveChannel, DeviceHistory, TemperatureReading } from "thermoworks-sdk";
+import type { ArchiveChannel, TemperatureReading } from "thermoworks-sdk";
+import type { DeviceHistory } from "../lib/api.ts";
 import { ChartSkeleton } from "./Skeleton.tsx";
 
 const TemperatureChart = React.lazy(() => import("./TemperatureChart"));
@@ -32,8 +33,8 @@ export interface HistoryViewerProps {
 
 /**
  * Historical data viewer with time range selection.
- * Transforms flat HistoricalReading[] into ArchiveChannel format
- * for display via the existing TemperatureChart component.
+ * Transforms flat HistoricalReading[] (per-timestamp, multi-channel)
+ * into ArchiveChannel format for display via TemperatureChart.
  */
 export function HistoryViewer({ history }: HistoryViewerProps) {
 	const [timeRange, setTimeRange] = useState<TimeRange>("1d");
@@ -43,63 +44,84 @@ export function HistoryViewer({ history }: HistoryViewerProps) {
 			return { channels: null, pointCount: 0, dateRange: null };
 		}
 
-		// Parse all readings into TemperatureReading format
-		const allReadings: TemperatureReading[] = [];
-		for (const r of history.readings) {
-			const date = new Date(r.timestamp);
-			if (!Number.isNaN(date.getTime())) {
-				allReadings.push({ value: r.value, timestamp: date, units: r.units });
-			}
-		}
-
-		if (allReadings.length === 0) {
+		// Sort by timestamp ascending
+		// Filter out invalid timestamps and sort ascending
+		const valid = history.readings.filter(
+			(r) => r.timestamp instanceof Date && !Number.isNaN(r.timestamp.getTime()),
+		);
+		if (valid.length === 0) {
 			return { channels: null, pointCount: 0, dateRange: null };
 		}
 
-		// Sort by timestamp ascending
-		allReadings.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+		const sorted = [...valid].sort(
+			(a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
+		);
 
 		// Apply time range filter
 		const rangeOption = TIME_RANGES.find((r) => r.value === timeRange);
-		let filteredReadings = allReadings;
+		let filtered = sorted;
 		if (rangeOption?.ms != null) {
 			const cutoff = Date.now() - rangeOption.ms;
-			filteredReadings = allReadings.filter((r) => r.timestamp.getTime() >= cutoff);
+			filtered = sorted.filter((r) => r.timestamp.getTime() >= cutoff);
 		}
 
-		if (filteredReadings.length === 0) {
+		if (filtered.length === 0) {
 			return { channels: null, pointCount: 0, dateRange: null };
 		}
 
-		// Determine units from readings (use first reading's units)
-		const firstReading = filteredReadings[0] as TemperatureReading;
-		const lastReading = filteredReadings[filteredReadings.length - 1] as TemperatureReading;
-		const units = firstReading.units;
+		// Collect all channel keys across readings
+		const channelKeys = new Set<string>();
+		for (const reading of filtered) {
+			for (const key of Object.keys(reading.channels)) {
+				channelKeys.add(key);
+			}
+		}
 
-		// Build a single ArchiveChannel
-		const channel: ArchiveChannel = {
-			number: "1",
-			label: "Temperature",
-			units,
-			value: lastReading.value,
-			status: null,
-			enabled: true,
-			color: null,
-			type: "temperature",
-			alarmHigh: null,
-			alarmLow: null,
-			minimum: null,
-			maximum: null,
-			recentReadings: filteredReadings,
-		};
+		if (channelKeys.size === 0) {
+			return { channels: null, pointCount: 0, dateRange: null };
+		}
 
-		const first = firstReading.timestamp;
-		const last = lastReading.timestamp;
+		// Build one ArchiveChannel per channel key
+		const archiveChannels: ArchiveChannel[] = [];
+		for (const key of channelKeys) {
+			const readings: TemperatureReading[] = [];
+			for (const r of filtered) {
+				const value = r.channels[key];
+				if (value != null) {
+					readings.push({ value, timestamp: r.timestamp, units: "F" });
+				}
+			}
+			if (readings.length > 0) {
+				const lastReading = readings[readings.length - 1] as TemperatureReading;
+				archiveChannels.push({
+					number: key,
+					label: `Channel ${key}`,
+					units: "F",
+					value: lastReading.value,
+					status: null,
+					enabled: true,
+					color: null,
+					type: "temperature",
+					alarmHigh: null,
+					alarmLow: null,
+					minimum: null,
+					maximum: null,
+					recentReadings: readings,
+				});
+			}
+		}
+
+		if (archiveChannels.length === 0) {
+			return { channels: null, pointCount: 0, dateRange: null };
+		}
+
+		const first = filtered[0] as { timestamp: Date };
+		const last = filtered[filtered.length - 1] as { timestamp: Date };
 
 		return {
-			channels: [channel],
-			pointCount: filteredReadings.length,
-			dateRange: { start: first, end: last },
+			channels: archiveChannels,
+			pointCount: filtered.length,
+			dateRange: { start: first.timestamp, end: last.timestamp },
 		};
 	}, [history, timeRange]);
 

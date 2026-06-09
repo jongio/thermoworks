@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { DeviceHistory } from "thermoworks-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { HistoryViewer } from "../src/components/HistoryViewer.tsx";
 import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";
+import type { DeviceHistory } from "../src/lib/api.ts";
 
 // Mock the lazy-loaded TemperatureChart
 vi.mock("../src/components/TemperatureChart", () => ({
@@ -13,8 +13,10 @@ vi.mock("../src/components/TemperatureChart", () => ({
 	),
 }));
 
-function makeHistory(readings: DeviceHistory["readings"]): DeviceHistory {
-	return { deviceId: "TW-001", readings };
+function makeHistory(
+	readings: Array<{ timestamp: Date; channels: Record<string, number> }>,
+): DeviceHistory {
+	return { readings };
 }
 
 function renderViewer(history: DeviceHistory) {
@@ -35,7 +37,7 @@ describe("HistoryViewer", () => {
 	it("renders time range buttons", () => {
 		const now = Date.now();
 		renderViewer(
-			makeHistory([{ value: 72, timestamp: new Date(now - 1000).toISOString(), units: "F" }]),
+			makeHistory([{ timestamp: new Date(now - 1000), channels: { "1": 72 } }]),
 		);
 
 		expect(screen.getByRole("button", { name: "1 Hour" })).toBeInTheDocument();
@@ -49,7 +51,7 @@ describe("HistoryViewer", () => {
 	it("defaults to 1 Day time range", () => {
 		const now = Date.now();
 		renderViewer(
-			makeHistory([{ value: 72, timestamp: new Date(now - 1000).toISOString(), units: "F" }]),
+			makeHistory([{ timestamp: new Date(now - 1000), channels: { "1": 72 } }]),
 		);
 
 		const dayButton = screen.getByRole("button", { name: "1 Day" });
@@ -60,11 +62,11 @@ describe("HistoryViewer", () => {
 		const now = Date.now();
 		const readings = [
 			// 30 minutes ago - should appear in 1h range
-			{ value: 72, timestamp: new Date(now - 30 * 60 * 1000).toISOString(), units: "F" },
+			{ timestamp: new Date(now - 30 * 60 * 1000), channels: { "1": 72 } },
 			// 2 hours ago - should NOT appear in 1h range
-			{ value: 74, timestamp: new Date(now - 2 * 60 * 60 * 1000).toISOString(), units: "F" },
+			{ timestamp: new Date(now - 2 * 60 * 60 * 1000), channels: { "1": 74 } },
 			// 3 days ago - should NOT appear in 1h or 1d range
-			{ value: 76, timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(), units: "F" },
+			{ timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000), channels: { "1": 76 } },
 		];
 
 		renderViewer(makeHistory(readings));
@@ -85,7 +87,7 @@ describe("HistoryViewer", () => {
 		// Only readings from 2 days ago
 		const now = Date.now();
 		const readings = [
-			{ value: 72, timestamp: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(), units: "F" },
+			{ timestamp: new Date(now - 2 * 24 * 60 * 60 * 1000), channels: { "1": 72 } },
 		];
 
 		renderViewer(makeHistory(readings));
@@ -98,7 +100,7 @@ describe("HistoryViewer", () => {
 	it("renders chart when data is available", () => {
 		const now = Date.now();
 		renderViewer(
-			makeHistory([{ value: 72, timestamp: new Date(now - 1000).toISOString(), units: "F" }]),
+			makeHistory([{ timestamp: new Date(now - 1000), channels: { "1": 72 } }]),
 		);
 
 		expect(screen.getByTestId("temperature-chart")).toBeInTheDocument();
@@ -108,8 +110,8 @@ describe("HistoryViewer", () => {
 		const now = Date.now();
 		renderViewer(
 			makeHistory([
-				{ value: 72, timestamp: new Date(now - 60 * 60 * 1000).toISOString(), units: "F" },
-				{ value: 74, timestamp: new Date(now - 1000).toISOString(), units: "F" },
+				{ timestamp: new Date(now - 60 * 60 * 1000), channels: { "1": 72 } },
+				{ timestamp: new Date(now - 1000), channels: { "1": 74 } },
 			]),
 		);
 
@@ -120,12 +122,12 @@ describe("HistoryViewer", () => {
 		const now = Date.now();
 		renderViewer(
 			makeHistory([
-				{ value: 72, timestamp: new Date(now - 1000).toISOString(), units: "F" },
-				{ value: 74, timestamp: "invalid-date", units: "F" },
+				{ timestamp: new Date(now - 1000), channels: { "1": 72 } },
+				{ timestamp: new Date("invalid-date"), channels: { "1": 74 } },
 			]),
 		);
 
-		// Should still render chart with valid reading
+		// Should still render chart with valid reading (invalid timestamp filtered out)
 		expect(screen.getByTestId("temperature-chart")).toBeInTheDocument();
 		expect(screen.getByText(/1 points/)).toBeInTheDocument();
 	});

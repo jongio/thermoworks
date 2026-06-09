@@ -3,7 +3,7 @@
   "private": true,
   "displayName": "ThermoWorks",
   "description": "Display real-time ThermoWorks device temperatures in the VS Code status bar",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "publisher": "jongio",
   "author": "Jon Gallant",
   "license": "MIT",
@@ -173,8 +173,6 @@
           "group": "inline"
         },
         {
-          "command": "thermoworks.refreshArchives",
-          "when": "view == thermoworksPanel && viewItem == archivesFolder",
           "command": "thermoworks.showTemperatureChart",
           "when": "view == thermoworksPanel && viewItem == device",
           "group": "inline"
@@ -192,7 +190,11 @@
         },
         "thermoworks.statusBarMode": {
           "type": "string",
-          "enum": ["single", "cycle", "all"],
+          "enum": [
+            "single",
+            "cycle",
+            "all"
+          ],
           "default": "single",
           "description": "Status bar display mode: 'single' shows the first device, 'cycle' rotates through devices, 'all' shows all devices compactly"
         },

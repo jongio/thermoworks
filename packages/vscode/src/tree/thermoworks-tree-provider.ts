@@ -485,6 +485,7 @@ export class ThermoworksTreeProvider
 			} else {
 				const client = await this.getClient();
 				const info = await client.getFirmwareInfo(device.type);
+				if (!info) return false;
 				latestVersion = info.version;
 				this.firmwareCaches.set(device.type, { latestVersion, fetchedAt: now });
 			}

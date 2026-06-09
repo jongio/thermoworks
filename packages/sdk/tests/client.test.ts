@@ -817,19 +817,21 @@ describe("ThermoworksCloud", () => {
 
 			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
 			const fw = await client.getFirmwareInfo("smoke_x4");
-			expect(fw.name).toBe("Smoke X4");
-			expect(fw.version).toBe("2.1.0");
-			expect(fw.location).toContain("smoke-x4");
-			expect(fw.md5).toBe("abc123def456");
+			expect(fw).not.toBeNull();
+			expect(fw!.name).toBe("Smoke X4");
+			expect(fw!.version).toBe("2.1.0");
+			expect(fw!.location).toContain("smoke-x4");
+			expect(fw!.md5).toBe("abc123def456");
 			client.close();
 		});
 
-		it("throws NotFoundError for 404", async () => {
+		it("returns null for 404", async () => {
 			setupAuth();
 			mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
 
 			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
-			await expect(client.getFirmwareInfo("unknown_type")).rejects.toThrow(NotFoundError);
+			const result = await client.getFirmwareInfo("unknown_type");
+			expect(result).toBeNull();
 			client.close();
 		});
 	});

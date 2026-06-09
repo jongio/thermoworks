@@ -1,43 +1,84 @@
-import { Moon, Sun } from "lucide-react";
+import { Monitor, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { cn } from "../lib/utils.ts";
 
-type Theme = "light" | "dark";
+type ThemeMode = "system" | "light" | "dark";
+type ResolvedTheme = "light" | "dark";
 
-function getInitialTheme(): Theme {
-	if (typeof window === "undefined") return "dark";
-	const stored = window.localStorage.getItem("thermoworks-theme");
-	if (stored === "light" || stored === "dark") return stored;
-	return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+const STORAGE_KEY = "thermoworks-theme";
+
+function getInitialMode(): ThemeMode {
+	if (typeof window === "undefined") return "system";
+	const stored = window.localStorage.getItem(STORAGE_KEY);
+	if (stored === "light" || stored === "dark" || stored === "system") return stored;
+	return "system";
+}
+
+function resolveTheme(mode: ThemeMode): ResolvedTheme {
+	if (mode === "system") {
+		return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+	}
+	return mode;
 }
 
 export function ThemeToggle() {
-	const [theme, setTheme] = useState<Theme>(getInitialTheme);
+	const [mode, setMode] = useState<ThemeMode>(getInitialMode);
+	const [resolved, setResolved] = useState<ResolvedTheme>(() => resolveTheme(mode));
 
 	useEffect(() => {
 		const root = document.documentElement;
+		const newResolved = resolveTheme(mode);
+		setResolved(newResolved);
 		root.classList.remove("light", "dark");
-		root.classList.add(theme);
-		window.localStorage.setItem("thermoworks-theme", theme);
-	}, [theme]);
+		root.classList.add(newResolved);
+		window.localStorage.setItem(STORAGE_KEY, mode);
+	}, [mode]);
 
-	function toggle() {
-		setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+	// Listen for system preference changes when in system mode
+	useEffect(() => {
+		if (mode !== "system") return;
+		const mq = window.matchMedia("(prefers-color-scheme: dark)");
+		function onChange() {
+			const newResolved = resolveTheme("system");
+			setResolved(newResolved);
+			const root = document.documentElement;
+			root.classList.remove("light", "dark");
+			root.classList.add(newResolved);
+		}
+		mq.addEventListener("change", onChange);
+		return () => mq.removeEventListener("change", onChange);
+	}, [mode]);
+
+	function cycle() {
+		setMode((prev) => {
+			if (prev === "system") return "light";
+			if (prev === "light") return "dark";
+			return "system";
+		});
 	}
+
+	const label =
+		mode === "system"
+			? `System (${resolved})`
+			: mode === "light"
+				? "Light"
+				: "Dark";
+
+	const Icon = mode === "system" ? Monitor : resolved === "dark" ? Sun : Moon;
 
 	return (
 		<button
 			type="button"
-			onClick={toggle}
-			title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-			aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+			onClick={cycle}
+			title={`Theme: ${label}. Click to switch.`}
+			aria-label={`Theme: ${label}. Click to switch.`}
 			className={cn(
 				"inline-flex h-9 w-9 items-center justify-center rounded-md",
 				"border border-border hover:bg-muted",
 				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 			)}
 		>
-			{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+			<Icon className="h-4 w-4" />
 		</button>
 	);
 }

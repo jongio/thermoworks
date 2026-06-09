@@ -1,8 +1,11 @@
 import { Outlet } from "react-router-dom";
 import type { ThermoworksWebClient } from "../lib/api.ts";
+import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts.ts";
 import { BottomNav } from "./BottomNav.tsx";
+import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp.tsx";
 import { OfflineBanner } from "./OfflineBanner.tsx";
 import { Sidebar } from "./Sidebar.tsx";
+import { Toaster } from "./Toast.tsx";
 
 export interface AppOutletContext {
 	client: ThermoworksWebClient;
@@ -15,6 +18,7 @@ interface AppLayoutProps {
 
 export function AppLayout({ client, onLogout }: AppLayoutProps) {
 	const context: AppOutletContext = { client };
+	const { shortcuts, showHelp, setShowHelp } = useKeyboardShortcuts();
 
 	return (
 		<div className="flex h-screen overflow-hidden">
@@ -28,6 +32,10 @@ export function AppLayout({ client, onLogout }: AppLayoutProps) {
 			</main>
 
 			<BottomNav />
+			<Toaster />
+			{showHelp && (
+				<KeyboardShortcutsHelp shortcuts={shortcuts} onClose={() => setShowHelp(false)} />
+			)}
 		</div>
 	);
 }

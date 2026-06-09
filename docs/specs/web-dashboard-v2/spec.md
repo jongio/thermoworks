@@ -1,7 +1,7 @@
 # Web Dashboard V2 — Full SDK Feature Parity
 
 ## Status
-PLANNING
+COMPLETE — Delivered in PR #78 (merged 2026-06-09)
 
 ## Scope
 **P1** — User-facing features, new UI surfaces, API integration changes.

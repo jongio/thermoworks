@@ -14,10 +14,7 @@ class MockResizeObserver {
 	}
 	observe(target: Element) {
 		// Simulate a measured container so the chart renders its SVG
-		this.cb(
-			[{ contentRect: { width: 800, height: 300 } } as unknown as ResizeObserverEntry],
-			this,
-		);
+		this.cb([{ contentRect: { width: 800, height: 300 } } as unknown as ResizeObserverEntry], this);
 	}
 	unobserve() {}
 	disconnect() {}
@@ -49,6 +46,31 @@ function makeChannels() {
 				{ value: 155, timestamp: new Date(now - 30000), units: "F" },
 				{ value: 165, timestamp: new Date(now), units: "F" },
 			],
+		},
+	];
+}
+
+function makeDenseChannels(pointCount: number) {
+	const now = Date.now();
+	return [
+		{
+			number: "1",
+			label: "Dense Probe",
+			units: "F",
+			value: 165,
+			status: "ok",
+			enabled: true,
+			color: "#ef4444",
+			type: "temperature",
+			alarmHigh: null,
+			alarmLow: null,
+			minimum: null,
+			maximum: null,
+			recentReadings: Array.from({ length: pointCount }, (_, index) => ({
+				value: 150 + Math.sin(index / 12) * 10,
+				timestamp: new Date(now - (pointCount - index) * 1000),
+				units: "F",
+			})),
 		},
 	];
 }
@@ -102,9 +124,7 @@ describe("downloadCSV", () => {
 	});
 
 	it("escapes fields containing commas and quotes", () => {
-		const data: ChartDataPoint[] = [
-			{ time: 1000, "ch_with,comma": 100 },
-		];
+		const data: ChartDataPoint[] = [{ time: 1000, "ch_with,comma": 100 }];
 
 		const originalCreateElement = document.createElement.bind(document);
 		const createObjectURL = vi.fn(() => "blob:mock-url");
@@ -130,27 +150,21 @@ describe("downloadCSV", () => {
 describe("TemperatureChart", () => {
 	it("renders chart with data", () => {
 		const channels = makeChannels();
-		const { container } = renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		const { container } = renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		// Recharts renders an SVG inside the container
 		expect(container.querySelector(".recharts-wrapper")).not.toBeNull();
 	});
 
 	it("shows empty state when no channels have readings", () => {
-		renderWithProvider(
-			<TemperatureChart channels={[]} />,
-		);
+		renderWithProvider(<TemperatureChart channels={[]} />);
 
 		expect(screen.getByText("No temperature history available")).toBeInTheDocument();
 	});
 
 	it("renders brush component for panning", () => {
 		const channels = makeChannels();
-		const { container } = renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		const { container } = renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		// Brush renders a specific SVG group
 		expect(container.querySelector(".recharts-brush")).not.toBeNull();
@@ -158,9 +172,7 @@ describe("TemperatureChart", () => {
 
 	it("shows reset zoom button after zoom selection", () => {
 		const channels = makeChannels();
-		renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		// Initially, no reset zoom button
 		expect(screen.queryByTestId("reset-zoom")).not.toBeInTheDocument();
@@ -172,12 +184,19 @@ describe("TemperatureChart", () => {
 
 	it("renders export CSV and PNG buttons", () => {
 		const channels = makeChannels();
-		renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		expect(screen.getByTitle("Export CSV")).toBeInTheDocument();
 		expect(screen.getByTitle("Export PNG")).toBeInTheDocument();
+	});
+
+	it("shows a downsampling indicator for large visible windows", () => {
+		const channels = makeDenseChannels(1_200);
+		renderWithProvider(<TemperatureChart channels={channels as never} />);
+
+		expect(screen.getByTestId("downsample-indicator")).toHaveTextContent(
+			"Showing 500 of 1200 points (downsampled)",
+		);
 	});
 
 	it("renders session overlay checkboxes when overlayArchives provided", () => {
@@ -185,10 +204,7 @@ describe("TemperatureChart", () => {
 		const overlayArchives = [makeChannels(), makeChannels()];
 
 		renderWithProvider(
-			<TemperatureChart
-				channels={channels as never}
-				overlayArchives={overlayArchives as never}
-			/>,
+			<TemperatureChart channels={channels as never} overlayArchives={overlayArchives as never} />,
 		);
 
 		expect(screen.getByText("Sessions:")).toBeInTheDocument();
@@ -201,10 +217,7 @@ describe("TemperatureChart", () => {
 		const overlayArchives = [makeChannels()];
 
 		renderWithProvider(
-			<TemperatureChart
-				channels={channels as never}
-				overlayArchives={overlayArchives as never}
-			/>,
+			<TemperatureChart channels={channels as never} overlayArchives={overlayArchives as never} />,
 		);
 
 		const checkbox = screen.getByRole("checkbox");

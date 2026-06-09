@@ -59,11 +59,11 @@ export function NotificationToggle() {
 
 	const isActive = enabled && permission === "granted";
 	const isBlocked = permission === "denied";
-	const label = isBlocked
-		? "Notifications blocked by browser"
-		: isActive
-			? "Disable alarm notifications"
-			: "Enable alarm notifications";
+
+	// Hide entirely when browser has blocked notifications — nothing we can do programmatically.
+	if (isBlocked) return null;
+
+	const label = isActive ? "Disable alarm notifications" : "Enable alarm notifications";
 
 	return (
 		<button
@@ -71,14 +71,12 @@ export function NotificationToggle() {
 			onClick={toggle}
 			title={label}
 			aria-label={label}
-			disabled={isBlocked}
 			className={cn(
 				"inline-flex h-9 w-9 items-center justify-center rounded-md",
 				"border border-border hover:bg-muted",
 				"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-				isBlocked && "opacity-50 cursor-not-allowed text-destructive",
 				isActive && "text-foreground",
-				!isActive && !isBlocked && "text-muted-foreground",
+				!isActive && "text-muted-foreground",
 			)}
 		>
 			{isActive ? (

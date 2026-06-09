@@ -407,7 +407,7 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 						{/* Primary session channel lines */}
 						{enabledChannels.map((ch, idx) => {
 							const key = `ch_${ch.number ?? idx}`;
-							const color = ch.color ?? FALLBACK_COLORS[idx % FALLBACK_COLORS.length] ?? "#6b7280";
+							const color = ch.color || FALLBACK_COLORS[idx % FALLBACK_COLORS.length] || "#6b7280";
 							const name = ch.label ?? `Ch ${ch.number ?? idx + 1}`;
 
 							return (
@@ -418,9 +418,9 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 									name={name}
 									stroke={color}
 									strokeWidth={2}
-									dot={chartData.length <= 50 ? { r: 3, fill: color } : false}
+									dot={chartData.length <= 50 ? { r: 4, fill: color, stroke: color } : false}
 									isAnimationActive={false}
-									activeDot={{ r: 4, strokeWidth: 1 }}
+									activeDot={{ r: 5, strokeWidth: 2 }}
 									connectNulls
 								/>
 							);
@@ -438,7 +438,7 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 								.map((ch, chIdx) => {
 									const key = `s${sessionIdx}_ch_${ch.number ?? chIdx}`;
 									const color =
-										ch.color ?? FALLBACK_COLORS[chIdx % FALLBACK_COLORS.length] ?? "#6b7280";
+										ch.color || FALLBACK_COLORS[chIdx % FALLBACK_COLORS.length] || "#6b7280";
 									const name = `S${sessionIdx + 1}: ${ch.label ?? `Ch ${ch.number ?? chIdx + 1}`}`;
 
 									return (

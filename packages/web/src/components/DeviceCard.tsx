@@ -1,16 +1,15 @@
 import { Battery, ChevronDown, ChevronUp, Thermometer, Wifi } from "lucide-react";
-import React, { Suspense, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { useArchiveData } from "../hooks/useArchiveData.ts";
+import { useHistory } from "../hooks/useHistory.ts";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { ChannelReading } from "./ChannelReading.tsx";
 import { FirmwareStatus } from "./FirmwareStatus.tsx";
+import { HistoryViewer } from "./HistoryViewer.tsx";
 import { SessionControls } from "./SessionControls.tsx";
 import { ShareButton } from "./ShareButton.tsx";
 import { ChartSkeleton } from "./Skeleton.tsx";
-
-const TemperatureChart = React.lazy(() => import("./TemperatureChart"));
 
 interface DeviceCardProps {
 	item: DeviceWithChannels;
@@ -42,13 +41,10 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 	const enabledChannels = channels.filter((ch) => ch.enabled !== false);
 	const [showChart, setShowChart] = useState(false);
 	const {
-		archives,
-		isLoading: archiveLoading,
-		error: archiveError,
-	} = useArchiveData(client, device.serial, showChart);
-
-	// Use the most recent archive's channels for the chart
-	const archiveChannels = archives[0]?.channels ?? null;
+		history,
+		isLoading: historyLoading,
+		error: historyError,
+	} = useHistory(client, device.serial, showChart);
 
 	return (
 		<article
@@ -168,16 +164,14 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 			{/* Chart panel */}
 			{showChart && (
 				<div className="mt-3 pt-3 border-t border-border">
-					{archiveLoading && <ChartSkeleton />}
-					{archiveError && <div className="text-xs text-destructive py-2">{archiveError}</div>}
-					{!archiveLoading && !archiveError && archiveChannels && (
-						<Suspense fallback={<ChartSkeleton />}>
-							<TemperatureChart channels={archiveChannels} />
-						</Suspense>
+					{historyLoading && <ChartSkeleton />}
+					{historyError && <div className="text-xs text-destructive py-2">{historyError}</div>}
+					{!historyLoading && !historyError && history && history.readings.length > 0 && (
+						<HistoryViewer history={history} />
 					)}
-					{!archiveLoading && !archiveError && !archiveChannels && (
+					{!historyLoading && !historyError && (!history || history.readings.length === 0) && (
 						<div className="text-xs text-muted-foreground text-center py-4">
-							No archive history found for this device
+							No temperature history available
 						</div>
 					)}
 				</div>

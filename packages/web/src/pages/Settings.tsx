@@ -46,6 +46,8 @@ export function Settings() {
 			</section>
 
 			<NotificationPrefs client={client} />
+
+			<UserManagement client={client} />
 		</div>
 	);
 }

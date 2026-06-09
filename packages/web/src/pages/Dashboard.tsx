@@ -3,15 +3,11 @@ import { useOutletContext } from "react-router-dom";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { DeviceGroups } from "../components/DeviceGroups.tsx";
 import { DeviceList } from "../components/DeviceList.tsx";
-import { RefreshSelector } from "../components/RefreshSelector.tsx";
 import { SearchBar } from "../components/SearchBar.tsx";
-import { StreamingIndicator } from "../components/StreamingIndicator.tsx";
 import { useAlarmNotifications } from "../hooks/useAlarmNotifications.ts";
 import { useDeviceGroups } from "../hooks/useDeviceGroups.ts";
 import { useDevices } from "../hooks/useDevices.ts";
-import { useRefreshInterval } from "../hooks/useRefreshInterval.ts";
 import { useSearch } from "../hooks/useSearch.ts";
-import { useSubscription } from "../hooks/useSubscription.ts";
 import type { DeviceWithChannels } from "../lib/api.ts";
 
 /** Match device name, serial, or type against a lowercased query. */

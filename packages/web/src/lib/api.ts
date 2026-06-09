@@ -1057,7 +1057,14 @@ export class ThermoworksWebClient {
 		}
 		if (!data.documents) return [];
 
-		return data.documents.map((doc) => parseArchive(doc.fields ?? {}, extractDocId(doc.name)));
+		const archives = data.documents.map((doc) => parseArchive(doc.fields ?? {}, extractDocId(doc.name)));
+		if (isDev) {
+			console.log("[getArchives] Found:", archives.length, "archives");
+			for (const a of archives.slice(0, 3)) {
+				console.log(`  - ${a.id}: channels=${a.channels?.length ?? 0}, readings=${a.channels?.[0]?.recentReadings?.length ?? 0}`);
+			}
+		}
+		return archives;
 	}
 
 	async getTemperatureGuide(): Promise<TemperatureGuide> {
@@ -1403,23 +1410,41 @@ export class ThermoworksWebClient {
 			const result = await this.callFunction("requestRetrieveInstrumentHistory", {
 				deviceId: serial,
 			});
+			if (isDev) {
+				console.log("[getHistory] Cloud Function result:", JSON.stringify(result).slice(0, 500));
+			}
 			const readings: HistoricalReading[] = [];
-			if (result && typeof result === "object" && "readings" in result) {
-				const raw = (result as { readings?: unknown }).readings;
+			if (result && typeof result === "object") {
+				// Try multiple response shapes the function may return
+				let raw: unknown[] | undefined;
+				if ("readings" in result) {
+					raw = (result as { readings?: unknown }).readings as unknown[];
+				} else if (Array.isArray(result)) {
+					raw = result;
+				}
 				if (Array.isArray(raw)) {
 					for (const entry of raw) {
 						if (entry && typeof entry === "object") {
-							const r = entry as { v?: string; ts?: string; u?: string; ch?: string };
-							const value = r.v != null ? Number(r.v) : Number.NaN;
-							if (!Number.isNaN(value) && r.ts && r.u) {
-								readings.push({ value, timestamp: r.ts, units: r.u });
+							const r = entry as Record<string, unknown>;
+							// Support { v, ts, u } format (SDK format)
+							const value = r.v != null ? Number(r.v) : r.value != null ? Number(r.value) : Number.NaN;
+							const timestamp = (r.ts ?? r.timestamp ?? "") as string;
+							const units = (r.u ?? r.units ?? "") as string;
+							if (!Number.isNaN(value) && timestamp && units) {
+								readings.push({ value, timestamp: String(timestamp), units: String(units) });
 							}
 						}
 					}
 				}
 			}
+			if (isDev) {
+				console.log("[getHistory] Parsed readings:", readings.length);
+			}
 			return { readings };
-		} catch {
+		} catch (err) {
+			if (isDev) {
+				console.warn("[getHistory] Cloud Function error:", err);
+			}
 			return { readings: [] };
 		}
 	}

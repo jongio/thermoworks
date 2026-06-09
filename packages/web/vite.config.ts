@@ -36,6 +36,12 @@ export default defineConfig({
 				rewrite: (path) => path.replace(/^\/api\/firestore/, ""),
 				headers: { referer: REFERER },
 			},
+			"/api/functions": {
+				target: "https://us-central1-thermoworks-cloud-production.cloudfunctions.net",
+				changeOrigin: true,
+				rewrite: (path) => path.replace(/^\/api\/functions/, ""),
+				headers: { referer: REFERER },
+			},
 		},
 	},
 });

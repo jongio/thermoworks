@@ -1681,6 +1681,153 @@ describe("ThermoworksWebClient", () => {
 	});
 });
 
+describe("ThermoworksWebClient data usage", () => {
+	beforeEach(() => {
+		mockFetch.mockReset();
+		sessionStorage.clear();
+	});
+
+	it("fetches total usage with plan limits and billing period", async () => {
+		const client = await createAuthenticatedClient();
+
+		mockFetch.mockResolvedValueOnce(jsonResponse({
+			fields: { accountId: { stringValue: "acct-usage" } },
+		}));
+		mockFetch.mockResolvedValueOnce(jsonResponse({
+			result: { totalBytes: 3_221_225_472 },
+		}));
+		mockFetch.mockResolvedValueOnce(jsonResponse({
+			fields: {
+				billingPlanId: { stringValue: "plan-pro" },
+				periodStart: { timestampValue: "2026-06-01T00:00:00Z" },
+				currentPeriodEnd: { timestampValue: "2026-06-30T00:00:00Z" },
+				devicesUsed: { integerValue: "2" },
+			},
+		}));
+		mockFetch.mockResolvedValueOnce(jsonResponse({
+			fields: {
+				dataLoggerSettings: {
+					mapValue: {
+						fields: {
+							storageLimitBytes: { integerValue: "4294967296" },
+						},
+					},
+				},
+			},
+		}));
+
+		const usage = await client.getDataUsage();
+
+		expect(usage).toEqual({
+			totalBytes: 3_221_225_472,
+			limitBytes: 4_294_967_296,
+			periodStart: new Date("2026-06-01T00:00:00Z"),
+			periodEnd: new Date("2026-06-30T00:00:00Z"),
+			deviceCount: 2,
+		});
+		expect(mockFetch.mock.calls[3][0]).toContain("accountDataStorageSize");
+	});
+
+	it("fetches and enriches per-device usage from callable functions", async () => {
+		const client = await createAuthenticatedClient();
+
+		mockFetch.mockResolvedValueOnce(jsonResponse({
+			fields: { accountId: { stringValue: "acct-usage" } },
+		}));
+		mockFetch.mockResolvedValueOnce(jsonResponse({
+			result: [
+				{ deviceId: "SN-001", bytes: 1_048_576 },
+				{ deviceId: "dev-2", bytes: 524_288 },
+			],
+		}));
+		mockFetch.mockResolvedValueOnce(jsonResponse([
+			{
+				document: {
+					fields: {
+						serial: { stringValue: "SN-001" },
+						label: { stringValue: "Kitchen Signals" },
+					},
+				},
+			},
+			{
+				document: {
+					fields: {
+						serial: { stringValue: "SN-002" },
+						deviceId: { stringValue: "dev-2" },
+						label: { stringValue: "Patio Node" },
+						lastTelemetrySaved: { timestampValue: "2026-06-08T20:00:00Z" },
+					},
+				},
+			},
+		]));
+
+		const deviceUsage = await client.getDataUsageByDevice();
+
+		expect(deviceUsage).toEqual([
+			{
+				serial: "SN-001",
+				label: "Kitchen Signals",
+				bytes: 1_048_576,
+				percentage: 67,
+				lastSync: null,
+			},
+			{
+				serial: "SN-002",
+				label: "Patio Node",
+				bytes: 524_288,
+				percentage: 33,
+				lastSync: new Date("2026-06-08T20:00:00Z"),
+			},
+		]);
+		expect(mockFetch.mock.calls[3][0]).toContain("accountDataStorageSizeByTable");
+	});
+
+	it("fetches billing plan metadata for the usage dashboard", async () => {
+		const client = await createAuthenticatedClient();
+
+		mockFetch.mockResolvedValueOnce(jsonResponse({
+			fields: { accountId: { stringValue: "acct-usage" } },
+		}));
+		mockFetch.mockResolvedValueOnce(jsonResponse({
+			fields: {
+				billingPlanId: { stringValue: "plan-pro" },
+				renewalDate: { timestampValue: "2026-06-30T00:00:00Z" },
+				devicesLimit: { integerValue: "10" },
+			},
+		}));
+		mockFetch.mockResolvedValueOnce(jsonResponse({
+			fields: {
+				label: { stringValue: "ThermoWorks Pro" },
+				tier: { stringValue: "pro" },
+				deviceCount: { integerValue: "10" },
+				monthlyAmount: { integerValue: "999" },
+				currency: { stringValue: "USD" },
+				dataLoggerSettings: {
+					mapValue: {
+						fields: {
+							storageLimitBytes: { integerValue: "4294967296" },
+							retentionDays: { integerValue: "90" },
+						},
+					},
+				},
+			},
+		}));
+
+		const plan = await client.getBillingPlan();
+
+		expect(plan).toEqual({
+			name: "ThermoWorks Pro",
+			tier: "pro",
+			storageLimitBytes: 4_294_967_296,
+			deviceLimit: 10,
+			retentionDays: 90,
+			price: 999,
+			currency: "USD",
+			renewalDate: new Date("2026-06-30T00:00:00Z"),
+		});
+	});
+});
+
 // ─── Public share functions ──────────────────────────────────────────────────
 
 describe("getPublicDevice", () => {

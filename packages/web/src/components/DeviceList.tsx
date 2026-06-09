@@ -1,7 +1,8 @@
-import { Loader2, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { DeviceCard } from "./DeviceCard.tsx";
+import { DeviceListSkeleton } from "./Skeleton.tsx";
 
 interface DeviceListProps {
 	data: DeviceWithChannels[];
@@ -10,6 +11,8 @@ interface DeviceListProps {
 	lastUpdated: Date | null;
 	onRefresh: () => void;
 	client: ThermoworksWebClient;
+	/** When true, the empty state reflects a search filter with no matches. */
+	isFiltering?: boolean;
 }
 
 export function DeviceList({
@@ -19,6 +22,7 @@ export function DeviceList({
 	lastUpdated,
 	onRefresh,
 	client,
+	isFiltering = false,
 }: DeviceListProps) {
 	return (
 		<div className="space-y-4">
@@ -60,20 +64,19 @@ export function DeviceList({
 			)}
 
 			{/* Loading state (initial) */}
-			{isLoading && data.length === 0 && !error && (
-				<div className="flex items-center justify-center py-12">
-					<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-					<span className="ml-2 text-sm text-muted-foreground">Loading devices...</span>
-				</div>
-			)}
+			{isLoading && data.length === 0 && !error && <DeviceListSkeleton />}
 
 			{/* Empty state */}
 			{!isLoading && data.length === 0 && !error && (
 				<div className="text-center py-12">
-					<p className="text-muted-foreground">No devices found.</p>
-					<p className="text-sm text-muted-foreground mt-1">
-						Make sure your devices are registered in ThermoWorks Cloud.
+					<p className="text-muted-foreground">
+						{isFiltering ? "No devices match your search." : "No devices found."}
 					</p>
+					{!isFiltering && (
+						<p className="text-sm text-muted-foreground mt-1">
+							Make sure your devices are registered in ThermoWorks Cloud.
+						</p>
+					)}
 				</div>
 			)}
 

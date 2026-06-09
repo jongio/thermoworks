@@ -151,6 +151,27 @@ describe("useDevices", () => {
 		vi.useRealTimers();
 	});
 
+	it("uses custom poll interval when provided", async () => {
+		vi.useFakeTimers();
+		const getDevicesWithChannels = vi.fn().mockResolvedValue(mockDevices);
+		const client = createMockClient({ getDevicesWithChannels });
+
+		renderHook(() => useDevices(client, { pollingInterval: 5_000 }));
+
+		await vi.advanceTimersByTimeAsync(0);
+		expect(getDevicesWithChannels).toHaveBeenCalledTimes(1);
+
+		// Should poll at 5s, not 10s
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(getDevicesWithChannels).toHaveBeenCalledTimes(2);
+
+		// And again at 10s total
+		await vi.advanceTimersByTimeAsync(5_000);
+		expect(getDevicesWithChannels).toHaveBeenCalledTimes(3);
+
+		vi.useRealTimers();
+	});
+
 	it("clears data when client becomes null", async () => {
 		const client = createMockClient({
 			getDevicesWithChannels: vi.fn().mockResolvedValue(mockDevices),

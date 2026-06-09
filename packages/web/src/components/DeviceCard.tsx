@@ -1,9 +1,14 @@
-import { Battery, ChevronDown, ChevronUp, Loader2, Signal, Thermometer, Wifi } from "lucide-react";
+import { Battery, ChevronDown, ChevronUp, Thermometer, Wifi } from "lucide-react";
 import React, { Suspense, useState } from "react";
+import { Link } from "react-router-dom";
 import { useArchiveData } from "../hooks/useArchiveData.ts";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { ChannelReading } from "./ChannelReading.tsx";
+import { FirmwareStatus } from "./FirmwareStatus.tsx";
+import { SessionControls } from "./SessionControls.tsx";
+import { ShareButton } from "./ShareButton.tsx";
+import { ChartSkeleton } from "./Skeleton.tsx";
 
 const TemperatureChart = React.lazy(() => import("./TemperatureChart"));
 
@@ -56,7 +61,12 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 			<div className="flex items-start justify-between gap-2 mb-3">
 				<div className="min-w-0 flex-1">
 					<h3 className="font-semibold truncate" title={name}>
-						{name}
+						<Link
+							to={`/device/${device.serial}`}
+							className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+						>
+							{name}
+						</Link>
 					</h3>
 					<div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
 						<Thermometer className="h-3 w-3 shrink-0" />
@@ -70,6 +80,7 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 					aria-label={`Status: ${status.label}`}
 					role="status"
 				>
+					<ShareButton serial={device.serial} client={client} />
 					<span className={cn("h-2 w-2 rounded-full", status.color)} title={status.label} />
 					<span className="text-xs text-muted-foreground">{status.label}</span>
 				</div>
@@ -90,9 +101,11 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 					</span>
 				)}
 				{device.firmware && (
-					<span className="inline-flex items-center gap-1">
-						<Signal className="h-3 w-3" />v{device.firmware}
-					</span>
+					<FirmwareStatus
+						currentVersion={device.firmware}
+						deviceType={device.type ?? device.device}
+						client={client}
+					/>
 				)}
 			</div>
 
@@ -106,6 +119,26 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 			) : (
 				<p className="text-sm text-muted-foreground italic">No active channels</p>
 			)}
+
+			{/* Session controls */}
+			<SessionControls
+				client={client}
+				serial={device.serial}
+				sessionStart={device.sessionStart}
+				sessionLabel={device.sessionLabel}
+			/>
+
+			{/* View details link */}
+			<Link
+				to={`/device/${device.serial}`}
+				className={cn(
+					"mt-3 w-full flex items-center justify-center rounded-md px-3 py-1.5",
+					"text-xs text-muted-foreground hover:text-foreground",
+					"hover:bg-muted transition-colors",
+				)}
+			>
+				View details
+			</Link>
 
 			{/* History toggle button */}
 			<button
@@ -135,21 +168,10 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 			{/* Chart panel */}
 			{showChart && (
 				<div className="mt-3 pt-3 border-t border-border">
-					{archiveLoading && (
-						<div className="flex items-center justify-center py-6">
-							<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-							<span className="ml-2 text-xs text-muted-foreground">Loading history...</span>
-						</div>
-					)}
+					{archiveLoading && <ChartSkeleton />}
 					{archiveError && <div className="text-xs text-destructive py-2">{archiveError}</div>}
 					{!archiveLoading && !archiveError && archiveChannels && (
-						<Suspense
-							fallback={
-								<div className="flex items-center justify-center py-6">
-									<Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-								</div>
-							}
-						>
+						<Suspense fallback={<ChartSkeleton />}>
 							<TemperatureChart channels={archiveChannels} />
 						</Suspense>
 					)}

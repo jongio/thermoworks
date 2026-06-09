@@ -3,6 +3,10 @@ import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { DeviceCard } from "./DeviceCard.tsx";
 import { DeviceListSkeleton } from "./Skeleton.tsx";
+import { VirtualizedDeviceGrid } from "./VirtualizedDeviceGrid.tsx";
+
+/** Device count threshold above which virtualization is enabled. */
+const VIRTUALIZATION_THRESHOLD = 20;
 
 interface DeviceListProps {
 	data: DeviceWithChannels[];
@@ -24,6 +28,8 @@ export function DeviceList({
 	client,
 	isFiltering = false,
 }: DeviceListProps) {
+	const useVirtualization = data.length > VIRTUALIZATION_THRESHOLD;
+
 	return (
 		<div className="space-y-4">
 			{/* Status bar */}
@@ -80,14 +86,17 @@ export function DeviceList({
 				</div>
 			)}
 
-			{/* Device grid */}
-			{data.length > 0 && (
-				<div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-					{data.map((item) => (
-						<DeviceCard key={item.device.serial} item={item} client={client} />
-					))}
-				</div>
-			)}
+			{/* Device grid - virtualized for large lists, plain for small */}
+			{data.length > 0 &&
+				(useVirtualization ? (
+					<VirtualizedDeviceGrid data={data} client={client} />
+				) : (
+					<div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+						{data.map((item) => (
+							<DeviceCard key={item.device.serial} item={item} client={client} />
+						))}
+					</div>
+				))}
 		</div>
 	);
 }

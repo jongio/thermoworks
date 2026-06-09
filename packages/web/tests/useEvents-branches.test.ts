@@ -174,7 +174,7 @@ describe("useEvents - branch coverage", () => {
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(getEvents).toHaveBeenCalledWith(filter1);
+		expect(getEvents).toHaveBeenCalledWith({ ...filter1, limit: 200 });
 
 		// Change filter triggers new effect
 		rerender({ f: filter2 });

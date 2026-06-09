@@ -1,10 +1,40 @@
-import { act, render, renderHook, screen } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DeviceEvent, EventFilter } from "thermoworks-sdk";
+import type { Archive, DeviceEvent, EventFilter } from "thermoworks-sdk";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../src/lib/api.ts";
 import { useEvents } from "../src/hooks/useEvents.ts";
 import { Events } from "../src/pages/Events.tsx";
+
+const observerInstances: MockIntersectionObserver[] = [];
+
+class MockIntersectionObserver {
+	readonly callback: IntersectionObserverCallback;
+	readonly observe = vi.fn();
+	readonly unobserve = vi.fn();
+	readonly disconnect = vi.fn();
+
+	constructor(callback: IntersectionObserverCallback) {
+		this.callback = callback;
+		observerInstances.push(this);
+	}
+}
+
+globalThis.IntersectionObserver =
+	MockIntersectionObserver as unknown as typeof IntersectionObserver;
+
+function triggerIntersection(isIntersecting = true) {
+	const observer = observerInstances.at(-1);
+	const target = observer?.observe.mock.calls.at(-1)?.[0];
+	if (!observer || !target) {
+		throw new Error("No observed activity feed sentinel found.");
+	}
+
+	observer.callback(
+		[{ isIntersecting, target } as IntersectionObserverEntry],
+		observer as unknown as IntersectionObserver,
+	);
+}
 
 function createMockClient(overrides: Partial<ThermoworksWebClient> = {}): ThermoworksWebClient {
 	return {
@@ -17,7 +47,7 @@ function createMockClient(overrides: Partial<ThermoworksWebClient> = {}): Thermo
 		getDevices: vi.fn(),
 		getDeviceChannel: vi.fn(),
 		getAllDeviceChannels: vi.fn(),
-		getArchives: vi.fn(),
+		getArchives: vi.fn().mockResolvedValue([]),
 		...overrides,
 	} as unknown as ThermoworksWebClient;
 }
@@ -36,6 +66,36 @@ function makeEvent(overrides: Partial<DeviceEvent> = {}): DeviceEvent {
 		groups: null,
 		...overrides,
 	};
+}
+
+function makeArchive(overrides: Partial<Archive> = {}): Archive {
+	return {
+		id: "archive-1",
+		start: new Date("2026-06-08T11:00:00Z"),
+		end: new Date("2026-06-08T12:30:00Z"),
+		count: 2,
+		type: "session",
+		label: "Brisket Cook",
+		deviceLabel: "Smoker Probe",
+		notes: null,
+		createdOn: new Date("2026-06-08T10:55:00Z"),
+		public: false,
+		publicLink: null,
+		filename: null,
+		channels: [],
+		...overrides,
+	};
+}
+
+function makeEvents(count: number, deviceId = "ABC123"): DeviceEvent[] {
+	return Array.from({ length: count }, (_, index) =>
+		makeEvent({
+			id: `evt-${count}-${index}`,
+			eventType: index % 2 === 0 ? "Alarm" : "Low Battery Alert",
+			deviceId,
+			eventTime: new Date(Date.UTC(2026, 5, 8, 12, 0 - index)),
+		}),
+	);
 }
 
 const mockDevices: DeviceWithChannels[] = [
@@ -86,6 +146,53 @@ const mockDevices: DeviceWithChannels[] = [
 		},
 		channels: [],
 	},
+	{
+		device: {
+			serial: "XYZ999",
+			deviceId: null,
+			label: "Backyard Grill",
+			type: "Smoke",
+			device: null,
+			status: "online",
+			battery: 75,
+			batteryState: null,
+			wifiStrength: null,
+			firmware: null,
+			color: null,
+			thumbnail: null,
+			deviceDisplayUnits: null,
+			iotDeviceId: null,
+			iotCoreDeviceBlocked: null,
+			recordingIntervalInSeconds: null,
+			transmitIntervalInSeconds: null,
+			readInterval: null,
+			heartbeatInterval: null,
+			temperatureDeltaTrigger: null,
+			pendingLoad: null,
+			batteryAlertSent: null,
+			lastSeen: null,
+			lastTelemetrySaved: null,
+			latestReading: null,
+			lastWifiConnection: null,
+			lastBluetoothConnection: null,
+			sessionStart: null,
+			sessionLabel: null,
+			lastArchive: null,
+			lastPurged: null,
+			assignedToAccountOn: null,
+			accountId: null,
+			notes: null,
+			public: null,
+			publicLink: null,
+			searModeEnabled: null,
+			showSensorChannels: null,
+			ringColors: null,
+			gateway: null,
+			fan: null,
+			bigQuery: null,
+		},
+		channels: [],
+	},
 ];
 
 function OutletWrapper({ client }: { client: ThermoworksWebClient }) {
@@ -98,21 +205,22 @@ function renderEventsPage(client: ThermoworksWebClient) {
 			<Routes>
 				<Route element={<OutletWrapper client={client} />}>
 					<Route path="events" element={<Events />} />
+					<Route path="device/:serial" element={<div>Device detail page</div>} />
 				</Route>
 			</Routes>
 		</MemoryRouter>,
 	);
 }
 
-// ─── useEvents hook tests ────────────────────────────────────────────────────
-
 describe("useEvents", () => {
 	beforeEach(() => {
 		vi.useFakeTimers();
+		observerInstances.length = 0;
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
+		vi.restoreAllMocks();
 	});
 
 	it("returns empty data when client is null", () => {
@@ -122,6 +230,7 @@ describe("useEvents", () => {
 		expect(result.current.isLoading).toBe(false);
 		expect(result.current.error).toBeNull();
 		expect(result.current.lastUpdated).toBeNull();
+		expect(result.current.hasMore).toBe(false);
 	});
 
 	it("fetches events when client is authenticated", async () => {
@@ -170,90 +279,183 @@ describe("useEvents", () => {
 		expect(result.current.data).toEqual([]);
 	});
 
-	it("polls at 30s intervals", async () => {
-		const getEvents = vi.fn().mockResolvedValue([]);
+	it("polls at 30s intervals and prepends new events", async () => {
+		const firstBatch = [
+			makeEvent({ id: "evt-2", eventTime: new Date("2026-06-08T10:01:00Z") }),
+			makeEvent({ id: "evt-1", eventTime: new Date("2026-06-08T10:00:00Z") }),
+		];
+		const refreshedBatch = [
+			makeEvent({ id: "evt-3", eventTime: new Date("2026-06-08T10:02:00Z") }),
+			...firstBatch,
+		];
+		const getEvents = vi
+			.fn()
+			.mockResolvedValueOnce(firstBatch)
+			.mockResolvedValueOnce(refreshedBatch);
 		const client = createMockClient({ getEvents });
 
-		renderHook(() => useEvents(client));
+		const { result } = renderHook(() => useEvents(client));
 
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(0);
 		});
-		expect(getEvents).toHaveBeenCalledTimes(1);
+		expect(result.current.data.map((event) => event.id)).toEqual(["evt-2", "evt-1"]);
 
 		await act(async () => {
 			await vi.advanceTimersByTimeAsync(30_000);
 		});
 		expect(getEvents).toHaveBeenCalledTimes(2);
+		expect(result.current.data.map((event) => event.id)).toEqual(["evt-3", "evt-2", "evt-1"]);
+	});
+
+	it("loads more events by increasing the page size", async () => {
+		vi.useRealTimers();
+
+		const getEvents = vi
+			.fn()
+			.mockImplementation(async (filter?: EventFilter) => makeEvents(filter?.limit ?? 200));
+		const client = createMockClient({ getEvents });
+
+		const { result } = renderHook(() => useEvents(client, { limit: 200 }));
+
+		await waitFor(() => {
+			expect(getEvents).toHaveBeenLastCalledWith({ limit: 200 });
+		});
+		expect(result.current.hasMore).toBe(true);
+
+		act(() => {
+			void result.current.loadMore();
+		});
+
+		await waitFor(() => {
+			expect(getEvents).toHaveBeenLastCalledWith({ limit: 400 });
+			expect(result.current.data).toHaveLength(400);
+		});
 	});
 });
 
-// ─── Events page tests ───────────────────────────────────────────────────────
-
 describe("Events page", () => {
 	beforeEach(() => {
-		vi.useFakeTimers();
+		observerInstances.length = 0;
 	});
 
 	afterEach(() => {
-		vi.useRealTimers();
+		vi.restoreAllMocks();
 	});
 
 	it("renders the page header and filters", async () => {
 		const client = createMockClient();
 		renderEventsPage(client);
 
-		expect(screen.getByRole("heading", { name: "Events" })).toBeInTheDocument();
+		await waitFor(() => {
+			expect(client.getEvents).toHaveBeenCalled();
+		});
+
+		expect(screen.getByRole("heading", { name: "Activity" })).toBeInTheDocument();
 		expect(screen.getByText("Device:")).toBeInTheDocument();
 		expect(screen.getByText("Type:")).toBeInTheDocument();
 	});
 
-	it("shows empty state when no events", async () => {
+	it("shows empty state when no activity", async () => {
 		const client = createMockClient({
 			getEvents: vi.fn().mockResolvedValue([]),
 			getDevicesWithChannels: vi.fn().mockResolvedValue([]),
+			getArchives: vi.fn().mockResolvedValue([]),
 		});
 
 		renderEventsPage(client);
 
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(0);
-		});
-
-		expect(screen.getByText("No events found.")).toBeInTheDocument();
+		expect(await screen.findByText("No activity found.")).toBeInTheDocument();
 		expect(
-			screen.getByText("Alarms, alerts, and status changes will appear here."),
+			screen.getByText("Events, alarms, and session activity will appear here."),
 		).toBeInTheDocument();
 	});
 
-	it("renders events with device label and type badge", async () => {
-		const events = [
-			makeEvent({ id: "e1", eventType: "Alarm", deviceId: "ABC123" }),
-			makeEvent({
-				id: "e2",
-				eventType: "Low Battery Alert",
-				deviceId: "ABC123",
-				valueBefore: "15%",
-				valueAfter: null,
-			}),
-		];
+	it("renders a unified timeline with event and session activity", async () => {
+		const getArchives = vi.fn().mockResolvedValue([makeArchive()]);
 		const client = createMockClient({
-			getEvents: vi.fn().mockResolvedValue(events),
-			getDevicesWithChannels: vi.fn().mockResolvedValue(mockDevices),
+			getEvents: vi
+				.fn()
+				.mockResolvedValue([makeEvent({ id: "evt-1", eventType: "Alarm", deviceId: "ABC123" })]),
+			getDevicesWithChannels: vi.fn().mockResolvedValue(mockDevices.slice(0, 1)),
+			getArchives,
 		});
 
 		renderEventsPage(client);
 
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(0);
+		expect(await screen.findByText("Started Brisket Cook")).toBeInTheDocument();
+		expect(getArchives).toHaveBeenCalledWith("ABC123", 10);
+
+		expect(screen.getByRole("list", { name: "Activity feed" })).toBeInTheDocument();
+		expect(screen.getAllByText("Smoker Probe").length).toBeGreaterThanOrEqual(2);
+		expect(screen.getByRole("option", { name: "Session Started" })).toBeInTheDocument();
+		expect(screen.getByRole("option", { name: "Session Ended" })).toBeInTheDocument();
+		expect(screen.getByText("Started Brisket Cook")).toBeInTheDocument();
+		expect(screen.getAllByText("Alarm").length).toBeGreaterThanOrEqual(1);
+	});
+
+	it("keeps filtering working with combined activity types", async () => {
+		const client = createMockClient({
+			getEvents: vi
+				.fn()
+				.mockResolvedValue([makeEvent({ id: "evt-1", eventType: "Alarm", deviceId: "ABC123" })]),
+			getDevicesWithChannels: vi.fn().mockResolvedValue(mockDevices.slice(0, 1)),
+			getArchives: vi.fn().mockResolvedValue([makeArchive()]),
 		});
 
-		expect(screen.getByRole("list", { name: "Event history" })).toBeInTheDocument();
-		// 2 in event rows + 1 in the device filter dropdown
-		expect(screen.getAllByText("Smoker Probe")).toHaveLength(3);
-		// "Alarm" appears in the type filter dropdown option AND as a badge
-		expect(screen.getAllByText("Alarm").length).toBeGreaterThanOrEqual(2);
-		expect(screen.getAllByText("Low Battery Alert").length).toBeGreaterThanOrEqual(1);
+		renderEventsPage(client);
+
+		expect(await screen.findByText("Started Brisket Cook")).toBeInTheDocument();
+
+		fireEvent.change(screen.getByLabelText("Type:"), {
+			target: { value: "Session Started" },
+		});
+
+		expect(screen.getByText("Started Brisket Cook")).toBeInTheDocument();
+		expect(screen.queryByText("150°F → 200°F")).not.toBeInTheDocument();
+	});
+
+	it("navigates to the device detail page when an activity row is clicked", async () => {
+		const client = createMockClient({
+			getEvents: vi
+				.fn()
+				.mockResolvedValue([makeEvent({ id: "evt-1", eventType: "Alarm", deviceId: "ABC123" })]),
+			getDevicesWithChannels: vi.fn().mockResolvedValue(mockDevices.slice(0, 1)),
+			getArchives: vi.fn().mockResolvedValue([]),
+		});
+
+		renderEventsPage(client);
+
+		expect(await screen.findByRole("button", { name: /alarm/i })).toBeInTheDocument();
+
+		fireEvent.click(screen.getByRole("button", { name: /alarm/i }));
+
+		expect(screen.getByText("Device detail page")).toBeInTheDocument();
+	});
+
+	it("loads more activity when the infinite scroll sentinel intersects", async () => {
+		const getEvents = vi
+			.fn()
+			.mockImplementation(async (filter?: EventFilter) => makeEvents(filter?.limit ?? 200));
+		const client = createMockClient({
+			getEvents,
+			getDevicesWithChannels: vi.fn().mockResolvedValue(mockDevices.slice(0, 1)),
+			getArchives: vi.fn().mockResolvedValue([]),
+		});
+
+		renderEventsPage(client);
+
+		await waitFor(() => {
+			expect(getEvents).toHaveBeenCalledWith({ limit: 200 });
+		});
+
+		await act(async () => {
+			triggerIntersection();
+		});
+
+		await waitFor(() => {
+			expect(getEvents).toHaveBeenLastCalledWith({ limit: 400 });
+		});
 	});
 
 	it("shows error state", async () => {
@@ -263,15 +465,11 @@ describe("Events page", () => {
 
 		renderEventsPage(client);
 
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(0);
-		});
-
-		expect(screen.getByRole("alert")).toBeInTheDocument();
+		expect(await screen.findByRole("alert")).toBeInTheDocument();
 		expect(screen.getByText("Server error")).toBeInTheDocument();
 	});
 
-	it("populates device filter dropdown from loaded devices", async () => {
+	it("populates the device filter dropdown from loaded devices", async () => {
 		const client = createMockClient({
 			getEvents: vi.fn().mockResolvedValue([]),
 			getDevicesWithChannels: vi.fn().mockResolvedValue(mockDevices),
@@ -279,12 +477,7 @@ describe("Events page", () => {
 
 		renderEventsPage(client);
 
-		await act(async () => {
-			await vi.advanceTimersByTimeAsync(0);
-		});
-
-		const options = screen.getAllByRole("option");
-		const deviceOption = options.find((o) => o.textContent === "Smoker Probe");
-		expect(deviceOption).toBeInTheDocument();
+		expect(await screen.findByRole("option", { name: "Smoker Probe" })).toBeInTheDocument();
+		expect(screen.getByRole("option", { name: "Backyard Grill" })).toBeInTheDocument();
 	});
 });

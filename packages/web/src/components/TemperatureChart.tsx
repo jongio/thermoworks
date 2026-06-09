@@ -418,9 +418,9 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 									name={name}
 									stroke={color}
 									strokeWidth={2}
-									dot={false}
+									dot={chartData.length <= 50 ? { r: 3, fill: color } : false}
 									isAnimationActive={false}
-									activeDot={{ r: 3, strokeWidth: 1 }}
+									activeDot={{ r: 4, strokeWidth: 1 }}
 									connectNulls
 								/>
 							);
@@ -474,8 +474,8 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 				</ResponsiveContainer>
 			</div>
 
-			{/* Brush overview uses the full dataset while the main chart renders only the visible window. */}
-			{!isZoomed && brushPreviewKey && clampedBrushWindow && (
+			{/* Brush overview - only shown for larger datasets where navigation helps */}
+			{!isZoomed && brushPreviewKey && clampedBrushWindow && data.length > 50 && (
 				<div className="h-16 w-full">
 					<ResponsiveContainer width="100%" height="100%">
 						<AreaChart data={data} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>

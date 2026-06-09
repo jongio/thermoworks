@@ -63,7 +63,8 @@ describe("AccountPanel", () => {
 			render(<AccountPanel client={client} />);
 		});
 
-		expect(screen.getByText("Backyard BBQ")).toBeInTheDocument();
+		// user.displayName takes precedence over account.name
+		expect(screen.getByText("Pit Master")).toBeInTheDocument();
 		expect(screen.getByText("acct-1")).toBeInTheDocument();
 		expect(screen.getByText("Pro")).toBeInTheDocument();
 	});
@@ -172,8 +173,8 @@ describe("AccountPanel", () => {
 		expect(screen.getByText("Network timeout")).toBeInTheDocument();
 	});
 
-	it("omits name row when account name is null", async () => {
-		const client = makeMockClient({ account: { name: null } });
+	it("omits name row when both displayName and account name are null", async () => {
+		const client = makeMockClient({ account: { name: null }, user: { displayName: null } });
 
 		await act(async () => {
 			render(<AccountPanel client={client} />);

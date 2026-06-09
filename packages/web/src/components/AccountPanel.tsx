@@ -71,10 +71,10 @@ export function AccountPanel({ client }: AccountPanelProps) {
 
 			<div className="rounded-lg border border-border bg-card p-4 space-y-4">
 				<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-					{account.name && (
+					{(user.displayName ?? account.name) && (
 						<>
 							<dt className="text-muted-foreground">Name</dt>
-							<dd>{account.name}</dd>
+							<dd>{user.displayName ?? account.name}</dd>
 						</>
 					)}
 					<dt className="text-muted-foreground">Account ID</dt>

@@ -1902,17 +1902,17 @@ describe("ThermoworksWebClient data usage", () => {
 		);
 		mockFetch.mockResolvedValueOnce(
 			jsonResponse({
-				result: { totalBytes: 3_221_225_472 },
-			}),
-		);
-		mockFetch.mockResolvedValueOnce(
-			jsonResponse({
 				fields: {
 					billingPlanId: { stringValue: "plan-pro" },
 					periodStart: { timestampValue: "2026-06-01T00:00:00Z" },
 					currentPeriodEnd: { timestampValue: "2026-06-30T00:00:00Z" },
 					devicesUsed: { integerValue: "2" },
 				},
+			}),
+		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				result: { totalBytes: 3_221_225_472 },
 			}),
 		);
 		mockFetch.mockResolvedValueOnce(
@@ -1938,7 +1938,7 @@ describe("ThermoworksWebClient data usage", () => {
 			periodEnd: new Date("2026-06-30T00:00:00Z"),
 			deviceCount: 2,
 		});
-		expect(mockFetch.mock.calls[3][0]).toContain("accountDataStorageSize");
+		expect(mockFetch.mock.calls[4][0]).toContain("accountDataStorageSize");
 	});
 
 	it("fetches and enriches per-device usage from callable functions", async () => {
@@ -1947,14 +1947,6 @@ describe("ThermoworksWebClient data usage", () => {
 		mockFetch.mockResolvedValueOnce(
 			jsonResponse({
 				fields: { accountId: { stringValue: "acct-usage" } },
-			}),
-		);
-		mockFetch.mockResolvedValueOnce(
-			jsonResponse({
-				result: [
-					{ deviceId: "SN-001", bytes: 1_048_576 },
-					{ deviceId: "dev-2", bytes: 524_288 },
-				],
 			}),
 		);
 		mockFetch.mockResolvedValueOnce(
@@ -1979,6 +1971,14 @@ describe("ThermoworksWebClient data usage", () => {
 				},
 			]),
 		);
+		mockFetch.mockResolvedValueOnce(
+			jsonResponse({
+				result: [
+					{ deviceId: "SN-001", bytes: 1_048_576 },
+					{ deviceId: "dev-2", bytes: 524_288 },
+				],
+			}),
+		);
 
 		const deviceUsage = await client.getDataUsageByDevice();
 
@@ -1998,7 +1998,7 @@ describe("ThermoworksWebClient data usage", () => {
 				lastSync: new Date("2026-06-08T20:00:00Z"),
 			},
 		]);
-		expect(mockFetch.mock.calls[3][0]).toContain("accountDataStorageSizeByTable");
+		expect(mockFetch.mock.calls[4][0]).toContain("accountDataStorageSizeByTable");
 	});
 
 	it("fetches billing plan metadata for the usage dashboard", async () => {

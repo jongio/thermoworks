@@ -835,10 +835,16 @@ export class ThermoworksWebClient {
 
 	async getDataUsage(): Promise<DataUsage> {
 		const accountId = await this.getAccountId();
-		const [usageResult, accountFields] = await Promise.all([
-			this.callFunction("accountDataStorageSize", { accountId }),
-			this.fetchDocFields(`documents/accounts/${encodeURIComponent(accountId)}`),
-		]);
+		let usageResult: unknown = null;
+		const accountFields = await this.fetchDocFields(
+			`documents/accounts/${encodeURIComponent(accountId)}`,
+		);
+
+		try {
+			usageResult = await this.callFunction("accountDataStorageSize", { accountId });
+		} catch {
+			// Cloud function may not exist — fall back to zero usage
+		}
 
 		const accountUsage = usageResult as { totalBytes?: number } | null;
 		let planFields: FirestoreFields | null = null;
@@ -874,10 +880,14 @@ export class ThermoworksWebClient {
 
 	async getDataUsageByDevice(): Promise<DeviceDataUsage[]> {
 		const accountId = await this.getAccountId();
-		const [usageResult, devices] = await Promise.all([
-			this.callFunction("accountDataStorageSizeByTable", { accountId }),
-			this.getDevices(),
-		]);
+		let usageResult: unknown = null;
+		const devices = await this.getDevices();
+
+		try {
+			usageResult = await this.callFunction("accountDataStorageSizeByTable", { accountId });
+		} catch {
+			// Cloud function may not exist — return empty
+		}
 
 		const entries = Array.isArray(usageResult)
 			? (usageResult as Array<{

@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -27,12 +27,14 @@ describe("PWA manifest", () => {
 		expect(manifest.background_color).toMatch(/^#[0-9a-fA-F]{6}$/);
 	});
 
-	it("has at least two icon sizes", () => {
-		expect(manifest.icons.length).toBeGreaterThanOrEqual(2);
+	it("has the full favicon and PWA icon set", () => {
+		expect(manifest.icons.length).toBeGreaterThanOrEqual(5);
 
 		const sizes = manifest.icons.map(
 			(i: { sizes: string }) => i.sizes,
 		);
+		expect(sizes).toContain("16x16");
+		expect(sizes).toContain("32x32");
 		expect(sizes).toContain("192x192");
 		expect(sizes).toContain("512x512");
 	});
@@ -42,6 +44,24 @@ describe("PWA manifest", () => {
 			expect(icon.src).toBeTruthy();
 			expect(icon.type).toBeTruthy();
 		}
+	});
+
+	it("marks installable PNG icons as maskable", () => {
+		const installIcons = manifest.icons.filter(
+			(icon: { type: string; sizes: string }) =>
+				icon.type === "image/png" &&
+				(icon.sizes === "192x192" || icon.sizes === "512x512"),
+		);
+
+		expect(installIcons).toHaveLength(2);
+		for (const icon of installIcons) {
+			expect(icon.purpose).toContain("maskable");
+		}
+	});
+
+	it("ships generated PNG favicon assets", () => {
+		expect(existsSync(resolve(PUBLIC_DIR, "favicon-16x16.png"))).toBe(true);
+		expect(existsSync(resolve(PUBLIC_DIR, "favicon-32x32.png"))).toBe(true);
 	});
 });
 
@@ -66,6 +86,11 @@ describe("index.html PWA meta tags", () => {
 
 	it("includes apple-touch-icon link", () => {
 		expect(html).toContain('rel="apple-touch-icon"');
+	});
+
+	it("includes size-specific PNG favicon links", () => {
+		expect(html).toContain('href="favicon-32x32.png"');
+		expect(html).toContain('href="favicon-16x16.png"');
 	});
 });
 

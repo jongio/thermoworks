@@ -4,6 +4,7 @@ import { LandingPage } from "./components/LandingPage.tsx";
 import { LoginForm } from "./components/LoginForm.tsx";
 import { OnboardingWizard, shouldShowOnboarding } from "./components/OnboardingWizard.tsx";
 import { TemperatureUnitProvider } from "./context/TemperatureUnitContext.tsx";
+import { useAccounts } from "./hooks/useAccounts.ts";
 import { ThermoworksWebClient } from "./lib/api.ts";
 
 // Try to restore session from sessionStorage on app load
@@ -24,7 +25,17 @@ export function App() {
 	const [{ client, showOnboarding }, setAppState] = useState(createInitialAppState);
 	const [showLogin, setShowLogin] = useState(false);
 
-	function handleLogin(nextClient: ThermoworksWebClient) {
+	const {
+		accounts,
+		activeAccountId,
+		addAccount,
+		switchAccount,
+		removeAccount,
+		clearAllAccounts,
+	} = useAccounts();
+
+	function handleLogin(nextClient: ThermoworksWebClient, email: string) {
+		addAccount(email, nextClient);
 		setAppState({
 			client: nextClient,
 			showOnboarding: shouldShowOnboarding(),
@@ -34,6 +45,55 @@ export function App() {
 
 	function handleLogout() {
 		client?.logout();
+		// Remove only the current account; if others remain, switch to them
+		if (activeAccountId && accounts.length > 1) {
+			removeAccount(activeAccountId);
+			// After remove, switch to the next most recently used account
+			const remaining = accounts.filter((a) => a.id !== activeAccountId);
+			if (remaining.length > 0) {
+				const sorted = [...remaining].sort((a, b) => b.lastUsed - a.lastUsed);
+				const nextClient = switchAccount(sorted[0]!.id);
+				setAppState({
+					client: nextClient,
+					showOnboarding: false,
+				});
+				return;
+			}
+		}
+		// Single account or no accounts — full logout
+		clearAllAccounts();
+		setAppState({
+			client: null,
+			showOnboarding: false,
+		});
+		setShowLogin(false);
+	}
+
+	function handleSwitchAccount(id: string) {
+		const nextClient = switchAccount(id);
+		if (nextClient) {
+			setAppState({
+				client: nextClient,
+				showOnboarding: false,
+			});
+		}
+	}
+
+	function handleAddAccount() {
+		setShowLogin(true);
+	}
+
+	function handleRemoveAccount(id: string) {
+		if (id === activeAccountId) {
+			handleLogout();
+		} else {
+			removeAccount(id);
+		}
+	}
+
+	function handleSignOutAll() {
+		client?.logout();
+		clearAllAccounts();
 		setAppState({
 			client: null,
 			showOnboarding: false,
@@ -50,7 +110,16 @@ export function App() {
 
 	return (
 		<TemperatureUnitProvider>
-			<AppLayout client={client} onLogout={handleLogout} />
+			<AppLayout
+				client={client}
+				onLogout={handleLogout}
+				accounts={accounts}
+				activeAccountId={activeAccountId}
+				onSwitchAccount={handleSwitchAccount}
+				onAddAccount={handleAddAccount}
+				onRemoveAccount={handleRemoveAccount}
+				onSignOutAll={handleSignOutAll}
+			/>
 			{showOnboarding && (
 				<OnboardingWizard
 					client={client}

@@ -64,27 +64,21 @@ describe("NotificationToggle", () => {
 		expect(button).not.toBeDisabled();
 	});
 
-	it("renders disabled button when permission is denied", () => {
+	it("renders nothing when permission is denied", () => {
 		mockNotification("denied");
 
-		render(<NotificationToggle />);
+		const { container } = render(<NotificationToggle />);
 
-		const button = screen.getByRole("button");
-		expect(button).toHaveAttribute("aria-label", "Notifications blocked by browser");
-		expect(button).toBeDisabled();
+		expect(container).toBeEmptyDOMElement();
 	});
 
-	it("does nothing on click when permission is denied", () => {
+	it("renders nothing on click when permission is denied", () => {
 		mockNotification("denied");
 
-		render(<NotificationToggle />);
+		const { container } = render(<NotificationToggle />);
 
-		const button = screen.getByRole("button");
-		fireEvent.click(button);
-
-		// Still disabled, no state change
-		expect(button).toBeDisabled();
-		expect(button).toHaveAttribute("aria-label", "Notifications blocked by browser");
+		// Nothing rendered — no interaction possible
+		expect(container).toBeEmptyDOMElement();
 	});
 
 	it("requests permission when permission is 'default' and enables on grant", async () => {
@@ -130,14 +124,12 @@ describe("NotificationToggle", () => {
 		expect(localStorage.getItem("thermoworks-notifications-enabled")).toBe("true");
 	});
 
-	it("renders denied state when Notification API is unavailable", () => {
+	it("renders nothing when Notification API is unavailable", () => {
 		removeNotificationAPI();
 
-		render(<NotificationToggle />);
+		const { container } = render(<NotificationToggle />);
 
-		const button = screen.getByRole("button");
-		expect(button).toBeDisabled();
-		expect(button).toHaveAttribute("aria-label", "Notifications blocked by browser");
+		expect(container).toBeEmptyDOMElement();
 	});
 
 	it("does not request permission when clicking toggle in granted state", () => {
@@ -185,15 +177,14 @@ describe("NotificationToggle", () => {
 		const mock = mockNotification("default");
 		mock.requestPermission = vi.fn().mockResolvedValue("denied");
 
-		render(<NotificationToggle />);
+		const { container } = render(<NotificationToggle />);
 
 		await act(async () => {
 			fireEvent.click(screen.getByRole("button"));
 		});
 
 		expect(mock.requestPermission).toHaveBeenCalledOnce();
-		// Permission should update to denied, button should become disabled
-		const button = screen.getByRole("button");
-		expect(button).toBeDisabled();
+		// Permission changed to denied — component should render nothing
+		expect(container).toBeEmptyDOMElement();
 	});
 });

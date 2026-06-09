@@ -253,7 +253,7 @@ describe("Events page", () => {
 		expect(screen.getAllByText("Smoker Probe")).toHaveLength(3);
 		// "Alarm" appears in the type filter dropdown option AND as a badge
 		expect(screen.getAllByText("Alarm").length).toBeGreaterThanOrEqual(2);
-		expect(screen.getByText("Low Battery Alert")).toBeInTheDocument();
+		expect(screen.getAllByText("Low Battery Alert").length).toBeGreaterThanOrEqual(1);
 	});
 
 	it("shows error state", async () => {

@@ -656,8 +656,8 @@ export class ThermoworksWebClient {
 			use24Time: getBoolean(fields, "use24Time"),
 			lastLogin: getTimestamp(fields, "lastLogin"),
 			appVersion: getString(fields, "appVersion"),
-			accountRoles: null,
-			roles: null,
+			accountRoles: parseBooleanMap(getMapFields(fields, "accountRoles")),
+			roles: parseBooleanMap(getMapFields(fields, "roles")),
 			notificationSettings: parseNotificationSettings(getMapFields(fields, "notificationSettings")),
 		};
 	}
@@ -848,6 +848,53 @@ export class ThermoworksWebClient {
 	async renameDevice(serial: string, name: string): Promise<{ success: boolean }> {
 		const body = { fields: { label: { stringValue: name } } };
 		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=label`;
+		const response = await this.firestoreRequest("PATCH", path, body);
+		return { success: response.ok };
+	}
+
+	async updateDeviceState(
+		serial: string,
+		updates: Record<string, string | number | boolean>,
+	): Promise<{ success: boolean }> {
+		const fields: Record<string, unknown> = {};
+		const fieldPaths: string[] = [];
+		for (const [key, value] of Object.entries(updates)) {
+			fieldPaths.push(key);
+			if (typeof value === "string") {
+				fields[key] = { stringValue: value };
+			} else if (typeof value === "number") {
+				fields[key] = { doubleValue: value };
+			} else if (typeof value === "boolean") {
+				fields[key] = { booleanValue: value };
+			}
+		}
+		const mask = fieldPaths.map((f) => `updateMask.fieldPaths=${f}`).join("&");
+		const path = `documents/devices/${encodeURIComponent(serial)}?${mask}`;
+		const response = await this.firestoreRequest("PATCH", path, { fields });
+		return { success: response.ok };
+	}
+
+	async factoryReset(serial: string): Promise<{ success: boolean }> {
+		const body = { fields: { factoryReset: { booleanValue: true } } };
+		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=factoryReset`;
+		const response = await this.firestoreRequest("PATCH", path, body);
+		return { success: response.ok };
+	}
+
+	async setFanTarget(serial: string, temperature: number): Promise<{ success: boolean }> {
+		const body = {
+			fields: { fan: { mapValue: { fields: { setTemp: { doubleValue: temperature } } } } },
+		};
+		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=fan.setTemp`;
+		const response = await this.firestoreRequest("PATCH", path, body);
+		return { success: response.ok };
+	}
+
+	async setFanEnabled(serial: string, enabled: boolean): Promise<{ success: boolean }> {
+		const body = {
+			fields: { fan: { mapValue: { fields: { connection: { booleanValue: enabled } } } } },
+		};
+		const path = `documents/devices/${encodeURIComponent(serial)}?updateMask.fieldPaths=fan.connection`;
 		const response = await this.firestoreRequest("PATCH", path, body);
 		return { success: response.ok };
 	}

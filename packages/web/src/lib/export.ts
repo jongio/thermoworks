@@ -1,15 +1,66 @@
-/** Data export utilities for chart data. */
+/** Data export utilities. */
+
+export type ExportFormat = "csv" | "json";
+
+export interface ExportColumn {
+	key: string;
+	label: string;
+}
 
 export interface ChartDataPoint {
 	time: number;
 	[channelKey: string]: number;
 }
 
-/**
- * Convert chart data to a CSV string and trigger a browser download.
- *
- * Handles values containing commas/quotes via RFC 4180 escaping.
- */
+/** Generate a CSV string from structured data with proper escaping. */
+export function toCSV<T extends Record<string, unknown>>(data: T[], columns: ExportColumn[]): string {
+	const header = columns.map((c) => escapeCSVField(c.label)).join(",");
+	const rows = data.map((row) =>
+		columns
+			.map((c) => {
+				const val = row[c.key];
+				if (val == null) return "";
+				return escapeCSVField(String(val));
+			})
+			.join(","),
+	);
+	return [header, ...rows].join("\n");
+}
+
+/** Generate a formatted JSON string from data. */
+export function toJSON<T>(data: T[]): string {
+	return JSON.stringify(data, null, 2);
+}
+
+/** Trigger a file download in the browser. */
+export function downloadBlob(content: string, filename: string, mimeType: string): void {
+	const blob = new Blob([content], { type: mimeType });
+	triggerDownload(blob, filename);
+}
+
+/** Export data as CSV, triggering a browser download. */
+export function exportToCSV<T extends Record<string, unknown>>(
+	data: T[],
+	columns: ExportColumn[],
+	filename: string,
+): void {
+	const csv = toCSV(data, columns);
+	downloadBlob(csv, filename, "text/csv");
+}
+
+/** Export data as JSON, triggering a browser download. */
+export function exportToJSON<T>(data: T[], filename: string): void {
+	const json = toJSON(data);
+	downloadBlob(json, filename, "application/json");
+}
+
+/** Build a filename with today's date: `${prefix}-YYYY-MM-DD.${ext}` */
+export function buildExportFilename(prefix: string, format: ExportFormat): string {
+	const date = new Date().toISOString().slice(0, 10);
+	return `${prefix}-${date}.${format}`;
+}
+
+/** Convert chart data to CSV and trigger download. */
 export function downloadCSV(data: ChartDataPoint[], filename: string): void {
 	if (data.length === 0) return;
 
@@ -24,15 +75,12 @@ export function downloadCSV(data: ChartDataPoint[], filename: string): void {
 	);
 
 	const csv = [headerLine, ...rows].join("\n");
-	const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-	triggerDownload(blob, filename);
+	triggerDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), filename);
 }
 
 /**
  * Export a DOM element as a PNG image via canvas.
- *
- * Uses the SVG serialization approach for Recharts (SVG-based).
- * Falls back gracefully if the element contains no SVG.
+ * Uses SVG serialization for Recharts (SVG-based).
  */
 export async function downloadPNG(
 	container: HTMLElement,
@@ -79,7 +127,7 @@ export async function downloadPNG(
 	URL.revokeObjectURL(url);
 }
 
-/** Escape a CSV field per RFC 4180 (quote if contains comma, quote, or newline). */
+/** Escape a CSV field per RFC 4180. */
 function escapeCSVField(value: string): string {
 	if (/[",\n\r]/.test(value)) {
 		return `"${value.replace(/"/g, '""')}"`;

@@ -3,6 +3,7 @@ import React, { Suspense, useCallback } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { ChannelReading } from "../components/ChannelReading.tsx";
+import { DeviceSettings } from "../components/DeviceSettings.tsx";
 import { InlineEdit } from "../components/InlineEdit.tsx";
 import { ChartSkeleton } from "../components/Skeleton.tsx";
 import { useArchiveData } from "../hooks/useArchiveData.ts";

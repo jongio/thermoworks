@@ -212,6 +212,7 @@ describe("AuthError", () => {
 describe("ThermoworksWebClient", () => {
 	beforeEach(() => {
 		mockFetch.mockReset();
+		sessionStorage.clear();
 	});
 
 	afterEach(() => {

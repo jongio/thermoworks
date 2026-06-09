@@ -47,6 +47,7 @@ async function makeClient(): Promise<ThermoworksWebClient> {
 
 beforeEach(() => {
 	mockFetch.mockReset();
+	sessionStorage.clear();
 });
 
 afterEach(() => {

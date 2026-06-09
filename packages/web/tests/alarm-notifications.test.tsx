@@ -345,12 +345,11 @@ describe("NotificationToggle", () => {
 		expect(btn).not.toBeDisabled();
 	});
 
-	it("renders bellOff and disabled when permission is denied", () => {
+	it("renders nothing when permission is denied", () => {
 		mockPermission = "denied";
-		render(<NotificationToggle />);
+		const { container } = render(<NotificationToggle />);
 
-		const btn = screen.getByRole("button", { name: /blocked by browser/i });
-		expect(btn).toBeDisabled();
+		expect(container).toBeEmptyDOMElement();
 	});
 
 	it("toggles local preference on click when granted", () => {

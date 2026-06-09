@@ -33,14 +33,14 @@ export function SortableDeviceCard({ item, client }: SortableDeviceCardProps) {
 	};
 
 	return (
-		<div ref={setNodeRef} style={style} {...attributes}>
+		<div ref={setNodeRef} style={style} {...attributes} className="flex">
 			{/* Drag handle */}
 			<button
 				ref={setActivatorNodeRef}
 				type="button"
 				aria-label="Drag to reorder"
 				className={cn(
-					"absolute top-2 right-2 z-10 p-1.5 rounded-md",
+					"flex items-center px-1.5 shrink-0 rounded-l-lg",
 					"text-muted-foreground hover:text-foreground",
 					"hover:bg-muted cursor-grab active:cursor-grabbing",
 					"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
@@ -50,7 +50,9 @@ export function SortableDeviceCard({ item, client }: SortableDeviceCardProps) {
 			>
 				<GripVertical className="h-4 w-4" />
 			</button>
-			<DeviceCard item={item} client={client} />
+			<div className="flex-1 min-w-0">
+				<DeviceCard item={item} client={client} />
+			</div>
 		</div>
 	);
 }

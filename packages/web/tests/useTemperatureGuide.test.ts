@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import type { TemperatureGuide, ThermoworksWebClient } from "../src/lib/api.ts";
 import { useTemperatureGuide } from "../src/hooks/useTemperatureGuide.ts";
+import type { TemperatureGuide, ThermoworksWebClient } from "../src/lib/api.ts";
 
 function createMockClient(overrides: Partial<ThermoworksWebClient> = {}): ThermoworksWebClient {
 	return {
@@ -38,7 +38,9 @@ describe("useTemperatureGuide", () => {
 	});
 
 	it("returns null data when client is not authenticated", () => {
-		const client = createMockClient({ isAuthenticated: false } as unknown as Partial<ThermoworksWebClient>);
+		const client = createMockClient({
+			isAuthenticated: false,
+		} as unknown as Partial<ThermoworksWebClient>);
 		const { result } = renderHook(() => useTemperatureGuide(client));
 
 		expect(result.current.data).toBeNull();
@@ -116,10 +118,9 @@ describe("useTemperatureGuide", () => {
 			getTemperatureGuide: vi.fn().mockResolvedValue(mockGuide),
 		});
 
-		const { result, rerender } = renderHook(
-			({ c }) => useTemperatureGuide(c),
-			{ initialProps: { c: client as ThermoworksWebClient | null } },
-		);
+		const { result, rerender } = renderHook(({ c }) => useTemperatureGuide(c), {
+			initialProps: { c: client as ThermoworksWebClient | null },
+		});
 
 		await waitFor(() => {
 			expect(result.current.data).toEqual(mockGuide);
@@ -159,16 +160,16 @@ describe("useTemperatureGuide", () => {
 	});
 
 	it("clears previous error when re-fetching", async () => {
-		const getTemperatureGuide = vi.fn()
+		const getTemperatureGuide = vi
+			.fn()
 			.mockRejectedValueOnce(new Error("First failure"))
 			.mockResolvedValueOnce(mockGuide);
 
 		const client = createMockClient({ getTemperatureGuide });
 
-		const { result, rerender } = renderHook(
-			({ c }) => useTemperatureGuide(c),
-			{ initialProps: { c: client as ThermoworksWebClient | null } },
-		);
+		const { result, rerender } = renderHook(({ c }) => useTemperatureGuide(c), {
+			initialProps: { c: client as ThermoworksWebClient | null },
+		});
 
 		await waitFor(() => {
 			expect(result.current.error).toBe("First failure");

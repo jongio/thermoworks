@@ -57,12 +57,7 @@ export function ThemeToggle() {
 		});
 	}
 
-	const label =
-		mode === "system"
-			? `System (${resolved})`
-			: mode === "light"
-				? "Light"
-				: "Dark";
+	const label = mode === "system" ? `System (${resolved})` : mode === "light" ? "Light" : "Dark";
 
 	const Icon = mode === "system" ? Monitor : resolved === "dark" ? Sun : Moon;
 

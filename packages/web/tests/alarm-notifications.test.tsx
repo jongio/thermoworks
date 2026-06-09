@@ -1,6 +1,6 @@
 import { fireEvent, render, renderHook, screen } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Device, DeviceChannel } from "thermoworks-sdk";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationToggle } from "../src/components/NotificationToggle.tsx";
 import {
 	getNotificationsEnabled,
@@ -83,8 +83,19 @@ function makeChannel(overrides: Partial<DeviceChannel> = {}): DeviceChannel {
 	};
 }
 
-function alarmingChannel(direction: "high" | "low", temp = 225.0, threshold = 200.0): DeviceChannel {
-	const alarm = { enabled: true, alarming: true, muted: null, value: threshold, units: "F", lastNotified: null };
+function alarmingChannel(
+	direction: "high" | "low",
+	temp = 225.0,
+	threshold = 200.0,
+): DeviceChannel {
+	const alarm = {
+		enabled: true,
+		alarming: true,
+		muted: null,
+		value: threshold,
+		units: "F",
+		lastNotified: null,
+	};
 	return makeChannel({
 		value: temp,
 		alarmHigh: direction === "high" ? alarm : null,
@@ -94,7 +105,12 @@ function alarmingChannel(direction: "high" | "low", temp = 225.0, threshold = 20
 
 // ─── Notification API mock ───────────────────────────────────────────────────
 
-let notificationInstances: Array<{ title: string; options: NotificationOptions; onclick: (() => void) | null; close: () => void }>;
+let notificationInstances: Array<{
+	title: string;
+	options: NotificationOptions;
+	onclick: (() => void) | null;
+	close: () => void;
+}>;
 let mockPermission: NotificationPermission;
 
 class MockNotification {
@@ -257,9 +273,7 @@ describe("useAlarmNotifications", () => {
 	});
 
 	it("does not fire for channels with no alarm", () => {
-		const data: DeviceWithChannels[] = [
-			{ device: makeDevice("S1"), channels: [makeChannel()] },
-		];
+		const data: DeviceWithChannels[] = [{ device: makeDevice("S1"), channels: [makeChannel()] }];
 
 		renderHook(() => useAlarmNotifications(data));
 

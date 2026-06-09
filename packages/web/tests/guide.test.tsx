@@ -2,14 +2,12 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";
-import { Guide } from "../src/pages/Guide.tsx";
 import type { ThermoworksWebClient } from "../src/lib/api.ts";
+import { Guide } from "../src/pages/Guide.tsx";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function createMockClient(
-	overrides: Partial<ThermoworksWebClient> = {},
-): ThermoworksWebClient {
+function createMockClient(overrides: Partial<ThermoworksWebClient> = {}): ThermoworksWebClient {
 	return {
 		isAuthenticated: true,
 		getTemperatureGuide: vi.fn().mockResolvedValue({ categories: [] }),
@@ -67,9 +65,7 @@ describe("Guide page", () => {
 				categories: [
 					{
 						name: "Lamb",
-						items: [
-							{ name: "Leg of Lamb", temp: 145, units: "F", doneness: "Medium" },
-						],
+						items: [{ name: "Leg of Lamb", temp: 145, units: "F", doneness: "Medium" }],
 					},
 				],
 			}),

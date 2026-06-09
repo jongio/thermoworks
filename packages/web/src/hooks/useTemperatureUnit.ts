@@ -1,5 +1,8 @@
 import { useContext } from "react";
-import { TemperatureUnitContext, type TemperatureUnitContextValue } from "../context/TemperatureUnitContext.tsx";
+import {
+	TemperatureUnitContext,
+	type TemperatureUnitContextValue,
+} from "../context/TemperatureUnitContext.tsx";
 
 /**
  * Access the global temperature unit preference.

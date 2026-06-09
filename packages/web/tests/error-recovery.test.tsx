@@ -1,8 +1,8 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ConnectionStatus } from "../src/components/ConnectionStatus.tsx";
 import { ErrorBoundary } from "../src/components/ErrorBoundary.tsx";
 import { OfflineBanner } from "../src/components/OfflineBanner.tsx";
-import { ConnectionStatus } from "../src/components/ConnectionStatus.tsx";
 import { useOnlineStatus } from "../src/hooks/useOnlineStatus.ts";
 import { useRetry } from "../src/hooks/useRetry.ts";
 
@@ -234,7 +234,8 @@ describe("useRetry", () => {
 	});
 
 	it("retries on failure with exponential backoff", async () => {
-		const fn = vi.fn()
+		const fn = vi
+			.fn()
 			.mockRejectedValueOnce(new Error("fail 1"))
 			.mockRejectedValueOnce(new Error("fail 2"))
 			.mockResolvedValueOnce("success");

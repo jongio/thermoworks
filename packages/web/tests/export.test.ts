@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-	type ChartDataPoint,
-	type ExportColumn,
 	buildExportFilename,
+	type ChartDataPoint,
 	downloadBlob,
 	downloadCSV,
 	downloadPNG,
+	type ExportColumn,
 	exportToCSV,
 	exportToJSON,
 	toCSV,
@@ -240,9 +240,7 @@ describe("downloadCSV", () => {
 	});
 
 	it("includes all object keys as headers", async () => {
-		const data: ChartDataPoint[] = [
-			{ time: 500, channel_a: 100, channel_b: 200 },
-		];
+		const data: ChartDataPoint[] = [{ time: 500, channel_a: 100, channel_b: 200 }];
 
 		downloadCSV(data, "multi-channel.csv");
 
@@ -253,9 +251,7 @@ describe("downloadCSV", () => {
 	});
 
 	it("handles null/undefined values in data points", async () => {
-		const data = [
-			{ time: 100, probe1: 65, probe2: null },
-		] as unknown as ChartDataPoint[];
+		const data = [{ time: 100, probe1: 65, probe2: null }] as unknown as ChartDataPoint[];
 
 		downloadCSV(data, "nulls.csv");
 
@@ -266,9 +262,7 @@ describe("downloadCSV", () => {
 	});
 
 	it("escapes special characters in values", async () => {
-		const data = [
-			{ time: 1, "name,with,commas": 42 },
-		] as unknown as ChartDataPoint[];
+		const data = [{ time: 1, "name,with,commas": 42 }] as unknown as ChartDataPoint[];
 
 		downloadCSV(data, "escaped.csv");
 
@@ -287,9 +281,11 @@ describe("exportToCSV", () => {
 			createObjectURL: vi.fn(() => "blob:url"),
 			revokeObjectURL: vi.fn(),
 		});
-		vi.spyOn(document, "createElement").mockReturnValue(
-			{ click: mockClick, href: "", download: "" } as unknown as HTMLElement,
-		);
+		vi.spyOn(document, "createElement").mockReturnValue({
+			click: mockClick,
+			href: "",
+			download: "",
+		} as unknown as HTMLElement);
 	});
 
 	afterEach(() => {
@@ -314,9 +310,11 @@ describe("exportToJSON", () => {
 			createObjectURL: vi.fn(() => "blob:url"),
 			revokeObjectURL: vi.fn(),
 		});
-		vi.spyOn(document, "createElement").mockReturnValue(
-			{ click: mockClick, href: "", download: "" } as unknown as HTMLElement,
-		);
+		vi.spyOn(document, "createElement").mockReturnValue({
+			click: mockClick,
+			href: "",
+			download: "",
+		} as unknown as HTMLElement);
 	});
 
 	afterEach(() => {
@@ -338,7 +336,12 @@ describe("downloadPNG", () => {
 	let mockRevokeObjectURL: ReturnType<typeof vi.fn>;
 	let mockToBlob: ReturnType<typeof vi.fn>;
 	let mockGetContext: ReturnType<typeof vi.fn>;
-	let imageInstance: { onload?: () => void; onerror?: () => void; crossOrigin: string; src: string };
+	let imageInstance: {
+		onload?: () => void;
+		onerror?: () => void;
+		crossOrigin: string;
+		src: string;
+	};
 
 	beforeEach(() => {
 		mockClick = vi.fn();
@@ -364,7 +367,12 @@ describe("downloadPNG", () => {
 		const realCreateElement = document.createElement.bind(document);
 		vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
 			if (tag === "canvas") {
-				return { width: 0, height: 0, getContext: mockGetContext, toBlob: mockToBlob } as unknown as HTMLElement;
+				return {
+					width: 0,
+					height: 0,
+					getContext: mockGetContext,
+					toBlob: mockToBlob,
+				} as unknown as HTMLElement;
 			}
 			if (tag === "a") {
 				return { click: mockClick, href: "", download: "" } as unknown as HTMLElement;
@@ -373,32 +381,38 @@ describe("downloadPNG", () => {
 		});
 
 		imageInstance = { crossOrigin: "", src: "" };
-		vi.stubGlobal("Image", class MockImage {
-			crossOrigin = "";
-			naturalWidth = 800;
-			naturalHeight = 600;
-			onload: (() => void) | null = null;
-			onerror: (() => void) | null = null;
-			private _src = "";
-			constructor() {
-				imageInstance = this as unknown as typeof imageInstance;
-				Object.defineProperty(this, "src", {
-					set(value: string) {
-						this._src = value;
-						Promise.resolve().then(() => this.onload?.());
-					},
-					get() {
-						return this._src;
-					},
-				});
-			}
-		});
+		vi.stubGlobal(
+			"Image",
+			class MockImage {
+				crossOrigin = "";
+				naturalWidth = 800;
+				naturalHeight = 600;
+				onload: (() => void) | null = null;
+				onerror: (() => void) | null = null;
+				private _src = "";
+				constructor() {
+					imageInstance = this as unknown as typeof imageInstance;
+					Object.defineProperty(this, "src", {
+						set(value: string) {
+							this._src = value;
+							Promise.resolve().then(() => this.onload?.());
+						},
+						get() {
+							return this._src;
+						},
+					});
+				}
+			},
+		);
 
-		vi.stubGlobal("XMLSerializer", class MockXMLSerializer {
-			serializeToString() {
-				return '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
-			}
-		});
+		vi.stubGlobal(
+			"XMLSerializer",
+			class MockXMLSerializer {
+				serializeToString() {
+					return '<svg xmlns="http://www.w3.org/2000/svg"><rect/></svg>';
+				}
+			},
+		);
 	});
 
 	afterEach(() => {
@@ -477,26 +491,27 @@ describe("downloadPNG", () => {
 
 	it("rejects if image fails to load", async () => {
 		// Override Image to trigger onerror
-		vi.stubGlobal("Image", class MockImageError {
-			crossOrigin = "";
-			naturalWidth = 0;
-			naturalHeight = 0;
-			onload: (() => void) | null = null;
-			onerror: (() => void) | null = null;
-			set src(_value: string) {
-				Promise.resolve().then(() => this.onerror?.());
-			}
-			get src() {
-				return "";
-			}
-		});
+		vi.stubGlobal(
+			"Image",
+			class MockImageError {
+				crossOrigin = "";
+				naturalWidth = 0;
+				naturalHeight = 0;
+				onload: (() => void) | null = null;
+				onerror: (() => void) | null = null;
+				set src(_value: string) {
+					Promise.resolve().then(() => this.onerror?.());
+				}
+				get src() {
+					return "";
+				}
+			},
+		);
 
 		const container = document.createElement("div");
 		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
 		container.appendChild(svg);
 
-		await expect(downloadPNG(container, "fail.png")).rejects.toThrow(
-			"Failed to load SVG as image",
-		);
+		await expect(downloadPNG(container, "fail.png")).rejects.toThrow("Failed to load SVG as image");
 	});
 });

@@ -27,7 +27,9 @@ describe("ShareManager", () => {
 
 		// Wait for the share link to appear
 		await waitFor(() => {
-			expect(screen.getByDisplayValue("http://localhost/#/share/device/TW-001")).toBeInTheDocument();
+			expect(
+				screen.getByDisplayValue("http://localhost/#/share/device/TW-001"),
+			).toBeInTheDocument();
 		});
 
 		expect(client.shareDevice).toHaveBeenCalledWith("TW-001");
@@ -37,9 +39,7 @@ describe("ShareManager", () => {
 		const client = makeMockClient();
 		const onClose = vi.fn();
 
-		render(
-			<ShareManager serial="TW-001" archiveId="arc-1" client={client} onClose={onClose} />,
-		);
+		render(<ShareManager serial="TW-001" archiveId="arc-1" client={client} onClose={onClose} />);
 
 		await waitFor(() => {
 			expect(
@@ -73,7 +73,9 @@ describe("ShareManager", () => {
 		render(<ShareManager serial="TW-001" client={client} onClose={onClose} />);
 
 		await waitFor(() => {
-			expect(screen.getByDisplayValue("http://localhost/#/share/device/TW-001")).toBeInTheDocument();
+			expect(
+				screen.getByDisplayValue("http://localhost/#/share/device/TW-001"),
+			).toBeInTheDocument();
 		});
 
 		await act(async () => {

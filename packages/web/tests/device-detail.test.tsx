@@ -32,9 +32,7 @@ function makeMockClient(): ThermoworksWebClient {
 	return { isAuthenticated: true } as unknown as ThermoworksWebClient;
 }
 
-function makeDeviceData(
-	overrides: Partial<DeviceWithChannels["device"]> = {},
-): DeviceWithChannels {
+function makeDeviceData(overrides: Partial<DeviceWithChannels["device"]> = {}): DeviceWithChannels {
 	return {
 		device: {
 			serial: "TW-001",

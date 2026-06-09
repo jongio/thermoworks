@@ -1,4 +1,4 @@
-import { StrictMode, Suspense, lazy } from "react";
+import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { HashRouter, Route, Routes } from "react-router-dom";
 import { App } from "./App.tsx";
@@ -7,14 +7,25 @@ import { DeviceListSkeleton, EventListSkeleton, Skeleton } from "./components/Sk
 import "./index.css";
 
 // Lazy-loaded pages for route-based code splitting
-const Dashboard = lazy(() => import("./pages/Dashboard.tsx").then((m) => ({ default: m.Dashboard })));
-const DeviceDetail = lazy(() => import("./pages/DeviceDetail.tsx").then((m) => ({ default: m.DeviceDetail })));
+const Dashboard = lazy(() =>
+	import("./pages/Dashboard.tsx").then((m) => ({ default: m.Dashboard })),
+);
+const DeviceDetail = lazy(() =>
+	import("./pages/DeviceDetail.tsx").then((m) => ({ default: m.DeviceDetail })),
+);
 const Devices = lazy(() => import("./pages/Devices.tsx").then((m) => ({ default: m.Devices })));
+const DataUsagePage = lazy(() =>
+	import("./pages/DataUsage.tsx").then((m) => ({ default: m.DataUsage })),
+);
 const Events = lazy(() => import("./pages/Events.tsx").then((m) => ({ default: m.Events })));
 const Guide = lazy(() => import("./pages/Guide.tsx").then((m) => ({ default: m.Guide })));
 const Settings = lazy(() => import("./pages/Settings.tsx").then((m) => ({ default: m.Settings })));
-const SharedArchiveView = lazy(() => import("./pages/SharedArchiveView.tsx").then((m) => ({ default: m.SharedArchiveView })));
-const SharedDeviceView = lazy(() => import("./pages/SharedDeviceView.tsx").then((m) => ({ default: m.SharedDeviceView })));
+const SharedArchiveView = lazy(() =>
+	import("./pages/SharedArchiveView.tsx").then((m) => ({ default: m.SharedArchiveView })),
+);
+const SharedDeviceView = lazy(() =>
+	import("./pages/SharedDeviceView.tsx").then((m) => ({ default: m.SharedDeviceView })),
+);
 
 function PageSkeleton() {
 	return (
@@ -35,12 +46,16 @@ function EventPageSkeleton() {
 }
 
 /** Wraps a lazy page with per-route Suspense and ErrorBoundary. */
-function RouteGuard({ children, fallback }: { children: React.ReactNode; fallback?: React.ReactNode }) {
+function RouteGuard({
+	children,
+	fallback,
+}: {
+	children: React.ReactNode;
+	fallback?: React.ReactNode;
+}) {
 	return (
 		<ErrorBoundary>
-			<Suspense fallback={fallback ?? <PageSkeleton />}>
-				{children}
-			</Suspense>
+			<Suspense fallback={fallback ?? <PageSkeleton />}>{children}</Suspense>
 		</ErrorBoundary>
 	);
 }
@@ -53,15 +68,79 @@ createRoot(root).render(
 		<ErrorBoundary>
 			<HashRouter>
 				<Routes>
-					<Route path="/share/device/:serial" element={<RouteGuard><SharedDeviceView /></RouteGuard>} />
-					<Route path="/share/archive/:serial/:archiveId" element={<RouteGuard><SharedArchiveView /></RouteGuard>} />
+					<Route
+						path="/share/device/:serial"
+						element={
+							<RouteGuard>
+								<SharedDeviceView />
+							</RouteGuard>
+						}
+					/>
+					<Route
+						path="/share/archive/:serial/:archiveId"
+						element={
+							<RouteGuard>
+								<SharedArchiveView />
+							</RouteGuard>
+						}
+					/>
 					<Route element={<App />}>
-						<Route index element={<RouteGuard><Dashboard /></RouteGuard>} />
-						<Route path="devices" element={<RouteGuard><Devices /></RouteGuard>} />
-						<Route path="device/:serial" element={<RouteGuard><DeviceDetail /></RouteGuard>} />
-						<Route path="events" element={<RouteGuard fallback={<EventPageSkeleton />}><Events /></RouteGuard>} />
-						<Route path="guide" element={<RouteGuard><Guide /></RouteGuard>} />
-						<Route path="settings" element={<RouteGuard><Settings /></RouteGuard>} />
+						<Route
+							index
+							element={
+								<RouteGuard>
+									<Dashboard />
+								</RouteGuard>
+							}
+						/>
+						<Route
+							path="devices"
+							element={
+								<RouteGuard>
+									<Devices />
+								</RouteGuard>
+							}
+						/>
+						<Route
+							path="device/:serial"
+							element={
+								<RouteGuard>
+									<DeviceDetail />
+								</RouteGuard>
+							}
+						/>
+						<Route
+							path="events"
+							element={
+								<RouteGuard fallback={<EventPageSkeleton />}>
+									<Events />
+								</RouteGuard>
+							}
+						/>
+						<Route
+							path="usage"
+							element={
+								<RouteGuard>
+									<DataUsagePage />
+								</RouteGuard>
+							}
+						/>
+						<Route
+							path="guide"
+							element={
+								<RouteGuard>
+									<Guide />
+								</RouteGuard>
+							}
+						/>
+						<Route
+							path="settings"
+							element={
+								<RouteGuard>
+									<Settings />
+								</RouteGuard>
+							}
+						/>
 					</Route>
 				</Routes>
 			</HashRouter>

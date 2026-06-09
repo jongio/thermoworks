@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { DeviceWithChannels, ThermoworksWebClient } from "../src/lib/api.ts";
 import { useDevices } from "../src/hooks/useDevices.ts";
+import type { DeviceWithChannels, ThermoworksWebClient } from "../src/lib/api.ts";
 
 function createMockClient(overrides: Partial<ThermoworksWebClient> = {}): ThermoworksWebClient {
 	return {
@@ -53,7 +53,8 @@ describe("useDevices - branch coverage", () => {
 		});
 
 		const secondDevices: DeviceWithChannels[] = [];
-		const getDevicesWithChannels = vi.fn()
+		const getDevicesWithChannels = vi
+			.fn()
 			.mockReturnValueOnce(firstPromise)
 			.mockResolvedValueOnce(secondDevices);
 
@@ -170,9 +171,7 @@ describe("useDevices - branch coverage", () => {
 			resolveFetch = resolve;
 		});
 
-		const getDevicesWithChannels = vi.fn()
-			.mockReturnValueOnce(fetchPromise)
-			.mockResolvedValue([]);
+		const getDevicesWithChannels = vi.fn().mockReturnValueOnce(fetchPromise).mockResolvedValue([]);
 
 		const client = createMockClient({ getDevicesWithChannels });
 
@@ -190,13 +189,15 @@ describe("useDevices - branch coverage", () => {
 
 		// Now resolve the aborted first fetch
 		await act(async () => {
-			resolveFetch!([{
-				device: { serial: "STALE" } as never,
-				channels: [],
-			}]);
+			resolveFetch!([
+				{
+					device: { serial: "STALE" } as never,
+					channels: [],
+				},
+			]);
 		});
 
 		// Stale data should not appear
-		expect(result.current.data.find(d => d.device.serial === "STALE")).toBeUndefined();
+		expect(result.current.data.find((d) => d.device.serial === "STALE")).toBeUndefined();
 	});
 });

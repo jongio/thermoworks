@@ -1,6 +1,8 @@
 import { RotateCcw } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+	Area,
+	AreaChart,
 	Brush,
 	CartesianGrid,
 	Legend,
@@ -15,6 +17,7 @@ import {
 } from "recharts";
 import type { ArchiveChannel } from "thermoworks-sdk";
 import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";
+import { downsampleLTTB } from "../lib/downsample.ts";
 import type { ChartDataPoint } from "../lib/export.ts";
 import { ChartExport } from "./ChartExport.tsx";
 
@@ -40,6 +43,8 @@ const FALLBACK_COLORS = [
 
 /** Line dash patterns for overlay sessions. */
 const OVERLAY_DASH_PATTERNS = ["8 4", "4 4", "2 4", "8 2 2 2"];
+const MAX_VISIBLE_POINTS = 500;
+const BRUSH_GRADIENT_ID = "temperature-chart-brush-fill";
 
 interface ThresholdLine {
 	value: number;
@@ -50,6 +55,11 @@ interface ThresholdLine {
 interface ZoomState {
 	left: number | null;
 	right: number | null;
+}
+
+interface BrushWindow {
+	startIndex: number;
+	endIndex: number;
 }
 
 function formatTime(timestamp: number): string {
@@ -71,6 +81,34 @@ function formatTooltipTime(timestamp: number): string {
 	});
 }
 
+function getPreviewDataKey(data: ChartDataPoint[]): string | null {
+	for (const point of data) {
+		for (const [key, value] of Object.entries(point)) {
+			if (key !== "time" && typeof value === "number" && Number.isFinite(value)) {
+				return key;
+			}
+		}
+	}
+
+	return null;
+}
+
+function clampBrushWindow(window: BrushWindow | null, dataLength: number): BrushWindow | null {
+	if (dataLength === 0) {
+		return null;
+	}
+
+	const maxIndex = dataLength - 1;
+	if (!window) {
+		return { startIndex: 0, endIndex: maxIndex };
+	}
+
+	const startIndex = Math.max(0, Math.min(window.startIndex, maxIndex));
+	const endIndex = Math.max(startIndex, Math.min(window.endIndex, maxIndex));
+
+	return { startIndex, endIndex };
+}
+
 /**
  * Temperature history chart with zoom, pan (brush), and export capabilities.
  * Renders a line per channel with alarm threshold reference lines.
@@ -83,6 +121,7 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 	// Zoom via reference area selection
 	const [zoomDomain, setZoomDomain] = useState<{ left: number; right: number } | null>(null);
 	const [selecting, setSelecting] = useState<ZoomState>({ left: null, right: null });
+	const [brushWindow, setBrushWindow] = useState<BrushWindow | null>(null);
 
 	// Session visibility toggles
 	const [visibleOverlays, setVisibleOverlays] = useState<Set<number>>(() => new Set());
@@ -164,11 +203,41 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 		return { data: sorted, thresholds: thresholdLines };
 	}, [enabledChannels, overlayArchives, visibleOverlays, convert]);
 
-	// Compute the displayed data slice based on zoom domain
+	useEffect(() => {
+		setBrushWindow((current) => {
+			const next = clampBrushWindow(current, data.length);
+
+			if (current?.startIndex === next?.startIndex && current?.endIndex === next?.endIndex) {
+				return current;
+			}
+
+			return next;
+		});
+	}, [data.length]);
+
+	const clampedBrushWindow = useMemo(
+		() => clampBrushWindow(brushWindow, data.length),
+		[brushWindow, data.length],
+	);
+
+	// Compute the displayed data slice based on zoom domain or the brush viewport.
 	const displayData = useMemo(() => {
-		if (!zoomDomain) return data;
-		return data.filter((d) => d.time >= zoomDomain.left && d.time <= zoomDomain.right);
-	}, [data, zoomDomain]);
+		if (zoomDomain) {
+			return data.filter((d) => d.time >= zoomDomain.left && d.time <= zoomDomain.right);
+		}
+
+		if (!clampedBrushWindow) {
+			return data;
+		}
+
+		return data.slice(clampedBrushWindow.startIndex, clampedBrushWindow.endIndex + 1);
+	}, [data, zoomDomain, clampedBrushWindow]);
+
+	const chartData = useMemo(() => downsampleLTTB(displayData, MAX_VISIBLE_POINTS), [displayData]);
+
+	const brushPreviewKey = useMemo(() => getPreviewDataKey(data), [data]);
+	const brushPreviewColor = enabledChannels[0]?.color ?? FALLBACK_COLORS[0] ?? "#6b7280";
+	const isDownsampled = chartData.length < displayData.length;
 
 	const handleMouseDown = useCallback((e: { activeLabel?: string | number }) => {
 		if (e.activeLabel != null) {
@@ -198,6 +267,10 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 
 	const handleResetZoom = useCallback(() => {
 		setZoomDomain(null);
+	}, []);
+
+	const handleBrushChange = useCallback((nextWindow: BrushWindow) => {
+		setBrushWindow(nextWindow);
 	}, []);
 
 	const toggleOverlay = useCallback((sessionIdx: number) => {
@@ -247,10 +320,7 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 						<div className="flex items-center gap-1 text-xs">
 							<span className="text-muted-foreground">Sessions:</span>
 							{overlayArchives.map((_, idx) => (
-								<label
-									key={idx}
-									className="inline-flex items-center gap-0.5 cursor-pointer"
-								>
+								<label key={idx} className="inline-flex items-center gap-0.5 cursor-pointer">
 									<input
 										type="checkbox"
 										checked={visibleOverlays.has(idx)}
@@ -271,11 +341,17 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 				</div>
 			</div>
 
+			{isDownsampled && (
+				<div className="text-xs text-muted-foreground" data-testid="downsample-indicator">
+					Showing {chartData.length} of {displayData.length} points (downsampled)
+				</div>
+			)}
+
 			{/* Chart */}
 			<div className="w-full h-64 sm:h-72" ref={chartContainerRef}>
 				<ResponsiveContainer width="100%" height="100%">
 					<LineChart
-						data={displayData}
+						data={chartData}
 						margin={{ top: 8, right: 16, left: 0, bottom: 0 }}
 						onMouseDown={handleMouseDown}
 						onMouseMove={handleMouseMove}
@@ -343,6 +419,7 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 									stroke={color}
 									strokeWidth={2}
 									dot={false}
+									isAnimationActive={false}
 									activeDot={{ r: 3, strokeWidth: 1 }}
 									connectNulls
 								/>
@@ -353,13 +430,15 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 						{Array.from(visibleOverlays).flatMap((sessionIdx) => {
 							const sessionChannels = overlayArchives[sessionIdx];
 							if (!sessionChannels) return [];
-							const dashPattern = OVERLAY_DASH_PATTERNS[sessionIdx % OVERLAY_DASH_PATTERNS.length] ?? "4 4";
+							const dashPattern =
+								OVERLAY_DASH_PATTERNS[sessionIdx % OVERLAY_DASH_PATTERNS.length] ?? "4 4";
 
 							return sessionChannels
 								.filter((ch) => ch.enabled !== false && ch.recentReadings.length > 0)
 								.map((ch, chIdx) => {
 									const key = `s${sessionIdx}_ch_${ch.number ?? chIdx}`;
-									const color = ch.color ?? FALLBACK_COLORS[chIdx % FALLBACK_COLORS.length] ?? "#6b7280";
+									const color =
+										ch.color ?? FALLBACK_COLORS[chIdx % FALLBACK_COLORS.length] ?? "#6b7280";
 									const name = `S${sessionIdx + 1}: ${ch.label ?? `Ch ${ch.number ?? chIdx + 1}`}`;
 
 									return (
@@ -372,6 +451,7 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 											strokeWidth={1.5}
 											strokeDasharray={dashPattern}
 											dot={false}
+											isAnimationActive={false}
 											activeDot={{ r: 2, strokeWidth: 1 }}
 											connectNulls
 											opacity={0.7}
@@ -390,19 +470,46 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 								fillOpacity={0.1}
 							/>
 						)}
+					</LineChart>
+				</ResponsiveContainer>
+			</div>
 
-						{/* Brush for panning when not zoomed */}
-						{!isZoomed && (
+			{/* Brush overview uses the full dataset while the main chart renders only the visible window. */}
+			{!isZoomed && brushPreviewKey && clampedBrushWindow && (
+				<div className="h-16 w-full">
+					<ResponsiveContainer width="100%" height="100%">
+						<AreaChart data={data} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>
+							<defs>
+								<linearGradient id={BRUSH_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
+									<stop offset="5%" stopColor={brushPreviewColor} stopOpacity={0.35} />
+									<stop offset="95%" stopColor={brushPreviewColor} stopOpacity={0.05} />
+								</linearGradient>
+							</defs>
+							<XAxis dataKey="time" type="number" domain={["dataMin", "dataMax"]} hide />
+							<YAxis hide />
+							<Area
+								type="monotone"
+								dataKey={brushPreviewKey}
+								stroke={brushPreviewColor}
+								fill={`url(#${BRUSH_GRADIENT_ID})`}
+								strokeWidth={1.25}
+								dot={false}
+								isAnimationActive={false}
+								connectNulls
+							/>
 							<Brush
 								dataKey="time"
 								height={24}
 								stroke="#6b7280"
 								tickFormatter={formatTime}
+								startIndex={clampedBrushWindow.startIndex}
+								endIndex={clampedBrushWindow.endIndex}
+								onChange={handleBrushChange}
 							/>
-						)}
-					</LineChart>
-				</ResponsiveContainer>
-			</div>
+						</AreaChart>
+					</ResponsiveContainer>
+				</div>
+			)}
 		</div>
 	);
 }

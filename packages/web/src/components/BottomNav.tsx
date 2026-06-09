@@ -19,9 +19,7 @@ export function BottomNav() {
 							"min-h-[44px] touch-manipulation",
 							"transition-colors duration-150",
 							"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring",
-							isActive
-								? "text-foreground"
-								: "text-muted-foreground",
+							isActive ? "text-foreground" : "text-muted-foreground",
 						)
 					}
 					aria-label={item.label}

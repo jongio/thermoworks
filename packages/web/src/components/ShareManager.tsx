@@ -96,9 +96,7 @@ export function ShareManager({ serial, archiveId, client, onClose }: ShareManage
 			>
 				{/* Header */}
 				<div className="flex items-center justify-between mb-4">
-					<h2 className="text-sm font-semibold">
-						Share {archiveId ? "Archive" : "Device"}
-					</h2>
+					<h2 className="text-sm font-semibold">Share {archiveId ? "Archive" : "Device"}</h2>
 					<button
 						type="button"
 						onClick={onClose}
@@ -120,9 +118,7 @@ export function ShareManager({ serial, archiveId, client, onClose }: ShareManage
 					</div>
 				)}
 
-				{error && (
-					<p className="text-sm text-destructive py-2">{error}</p>
-				)}
+				{error && <p className="text-sm text-destructive py-2">{error}</p>}
 
 				{shareUrl && !isLoading && (
 					<div className="space-y-3">
@@ -151,9 +147,7 @@ export function ShareManager({ serial, archiveId, client, onClose }: ShareManage
 									"border border-border",
 									"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 									"transition-colors",
-									copied
-										? "bg-green-500/10 text-green-600 border-green-500/30"
-										: "hover:bg-muted",
+									copied ? "bg-green-500/10 text-green-600 border-green-500/30" : "hover:bg-muted",
 								)}
 							>
 								{copied ? (

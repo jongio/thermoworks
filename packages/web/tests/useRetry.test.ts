@@ -36,7 +36,8 @@ describe("useRetry", () => {
 	});
 
 	it("retries on failure and succeeds on second attempt", async () => {
-		const fn = vi.fn()
+		const fn = vi
+			.fn()
 			.mockRejectedValueOnce(new Error("fail 1"))
 			.mockResolvedValueOnce("recovered");
 

@@ -8,12 +8,12 @@ export function cn(...inputs: ClassValue[]): string {
 
 /** Convert a Fahrenheit value to Celsius. */
 export function toCelsius(f: number): number {
-	return (f - 32) * 5 / 9;
+	return ((f - 32) * 5) / 9;
 }
 
 /** Convert a Celsius value to Fahrenheit. */
 export function toFahrenheit(c: number): number {
-	return c * 9 / 5 + 32;
+	return (c * 9) / 5 + 32;
 }
 
 /** Format a temperature value to one decimal place. */

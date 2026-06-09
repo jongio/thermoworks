@@ -1,8 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
 import type { NotificationSettings } from "thermoworks-sdk";
-import type { ThermoworksWebClient } from "../src/lib/api.ts";
+import { describe, expect, it, vi } from "vitest";
 import { useNotificationSettings } from "../src/hooks/useNotificationSettings.ts";
+import type { ThermoworksWebClient } from "../src/lib/api.ts";
 
 function createMockClient(overrides: Partial<ThermoworksWebClient> = {}): ThermoworksWebClient {
 	return {
@@ -261,10 +261,9 @@ describe("useNotificationSettings - branch coverage", () => {
 	it("cancels in-flight fetch when client becomes null", async () => {
 		const client = createMockClient();
 
-		const { result, rerender } = renderHook(
-			({ c }) => useNotificationSettings(c),
-			{ initialProps: { c: client as ThermoworksWebClient | null } },
-		);
+		const { result, rerender } = renderHook(({ c }) => useNotificationSettings(c), {
+			initialProps: { c: client as ThermoworksWebClient | null },
+		});
 
 		await waitFor(() => {
 			expect(result.current.isLoading).toBe(false);

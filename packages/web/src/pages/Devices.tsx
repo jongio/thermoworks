@@ -8,8 +8,8 @@ export function Devices() {
 				<h1 className="text-lg font-semibold tracking-tight">Devices</h1>
 			</div>
 			<p className="text-sm text-muted-foreground">
-				Detailed device management is coming in a future update. Use the Dashboard for
-				live readings.
+				Detailed device management is coming in a future update. Use the Dashboard for live
+				readings.
 			</p>
 		</div>
 	);

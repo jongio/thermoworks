@@ -75,9 +75,7 @@ export function FanController({ client, serial, fan, onUpdated }: FanControllerP
 						aria-hidden="true"
 					/>
 					<span className="text-sm font-medium">Fan Controller</span>
-					{fan.connected && (
-						<span className="text-xs text-muted-foreground">(connected)</span>
-					)}
+					{fan.connected && <span className="text-xs text-muted-foreground">(connected)</span>}
 				</div>
 				<button
 					type="button"
@@ -140,9 +138,7 @@ export function FanController({ client, serial, fan, onUpdated }: FanControllerP
 			)}
 
 			{fan.setTemp != null && (
-				<p className="text-xs text-muted-foreground">
-					Current target: {fan.setTemp}°F
-				</p>
+				<p className="text-xs text-muted-foreground">Current target: {fan.setTemp}°F</p>
 			)}
 
 			{error && <p className="text-xs text-destructive">{error}</p>}

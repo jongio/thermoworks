@@ -67,11 +67,7 @@ export function LoginForm({ onLogin, onBack }: LoginFormProps) {
 							http://localhost:4200
 						</a>
 					</p>
-					<button
-						type="button"
-						onClick={onBack}
-						className="text-sm text-primary hover:underline"
-					>
+					<button type="button" onClick={onBack} className="text-sm text-primary hover:underline">
 						← Back
 					</button>
 				</div>

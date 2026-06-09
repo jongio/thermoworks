@@ -108,19 +108,15 @@ describe("AlarmConfig", () => {
 			fireEvent.click(screen.getByRole("button", { name: /save/i }));
 		});
 
-		expect(screen.getByRole("alert")).toHaveTextContent("High alarm must be greater than low alarm");
+		expect(screen.getByRole("alert")).toHaveTextContent(
+			"High alarm must be greater than low alarm",
+		);
 		expect(client.setAlarm).not.toHaveBeenCalled();
 	});
 
 	it("validates high value is a valid number when enabled", async () => {
 		const client = makeMockClient();
-		render(
-			<AlarmConfig
-				client={client}
-				{...defaultProps}
-				currentHighEnabled={true}
-			/>,
-		);
+		render(<AlarmConfig client={client} {...defaultProps} currentHighEnabled={true} />);
 
 		const highInput = screen.getByLabelText("High alarm temperature");
 		fireEvent.change(highInput, { target: { value: "abc" } });
@@ -136,13 +132,7 @@ describe("AlarmConfig", () => {
 	it("calls setAlarm with correct config when saving high alarm", async () => {
 		const client = makeMockClient();
 		const onSaved = vi.fn();
-		render(
-			<AlarmConfig
-				client={client}
-				{...defaultProps}
-				onSaved={onSaved}
-			/>,
-		);
+		render(<AlarmConfig client={client} {...defaultProps} onSaved={onSaved} />);
 
 		// Enable high alarm
 		fireEvent.click(screen.getByLabelText("High alarm"));
@@ -163,13 +153,7 @@ describe("AlarmConfig", () => {
 	it("calls setAlarm with both high and low alarms", async () => {
 		const client = makeMockClient();
 		const onSaved = vi.fn();
-		render(
-			<AlarmConfig
-				client={client}
-				{...defaultProps}
-				onSaved={onSaved}
-			/>,
-		);
+		render(<AlarmConfig client={client} {...defaultProps} onSaved={onSaved} />);
 
 		// Enable both
 		fireEvent.click(screen.getByLabelText("High alarm"));

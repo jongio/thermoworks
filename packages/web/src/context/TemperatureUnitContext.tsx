@@ -1,18 +1,35 @@
-import { createContext, useCallback, useEffect, useState, type ReactNode } from "react";
+import { createContext, type ReactNode, useCallback, useEffect, useState } from "react";
 
 export type TemperatureUnit = "F" | "C";
 
-const STORAGE_KEY = "thermoworks-unit";
+export const TEMPERATURE_UNIT_STORAGE_KEY = "thermoworks-unit";
+const LEGACY_STORAGE_KEY = "thermoworks-temp-unit";
+
+function parseStoredUnit(value: string | null): TemperatureUnit | null {
+	if (value === "F" || value === "C") return value;
+	return null;
+}
+
+export function getStoredTemperatureUnit(): TemperatureUnit | null {
+	if (typeof window === "undefined") return null;
+
+	return (
+		parseStoredUnit(window.localStorage.getItem(TEMPERATURE_UNIT_STORAGE_KEY)) ??
+		parseStoredUnit(window.localStorage.getItem(LEGACY_STORAGE_KEY))
+	);
+}
+
+export function hasStoredTemperatureUnitPreference(): boolean {
+	return getStoredTemperatureUnit() !== null;
+}
 
 function getInitialUnit(): TemperatureUnit {
-	if (typeof window === "undefined") return "F";
-	const stored = window.localStorage.getItem(STORAGE_KEY);
-	if (stored === "F" || stored === "C") return stored;
-	return "F";
+	return getStoredTemperatureUnit() ?? "F";
 }
 
 export interface TemperatureUnitContextValue {
 	unit: TemperatureUnit;
+	setUnit: (unit: TemperatureUnit) => void;
 	toggleUnit: () => void;
 	convert: (value: number, fromUnit: string) => number;
 	formatTemp: (value: number, fromUnit: string) => string;
@@ -22,12 +39,23 @@ export const TemperatureUnitContext = createContext<TemperatureUnitContextValue 
 
 export function TemperatureUnitProvider({ children }: { children: ReactNode }) {
 	const [unit, setUnit] = useState<TemperatureUnit>(getInitialUnit);
+	const [hasExplicitPreference, setHasExplicitPreference] = useState(
+		hasStoredTemperatureUnitPreference,
+	);
+
+	const updateUnit = useCallback((nextUnit: TemperatureUnit) => {
+		setHasExplicitPreference(true);
+		setUnit(nextUnit);
+	}, []);
 
 	useEffect(() => {
-		window.localStorage.setItem(STORAGE_KEY, unit);
-	}, [unit]);
+		if (!hasExplicitPreference) return;
+		window.localStorage.setItem(TEMPERATURE_UNIT_STORAGE_KEY, unit);
+		window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+	}, [hasExplicitPreference, unit]);
 
 	const toggleUnit = useCallback(() => {
+		setHasExplicitPreference(true);
 		setUnit((prev) => (prev === "F" ? "C" : "F"));
 	}, []);
 
@@ -35,8 +63,8 @@ export function TemperatureUnitProvider({ children }: { children: ReactNode }) {
 		(value: number, fromUnit: string): number => {
 			const normalizedFrom = fromUnit.toUpperCase();
 			if (normalizedFrom === unit) return value;
-			if (unit === "C") return (value - 32) * 5 / 9;
-			return value * 9 / 5 + 32;
+			if (unit === "C") return ((value - 32) * 5) / 9;
+			return (value * 9) / 5 + 32;
 		},
 		[unit],
 	);
@@ -50,7 +78,9 @@ export function TemperatureUnitProvider({ children }: { children: ReactNode }) {
 	);
 
 	return (
-		<TemperatureUnitContext.Provider value={{ unit, toggleUnit, convert, formatTemp }}>
+		<TemperatureUnitContext.Provider
+			value={{ unit, setUnit: updateUnit, toggleUnit, convert, formatTemp }}
+		>
 			{children}
 		</TemperatureUnitContext.Provider>
 	);

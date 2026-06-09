@@ -25,12 +25,7 @@ describe("SessionControls", () => {
 		it("renders start session button and label input", () => {
 			const client = makeMockClient();
 			render(
-				<SessionControls
-					client={client}
-					serial="TW-001"
-					sessionStart={null}
-					sessionLabel={null}
-				/>,
+				<SessionControls client={client} serial="TW-001" sessionStart={null} sessionLabel={null} />,
 			);
 
 			expect(screen.getByRole("button", { name: /start session/i })).toBeInTheDocument();
@@ -40,12 +35,7 @@ describe("SessionControls", () => {
 		it("calls startSession with label when start button is clicked", async () => {
 			const client = makeMockClient();
 			render(
-				<SessionControls
-					client={client}
-					serial="TW-001"
-					sessionStart={null}
-					sessionLabel={null}
-				/>,
+				<SessionControls client={client} serial="TW-001" sessionStart={null} sessionLabel={null} />,
 			);
 
 			const input = screen.getByPlaceholderText(/session label/i);
@@ -61,12 +51,7 @@ describe("SessionControls", () => {
 		it("calls startSession with undefined label when input is empty", async () => {
 			const client = makeMockClient();
 			render(
-				<SessionControls
-					client={client}
-					serial="TW-001"
-					sessionStart={null}
-					sessionLabel={null}
-				/>,
+				<SessionControls client={client} serial="TW-001" sessionStart={null} sessionLabel={null} />,
 			);
 
 			await act(async () => {
@@ -79,12 +64,7 @@ describe("SessionControls", () => {
 		it("starts session on Enter key in input", async () => {
 			const client = makeMockClient();
 			render(
-				<SessionControls
-					client={client}
-					serial="TW-001"
-					sessionStart={null}
-					sessionLabel={null}
-				/>,
+				<SessionControls client={client} serial="TW-001" sessionStart={null} sessionLabel={null} />,
 			);
 
 			const input = screen.getByPlaceholderText(/session label/i);
@@ -219,12 +199,7 @@ describe("SessionControls", () => {
 			} as unknown as Partial<ThermoworksWebClient>);
 
 			render(
-				<SessionControls
-					client={client}
-					serial="TW-001"
-					sessionStart={null}
-					sessionLabel={null}
-				/>,
+				<SessionControls client={client} serial="TW-001" sessionStart={null} sessionLabel={null} />,
 			);
 
 			await act(async () => {

@@ -13,7 +13,10 @@ export interface ChartDataPoint {
 }
 
 /** Generate a CSV string from structured data with proper escaping. */
-export function toCSV<T extends Record<string, unknown>>(data: T[], columns: ExportColumn[]): string {
+export function toCSV<T extends Record<string, unknown>>(
+	data: T[],
+	columns: ExportColumn[],
+): string {
 	const header = columns.map((c) => escapeCSVField(c.label)).join(",");
 	const rows = data.map((row) =>
 		columns
@@ -82,10 +85,7 @@ export function downloadCSV(data: ChartDataPoint[], filename: string): void {
  * Export a DOM element as a PNG image via canvas.
  * Uses SVG serialization for Recharts (SVG-based).
  */
-export async function downloadPNG(
-	container: HTMLElement,
-	filename: string,
-): Promise<void> {
+export async function downloadPNG(container: HTMLElement, filename: string): Promise<void> {
 	const svg = container.querySelector("svg");
 	if (!svg) return;
 

@@ -12,7 +12,9 @@ interface UseTemperatureGuideResult {
  * Falls through to null (triggering fallback in the UI) if the
  * document doesn't exist or the user isn't authenticated.
  */
-export function useTemperatureGuide(client: ThermoworksWebClient | null): UseTemperatureGuideResult {
+export function useTemperatureGuide(
+	client: ThermoworksWebClient | null,
+): UseTemperatureGuideResult {
 	const [data, setData] = useState<TemperatureGuide | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);

@@ -1,6 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { act } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { TemperatureChart } from "../src/components/TemperatureChart.tsx";
 import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";
@@ -12,10 +11,7 @@ class MockResizeObserver {
 		this.cb = cb;
 	}
 	observe(target: Element) {
-		this.cb(
-			[{ contentRect: { width: 800, height: 300 } } as unknown as ResizeObserverEntry],
-			this,
-		);
+		this.cb([{ contentRect: { width: 800, height: 300 } } as unknown as ResizeObserverEntry], this);
 	}
 	unobserve() {}
 	disconnect() {}
@@ -39,21 +35,17 @@ function makeChannels(options?: { withAlarms?: boolean; emptyReadings?: boolean 
 			enabled: true,
 			color: "#ef4444",
 			type: "temperature",
-			alarmHigh: options?.withAlarms
-				? { enabled: true, value: 200 }
-				: null,
-			alarmLow: options?.withAlarms
-				? { enabled: true, value: 100 }
-				: null,
+			alarmHigh: options?.withAlarms ? { enabled: true, value: 200 } : null,
+			alarmLow: options?.withAlarms ? { enabled: true, value: 100 } : null,
 			minimum: null,
 			maximum: null,
 			recentReadings: options?.emptyReadings
 				? []
 				: [
-					{ value: 150, timestamp: new Date(now - 60000), units: "F" },
-					{ value: 155, timestamp: new Date(now - 30000), units: "F" },
-					{ value: 165, timestamp: new Date(now), units: "F" },
-				],
+						{ value: 150, timestamp: new Date(now - 60000), units: "F" },
+						{ value: 155, timestamp: new Date(now - 30000), units: "F" },
+						{ value: 165, timestamp: new Date(now), units: "F" },
+					],
 		},
 	];
 }
@@ -112,19 +104,19 @@ describe("TemperatureChart - branch coverage", () => {
 	});
 
 	it("shows empty state when all channels are disabled", () => {
-		const channels = [{
-			...makeChannels()[0],
-			enabled: false,
-		}];
+		const channels = [
+			{
+				...makeChannels()[0],
+				enabled: false,
+			},
+		];
 		renderWithProvider(<TemperatureChart channels={channels as never} />);
 		expect(screen.getByText("No temperature history available")).toBeInTheDocument();
 	});
 
 	it("renders alarm threshold reference lines when alarms are set", () => {
 		const channels = makeChannels({ withAlarms: true });
-		const { container } = renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		const { container } = renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		// ReferenceLine elements should be present in the SVG
 		const refLines = container.querySelectorAll(".recharts-reference-line");
@@ -134,9 +126,7 @@ describe("TemperatureChart - branch coverage", () => {
 
 	it("renders channel lines with fallback colors when color is null", () => {
 		const channels = makeMultiChannels();
-		const { container } = renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		const { container } = renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		// Should render two Line elements
 		const lines = container.querySelectorAll(".recharts-line");
@@ -145,9 +135,7 @@ describe("TemperatureChart - branch coverage", () => {
 
 	it("renders reset zoom button and clears zoom on click", () => {
 		const channels = makeChannels();
-		const { container } = renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		const { container } = renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		// Initially no reset button
 		expect(screen.queryByTestId("reset-zoom")).not.toBeInTheDocument();
@@ -162,80 +150,80 @@ describe("TemperatureChart - branch coverage", () => {
 	});
 
 	it("handles channel without number property", () => {
-		const channels = [{
-			number: undefined,
-			label: "Unnamed",
-			units: "F",
-			value: 100,
-			status: "ok",
-			enabled: true,
-			color: null,
-			type: "temperature",
-			alarmHigh: null,
-			alarmLow: null,
-			minimum: null,
-			maximum: null,
-			recentReadings: [
-				{ value: 100, timestamp: new Date(now - 30000), units: "F" },
-				{ value: 105, timestamp: new Date(now), units: "F" },
-			],
-		}];
-		const { container } = renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		const channels = [
+			{
+				number: undefined,
+				label: "Unnamed",
+				units: "F",
+				value: 100,
+				status: "ok",
+				enabled: true,
+				color: null,
+				type: "temperature",
+				alarmHigh: null,
+				alarmLow: null,
+				minimum: null,
+				maximum: null,
+				recentReadings: [
+					{ value: 100, timestamp: new Date(now - 30000), units: "F" },
+					{ value: 105, timestamp: new Date(now), units: "F" },
+				],
+			},
+		];
+		const { container } = renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		// Should still render without crashing
 		expect(container.querySelector(".recharts-wrapper")).not.toBeNull();
 	});
 
 	it("handles channel without label property", () => {
-		const channels = [{
-			number: "3",
-			label: undefined,
-			units: "F",
-			value: 100,
-			status: "ok",
-			enabled: true,
-			color: null,
-			type: "temperature",
-			alarmHigh: null,
-			alarmLow: null,
-			minimum: null,
-			maximum: null,
-			recentReadings: [
-				{ value: 100, timestamp: new Date(now - 30000), units: "F" },
-				{ value: 105, timestamp: new Date(now), units: "F" },
-			],
-		}];
-		const { container } = renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		const channels = [
+			{
+				number: "3",
+				label: undefined,
+				units: "F",
+				value: 100,
+				status: "ok",
+				enabled: true,
+				color: null,
+				type: "temperature",
+				alarmHigh: null,
+				alarmLow: null,
+				minimum: null,
+				maximum: null,
+				recentReadings: [
+					{ value: 100, timestamp: new Date(now - 30000), units: "F" },
+					{ value: 105, timestamp: new Date(now), units: "F" },
+				],
+			},
+		];
+		const { container } = renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		expect(container.querySelector(".recharts-wrapper")).not.toBeNull();
 	});
 
 	it("handles channel with units=C", () => {
-		const channels = [{
-			number: "1",
-			label: "Celsius Probe",
-			units: "C",
-			value: 74,
-			status: "ok",
-			enabled: true,
-			color: "#22c55e",
-			type: "temperature",
-			alarmHigh: null,
-			alarmLow: null,
-			minimum: null,
-			maximum: null,
-			recentReadings: [
-				{ value: 70, timestamp: new Date(now - 30000), units: "C" },
-				{ value: 74, timestamp: new Date(now), units: "C" },
-			],
-		}];
-		const { container } = renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		const channels = [
+			{
+				number: "1",
+				label: "Celsius Probe",
+				units: "C",
+				value: 74,
+				status: "ok",
+				enabled: true,
+				color: "#22c55e",
+				type: "temperature",
+				alarmHigh: null,
+				alarmLow: null,
+				minimum: null,
+				maximum: null,
+				recentReadings: [
+					{ value: 70, timestamp: new Date(now - 30000), units: "C" },
+					{ value: 74, timestamp: new Date(now), units: "C" },
+				],
+			},
+		];
+		const { container } = renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		expect(container.querySelector(".recharts-wrapper")).not.toBeNull();
 	});
@@ -245,10 +233,7 @@ describe("TemperatureChart - branch coverage", () => {
 		const overlay = makeChannels();
 
 		const { container } = renderWithProvider(
-			<TemperatureChart
-				channels={channels as never}
-				overlayArchives={[overlay] as never}
-			/>,
+			<TemperatureChart channels={channels as never} overlayArchives={[overlay] as never} />,
 		);
 
 		// Toggle the overlay session on
@@ -272,10 +257,7 @@ describe("TemperatureChart - branch coverage", () => {
 		const overlay = makeChannels();
 
 		renderWithProvider(
-			<TemperatureChart
-				channels={channels as never}
-				overlayArchives={[overlay] as never}
-			/>,
+			<TemperatureChart channels={channels as never} overlayArchives={[overlay] as never} />,
 		);
 
 		const checkbox = screen.getByRole("checkbox");
@@ -290,27 +272,27 @@ describe("TemperatureChart - branch coverage", () => {
 	});
 
 	it("renders alarm threshold labels correctly", () => {
-		const channels = [{
-			number: "1",
-			label: "BBQ",
-			units: "F",
-			value: 165,
-			status: "ok",
-			enabled: true,
-			color: "#ef4444",
-			type: "temperature",
-			alarmHigh: { enabled: true, value: 225 },
-			alarmLow: { enabled: true, value: 140 },
-			minimum: null,
-			maximum: null,
-			recentReadings: [
-				{ value: 150, timestamp: new Date(now - 60000), units: "F" },
-				{ value: 165, timestamp: new Date(now), units: "F" },
-			],
-		}];
-		const { container } = renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		const channels = [
+			{
+				number: "1",
+				label: "BBQ",
+				units: "F",
+				value: 165,
+				status: "ok",
+				enabled: true,
+				color: "#ef4444",
+				type: "temperature",
+				alarmHigh: { enabled: true, value: 225 },
+				alarmLow: { enabled: true, value: 140 },
+				minimum: null,
+				maximum: null,
+				recentReadings: [
+					{ value: 150, timestamp: new Date(now - 60000), units: "F" },
+					{ value: 165, timestamp: new Date(now), units: "F" },
+				],
+			},
+		];
+		const { container } = renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		// Reference lines should be rendered (at least one for alarm thresholds)
 		const refLines = container.querySelectorAll(".recharts-reference-line");
@@ -318,54 +300,54 @@ describe("TemperatureChart - branch coverage", () => {
 	});
 
 	it("handles alarm with enabled=false (no reference line)", () => {
-		const channels = [{
-			number: "1",
-			label: "Test",
-			units: "F",
-			value: 165,
-			status: "ok",
-			enabled: true,
-			color: "#ef4444",
-			type: "temperature",
-			alarmHigh: { enabled: false, value: 200 },
-			alarmLow: { enabled: false, value: 100 },
-			minimum: null,
-			maximum: null,
-			recentReadings: [
-				{ value: 150, timestamp: new Date(now - 60000), units: "F" },
-				{ value: 165, timestamp: new Date(now), units: "F" },
-			],
-		}];
-		const { container } = renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		const channels = [
+			{
+				number: "1",
+				label: "Test",
+				units: "F",
+				value: 165,
+				status: "ok",
+				enabled: true,
+				color: "#ef4444",
+				type: "temperature",
+				alarmHigh: { enabled: false, value: 200 },
+				alarmLow: { enabled: false, value: 100 },
+				minimum: null,
+				maximum: null,
+				recentReadings: [
+					{ value: 150, timestamp: new Date(now - 60000), units: "F" },
+					{ value: 165, timestamp: new Date(now), units: "F" },
+				],
+			},
+		];
+		const { container } = renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		const refLines = container.querySelectorAll(".recharts-reference-line");
 		expect(refLines.length).toBe(0);
 	});
 
 	it("handles alarm with null value (no reference line)", () => {
-		const channels = [{
-			number: "1",
-			label: "Test",
-			units: "F",
-			value: 165,
-			status: "ok",
-			enabled: true,
-			color: "#ef4444",
-			type: "temperature",
-			alarmHigh: { enabled: true, value: null },
-			alarmLow: { enabled: true, value: null },
-			minimum: null,
-			maximum: null,
-			recentReadings: [
-				{ value: 150, timestamp: new Date(now - 60000), units: "F" },
-				{ value: 165, timestamp: new Date(now), units: "F" },
-			],
-		}];
-		const { container } = renderWithProvider(
-			<TemperatureChart channels={channels as never} />,
-		);
+		const channels = [
+			{
+				number: "1",
+				label: "Test",
+				units: "F",
+				value: 165,
+				status: "ok",
+				enabled: true,
+				color: "#ef4444",
+				type: "temperature",
+				alarmHigh: { enabled: true, value: null },
+				alarmLow: { enabled: true, value: null },
+				minimum: null,
+				maximum: null,
+				recentReadings: [
+					{ value: 150, timestamp: new Date(now - 60000), units: "F" },
+					{ value: 165, timestamp: new Date(now), units: "F" },
+				],
+			},
+		];
+		const { container } = renderWithProvider(<TemperatureChart channels={channels as never} />);
 
 		const refLines = container.querySelectorAll(".recharts-reference-line");
 		expect(refLines.length).toBe(0);

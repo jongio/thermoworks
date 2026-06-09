@@ -11,7 +11,12 @@ interface SessionControlsProps {
 	sessionLabel: string | null;
 }
 
-export function SessionControls({ client, serial, sessionStart, sessionLabel }: SessionControlsProps) {
+export function SessionControls({
+	client,
+	serial,
+	sessionStart,
+	sessionLabel,
+}: SessionControlsProps) {
 	const { isActive, elapsed, label, startSession, endSession, error } = useSession(
 		client,
 		serial,
@@ -45,7 +50,10 @@ export function SessionControls({ client, serial, sessionStart, sessionLabel }: 
 				<div className="flex items-center justify-between gap-2">
 					<div className="flex items-center gap-1.5 min-w-0">
 						<Timer className="h-3.5 w-3.5 text-green-500 shrink-0" aria-hidden="true" />
-						<span className="text-xs font-mono font-medium tabular-nums" aria-label="Session elapsed time">
+						<span
+							className="text-xs font-mono font-medium tabular-nums"
+							aria-label="Session elapsed time"
+						>
 							{elapsed}
 						</span>
 						{label && (

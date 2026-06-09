@@ -39,10 +39,12 @@ function makeMockClient(overrides: Partial<ThermoworksWebClient> = {}): Thermowo
 	return {
 		isAuthenticated: true,
 		getUser: vi.fn().mockResolvedValue(makeUser()),
-		getInvites: vi.fn().mockResolvedValue([
-			makeInvite(),
-			makeInvite({ id: "inv-2", email: "other@example.com", status: "accepted" }),
-		]),
+		getInvites: vi
+			.fn()
+			.mockResolvedValue([
+				makeInvite(),
+				makeInvite({ id: "inv-2", email: "other@example.com", status: "accepted" }),
+			]),
 		removeUser: vi.fn().mockResolvedValue({ success: true }),
 		...overrides,
 	} as unknown as ThermoworksWebClient;
@@ -82,9 +84,7 @@ describe("UserManagement", () => {
 		render(<UserManagement client={client} />);
 
 		await waitFor(() => {
-			expect(
-				screen.getByText("Contact your account admin to manage users."),
-			).toBeInTheDocument();
+			expect(screen.getByText("Contact your account admin to manage users.")).toBeInTheDocument();
 		});
 
 		expect(screen.queryByText("Account Users")).not.toBeInTheDocument();
@@ -98,9 +98,7 @@ describe("UserManagement", () => {
 		render(<UserManagement client={client} />);
 
 		await waitFor(() => {
-			expect(
-				screen.getByText("Contact your account admin to manage users."),
-			).toBeInTheDocument();
+			expect(screen.getByText("Contact your account admin to manage users.")).toBeInTheDocument();
 		});
 	});
 

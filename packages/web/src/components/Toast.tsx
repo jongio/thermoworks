@@ -35,10 +35,7 @@ function ToastIcon({ type }: { type: ToastType }) {
 	}
 }
 
-function ToastEntry({
-	toast,
-	onDismiss,
-}: { toast: ToastItem; onDismiss: (id: string) => void }) {
+function ToastEntry({ toast, onDismiss }: { toast: ToastItem; onDismiss: (id: string) => void }) {
 	useEffect(() => {
 		const timer = setTimeout(() => onDismiss(toast.id), DISMISS_MS);
 		return () => clearTimeout(timer);
@@ -77,7 +74,9 @@ export function Toaster() {
 			setToasts((prev) => [...prev.slice(-(MAX_VISIBLE - 1)), toast]);
 		}
 		listeners.add(handleToast);
-		return () => { listeners.delete(handleToast); };
+		return () => {
+			listeners.delete(handleToast);
+		};
 	}, []);
 
 	const dismiss = useCallback((id: string) => {

@@ -1,9 +1,8 @@
-import { act, renderHook } from "@testing-library/react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RefreshSelector } from "../src/components/RefreshSelector.tsx";
-import { useRefreshInterval } from "../src/hooks/useRefreshInterval.ts";
 import type { RefreshInterval } from "../src/hooks/useRefreshInterval.ts";
+import { useRefreshInterval } from "../src/hooks/useRefreshInterval.ts";
 
 describe("useRefreshInterval", () => {
 	let localStorageStore: Record<string, string>;
@@ -70,9 +69,7 @@ describe("RefreshSelector", () => {
 
 	it("renders all interval options", () => {
 		const onChange = vi.fn();
-		render(
-			<RefreshSelector interval={10_000} options={options} onIntervalChange={onChange} />,
-		);
+		render(<RefreshSelector interval={10_000} options={options} onIntervalChange={onChange} />);
 
 		const select = screen.getByLabelText("Refresh interval");
 		expect(select).toBeInTheDocument();
@@ -87,9 +84,7 @@ describe("RefreshSelector", () => {
 
 	it("shows current selection", () => {
 		const onChange = vi.fn();
-		render(
-			<RefreshSelector interval={30_000} options={options} onIntervalChange={onChange} />,
-		);
+		render(<RefreshSelector interval={30_000} options={options} onIntervalChange={onChange} />);
 
 		const select = screen.getByLabelText("Refresh interval") as HTMLSelectElement;
 		expect(select.value).toBe("30000");
@@ -97,9 +92,7 @@ describe("RefreshSelector", () => {
 
 	it("calls onIntervalChange when selection changes", () => {
 		const onChange = vi.fn();
-		render(
-			<RefreshSelector interval={10_000} options={options} onIntervalChange={onChange} />,
-		);
+		render(<RefreshSelector interval={10_000} options={options} onIntervalChange={onChange} />);
 
 		const select = screen.getByLabelText("Refresh interval");
 		fireEvent.change(select, { target: { value: "60000" } });

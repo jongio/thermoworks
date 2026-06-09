@@ -1,5 +1,5 @@
-import { Component, type ErrorInfo, type ReactNode, useState } from "react";
 import { AlertTriangle, ChevronDown, ChevronRight, RefreshCw } from "lucide-react";
+import { Component, type ErrorInfo, type ReactNode, useState } from "react";
 import { cn } from "../lib/utils.ts";
 
 interface Props {
@@ -78,12 +78,9 @@ export class ErrorBoundary extends Component<Props, State> {
 							<div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
 								<AlertTriangle className="h-6 w-6 text-destructive" aria-hidden="true" />
 							</div>
-							<h1 className="text-xl font-semibold text-foreground mb-2">
-								Something went wrong
-							</h1>
+							<h1 className="text-xl font-semibold text-foreground mb-2">Something went wrong</h1>
 							<p className="text-sm text-muted-foreground mb-6">
-								The dashboard encountered an unexpected error. You can try again or reload the
-								page.
+								The dashboard encountered an unexpected error. You can try again or reload the page.
 							</p>
 							<div className="flex gap-3 mb-6">
 								<button

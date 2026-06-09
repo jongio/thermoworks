@@ -1,6 +1,6 @@
 import { Outlet } from "react-router-dom";
-import type { ThermoworksWebClient } from "../lib/api.ts";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts.ts";
+import type { ThermoworksWebClient } from "../lib/api.ts";
 import { BottomNav } from "./BottomNav.tsx";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp.tsx";
 import { OfflineBanner } from "./OfflineBanner.tsx";

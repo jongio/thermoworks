@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CalibrationRecord } from "../lib/api.ts";
-import type { ThermoworksWebClient } from "../lib/api.ts";
+import type { CalibrationRecord, ThermoworksWebClient } from "../lib/api.ts";
 
 interface UseCalibrationResult {
 	data: CalibrationRecord[];

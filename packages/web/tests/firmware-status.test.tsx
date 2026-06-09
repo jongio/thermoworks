@@ -50,13 +50,7 @@ describe("FirmwareStatus", () => {
 		});
 
 		await act(async () => {
-			render(
-				<FirmwareStatus
-					currentVersion="2.1.0"
-					deviceType="ThermaQ WiFi"
-					client={client}
-				/>,
-			);
+			render(<FirmwareStatus currentVersion="2.1.0" deviceType="ThermaQ WiFi" client={client} />);
 		});
 
 		await waitFor(() => {
@@ -79,13 +73,7 @@ describe("FirmwareStatus", () => {
 		});
 
 		await act(async () => {
-			render(
-				<FirmwareStatus
-					currentVersion="2.1.0"
-					deviceType="ThermaQ WiFi"
-					client={client}
-				/>,
-			);
+			render(<FirmwareStatus currentVersion="2.1.0" deviceType="ThermaQ WiFi" client={client} />);
 		});
 
 		await waitFor(() => {
@@ -107,13 +95,7 @@ describe("FirmwareStatus", () => {
 		});
 
 		await act(async () => {
-			render(
-				<FirmwareStatus
-					currentVersion="2.1.0"
-					deviceType="ThermaQ WiFi"
-					client={client}
-				/>,
-			);
+			render(<FirmwareStatus currentVersion="2.1.0" deviceType="ThermaQ WiFi" client={client} />);
 		});
 
 		await waitFor(() => {
@@ -128,13 +110,7 @@ describe("FirmwareStatus", () => {
 		const client = makeMockClient(null);
 
 		await act(async () => {
-			render(
-				<FirmwareStatus
-					currentVersion="2.1.0"
-					deviceType="ThermaQ WiFi"
-					client={client}
-				/>,
-			);
+			render(<FirmwareStatus currentVersion="2.1.0" deviceType="ThermaQ WiFi" client={client} />);
 		});
 
 		await waitFor(() => {
@@ -149,13 +125,7 @@ describe("FirmwareStatus", () => {
 		const client = makeMockClient(null, true);
 
 		await act(async () => {
-			render(
-				<FirmwareStatus
-					currentVersion="2.1.0"
-					deviceType="ThermaQ WiFi"
-					client={client}
-				/>,
-			);
+			render(<FirmwareStatus currentVersion="2.1.0" deviceType="ThermaQ WiFi" client={client} />);
 		});
 
 		await waitFor(() => {
@@ -168,13 +138,7 @@ describe("FirmwareStatus", () => {
 	it("shows plain version when deviceType is null", () => {
 		const client = makeMockClient(null);
 
-		render(
-			<FirmwareStatus
-				currentVersion="2.1.0"
-				deviceType={null}
-				client={client}
-			/>,
-		);
+		render(<FirmwareStatus currentVersion="2.1.0" deviceType={null} client={client} />);
 
 		expect(screen.getByText("v2.1.0")).toBeInTheDocument();
 		expect(screen.queryByRole("status")).not.toBeInTheDocument();

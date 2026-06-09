@@ -36,6 +36,33 @@ export interface AccountInfo {
 	devicesLimit: number;
 }
 
+export interface DataUsage {
+	totalBytes: number;
+	limitBytes: number;
+	periodStart: Date | null;
+	periodEnd: Date | null;
+	deviceCount: number;
+}
+
+export interface DeviceDataUsage {
+	serial: string;
+	label: string;
+	bytes: number;
+	percentage: number;
+	lastSync: Date | null;
+}
+
+export interface BillingPlan {
+	name: string;
+	tier: string;
+	storageLimitBytes: number;
+	deviceLimit: number;
+	retentionDays: number;
+	price: number;
+	currency: string;
+	renewalDate: Date | null;
+}
+
 interface CalibrationPoint {
 	referenceTemp: number;
 	measuredTemp: number;
@@ -52,7 +79,7 @@ interface CalibrationRecord {
 	points: CalibrationPoint[];
 }
 
-export type { CalibrationRecord, CalibrationPoint };
+export type { CalibrationPoint, CalibrationRecord };
 
 interface HistoricalReading {
 	timestamp: Date;
@@ -69,6 +96,9 @@ const IDENTITY_HOST = isDev ? "/api/identity" : "https://identitytoolkit.googlea
 const TOKEN_HOST = isDev ? "/api/token" : "https://securetoken.googleapis.com";
 const FIREBASE_HOST = isDev ? "/api/firebase" : "https://firebase.googleapis.com";
 const FIRESTORE_HOST = isDev ? "/api/firestore" : "https://firestore.googleapis.com";
+const FUNCTIONS_HOST = isDev
+	? "/api/functions"
+	: "https://us-central1-thermoworks-cloud-production.cloudfunctions.net";
 
 // Firebase client-side API key (public identifier, not a secret).
 // Security is enforced by Firebase Security Rules server-side.
@@ -151,6 +181,83 @@ function getStringArray(fields: FirestoreFields, key: string): string[] | null {
 		return result.length > 0 ? result : null;
 	}
 	return null;
+}
+
+function getNestedFields(
+	fields: FirestoreFields | null,
+	...path: string[]
+): FirestoreFields | null {
+	let current = fields;
+	for (const segment of path) {
+		if (!current) return null;
+		current = getMapFields(current, segment);
+	}
+	return current;
+}
+
+function getFirstNumber(fields: FirestoreFields | null, ...keys: string[]): number | null {
+	if (!fields) return null;
+	for (const key of keys) {
+		const value = getNumber(fields, key);
+		if (value != null) return value;
+	}
+	return null;
+}
+
+function getFirstString(fields: FirestoreFields | null, ...keys: string[]): string | null {
+	if (!fields) return null;
+	for (const key of keys) {
+		const value = getString(fields, key);
+		if (value != null) return value;
+	}
+	return null;
+}
+
+function getFirstTimestamp(fields: FirestoreFields | null, ...keys: string[]): Date | null {
+	if (!fields) return null;
+	for (const key of keys) {
+		const value = getTimestamp(fields, key);
+		if (value != null) return value;
+	}
+	return null;
+}
+
+function parseDateValue(value: Date | string | number | null | undefined): Date | null {
+	if (value == null) return null;
+	const date = value instanceof Date ? value : new Date(value);
+	return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function resolveStorageLimitBytes(
+	planFields: FirestoreFields | null,
+	accountFields: FirestoreFields | null,
+): number {
+	const planLoggerSettings = getNestedFields(planFields, "dataLoggerSettings");
+	const accountLoggerSettings = getNestedFields(accountFields, "dataLoggerSettings");
+
+	return (
+		getFirstNumber(planLoggerSettings, "storageLimitBytes", "limitBytes", "dataLimitBytes") ??
+		getFirstNumber(planFields, "storageLimitBytes", "limitBytes", "dataLimitBytes") ??
+		getFirstNumber(accountLoggerSettings, "storageLimitBytes", "limitBytes", "dataLimitBytes") ??
+		getFirstNumber(accountFields, "storageLimitBytes", "limitBytes", "dataLimitBytes") ??
+		0
+	);
+}
+
+function resolveRetentionDays(
+	planFields: FirestoreFields | null,
+	accountFields: FirestoreFields | null,
+): number {
+	const planLoggerSettings = getNestedFields(planFields, "dataLoggerSettings");
+	const accountLoggerSettings = getNestedFields(accountFields, "dataLoggerSettings");
+
+	return (
+		getFirstNumber(planLoggerSettings, "retentionDays", "historyDays") ??
+		getFirstNumber(planFields, "retentionDays", "historyDays") ??
+		getFirstNumber(accountLoggerSettings, "retentionDays", "historyDays") ??
+		getFirstNumber(accountFields, "retentionDays", "historyDays") ??
+		0
+	);
 }
 
 function parseBooleanMap(fields: FirestoreFields | null): Record<string, boolean> | null {
@@ -555,10 +662,13 @@ export class ThermoworksWebClient {
 	private persistSession(): void {
 		try {
 			if (this.token && this.projectId) {
-				sessionStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify({
-					token: this.token,
-					projectId: this.projectId,
-				}));
+				sessionStorage.setItem(
+					TOKEN_STORAGE_KEY,
+					JSON.stringify({
+						token: this.token,
+						projectId: this.projectId,
+					}),
+				);
 			}
 		} catch {
 			// Storage unavailable — session won't persist across refresh
@@ -583,7 +693,9 @@ export class ThermoworksWebClient {
 		this.token = null;
 		this.accountId = null;
 		this.refreshPromise = null;
-		try { sessionStorage.removeItem(TOKEN_STORAGE_KEY); } catch {}
+		try {
+			sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+		} catch {}
 	}
 
 	private async ensureToken(): Promise<string> {
@@ -606,6 +718,7 @@ export class ThermoworksWebClient {
 			if (!user.accountId) throw new Error("User has no associated account");
 			this.accountId = user.accountId;
 		}
+		if (!this.accountId) throw new Error("User has no associated account");
 		return this.accountId;
 	}
 
@@ -628,6 +741,29 @@ export class ThermoworksWebClient {
 			headers,
 			body: body !== undefined ? JSON.stringify(body) : undefined,
 		});
+	}
+
+	private async callFunction(name: string, data: unknown): Promise<unknown> {
+		if (!name || !/^[a-zA-Z][a-zA-Z0-9_-]*$/.test(name)) {
+			throw new Error(`Invalid function name: ${name}`);
+		}
+
+		const accessToken = await this.ensureToken();
+		const response = await fetch(`${FUNCTIONS_HOST}/${name}`, {
+			method: "POST",
+			headers: {
+				authorization: `Bearer ${accessToken}`,
+				"content-type": "application/json",
+			},
+			body: JSON.stringify({ data }),
+		});
+
+		if (!response.ok) {
+			throw new Error(`Cloud function call failed: HTTP ${response.status}`);
+		}
+
+		const result = (await response.json()) as { result?: unknown };
+		return result.result ?? result;
 	}
 
 	private async fetchDocFields(path: string): Promise<FirestoreFields | null> {
@@ -694,6 +830,138 @@ export class ThermoworksWebClient {
 			plan: planName ?? getString(fields, "planName") ?? getString(fields, "plan"),
 			devicesUsed: getNumber(fields, "devicesUsed") ?? getNumber(fields, "deviceCount") ?? 0,
 			devicesLimit: deviceLimit,
+		};
+	}
+
+	async getDataUsage(): Promise<DataUsage> {
+		const accountId = await this.getAccountId();
+		const [usageResult, accountFields] = await Promise.all([
+			this.callFunction("accountDataStorageSize", { accountId }),
+			this.fetchDocFields(`documents/accounts/${encodeURIComponent(accountId)}`),
+		]);
+
+		const accountUsage = usageResult as { totalBytes?: number } | null;
+		let planFields: FirestoreFields | null = null;
+		const billingPlanId = accountFields ? getString(accountFields, "billingPlanId") : null;
+		if (billingPlanId) {
+			planFields = await this.fetchDocFields(
+				`documents/system/billingPlans/plans/${encodeURIComponent(billingPlanId)}`,
+			);
+		}
+
+		return {
+			totalBytes: accountUsage?.totalBytes ?? 0,
+			limitBytes: resolveStorageLimitBytes(planFields, accountFields),
+			periodStart: getFirstTimestamp(
+				accountFields,
+				"periodStart",
+				"billingPeriodStart",
+				"currentPeriodStart",
+				"currentBillingPeriodStart",
+			),
+			periodEnd: getFirstTimestamp(
+				accountFields,
+				"periodEnd",
+				"billingPeriodEnd",
+				"currentPeriodEnd",
+				"currentBillingPeriodEnd",
+				"renewalDate",
+			),
+			deviceCount:
+				getFirstNumber(accountFields, "devicesUsed", "deviceCount", "deviceCounter") ?? 0,
+		};
+	}
+
+	async getDataUsageByDevice(): Promise<DeviceDataUsage[]> {
+		const accountId = await this.getAccountId();
+		const [usageResult, devices] = await Promise.all([
+			this.callFunction("accountDataStorageSizeByTable", { accountId }),
+			this.getDevices(),
+		]);
+
+		const entries = Array.isArray(usageResult)
+			? (usageResult as Array<{
+					deviceId?: string;
+					serial?: string;
+					label?: string;
+					bytes?: number;
+					percentage?: number;
+					lastSync?: Date | string | number | null;
+				}>)
+			: [];
+
+		const deviceLookup = new Map<string, Device>();
+		for (const device of devices) {
+			deviceLookup.set(device.serial, device);
+			if (device.deviceId) {
+				deviceLookup.set(device.deviceId, device);
+			}
+		}
+
+		const totalBytes = entries.reduce((sum, entry) => sum + (entry.bytes ?? 0), 0);
+
+		return entries
+			.map((entry) => {
+				const bytes = entry.bytes ?? 0;
+				const rawSerial = entry.serial ?? entry.deviceId ?? "";
+				const matchedDevice = deviceLookup.get(rawSerial);
+				const serial = matchedDevice?.serial ?? rawSerial;
+				const label = entry.label ?? matchedDevice?.label ?? serial ?? "Unknown device";
+				const percentage = Number.isFinite(entry.percentage)
+					? Math.max(0, Math.min(100, entry.percentage ?? 0))
+					: totalBytes > 0
+						? Math.round((bytes / totalBytes) * 100)
+						: 0;
+
+				return {
+					serial,
+					label,
+					bytes,
+					percentage,
+					lastSync:
+						parseDateValue(entry.lastSync) ??
+						matchedDevice?.lastTelemetrySaved ??
+						matchedDevice?.lastSeen ??
+						null,
+				};
+			})
+			.sort((a, b) => b.bytes - a.bytes);
+	}
+
+	async getBillingPlan(): Promise<BillingPlan | null> {
+		const accountId = await this.getAccountId();
+		const accountFields = await this.fetchDocFields(
+			`documents/accounts/${encodeURIComponent(accountId)}`,
+		);
+		if (!accountFields) return null;
+
+		const billingPlanId = getString(accountFields, "billingPlanId");
+		if (!billingPlanId) return null;
+
+		const planFields = await this.fetchDocFields(
+			`documents/system/billingPlans/plans/${encodeURIComponent(billingPlanId)}`,
+		);
+		if (!planFields) return null;
+
+		return {
+			name: getFirstString(planFields, "label", "name", "description") ?? billingPlanId,
+			tier: getFirstString(planFields, "tier", "id") ?? billingPlanId,
+			storageLimitBytes: resolveStorageLimitBytes(planFields, accountFields),
+			deviceLimit:
+				getFirstNumber(planFields, "deviceCount") ??
+				getFirstNumber(accountFields, "devicesLimit", "deviceCount") ??
+				0,
+			retentionDays: resolveRetentionDays(planFields, accountFields),
+			price: getFirstNumber(planFields, "price", "monthlyAmount") ?? 0,
+			currency: getFirstString(planFields, "currency") ?? "USD",
+			renewalDate: getFirstTimestamp(
+				accountFields,
+				"renewalDate",
+				"periodEnd",
+				"billingPeriodEnd",
+				"currentPeriodEnd",
+				"currentBillingPeriodEnd",
+			),
 		};
 	}
 
@@ -997,8 +1265,7 @@ export class ThermoworksWebClient {
 			});
 		}
 
-		const where =
-			filters.length === 1 ? filters[0] : { compositeFilter: { op: "AND", filters } };
+		const where = filters.length === 1 ? filters[0] : { compositeFilter: { op: "AND", filters } };
 
 		const queryBody = {
 			structuredQuery: {
@@ -1158,7 +1425,11 @@ export class ThermoworksWebClient {
 		};
 		const maskPaths = `updateMask.fieldPaths=ch${channel}Min&updateMask.fieldPaths=ch${channel}Max`;
 		const path = `documents/devices/${encodeURIComponent(serial)}?${maskPaths}`;
-		const response = await this.firestoreRequest("PATCH", path, body as unknown as Record<string, unknown>);
+		const response = await this.firestoreRequest(
+			"PATCH",
+			path,
+			body as unknown as Record<string, unknown>,
+		);
 		return { success: response.ok };
 	}
 
@@ -1175,7 +1446,9 @@ export class ThermoworksWebClient {
 		);
 	}
 
-	async updateNotificationSettings(settings: Partial<NotificationSettings>): Promise<{ success: boolean }> {
+	async updateNotificationSettings(
+		settings: Partial<NotificationSettings>,
+	): Promise<{ success: boolean }> {
 		if (!this.token) throw new AuthError("Not authenticated", "NOT_AUTHENTICATED");
 		const current = await this.getNotificationSettings();
 		const merged: NotificationSettings = { ...current, ...settings };
@@ -1227,7 +1500,8 @@ function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {
 		id,
 		eventType: getString(fields, "eventType") ?? getString(fields, "EventType") ?? "",
 		severity: getNumber(fields, "severity") ?? 0,
-		eventTime: getTimestamp(fields, "EventTime") ?? getTimestamp(fields, "eventTime") ?? new Date(0),
+		eventTime:
+			getTimestamp(fields, "EventTime") ?? getTimestamp(fields, "eventTime") ?? new Date(0),
 		deviceId: getString(fields, "deviceId") ?? getString(fields, "DeviceId") ?? "",
 		channelId: getString(fields, "channelId") ?? getString(fields, "ChannelId"),
 		accountId: getString(fields, "accountId") ?? getString(fields, "AccountId") ?? "",

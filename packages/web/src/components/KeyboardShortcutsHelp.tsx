@@ -12,7 +12,9 @@ export function KeyboardShortcutsHelp({ shortcuts, onClose }: KeyboardShortcutsH
 		<div
 			className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
 			onClick={onClose}
-			onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
+			onKeyDown={(e) => {
+				if (e.key === "Escape") onClose();
+			}}
 			role="dialog"
 			aria-modal="true"
 			aria-label="Keyboard shortcuts"

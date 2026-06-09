@@ -2,7 +2,7 @@ import { Bell } from "lucide-react";
 import { useState } from "react";
 import type { DeviceChannel } from "thermoworks-sdk";
 import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";
-import { type AlarmState, type ThermoworksWebClient, getChannelAlarmState } from "../lib/api.ts";
+import { type AlarmState, getChannelAlarmState, type ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { AlarmConfig } from "./AlarmConfig.tsx";
 
@@ -100,4 +100,3 @@ export function ChannelReading({ channel, client, serial, onAlarmSaved }: Channe
 		</>
 	);
 }
-

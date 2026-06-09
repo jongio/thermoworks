@@ -3,7 +3,7 @@ import type { DeviceChannel } from "thermoworks-sdk";
 import type { DeviceWithChannels } from "../lib/api.ts";
 import { getChannelAlarmState } from "../lib/api.ts";
 
-const STORAGE_KEY = "thermoworks-notifications-enabled";
+export const NOTIFICATION_PREFERENCE_STORAGE_KEY = "thermoworks-notifications-enabled";
 
 /** Composite key for a specific channel alarm occurrence. */
 function alarmKey(serial: string, channelIndex: number, state: "low" | "high"): string {
@@ -11,11 +11,7 @@ function alarmKey(serial: string, channelIndex: number, state: "low" | "high"): 
 }
 
 /** Build the notification body from channel data and alarm direction. */
-function buildBody(
-	channel: DeviceChannel,
-	index: number,
-	state: "low" | "high",
-): string {
+function buildBody(channel: DeviceChannel, index: number, state: "low" | "high"): string {
 	const label = channel.label ?? `Channel ${index + 1}`;
 	const temp = channel.value != null ? channel.value.toFixed(1) : "??";
 	const units = channel.units ?? "F";
@@ -29,16 +25,24 @@ function buildBody(
 /** Read the user's notification preference from localStorage. */
 export function getNotificationsEnabled(): boolean {
 	try {
-		return localStorage.getItem(STORAGE_KEY) !== "false";
+		return localStorage.getItem(NOTIFICATION_PREFERENCE_STORAGE_KEY) !== "false";
 	} catch {
 		return true;
+	}
+}
+
+export function hasStoredNotificationPreference(): boolean {
+	try {
+		return localStorage.getItem(NOTIFICATION_PREFERENCE_STORAGE_KEY) !== null;
+	} catch {
+		return false;
 	}
 }
 
 /** Persist the user's notification preference to localStorage. */
 export function setNotificationsEnabled(enabled: boolean): void {
 	try {
-		localStorage.setItem(STORAGE_KEY, String(enabled));
+		localStorage.setItem(NOTIFICATION_PREFERENCE_STORAGE_KEY, String(enabled));
 	} catch {
 		// Storage unavailable - ignore.
 	}

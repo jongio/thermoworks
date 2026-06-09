@@ -1,8 +1,8 @@
 import { act, render, screen } from "@testing-library/react";
+import type { User } from "thermoworks-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { AccountPanel } from "../src/components/AccountPanel.tsx";
 import type { AccountInfo, ThermoworksWebClient } from "../src/lib/api.ts";
-import type { User } from "thermoworks-sdk";
 
 const BASE_USER: User = {
 	userId: "user-1",

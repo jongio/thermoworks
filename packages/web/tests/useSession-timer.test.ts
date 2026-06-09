@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ThermoworksWebClient } from "../src/lib/api.ts";
 import { useSession } from "../src/hooks/useSession.ts";
+import type { ThermoworksWebClient } from "../src/lib/api.ts";
 
 function createMockClient(overrides: Partial<ThermoworksWebClient> = {}): ThermoworksWebClient {
 	return {
@@ -32,17 +32,18 @@ describe("useSession timer branches", () => {
 		const client = createMockClient();
 		const { result } = renderHook(() => useSession(client, "X", s, null));
 		expect(result.current.elapsed).toBe("00:00:03");
-		act(() => { vi.advanceTimersByTime(2000); });
+		act(() => {
+			vi.advanceTimersByTime(2000);
+		});
 		expect(result.current.elapsed).toBe("00:00:05");
 	});
 
 	it("resets on deactivation", () => {
 		const s = new Date(Date.now() - 1000);
 		const client = createMockClient();
-		const { result, rerender } = renderHook(
-			({ start }) => useSession(client, "X", start, null),
-			{ initialProps: { start: s as Date | null } },
-		);
+		const { result, rerender } = renderHook(({ start }) => useSession(client, "X", start, null), {
+			initialProps: { start: s as Date | null },
+		});
 		expect(result.current.isActive).toBe(true);
 		rerender({ start: null });
 		expect(result.current.elapsed).toBe("00:00:00");

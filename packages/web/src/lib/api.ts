@@ -81,9 +81,10 @@ interface CalibrationRecord {
 
 export type { CalibrationPoint, CalibrationRecord };
 
-interface HistoricalReading {
-	timestamp: Date;
-	channels: Record<string, number>;
+export interface HistoricalReading {
+	value: number;
+	timestamp: string;
+	units: string;
 }
 
 export interface DeviceHistory {
@@ -1398,32 +1399,29 @@ export class ThermoworksWebClient {
 	}
 
 	async getHistory(serial: string): Promise<DeviceHistory> {
-		const path = `documents/devices/${encodeURIComponent(serial)}/history?pageSize=500&orderBy=timestamp%20desc`;
-		const response = await this.firestoreRequest("GET", path);
-		if (!response.ok) return { readings: [] };
-
-		const data = (await response.json()) as {
-			documents?: Array<{ fields?: FirestoreFields }>;
-		};
-		if (!data.documents) return { readings: [] };
-
-		const readings: HistoricalReading[] = data.documents.map((doc) => {
-			const fields = doc.fields ?? {};
-			const channels: Record<string, number> = {};
-			const channelMap = getMapFields(fields, "channels");
-			if (channelMap) {
-				for (const [key, val] of Object.entries(channelMap)) {
-					if ("doubleValue" in val) channels[key] = val.doubleValue;
-					else if ("integerValue" in val) channels[key] = Number(val.integerValue);
+		try {
+			const result = await this.callFunction("requestRetrieveInstrumentHistory", {
+				deviceId: serial,
+			});
+			const readings: HistoricalReading[] = [];
+			if (result && typeof result === "object" && "readings" in result) {
+				const raw = (result as { readings?: unknown }).readings;
+				if (Array.isArray(raw)) {
+					for (const entry of raw) {
+						if (entry && typeof entry === "object") {
+							const r = entry as { v?: string; ts?: string; u?: string; ch?: string };
+							const value = r.v != null ? Number(r.v) : Number.NaN;
+							if (!Number.isNaN(value) && r.ts && r.u) {
+								readings.push({ value, timestamp: r.ts, units: r.u });
+							}
+						}
+					}
 				}
 			}
-			return {
-				timestamp: getTimestamp(fields, "timestamp") ?? new Date(),
-				channels,
-			};
-		});
-
-		return { readings };
+			return { readings };
+		} catch {
+			return { readings: [] };
+		}
 	}
 
 	async resetMinMax(serial: string, channel: number): Promise<{ success: boolean }> {

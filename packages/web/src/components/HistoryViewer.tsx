@@ -33,7 +33,7 @@ export interface HistoryViewerProps {
 
 /**
  * Historical data viewer with time range selection.
- * Transforms flat HistoricalReading[] (per-timestamp, multi-channel)
+ * Transforms flat HistoricalReading[] (value/timestamp/units per reading)
  * into ArchiveChannel format for display via TemperatureChart.
  */
 export function HistoryViewer({ history }: HistoryViewerProps) {
@@ -44,84 +44,67 @@ export function HistoryViewer({ history }: HistoryViewerProps) {
 			return { channels: null, pointCount: 0, dateRange: null };
 		}
 
-		// Sort by timestamp ascending
-		// Filter out invalid timestamps and sort ascending
-		const valid = history.readings.filter(
-			(r) => r.timestamp instanceof Date && !Number.isNaN(r.timestamp.getTime()),
-		);
-		if (valid.length === 0) {
+		// Parse timestamps and filter invalid
+		const parsed: Array<{ value: number; timestamp: Date; units: string }> = [];
+		for (const r of history.readings) {
+			const date = new Date(r.timestamp);
+			if (!Number.isNaN(date.getTime())) {
+				parsed.push({ value: r.value, timestamp: date, units: r.units });
+			}
+		}
+
+		if (parsed.length === 0) {
 			return { channels: null, pointCount: 0, dateRange: null };
 		}
 
-		const sorted = [...valid].sort(
-			(a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
-		);
+		// Sort ascending by timestamp
+		parsed.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
 		// Apply time range filter
 		const rangeOption = TIME_RANGES.find((r) => r.value === timeRange);
-		let filtered = sorted;
+		let filtered = parsed;
 		if (rangeOption?.ms != null) {
 			const cutoff = Date.now() - rangeOption.ms;
-			filtered = sorted.filter((r) => r.timestamp.getTime() >= cutoff);
+			filtered = parsed.filter((r) => r.timestamp.getTime() >= cutoff);
 		}
 
 		if (filtered.length === 0) {
 			return { channels: null, pointCount: 0, dateRange: null };
 		}
 
-		// Collect all channel keys across readings
-		const channelKeys = new Set<string>();
-		for (const reading of filtered) {
-			for (const key of Object.keys(reading.channels)) {
-				channelKeys.add(key);
-			}
-		}
+		// Determine units from first reading
+		const units = filtered[0]?.units ?? "F";
+		const lastReading = filtered[filtered.length - 1]!;
 
-		if (channelKeys.size === 0) {
-			return { channels: null, pointCount: 0, dateRange: null };
-		}
+		// Build a single ArchiveChannel with all readings
+		const recentReadings: TemperatureReading[] = filtered.map((r) => ({
+			value: r.value,
+			timestamp: r.timestamp,
+			units: r.units,
+		}));
 
-		// Build one ArchiveChannel per channel key
-		const archiveChannels: ArchiveChannel[] = [];
-		for (const key of channelKeys) {
-			const readings: TemperatureReading[] = [];
-			for (const r of filtered) {
-				const value = r.channels[key];
-				if (value != null) {
-					readings.push({ value, timestamp: r.timestamp, units: "F" });
-				}
-			}
-			if (readings.length > 0) {
-				const lastReading = readings[readings.length - 1] as TemperatureReading;
-				archiveChannels.push({
-					number: key,
-					label: `Channel ${key}`,
-					units: "F",
-					value: lastReading.value,
-					status: null,
-					enabled: true,
-					color: null,
-					type: "temperature",
-					alarmHigh: null,
-					alarmLow: null,
-					minimum: null,
-					maximum: null,
-					recentReadings: readings,
-				});
-			}
-		}
+		const channel: ArchiveChannel = {
+			number: "1",
+			label: "Temperature",
+			units,
+			value: lastReading.value,
+			status: null,
+			enabled: true,
+			color: null,
+			type: "temperature",
+			alarmHigh: null,
+			alarmLow: null,
+			minimum: null,
+			maximum: null,
+			recentReadings,
+		};
 
-		if (archiveChannels.length === 0) {
-			return { channels: null, pointCount: 0, dateRange: null };
-		}
-
-		const first = filtered[0] as { timestamp: Date };
-		const last = filtered[filtered.length - 1] as { timestamp: Date };
+		const first = filtered[0]!;
 
 		return {
-			channels: archiveChannels,
+			channels: [channel],
 			pointCount: filtered.length,
-			dateRange: { start: first.timestamp, end: last.timestamp },
+			dateRange: { start: first.timestamp, end: lastReading.timestamp },
 		};
 	}, [history, timeRange]);
 

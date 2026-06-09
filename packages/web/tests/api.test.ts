@@ -1540,41 +1540,21 @@ describe("ThermoworksWebClient", () => {
 			const client = await createAuthenticatedClient();
 			mockFetch.mockResolvedValueOnce(
 				jsonResponse({
-					documents: [
-						{
-							fields: {
-								timestamp: { timestampValue: "2026-06-01T12:00:00Z" },
-								channels: {
-									mapValue: {
-										fields: {
-											ch1: { doubleValue: 165.5 },
-											ch2: { integerValue: "225" },
-										},
-									},
-								},
-							},
-						},
-						{
-							fields: {
-								timestamp: { timestampValue: "2026-06-01T12:05:00Z" },
-								channels: {
-									mapValue: {
-										fields: {
-											ch1: { doubleValue: 167.0 },
-										},
-									},
-								},
-							},
-						},
-					],
+					result: {
+						readings: [
+							{ v: "165.5", ts: "2026-06-01T12:00:00Z", u: "F" },
+							{ v: "167.0", ts: "2026-06-01T12:05:00Z", u: "F" },
+						],
+					},
 				}),
 			);
 
 			const history = await client.getHistory("SN-001");
 			expect(history.readings).toHaveLength(2);
-			expect(history.readings[0].timestamp).toEqual(new Date("2026-06-01T12:00:00Z"));
-			expect(history.readings[0].channels).toEqual({ ch1: 165.5, ch2: 225 });
-			expect(history.readings[1].channels).toEqual({ ch1: 167.0 });
+			expect(history.readings[0].value).toBe(165.5);
+			expect(history.readings[0].timestamp).toBe("2026-06-01T12:00:00Z");
+			expect(history.readings[0].units).toBe("F");
+			expect(history.readings[1].value).toBe(167.0);
 		});
 
 		it("returns empty readings on HTTP error", async () => {
@@ -1587,7 +1567,7 @@ describe("ThermoworksWebClient", () => {
 
 		it("returns empty readings when no documents", async () => {
 			const client = await createAuthenticatedClient();
-			mockFetch.mockResolvedValueOnce(jsonResponse({}));
+			mockFetch.mockResolvedValueOnce(jsonResponse({ result: {} }));
 
 			const history = await client.getHistory("SN-001");
 			expect(history).toEqual({ readings: [] });

@@ -14,7 +14,7 @@ vi.mock("../src/components/TemperatureChart", () => ({
 }));
 
 function makeHistory(
-	readings: Array<{ timestamp: Date; channels: Record<string, number> }>,
+	readings: Array<{ value: number; timestamp: string; units: string }>,
 ): DeviceHistory {
 	return { readings };
 }
@@ -37,7 +37,7 @@ describe("HistoryViewer", () => {
 	it("renders time range buttons", () => {
 		const now = Date.now();
 		renderViewer(
-			makeHistory([{ timestamp: new Date(now - 1000), channels: { "1": 72 } }]),
+			makeHistory([{ value: 72, timestamp: new Date(now - 1000).toISOString(), units: "F" }]),
 		);
 
 		expect(screen.getByRole("button", { name: "1 Hour" })).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe("HistoryViewer", () => {
 	it("defaults to 1 Day time range", () => {
 		const now = Date.now();
 		renderViewer(
-			makeHistory([{ timestamp: new Date(now - 1000), channels: { "1": 72 } }]),
+			makeHistory([{ value: 72, timestamp: new Date(now - 1000).toISOString(), units: "F" }]),
 		);
 
 		const dayButton = screen.getByRole("button", { name: "1 Day" });
@@ -61,12 +61,9 @@ describe("HistoryViewer", () => {
 	it("filters readings by selected time range", () => {
 		const now = Date.now();
 		const readings = [
-			// 30 minutes ago - should appear in 1h range
-			{ timestamp: new Date(now - 30 * 60 * 1000), channels: { "1": 72 } },
-			// 2 hours ago - should NOT appear in 1h range
-			{ timestamp: new Date(now - 2 * 60 * 60 * 1000), channels: { "1": 74 } },
-			// 3 days ago - should NOT appear in 1h or 1d range
-			{ timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000), channels: { "1": 76 } },
+			{ value: 72, timestamp: new Date(now - 30 * 60 * 1000).toISOString(), units: "F" },
+			{ value: 74, timestamp: new Date(now - 2 * 60 * 60 * 1000).toISOString(), units: "F" },
+			{ value: 76, timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(), units: "F" },
 		];
 
 		renderViewer(makeHistory(readings));
@@ -84,10 +81,9 @@ describe("HistoryViewer", () => {
 	});
 
 	it("shows no-data message when time range has no readings", () => {
-		// Only readings from 2 days ago
 		const now = Date.now();
 		const readings = [
-			{ timestamp: new Date(now - 2 * 24 * 60 * 60 * 1000), channels: { "1": 72 } },
+			{ value: 72, timestamp: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(), units: "F" },
 		];
 
 		renderViewer(makeHistory(readings));
@@ -100,7 +96,7 @@ describe("HistoryViewer", () => {
 	it("renders chart when data is available", () => {
 		const now = Date.now();
 		renderViewer(
-			makeHistory([{ timestamp: new Date(now - 1000), channels: { "1": 72 } }]),
+			makeHistory([{ value: 72, timestamp: new Date(now - 1000).toISOString(), units: "F" }]),
 		);
 
 		expect(screen.getByTestId("temperature-chart")).toBeInTheDocument();
@@ -110,8 +106,8 @@ describe("HistoryViewer", () => {
 		const now = Date.now();
 		renderViewer(
 			makeHistory([
-				{ timestamp: new Date(now - 60 * 60 * 1000), channels: { "1": 72 } },
-				{ timestamp: new Date(now - 1000), channels: { "1": 74 } },
+				{ value: 72, timestamp: new Date(now - 60 * 60 * 1000).toISOString(), units: "F" },
+				{ value: 74, timestamp: new Date(now - 1000).toISOString(), units: "F" },
 			]),
 		);
 
@@ -122,12 +118,12 @@ describe("HistoryViewer", () => {
 		const now = Date.now();
 		renderViewer(
 			makeHistory([
-				{ timestamp: new Date(now - 1000), channels: { "1": 72 } },
-				{ timestamp: new Date("invalid-date"), channels: { "1": 74 } },
+				{ value: 72, timestamp: new Date(now - 1000).toISOString(), units: "F" },
+				{ value: 74, timestamp: "invalid-date", units: "F" },
 			]),
 		);
 
-		// Should still render chart with valid reading (invalid timestamp filtered out)
+		// Should still render chart with valid reading
 		expect(screen.getByTestId("temperature-chart")).toBeInTheDocument();
 		expect(screen.getByText(/1 points/)).toBeInTheDocument();
 	});

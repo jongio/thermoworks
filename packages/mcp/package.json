@@ -46,13 +46,13 @@
 		"clean": "rimraf dist"
 	},
 	"devDependencies": {
-		"@types/node": "^25.9.1",
-		"tsup": "^8.4.0",
+		"@types/node": "^25.9.2",
+		"tsup": "^8.5.1",
 		"vitest": "^4.1.8"
 	},
 	"dependencies": {
-		"@modelcontextprotocol/sdk": "^1.12.1",
+		"@modelcontextprotocol/sdk": "^1.29.0",
 		"thermoworks-sdk": "workspace:^",
-		"zod": "^3.25.67"
+		"zod": "^4.4.3"
 	}
 }

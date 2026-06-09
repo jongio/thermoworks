@@ -28,7 +28,7 @@ export function DeviceSettings({ client, serial, timezone, preferredUnits }: Dev
 		setSaveError(null);
 		setSaveSuccess(false);
 		try {
-			const state: Record<string, unknown> = {};
+			const state: Record<string, string | number | boolean> = {};
 			if (tz) state.timeZone = tz;
 			state.deviceDisplayUnits = units;
 			const result = await client.updateDeviceState(serial, state);

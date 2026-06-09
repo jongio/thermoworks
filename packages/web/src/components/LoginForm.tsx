@@ -3,7 +3,7 @@ import { AuthError, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 
 interface LoginFormProps {
-	onLogin: (client: ThermoworksWebClient) => void;
+	onLogin: (client: ThermoworksWebClient, email: string) => void;
 	onBack: () => void;
 }
 
@@ -27,7 +27,7 @@ export function LoginForm({ onLogin, onBack }: LoginFormProps) {
 		try {
 			const client = new ThermoworksWebClient();
 			await client.login(email.trim(), password);
-			onLogin(client);
+			onLogin(client, email.trim());
 		} catch (err) {
 			if (err instanceof AuthError) {
 				if (err.reason === "INVALID_LOGIN_CREDENTIALS" || err.reason === "EMAIL_NOT_FOUND") {

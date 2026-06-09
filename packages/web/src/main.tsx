@@ -20,6 +20,9 @@ const DataUsagePage = lazy(() =>
 const Events = lazy(() => import("./pages/Events.tsx").then((m) => ({ default: m.Events })));
 const Guide = lazy(() => import("./pages/Guide.tsx").then((m) => ({ default: m.Guide })));
 const Settings = lazy(() => import("./pages/Settings.tsx").then((m) => ({ default: m.Settings })));
+const ExportSchedules = lazy(() =>
+	import("./pages/ExportSchedules.tsx").then((m) => ({ default: m.ExportSchedules })),
+);
 const SharedArchiveView = lazy(() =>
 	import("./pages/SharedArchiveView.tsx").then((m) => ({ default: m.SharedArchiveView })),
 );
@@ -138,6 +141,14 @@ createRoot(root).render(
 							element={
 								<RouteGuard>
 									<Settings />
+								</RouteGuard>
+							}
+						/>
+						<Route
+							path="exports"
+							element={
+								<RouteGuard>
+									<ExportSchedules />
 								</RouteGuard>
 							}
 						/>

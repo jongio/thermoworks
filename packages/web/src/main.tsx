@@ -10,6 +10,7 @@ import "./index.css";
 const Dashboard = lazy(() => import("./pages/Dashboard.tsx").then((m) => ({ default: m.Dashboard })));
 const DeviceDetail = lazy(() => import("./pages/DeviceDetail.tsx").then((m) => ({ default: m.DeviceDetail })));
 const Devices = lazy(() => import("./pages/Devices.tsx").then((m) => ({ default: m.Devices })));
+const DataUsagePage = lazy(() => import("./pages/DataUsage.tsx").then((m) => ({ default: m.DataUsage })));
 const Events = lazy(() => import("./pages/Events.tsx").then((m) => ({ default: m.Events })));
 const Guide = lazy(() => import("./pages/Guide.tsx").then((m) => ({ default: m.Guide })));
 const Settings = lazy(() => import("./pages/Settings.tsx").then((m) => ({ default: m.Settings })));
@@ -60,6 +61,7 @@ createRoot(root).render(
 						<Route path="devices" element={<RouteGuard><Devices /></RouteGuard>} />
 						<Route path="device/:serial" element={<RouteGuard><DeviceDetail /></RouteGuard>} />
 						<Route path="events" element={<RouteGuard fallback={<EventPageSkeleton />}><Events /></RouteGuard>} />
+						<Route path="usage" element={<RouteGuard><DataUsagePage /></RouteGuard>} />
 						<Route path="guide" element={<RouteGuard><Guide /></RouteGuard>} />
 						<Route path="settings" element={<RouteGuard><Settings /></RouteGuard>} />
 					</Route>

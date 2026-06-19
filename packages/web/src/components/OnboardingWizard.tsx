@@ -398,7 +398,7 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 				aria-labelledby="onboarding-title"
 				aria-describedby="onboarding-description"
 				tabIndex={-1}
-				className="w-full max-w-2xl rounded-2xl border border-border bg-background p-6 shadow-2xl focus-visible:outline-none"
+				className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl focus-visible:outline-none"
 			>
 				<div className="flex items-center justify-between gap-4">
 					<div>

@@ -19,7 +19,7 @@ const ESTIMATED_ROW_HEIGHT = 280;
  */
 export function VirtualizedDeviceGrid({ data, client }: VirtualizedDeviceGridProps) {
 	const { ref: columnsRef, columns } = useContainerColumns();
-	const scrollRef = useRef<HTMLDivElement>(null);
+	const scrollRef = useRef<HTMLUListElement>(null);
 	const savedScrollTop = useRef(0);
 	const prevDataLength = useRef(data.length);
 
@@ -62,23 +62,19 @@ export function VirtualizedDeviceGrid({ data, client }: VirtualizedDeviceGridPro
 	// Reset virtualizer measurements when column count changes
 	useEffect(() => {
 		virtualizer.measure();
-	}, [columns, virtualizer]);
+	}, [virtualizer]);
 
 	const virtualItems = virtualizer.getVirtualItems();
 
 	return (
 		<div ref={columnsRef}>
-			<div
+			<ul
 				ref={scrollRef}
 				onScroll={handleScroll}
-				className="max-h-[calc(100vh-16rem)] overflow-y-auto"
-				role="list"
+				className="max-h-[calc(100vh-16rem)] overflow-y-auto list-none p-0 m-0"
 				aria-label="Device list"
 			>
-				<div
-					className="relative w-full"
-					style={{ height: `${virtualizer.getTotalSize()}px` }}
-				>
+				<div className="relative w-full" style={{ height: `${virtualizer.getTotalSize()}px` }}>
 					{virtualItems.map((virtualRow) => {
 						const startIdx = virtualRow.index * columns;
 						const rowDevices = data.slice(startIdx, startIdx + columns);
@@ -92,22 +88,18 @@ export function VirtualizedDeviceGrid({ data, client }: VirtualizedDeviceGridPro
 								style={{ top: `${virtualRow.start}px` }}
 							>
 								<div
-								className="grid gap-4 pb-4"
-								style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
-							>
+									className="grid gap-4 pb-4"
+									style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+								>
 									{rowDevices.map((item) => (
-										<DeviceCard
-											key={item.device.serial}
-											item={item}
-											client={client}
-										/>
+										<DeviceCard key={item.device.serial} item={item} client={client} />
 									))}
 								</div>
 							</div>
 						);
 					})}
 				</div>
-			</div>
+			</ul>
 		</div>
 	);
 }

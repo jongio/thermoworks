@@ -442,7 +442,8 @@ function parseArchiveChannel(fields: FirestoreFields): ArchiveChannel {
 			if ("mapValue" in item && item.mapValue.fields) {
 				const rf = item.mapValue.fields;
 				// ThermoWorks uses short field names: v (value), ts (timestamp), u (units)
-				const rawValue = getNumber(rf, "value") ?? getNumber(rf, "v") ?? parseFloat(getString(rf, "v") ?? "");
+				const rawValue =
+					getNumber(rf, "value") ?? getNumber(rf, "v") ?? parseFloat(getString(rf, "v") ?? "");
 				const timestamp = getTimestamp(rf, "timestamp") ?? getTimestamp(rf, "ts");
 				const units = getString(rf, "units") ?? getString(rf, "u");
 				if (rawValue != null && !Number.isNaN(rawValue) && timestamp != null && units != null) {
@@ -1058,11 +1059,15 @@ export class ThermoworksWebClient {
 		}
 		if (!data.documents) return [];
 
-		const archives = data.documents.map((doc) => parseArchive(doc.fields ?? {}, extractDocId(doc.name)));
+		const archives = data.documents.map((doc) =>
+			parseArchive(doc.fields ?? {}, extractDocId(doc.name)),
+		);
 		if (isDev) {
 			console.log("[getArchives] Found:", archives.length, "archives");
 			for (const a of archives.slice(0, 3)) {
-				console.log(`  - ${a.id}: channels=${a.channels?.length ?? 0}, readings=${a.channels?.[0]?.recentReadings?.length ?? 0}`);
+				console.log(
+					`  - ${a.id}: channels=${a.channels?.length ?? 0}, readings=${a.channels?.[0]?.recentReadings?.length ?? 0}`,
+				);
 			}
 		}
 		return archives;
@@ -1428,7 +1433,8 @@ export class ThermoworksWebClient {
 						if (entry && typeof entry === "object") {
 							const r = entry as Record<string, unknown>;
 							// Support { v, ts, u } format (SDK format)
-							const value = r.v != null ? Number(r.v) : r.value != null ? Number(r.value) : Number.NaN;
+							const value =
+								r.v != null ? Number(r.v) : r.value != null ? Number(r.value) : Number.NaN;
 							const timestamp = (r.ts ?? r.timestamp ?? "") as string;
 							const units = (r.u ?? r.units ?? "") as string;
 							if (!Number.isNaN(value) && timestamp && units) {

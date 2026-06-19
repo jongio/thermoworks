@@ -74,6 +74,7 @@ export function HistoryViewer({ history }: HistoryViewerProps) {
 
 		// Determine units from first reading
 		const units = filtered[0]?.units ?? "F";
+		// biome-ignore lint/style/noNonNullAssertion: guarded by length check above
 		const lastReading = filtered[filtered.length - 1]!;
 
 		// Build a single ArchiveChannel with all readings
@@ -99,6 +100,7 @@ export function HistoryViewer({ history }: HistoryViewerProps) {
 			recentReadings,
 		};
 
+		// biome-ignore lint/style/noNonNullAssertion: guarded by length check above
 		const first = filtered[0]!;
 
 		return {

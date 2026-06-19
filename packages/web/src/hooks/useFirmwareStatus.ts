@@ -57,7 +57,7 @@ export function useFirmwareStatus(
 			const info: FirmwareInfo | null = await client.getFirmwareInfo(deviceType);
 			if (controller.signal.aborted) return;
 
-			if (!info || !info.version) {
+			if (!info?.version) {
 				setState("unknown");
 				setLatestVersion(null);
 			} else {

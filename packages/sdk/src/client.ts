@@ -1308,7 +1308,8 @@ function parseArchiveChannel(fields: FirestoreFields): ArchiveChannel {
 			if ("mapValue" in item && item.mapValue.fields) {
 				const rf = item.mapValue.fields;
 				// ThermoWorks uses short field names: v (value), ts (timestamp), u (units)
-				const rawValue = getNumber(rf, "value") ?? getNumber(rf, "v") ?? parseFloat(getString(rf, "v") ?? "");
+				const rawValue =
+					getNumber(rf, "value") ?? getNumber(rf, "v") ?? parseFloat(getString(rf, "v") ?? "");
 				const timestamp = getTimestamp(rf, "timestamp") ?? getTimestamp(rf, "ts");
 				const units = getString(rf, "units") ?? getString(rf, "u");
 				if (rawValue != null && !Number.isNaN(rawValue) && timestamp != null && units != null) {

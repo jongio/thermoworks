@@ -52,6 +52,7 @@ export function SessionControls({
 						<Timer className="h-3.5 w-3.5 text-green-500 shrink-0" aria-hidden="true" />
 						<span
 							className="text-xs font-mono font-medium tabular-nums"
+							role="timer"
 							aria-label="Session elapsed time"
 						>
 							{elapsed}

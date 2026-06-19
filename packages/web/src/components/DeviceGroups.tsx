@@ -169,7 +169,6 @@ function CreateGroupDialog({ devices, onSubmit, onClose }: CreateGroupDialogProp
 							"focus:outline-none focus:ring-2 focus:ring-ring",
 							"placeholder:text-muted-foreground/50",
 						)}
-						autoFocus
 					/>
 				</div>
 

@@ -69,6 +69,7 @@ export function useDeviceOrder(devices: DeviceWithChannels[]): UseDeviceOrderRes
 		return loadOrder() !== null;
 	}, [revision]);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: revision forces re-computation when order is saved
 	const orderedDevices = useMemo(() => {
 		const savedOrder = loadOrder();
 		if (!savedOrder || savedOrder.length === 0) {
@@ -100,10 +101,7 @@ export function useDeviceOrder(devices: DeviceWithChannels[]): UseDeviceOrderRes
 		return ordered;
 	}, [devices, revision]);
 
-	const orderedIds = useMemo(
-		() => orderedDevices.map((d) => d.device.serial),
-		[orderedDevices],
-	);
+	const orderedIds = useMemo(() => orderedDevices.map((d) => d.device.serial), [orderedDevices]);
 
 	const saveOrder = useCallback((ids: string[]) => {
 		persistOrder(ids);

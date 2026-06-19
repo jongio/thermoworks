@@ -149,6 +149,7 @@ export function AlarmConfig({
 	]);
 
 	return (
+		// biome-ignore lint/a11y/noStaticElementInteractions: backdrop click-to-dismiss for modal overlay
 		<div
 			className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
 			onClick={(e) => {

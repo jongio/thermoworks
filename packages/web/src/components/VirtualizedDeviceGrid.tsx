@@ -91,7 +91,10 @@ export function VirtualizedDeviceGrid({ data, client }: VirtualizedDeviceGridPro
 								className="absolute left-0 w-full"
 								style={{ top: `${virtualRow.start}px` }}
 							>
-								<div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 pb-4">
+								<div
+								className="grid gap-4 pb-4"
+								style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+							>
 									{rowDevices.map((item) => (
 										<DeviceCard
 											key={item.device.serial}

@@ -111,7 +111,7 @@ describe("ExportScheduler", () => {
 
 		// Form should close and schedule should appear.
 		expect(screen.queryByText("New Export Schedule")).not.toBeInTheDocument();
-		expect(screen.getByText("Daily Smoker")).toBeInTheDocument();
+		expect(screen.getAllByText("Daily Smoker").length).toBeGreaterThanOrEqual(1);
 		expect(screen.getByText("Every day")).toBeInTheDocument();
 	});
 

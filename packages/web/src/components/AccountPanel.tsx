@@ -1,4 +1,4 @@
-import { ExternalLink, Loader2, User as UserIcon } from "lucide-react";
+import { ExternalLink, User as UserIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { User } from "thermoworks-sdk";
 import type { AccountInfo, ThermoworksWebClient } from "../lib/api.ts";

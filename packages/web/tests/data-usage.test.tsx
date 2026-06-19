@@ -87,7 +87,7 @@ describe("DataUsage page", () => {
 		renderDataUsage(client);
 
 		expect(await screen.findByRole("heading", { name: "Data Usage" })).toBeInTheDocument();
-		expect(screen.getByText("512.0 MB")).toBeInTheDocument();
+		expect(await screen.findByText("512.0 MB")).toBeInTheDocument();
 		expect(screen.getByText("50% of 1.00 GB")).toBeInTheDocument();
 		expect(screen.getByText("ThermoWorks Pro")).toBeInTheDocument();
 		expect(screen.getByText("90 days")).toBeInTheDocument();

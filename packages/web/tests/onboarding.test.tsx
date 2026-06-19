@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Device } from "thermoworks-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -112,6 +112,7 @@ async function goToStep(step: 1 | 2 | 3) {
 }
 
 async function renderAppWithAuthenticatedClient() {
+	cleanup();
 	vi.resetModules();
 	vi.doMock("../src/components/AppLayout.tsx", () => ({
 		AppLayout: () => <div data-testid="app-layout">App layout</div>,

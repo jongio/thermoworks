@@ -1,17 +1,17 @@
 import {
+	closestCenter,
 	DndContext,
 	type DragEndEvent,
 	KeyboardSensor,
 	PointerSensor,
 	TouchSensor,
-	closestCenter,
 	useSensor,
 	useSensors,
 } from "@dnd-kit/core";
 import {
-	SortableContext,
 	arrayMove,
 	rectSortingStrategy,
+	SortableContext,
 	sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import { ListRestart, RefreshCw } from "lucide-react";
@@ -165,11 +165,7 @@ export function DeviceList({
 						<SortableContext items={orderedIds} strategy={rectSortingStrategy}>
 							<div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
 								{orderedDevices.map((item) => (
-									<SortableDeviceCard
-										key={item.device.serial}
-										item={item}
-										client={client}
-									/>
+									<SortableDeviceCard key={item.device.serial} item={item} client={client} />
 								))}
 							</div>
 						</SortableContext>

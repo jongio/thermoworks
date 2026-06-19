@@ -153,12 +153,18 @@ export async function downloadPNG(container: HTMLElement, filename: string): Pro
 	URL.revokeObjectURL(url);
 }
 
-/** Escape a CSV field per RFC 4180. */
+/** Escape a CSV field per RFC 4180 with formula injection prevention (OWASP). */
 function escapeCSVField(value: string): string {
-	if (/[",\n\r]/.test(value)) {
-		return `"${value.replace(/"/g, '""')}"`;
+	// Prevent CSV formula injection: prefix dangerous characters with a single quote
+	const formulaChars = /^[=+\-@|\t]/;
+	let sanitized = value;
+	if (formulaChars.test(sanitized)) {
+		sanitized = `'${sanitized}`;
 	}
-	return value;
+	if (/[",\n\r]/.test(sanitized)) {
+		return `"${sanitized.replace(/"/g, '""')}"`;
+	}
+	return sanitized;
 }
 
 /** Trigger a file download in the browser. */

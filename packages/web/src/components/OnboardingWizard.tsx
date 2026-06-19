@@ -204,11 +204,21 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 
 		setIsEnablingNotifications(true);
 		try {
-			const permission = await Notification.requestPermission();
+			// Race requestPermission against a timeout in case the browser
+			// silently blocks or the user dismisses without responding.
+			const permission = await Promise.race([
+				Notification.requestPermission(),
+				new Promise<NotificationPermission>((resolve) =>
+					setTimeout(() => resolve(Notification.permission as NotificationPermission), 10_000),
+				),
+			]);
 			setNotificationStatus(permission);
 			if (permission === "granted") {
 				setNotificationsEnabled(true);
 			}
+		} catch {
+			// Permission request failed (e.g., insecure context)
+			setNotificationStatus("denied");
 		} finally {
 			setIsEnablingNotifications(false);
 		}

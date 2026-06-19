@@ -12,7 +12,7 @@ class MockResizeObserver {
 	constructor(cb: ResizeObserverCallback) {
 		this.cb = cb;
 	}
-	observe(target: Element) {
+	observe(_target: Element) {
 		// Simulate a measured container so the chart renders its SVG
 		this.cb([{ contentRect: { width: 800, height: 300 } } as unknown as ResizeObserverEntry], this);
 	}

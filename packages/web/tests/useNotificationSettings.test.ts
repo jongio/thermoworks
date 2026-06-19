@@ -1,5 +1,4 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { NotificationSettings } from "thermoworks-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { useNotificationSettings } from "../src/hooks/useNotificationSettings.ts";
 import type { ThermoworksWebClient } from "../src/lib/api.ts";

@@ -96,7 +96,7 @@ export function formatCsv(rows: ExportRow[]): string {
 	const lines = rows.map(
 		(r) => `${r.timestamp},${escapeCsvField(r.channel)},${r.value},${r.units}`,
 	);
-	return [header, ...lines].join("\n") + "\n";
+	return `${[header, ...lines].join("\n")}\n`;
 }
 
 /** Escape a CSV field if it contains commas, quotes, or newlines. */
@@ -109,7 +109,7 @@ function escapeCsvField(field: string): string {
 
 /** Format rows as JSON (pretty-printed array of objects). */
 export function formatJson(rows: ExportRow[]): string {
-	return JSON.stringify(rows, null, 2) + "\n";
+	return `${JSON.stringify(rows, null, 2)}\n`;
 }
 
 /** Main export command handler. */
@@ -135,6 +135,7 @@ export async function exportData(args: string[]): Promise<void> {
 				console.error(`No archives found for device '${options.serial}'`);
 				process.exit(1);
 			}
+			// biome-ignore lint/style/noNonNullAssertion: guarded by length check above
 			archive = archives[0]!;
 		}
 

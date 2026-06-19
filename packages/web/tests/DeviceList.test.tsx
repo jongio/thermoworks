@@ -298,4 +298,3 @@ describe("DeviceList", () => {
 		).toBeInTheDocument();
 	});
 });
-

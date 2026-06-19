@@ -14,6 +14,7 @@ import type { ThermoworksWebClient } from "../src/lib/api.ts";
 
 let notificationPermission: NotificationPermission = "default";
 
+// biome-ignore lint/complexity/noStaticOnlyClass: mock class must match Notification constructor API
 class MockNotification {
 	static get permission() {
 		return notificationPermission;

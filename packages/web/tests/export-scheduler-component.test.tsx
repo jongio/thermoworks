@@ -9,14 +9,35 @@ vi.mock("../src/hooks/useDevices.ts", () => ({
 			{
 				device: { serial: "TW-001", label: "Smoker" },
 				channels: [
-					{ number: "1", label: "Probe 1", enabled: true, color: "#ff0000", value: 225, units: "F" },
-					{ number: "2", label: "Probe 2", enabled: true, color: "#00ff00", value: 165, units: "F" },
+					{
+						number: "1",
+						label: "Probe 1",
+						enabled: true,
+						color: "#ff0000",
+						value: 225,
+						units: "F",
+					},
+					{
+						number: "2",
+						label: "Probe 2",
+						enabled: true,
+						color: "#00ff00",
+						value: 165,
+						units: "F",
+					},
 				],
 			},
 			{
 				device: { serial: "TW-002", label: "Oven" },
 				channels: [
-					{ number: "1", label: "Internal", enabled: true, color: "#0000ff", value: 350, units: "F" },
+					{
+						number: "1",
+						label: "Internal",
+						enabled: true,
+						color: "#0000ff",
+						value: 350,
+						units: "F",
+					},
 				],
 			},
 		],

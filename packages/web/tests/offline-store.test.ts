@@ -76,7 +76,7 @@ const mockDevices: DeviceWithChannels[] = [
 ];
 
 beforeEach(() => {
-	// Clear all IndexedDB databases between tests
+	// biome-ignore lint/suspicious/noGlobalAssign: reset IndexedDB between tests for isolation
 	indexedDB = new IDBFactory();
 });
 
@@ -97,9 +97,7 @@ describe("offline-store", () => {
 
 		it("overwrites previous cache entries", async () => {
 			await cacheDevices(mockDevices);
-			const updatedDevices = [
-				{ ...mockDevices[0], channels: [] },
-			];
+			const updatedDevices = [{ ...mockDevices[0], channels: [] }];
 			await cacheDevices(updatedDevices);
 
 			const cached = await getCachedDevices();

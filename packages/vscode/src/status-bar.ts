@@ -34,7 +34,6 @@ export class TemperatureStatusBar implements vscode.Disposable {
 	// Multi-device cycling state
 	private cycleIndex = 0;
 	private deviceParts: string[][] = [];
-	private lastAlarm: AlarmState = "none";
 
 	constructor(
 		credentialStore: CredentialStore,

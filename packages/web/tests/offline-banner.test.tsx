@@ -26,7 +26,13 @@ function renderBanner() {
 }
 
 /** Helper component that sets cache state via context using useEffect. */
-function CacheStateSetter({ cachedAt, isFromCache }: { cachedAt: Date | null; isFromCache: boolean }) {
+function CacheStateSetter({
+	cachedAt,
+	isFromCache,
+}: {
+	cachedAt: Date | null;
+	isFromCache: boolean;
+}) {
 	const { setCacheState } = useOfflineCacheContext();
 	React.useEffect(() => {
 		setCacheState(cachedAt, isFromCache);
@@ -101,4 +107,3 @@ describe("OfflineBanner", () => {
 		expect(container.querySelector("[role='alert']")).toBeNull();
 	});
 });
-

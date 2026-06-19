@@ -1,4 +1,4 @@
-import type { CalibrationPoint, CalibrationRecord } from "thermoworks-sdk";
+import type { CalibrationPoint } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 
 import { getCredentials } from "../credentials.js";
@@ -77,6 +77,7 @@ export async function calibration(
 		}
 
 		for (let i = 0; i < records.length; i++) {
+			// biome-ignore lint/style/noNonNullAssertion: index is within bounds
 			const rec = records[i]!;
 			if (i > 0) console.log("");
 

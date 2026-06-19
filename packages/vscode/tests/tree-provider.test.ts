@@ -1,4 +1,4 @@
-import type { Archive, ArchiveChannel, Device, DeviceChannel, User } from "thermoworks-sdk";
+import type { Archive, Device, DeviceChannel, User } from "thermoworks-sdk";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── VS Code mock ────────────────────────────────────────────────────────────

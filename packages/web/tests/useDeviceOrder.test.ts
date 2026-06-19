@@ -134,10 +134,7 @@ describe("useDeviceOrder", () => {
 	it("handles corrupt localStorage gracefully", () => {
 		localStorage.setItem(STORAGE_KEY, "not-valid-json{{{");
 
-		const devices = [
-			makeDevice("B001", "Beta"),
-			makeDevice("A001", "Alpha"),
-		];
+		const devices = [makeDevice("B001", "Beta"), makeDevice("A001", "Alpha")];
 
 		const { result } = renderHook(() => useDeviceOrder(devices));
 
@@ -149,10 +146,7 @@ describe("useDeviceOrder", () => {
 	it("handles non-array localStorage value gracefully", () => {
 		localStorage.setItem(STORAGE_KEY, JSON.stringify({ invalid: true }));
 
-		const devices = [
-			makeDevice("B001", "Beta"),
-			makeDevice("A001", "Alpha"),
-		];
+		const devices = [makeDevice("B001", "Beta"), makeDevice("A001", "Alpha")];
 
 		const { result } = renderHook(() => useDeviceOrder(devices));
 
@@ -180,10 +174,7 @@ describe("useDeviceOrder", () => {
 	});
 
 	it("uses serial as fallback when label is null", () => {
-		const devices = [
-			makeDevice("ZZZ001", undefined),
-			makeDevice("AAA001", undefined),
-		];
+		const devices = [makeDevice("ZZZ001", undefined), makeDevice("AAA001", undefined)];
 		// Override labels to null
 		devices[0].device.label = null as unknown as string;
 		devices[1].device.label = null as unknown as string;

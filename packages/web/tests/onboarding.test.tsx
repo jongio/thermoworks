@@ -143,10 +143,10 @@ describe("Onboarding wizard gating", () => {
 	});
 
 	afterEach(() => {
+		localStorage.clear();
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 		vi.resetModules();
-		localStorage.clear();
 	});
 
 	it("shows on first login when no onboarding flag or preferences exist", async () => {
@@ -195,9 +195,9 @@ describe("OnboardingWizard", () => {
 	});
 
 	afterEach(() => {
+		localStorage.clear();
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
-		localStorage.clear();
 	});
 
 	it("renders each step and updates preferences", async () => {

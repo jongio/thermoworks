@@ -163,10 +163,10 @@ describe("TemperatureChart", () => {
 	});
 
 	it("renders brush component for panning", () => {
-		const channels = makeChannels();
+		const channels = makeDenseChannels(100);
 		const { container } = renderWithProvider(<TemperatureChart channels={channels as never} />);
 
-		// Brush renders a specific SVG group
+		// Brush renders a specific SVG group (only for datasets > 50 points)
 		expect(container.querySelector(".recharts-brush")).not.toBeNull();
 	});
 

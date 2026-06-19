@@ -5,10 +5,12 @@ import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { ChannelReading } from "../components/ChannelReading.tsx";
 import { DeviceSettings } from "../components/DeviceSettings.tsx";
 import { FanController } from "../components/FanController.tsx";
+import { HistoryViewer } from "../components/HistoryViewer.tsx";
 import { InlineEdit } from "../components/InlineEdit.tsx";
 import { ChartSkeleton } from "../components/Skeleton.tsx";
 import { useArchiveData } from "../hooks/useArchiveData.ts";
 import { useDevice } from "../hooks/useDevice.ts";
+import { useHistory } from "../hooks/useHistory.ts";
 import { cn } from "../lib/utils.ts";
 
 const TemperatureChart = React.lazy(() => import("../components/TemperatureChart"));
@@ -28,6 +30,11 @@ export function DeviceDetail() {
 	const { serial } = useParams<{ serial: string }>();
 	const { client } = useOutletContext<AppOutletContext>();
 	const { data, isLoading, error, refresh } = useDevice(client, serial ?? "");
+	const {
+		history,
+		isLoading: historyLoading,
+		error: historyError,
+	} = useHistory(client, serial ?? "", !!data);
 	const {
 		archives,
 		isLoading: archiveLoading,
@@ -205,6 +212,23 @@ export function DeviceDetail() {
 				<h2 id="history-heading" className="text-lg font-semibold mb-3">
 					History
 				</h2>
+				{historyLoading && <ChartSkeleton />}
+				{historyError && <div className="text-sm text-destructive py-2">{historyError}</div>}
+				{!historyLoading && !historyError && history && history.readings.length > 0 && (
+					<HistoryViewer history={history} />
+				)}
+				{!historyLoading && !historyError && (!history || history.readings.length === 0) && (
+					<div className="text-sm text-muted-foreground text-center py-8 border border-border rounded-md">
+						No history data found for this device
+					</div>
+				)}
+			</section>
+
+			{/* Session archives section */}
+			<section aria-labelledby="sessions-heading">
+				<h2 id="sessions-heading" className="text-lg font-semibold mb-3">
+					Sessions
+				</h2>
 				{archiveLoading && <ChartSkeleton />}
 				{archiveError && <div className="text-sm text-destructive py-2">{archiveError}</div>}
 				{!archiveLoading && !archiveError && archiveChannels && (
@@ -212,9 +236,14 @@ export function DeviceDetail() {
 						<TemperatureChart channels={archiveChannels} />
 					</Suspense>
 				)}
-				{!archiveLoading && !archiveError && !archiveChannels && (
+				{!archiveLoading && !archiveError && archives.length > 0 && !archiveChannels && (
+					<div className="text-sm text-muted-foreground text-center py-4 border border-border rounded-md">
+						{archives.length} session{archives.length !== 1 ? "s" : ""} recorded — no chart data available
+					</div>
+				)}
+				{!archiveLoading && !archiveError && archives.length === 0 && (
 					<div className="text-sm text-muted-foreground text-center py-8 border border-border rounded-md">
-						No archive history found for this device
+						No session archives found for this device
 					</div>
 				)}
 			</section>

@@ -89,7 +89,32 @@ export async function downloadPNG(container: HTMLElement, filename: string): Pro
 	const svg = container.querySelector("svg");
 	if (!svg) return;
 
-	const svgData = new XMLSerializer().serializeToString(svg);
+	// Get rendered dimensions and set them explicitly on the SVG
+	// (required for correct sizing when serialized as an image)
+	const rect = svg.getBoundingClientRect();
+	const width = Math.round(rect.width);
+	const height = Math.round(rect.height);
+
+	const clonedSvg = svg.cloneNode(true) as SVGSVGElement;
+	clonedSvg.setAttribute("width", String(width));
+	clonedSvg.setAttribute("height", String(height));
+	clonedSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+
+	// Inline computed styles for elements that rely on CSS classes
+	const originalElements = svg.querySelectorAll("*");
+	const clonedElements = clonedSvg.querySelectorAll("*");
+	for (let i = 0; i < originalElements.length; i++) {
+		const orig = originalElements[i] as Element;
+		const clone = clonedElements[i] as SVGElement | HTMLElement;
+		if (!clone) continue;
+		const computed = window.getComputedStyle(orig);
+		const stroke = computed.getPropertyValue("stroke");
+		const fill = computed.getPropertyValue("fill");
+		if (stroke && stroke !== "none") clone.style.stroke = stroke;
+		if (fill && fill !== "none") clone.style.fill = fill;
+	}
+
+	const svgData = new XMLSerializer().serializeToString(clonedSvg);
 	const svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
 	const url = URL.createObjectURL(svgBlob);
 
@@ -98,9 +123,10 @@ export async function downloadPNG(container: HTMLElement, filename: string): Pro
 
 	await new Promise<void>((resolve, reject) => {
 		img.onload = () => {
+			const scale = 2;
 			const canvas = document.createElement("canvas");
-			canvas.width = img.naturalWidth * 2;
-			canvas.height = img.naturalHeight * 2;
+			canvas.width = width * scale;
+			canvas.height = height * scale;
 
 			const ctx = canvas.getContext("2d");
 			if (!ctx) {
@@ -108,10 +134,10 @@ export async function downloadPNG(container: HTMLElement, filename: string): Pro
 				return;
 			}
 
-			ctx.scale(2, 2);
+			ctx.scale(scale, scale);
 			ctx.fillStyle = "#ffffff";
 			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			ctx.drawImage(img, 0, 0);
+			ctx.drawImage(img, 0, 0, width, height);
 
 			canvas.toBlob((blob) => {
 				if (blob) {

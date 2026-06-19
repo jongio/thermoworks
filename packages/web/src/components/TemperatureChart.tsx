@@ -407,7 +407,10 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 						{/* Primary session channel lines */}
 						{enabledChannels.map((ch, idx) => {
 							const key = `ch_${ch.number ?? idx}`;
-							const color = ch.color ?? FALLBACK_COLORS[idx % FALLBACK_COLORS.length] ?? "#6b7280";
+							const rawColor = ch.color;
+							const color = (rawColor && rawColor !== "none" && rawColor !== "transparent")
+								? rawColor
+								: FALLBACK_COLORS[idx % FALLBACK_COLORS.length] || "#6b7280";
 							const name = ch.label ?? `Ch ${ch.number ?? idx + 1}`;
 
 							return (
@@ -418,9 +421,9 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 									name={name}
 									stroke={color}
 									strokeWidth={2}
-									dot={false}
+									dot={chartData.length <= 50 ? { r: 4, fill: color, stroke: color } : false}
 									isAnimationActive={false}
-									activeDot={{ r: 3, strokeWidth: 1 }}
+									activeDot={{ r: 5, strokeWidth: 2 }}
 									connectNulls
 								/>
 							);
@@ -437,8 +440,10 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 								.filter((ch) => ch.enabled !== false && ch.recentReadings.length > 0)
 								.map((ch, chIdx) => {
 									const key = `s${sessionIdx}_ch_${ch.number ?? chIdx}`;
-									const color =
-										ch.color ?? FALLBACK_COLORS[chIdx % FALLBACK_COLORS.length] ?? "#6b7280";
+									const rawOvColor = ch.color;
+									const color = (rawOvColor && rawOvColor !== "none" && rawOvColor !== "transparent")
+										? rawOvColor
+										: FALLBACK_COLORS[chIdx % FALLBACK_COLORS.length] || "#6b7280";
 									const name = `S${sessionIdx + 1}: ${ch.label ?? `Ch ${ch.number ?? chIdx + 1}`}`;
 
 									return (
@@ -474,8 +479,8 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 				</ResponsiveContainer>
 			</div>
 
-			{/* Brush overview uses the full dataset while the main chart renders only the visible window. */}
-			{!isZoomed && brushPreviewKey && clampedBrushWindow && (
+			{/* Brush overview - only shown for larger datasets where navigation helps */}
+			{!isZoomed && brushPreviewKey && clampedBrushWindow && data.length > 50 && (
 				<div className="h-16 w-full">
 					<ResponsiveContainer width="100%" height="100%">
 						<AreaChart data={data} margin={{ top: 0, right: 16, left: 0, bottom: 0 }}>

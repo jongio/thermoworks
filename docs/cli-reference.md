@@ -815,6 +815,68 @@ npx thermoworks guide --json
 - Prints `No categories matching "<filter>".` when the filter has no matches.
 - Prints `No temperature guide categories found.` when the guide data is empty.
 
+## `thermoworks device rename <SERIAL> --name <TEXT>`
+
+Rename a device label.
+
+**Usage**
+
+```bash
+npx thermoworks device rename <SERIAL> --name <TEXT>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--name <TEXT>` - (Required) New display name for the device.
+- `--json` - Output as JSON (the `ActionResult` object).
+
+**Examples**
+
+```bash
+npx thermoworks device rename ABC123 --name "Pit Boss Smoker"
+# Renamed ABC123 to "Pit Boss Smoker".
+
+npx thermoworks device rename ABC123 --name "Brisket Probe" --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Exits with an error if `--name` is missing.
+- Exits with an error if the operation fails (e.g., device offline).
+
+## `thermoworks device reset-minmax <SERIAL> --channel <N>`
+
+Reset the min/max readings for a specific device channel.
+
+**Usage**
+
+```bash
+npx thermoworks device reset-minmax <SERIAL> --channel <N>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--channel <N>` - (Required) Channel number (1 through 9).
+- `--json` - Output as JSON (the `ActionResult` object).
+
+**Examples**
+
+```bash
+npx thermoworks device reset-minmax ABC123 --channel 1
+# Min/max reset for ABC123 channel 1.
+
+npx thermoworks device reset-minmax ABC123 --channel 3 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Exits with an error if `--channel` is missing or outside the valid range (1 through 9).
+- Exits with an error if the operation fails.
+
 ## `thermoworks session start`
 
 Start a monitoring session on a device. Sessions group readings for later review as archives.
@@ -959,7 +1021,7 @@ npx thermoworks watch --device ABC123 --interval 5
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

@@ -15,6 +15,7 @@ import {
 	copilotStatusDemo,
 	nextDemoState,
 } from "./commands/copilot.js";
+import { device } from "./commands/device.js";
 import type { DevicesOptions } from "./commands/devices.js";
 import { devices } from "./commands/devices.js";
 import { events, parseEventsArgs } from "./commands/events.js";
@@ -53,6 +54,8 @@ Commands:
   copilot remove   Remove statusline configuration
 
   devices          List connected devices
+  device rename    Rename a device
+  device reset-minmax  Reset min/max readings for a channel
   mcp start        Start MCP server for AI assistants
   devices          List connected devices and channel readings
   watch            Continuously monitor temperatures (live refresh)
@@ -183,6 +186,10 @@ async function main(): Promise<void> {
 					);
 					process.exit(1);
 			}
+			break;
+
+		case "device":
+			await device(args.slice(1), options);
 			break;
 
 		case "devices": {

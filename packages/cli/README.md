@@ -303,6 +303,28 @@ Options:
 - `--collection C` — Search collection: `device`, `accounts`, or `users` (default: `device`)
 - `--limit N` — Max results to return (default: 20, max: 100)
 
+### `thermoworks device rename <SERIAL> --name <TEXT>`
+
+Rename a device.
+
+```bash
+npx thermoworks device rename M100009168 --name "Pit Boss Smoker"
+# Renamed M100009168 to "Pit Boss Smoker".
+
+npx thermoworks device rename M100009168 --name "Pit Boss Smoker" --json
+```
+
+### `thermoworks device reset-minmax <SERIAL> --channel <N>`
+
+Reset the min/max readings for a specific channel (1 through 9).
+
+```bash
+npx thermoworks device reset-minmax M100009168 --channel 1
+# Min/max reset for M100009168 channel 1.
+
+npx thermoworks device reset-minmax M100009168 --channel 3 --json
+```
+
 ### `thermoworks session start|end|clear`
 
 Manage monitoring sessions on a device.

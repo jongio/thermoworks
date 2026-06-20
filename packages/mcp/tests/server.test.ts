@@ -9,6 +9,7 @@ vi.mock("thermoworks-sdk", () => {
 	const mockGetAverageTemperature = vi.fn();
 	const mockGetEvents = vi.fn();
 	const mockGetArchives = vi.fn();
+	const mockGetArchive = vi.fn();
 	const mockGetTemperatureGuide = vi.fn();
 	const mockSetAlarm = vi.fn();
 	const mockGetDeviceChannel = vi.fn();
@@ -24,6 +25,7 @@ vi.mock("thermoworks-sdk", () => {
 		getAverageTemperature = mockGetAverageTemperature;
 		getEvents = mockGetEvents;
 		getArchives = mockGetArchives;
+		getArchive = mockGetArchive;
 		getTemperatureGuide = mockGetTemperatureGuide;
 		setAlarm = mockSetAlarm;
 		getDeviceChannel = mockGetDeviceChannel;
@@ -41,6 +43,7 @@ vi.mock("thermoworks-sdk", () => {
 		mockGetAverageTemperature,
 		mockGetEvents,
 		mockGetArchives,
+		mockGetArchive,
 		mockGetTemperatureGuide,
 		mockSetAlarm,
 		mockGetDeviceChannel,
@@ -53,6 +56,7 @@ vi.mock("thermoworks-sdk", () => {
 import {
 	mockEndSession,
 	mockGetAllDeviceChannels,
+	mockGetArchive,
 	mockGetArchives,
 	mockGetAverageTemperature,
 	mockGetDevice,
@@ -255,6 +259,95 @@ describe("MCP Server", () => {
 				const parsed = JSON.parse(result.content[0].text);
 				expect(parsed).toHaveLength(1);
 				expect(parsed[0].label).toBe("Cook Session 1");
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("get_archive_detail tool", () => {
+		it("returns full archive detail with computed duration", async () => {
+			setupEnv();
+			try {
+				const archive = {
+					id: "arch-1",
+					start: new Date("2024-06-15T10:00:00Z"),
+					end: new Date("2024-06-15T18:30:00Z"),
+					count: 1024,
+					type: "session",
+					label: "Brisket Low and Slow",
+					deviceLabel: "Smoker",
+					notes: "Wrapped at 165F",
+					createdOn: new Date("2024-06-15T10:00:00Z"),
+					public: false,
+					publicLink: null,
+					filename: null,
+					channels: [
+						{
+							number: "1",
+							label: "Pit",
+							units: "F",
+							value: 225.5,
+							status: "normal",
+							enabled: true,
+							color: "#FF0000",
+							type: "temperature",
+							alarmHigh: null,
+							alarmLow: null,
+							minimum: { value: 218.0, units: "F", date: new Date("2024-06-15T12:00:00Z") },
+							maximum: { value: 235.0, units: "F", date: new Date("2024-06-15T14:00:00Z") },
+							recentReadings: [],
+						},
+					],
+				};
+				(mockGetArchive as any).mockResolvedValueOnce(archive);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_archive_detail");
+				const result = await handler({ serial: "ABC123", archive_id: "arch-1" }, {});
+
+				expect(mockGetArchive).toHaveBeenCalledWith("ABC123", "arch-1");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.label).toBe("Brisket Low and Slow");
+				expect(parsed.start).toBe("2024-06-15T10:00:00.000Z");
+				expect(parsed.end).toBe("2024-06-15T18:30:00.000Z");
+				expect(parsed.durationSeconds).toBe(30600);
+				expect(parsed.channels[0].minimum.value).toBe(218.0);
+				expect(parsed.channels[0].maximum.value).toBe(235.0);
+				expect(parsed.channels[0].value).toBe(225.5);
+				expect(parsed.notes).toBe("Wrapped at 165F");
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns null durationSeconds when end is missing", async () => {
+			setupEnv();
+			try {
+				const archive = {
+					id: "arch-2",
+					start: new Date("2024-06-15T10:00:00Z"),
+					end: null,
+					count: null,
+					type: null,
+					label: "Incomplete Session",
+					deviceLabel: null,
+					notes: null,
+					createdOn: null,
+					public: null,
+					publicLink: null,
+					filename: null,
+					channels: null,
+				};
+				(mockGetArchive as any).mockResolvedValueOnce(archive);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_archive_detail");
+				const result = await handler({ serial: "ABC123", archive_id: "arch-2" }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.durationSeconds).toBeNull();
+				expect(parsed.label).toBe("Incomplete Session");
 			} finally {
 				teardownEnv();
 			}

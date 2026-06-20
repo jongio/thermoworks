@@ -297,6 +297,29 @@ export function createServer(): McpServer {
 		},
 	);
 
+	server.registerTool(
+		"get_archive_detail",
+		{
+			description:
+				"Get full detail for a specific historical session archive, including channel min/max/last readings and computed duration",
+			inputSchema: z.object({
+				serial: z.string().min(1).describe("The device serial number"),
+				archive_id: z.string().min(1).describe("The archive ID"),
+			}),
+		},
+		async ({ serial, archive_id }) => {
+			const client = getClient();
+			const archive = await client.getArchive(serial, archive_id);
+			const durationSeconds =
+				archive.start && archive.end
+					? Math.round((new Date(archive.end).getTime() - new Date(archive.start).getTime()) / 1000)
+					: null;
+			return {
+				content: [{ type: "text", text: JSON.stringify({ ...archive, durationSeconds }, null, 2) }],
+			};
+		},
+	);
+
 	return server;
 }
 

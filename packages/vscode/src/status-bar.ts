@@ -30,6 +30,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 	private generation = 0; // Incremented on login/logout/dispose to invalidate in-flight work
 	private blinkVisible = true;
 	private lastText = "";
+	private lastAlarm: AlarmState = "none";
 
 	// Multi-device cycling state
 	private cycleIndex = 0;

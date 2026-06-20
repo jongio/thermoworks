@@ -14,6 +14,7 @@ vi.mock("thermoworks-sdk", () => {
 	const mockGetDeviceChannel = vi.fn();
 	const mockStartSession = vi.fn();
 	const mockEndSession = vi.fn();
+	const mockGetFirmwareInfo = vi.fn();
 
 	class MockThermoworksCloud {
 		close = mockClose;
@@ -28,6 +29,7 @@ vi.mock("thermoworks-sdk", () => {
 		getDeviceChannel = mockGetDeviceChannel;
 		startSession = mockStartSession;
 		endSession = mockEndSession;
+		getFirmwareInfo = mockGetFirmwareInfo;
 	}
 
 	return {
@@ -44,6 +46,7 @@ vi.mock("thermoworks-sdk", () => {
 		mockGetDeviceChannel,
 		mockStartSession,
 		mockEndSession,
+		mockGetFirmwareInfo,
 	};
 });
 
@@ -56,6 +59,7 @@ import {
 	mockGetDeviceChannel,
 	mockGetDevices,
 	mockGetEvents,
+	mockGetFirmwareInfo,
 	mockGetTemperatureGuide,
 	mockSetAlarm,
 	mockStartSession,
@@ -520,6 +524,114 @@ describe("MCP Server", () => {
 				const parsed = JSON.parse(result.content[0].text);
 				expect(parsed.success).toBe(false);
 				expect(parsed.error).toBe("No active session");
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("get_firmware_status tool", () => {
+		it("returns mixed update/no-update firmware status", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{ serial: "SMOKE1", label: "Smoker", type: "Smoke", firmware: "1.0.0" },
+					{ serial: "SIG1", label: "Signals Unit", type: "Signals", firmware: "2.5.0" },
+				]);
+				(mockGetFirmwareInfo as any)
+					.mockResolvedValueOnce({
+						name: "Smoke",
+						version: "1.1.0",
+						location: "https://fw.example.com/smoke",
+						md5: "abc123",
+					})
+					.mockResolvedValueOnce({
+						name: "Signals",
+						version: "2.5.0",
+						location: "https://fw.example.com/signals",
+						md5: "def456",
+					});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_firmware_status");
+				const result = await handler({}, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed).toHaveLength(2);
+
+				const smoke = parsed.find((d: any) => d.serial === "SMOKE1");
+				expect(smoke.label).toBe("Smoker");
+				expect(smoke.type).toBe("Smoke");
+				expect(smoke.current).toBe("1.0.0");
+				expect(smoke.latest).toBe("1.1.0");
+				expect(smoke.updateAvailable).toBe(true);
+
+				const signals = parsed.find((d: any) => d.serial === "SIG1");
+				expect(signals.label).toBe("Signals Unit");
+				expect(signals.type).toBe("Signals");
+				expect(signals.current).toBe("2.5.0");
+				expect(signals.latest).toBe("2.5.0");
+				expect(signals.updateAvailable).toBe(false);
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("excludes devices without type or firmware", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{ serial: "SMOKE1", label: "Smoker", type: "Smoke", firmware: "1.0.0" },
+					{ serial: "NO_TYPE", label: "Mystery", type: null, firmware: "1.0.0" },
+					{ serial: "NO_FW", label: "Fresh", type: "Node", firmware: null },
+				]);
+				(mockGetFirmwareInfo as any).mockResolvedValueOnce({
+					name: "Smoke",
+					version: "1.0.0",
+					location: "https://fw.example.com/smoke",
+					md5: "abc123",
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_firmware_status");
+				const result = await handler({}, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed).toHaveLength(1);
+				expect(parsed[0].serial).toBe("SMOKE1");
+				expect(parsed.find((d: any) => d.serial === "NO_TYPE")).toBeUndefined();
+				expect(parsed.find((d: any) => d.serial === "NO_FW")).toBeUndefined();
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("omits devices when getFirmwareInfo rejects for their type", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{ serial: "SMOKE1", label: null, type: "Smoke", firmware: "1.0.0" },
+					{ serial: "RFX1", label: "RFX Unit", type: "RFX", firmware: "3.0.0" },
+				]);
+				(mockGetFirmwareInfo as any)
+					.mockResolvedValueOnce({
+						name: "Smoke",
+						version: "1.0.0",
+						location: "https://fw.example.com/smoke",
+						md5: "abc123",
+					})
+					.mockRejectedValueOnce(new Error("Firmware info unavailable"));
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_firmware_status");
+				const result = await handler({}, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed).toHaveLength(1);
+				expect(parsed[0].serial).toBe("SMOKE1");
+				expect(parsed[0].label).toBe("SMOKE1");
+				expect(parsed[0].updateAvailable).toBe(false);
+				expect(parsed.find((d: any) => d.serial === "RFX1")).toBeUndefined();
 			} finally {
 				teardownEnv();
 			}

@@ -29,6 +29,7 @@ thermoworks mcp start
 | `set_alarm` | Set or clear high/low alarm thresholds on a device channel |
 | `start_session` | Start a new monitoring session on a device |
 | `end_session` | End the active monitoring session on a device |
+| `get_firmware_status` | Check firmware update status for all devices |
 
 ## Authentication
 

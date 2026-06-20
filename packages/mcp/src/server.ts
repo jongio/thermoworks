@@ -250,6 +250,53 @@ export function createServer(): McpServer {
 		({ serial }) => handleTool((client) => client.endSession(serial)),
 	);
 
+	server.registerTool(
+		"get_firmware_status",
+		{
+			description:
+				"Check firmware update status for all ThermoWorks devices. Returns current and latest firmware versions with update availability for each device.",
+			inputSchema: z.object({}),
+		},
+		async () => {
+			const client = getClient();
+			const devices = await client.getDevices();
+			const checkable = devices.filter((d) => d.type && d.firmware);
+
+			const uniqueTypes = [...new Set(checkable.map((d) => d.type as string))];
+			const firmwareMap = new Map<string, { version: string }>();
+			const settlements = await Promise.allSettled(
+				uniqueTypes.map(async (type) => {
+					const info = await client.getFirmwareInfo(type);
+					return { type, info };
+				}),
+			);
+			for (const settlement of settlements) {
+				if (settlement.status === "fulfilled" && settlement.value.info) {
+					firmwareMap.set(settlement.value.type, settlement.value.info);
+				}
+			}
+
+			const results = [];
+			for (const device of checkable) {
+				const type = device.type as string;
+				const latest = firmwareMap.get(type);
+				if (!latest) continue;
+
+				const current = device.firmware as string;
+				results.push({
+					serial: device.serial,
+					label: device.label || device.serial,
+					type,
+					current,
+					latest: latest.version,
+					updateAvailable: current !== latest.version,
+				});
+			}
+
+			return { content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };
+		},
+	);
+
 	return server;
 }
 

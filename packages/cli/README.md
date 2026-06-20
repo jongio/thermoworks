@@ -286,6 +286,23 @@ npx thermoworks fan disable M100009168
 # Fan controller disabled for M100009168.
 ```
 
+### `thermoworks search <query>`
+
+Full-text search across devices, accounts, or users.
+
+```bash
+npx thermoworks search "brisket"
+#   AB1234  Pit Boss Smoker  (score: 0.95)
+#   CD5678  Brisket Probe    (score: 0.82)
+
+npx thermoworks search "brisket" --collection accounts --limit 5
+npx thermoworks search "brisket" --json
+```
+
+Options:
+- `--collection C` — Search collection: `device`, `accounts`, or `users` (default: `device`)
+- `--limit N` — Max results to return (default: 20, max: 100)
+
 ### `thermoworks session start|end|clear`
 
 Manage monitoring sessions on a device.

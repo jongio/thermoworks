@@ -686,6 +686,44 @@ npx thermoworks fan disable ABC123
 - Requires valid credentials from environment variables or the OS keychain.
 - Exits with an error if the operation fails.
 
+## `thermoworks search <query>`
+
+Full-text search across devices, accounts, or users.
+
+**Usage**
+
+```bash
+npx thermoworks search <query> [--collection device|accounts|users] [--limit N]
+```
+
+**Options**
+
+- `<query>` - (Required) Search query. Multiple words are joined automatically.
+- `--collection <value>` - Search collection: `device`, `accounts`, or `users` (default: `device`).
+- `--limit <N>` - Max results per page (default: 20, max: 100). Must be an integer from 1 to 100.
+- `--json` - Output the full `SearchResult` object as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks search "brisket"
+#   AB1234  Pit Boss Smoker  (score: 0.95)
+#   CD5678  Brisket Probe    (score: 0.82)
+
+npx thermoworks search pit boss --collection device --limit 5
+
+npx thermoworks search "chef" --collection users --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Searches the `device` collection by default.
+- Displays one line per hit: id, a display label (from `label`, `name`, `serial`, or `email`), and the relevance score.
+- Prints `No results found for "<query>".` when there are no hits.
+- Exits with an error if `--collection` is not one of `device`, `accounts`, `users`.
+- Exits with an error if `--limit` is not a valid integer between 1 and 100.
+
 ## `thermoworks guide`
 
 Show the ThermoWorks temperature guide with safe cooking temperatures, organized by category.
@@ -871,7 +909,7 @@ npx thermoworks watch --device ABC123 --interval 5
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `fan`, `calibration`, `guide`, `alarm set`, `alarm clear`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `fan`, `calibration`, `guide`, `search`, `alarm set`, `alarm clear`, `session start`, `session end`, `session clear`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

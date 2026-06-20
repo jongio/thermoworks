@@ -23,6 +23,7 @@ import { fan } from "./commands/fan.js";
 import { firmware } from "./commands/firmware.js";
 import { guide } from "./commands/guide.js";
 import { mcpStart } from "./commands/mcp.js";
+import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
 import { watch } from "./commands/watch.js";
 import { parseGlobalFlags } from "./output.js";
@@ -65,6 +66,10 @@ Commands:
   fan set <SERIAL> --target <temp>  Set fan target temperature
   fan enable <SERIAL>   Enable fan controller
   fan disable <SERIAL>  Disable fan controller
+
+  search <query>   Full-text search across devices
+    --collection C Search collection: device, accounts, or users (default: device)
+    --limit N      Max results to return (default: 20, max: 100)
 
   session start    Start a monitoring session (--label TEXT)
   session end      End an active monitoring session
@@ -208,6 +213,10 @@ async function main(): Promise<void> {
 			await firmware(options, deviceFlag);
 			break;
 		}
+
+		case "search":
+			await search(args.slice(1), options);
+			break;
 
 		case "session":
 			await session(args.slice(1), options);

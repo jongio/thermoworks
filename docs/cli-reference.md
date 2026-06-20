@@ -533,6 +533,56 @@ npx thermoworks export ABC123 --archive arch-001 --format csv --output brisket.c
 - When writing to a file, a summary line is printed to stderr (not stdout) so piping works correctly.
 - Exits with an error if no archives are found for the device.
 
+## `thermoworks history`
+
+Export historical time-series readings from BigQuery for post-cook analysis or data pipelines. Unlike `export` (which reads from a single archive session), `history` retrieves the full BigQuery time-series for a device.
+
+**Usage**
+
+```bash
+npx thermoworks history <SERIAL> [--limit N] [--format table|csv|json] [--output PATH]
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--limit N` - Show the N most recent readings.
+- `--format table|csv|json` - Output format. Defaults to `table`. When the global `--json` flag is active and no explicit `--format` is given, defaults to `json`.
+- `--output PATH` - Write to a file instead of stdout.
+
+**Examples**
+
+```bash
+npx thermoworks history ABC123
+# Timestamp                  Value  Units
+# 2026-06-01T08:00:00.000Z  225    F
+# 2026-06-01T08:01:00.000Z  226    F
+
+npx thermoworks history ABC123 --limit 100 --format csv
+# timestamp,value,units
+# 2026-06-01T08:00:00.000Z,225,F
+# 2026-06-01T08:01:00.000Z,226,F
+
+npx thermoworks history ABC123 --format json
+# {
+#   "deviceId": "ABC123",
+#   "readings": [
+#     { "timestamp": "2026-06-01T08:00:00.000Z", "value": 225, "units": "F" }
+#   ]
+# }
+
+npx thermoworks history ABC123 --limit 50 --format csv --output brisket.csv
+# Wrote 50 readings to brisket.csv.
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Readings are a flat list of `{ timestamp, value, units }` from the BigQuery time-series API.
+- `--limit N` takes the N most recent readings from the end of the chronological list.
+- When the output format is `table` and no readings exist, prints `No history available for <SERIAL>.`
+- When writing to a file, a summary line is printed to stderr (not stdout) so piping works correctly.
+
 ## `thermoworks firmware`
 
 Show firmware versions for all devices and indicate whether updates are available.
@@ -909,7 +959,7 @@ npx thermoworks watch --device ABC123 --interval 5
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `fan`, `calibration`, `guide`, `search`, `alarm set`, `alarm clear`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `session start`, `session end`, `session clear`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

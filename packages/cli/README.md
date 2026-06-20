@@ -327,6 +327,21 @@ Options:
 - `--format FMT` — Output format: `csv` or `json` (default: `json`)
 - `--output PATH` — Write to file (default: stdout)
 
+### `thermoworks history <serial>`
+
+Export historical time-series readings from BigQuery for post-cook analysis or data pipelines. Unlike `export` (which reads from a single archive session), `history` retrieves the full BigQuery time-series for a device.
+
+```bash
+npx thermoworks history M100009168
+npx thermoworks history M100009168 --limit 100 --format csv --output readings.csv
+npx thermoworks history M100009168 --format json
+```
+
+Options:
+- `--limit N` — Show the N most recent readings
+- `--format FMT` — Output format: `table`, `csv`, or `json` (default: `table`)
+- `--output PATH` — Write to file (default: stdout)
+
 ### `thermoworks guide [category]`
 
 Show the temperature guide (safe cooking temps from USDA).

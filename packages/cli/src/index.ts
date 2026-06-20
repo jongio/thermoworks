@@ -22,6 +22,7 @@ import { exportData } from "./commands/export.js";
 import { fan } from "./commands/fan.js";
 import { firmware } from "./commands/firmware.js";
 import { guide } from "./commands/guide.js";
+import { history } from "./commands/history.js";
 import { mcpStart } from "./commands/mcp.js";
 import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
@@ -78,6 +79,11 @@ Commands:
   export SERIAL    Export archive readings to CSV or JSON
     --archive ID   Export a specific archive (default: latest)
     --format FMT   Output format: csv or json (default: json)
+    --output PATH  Write to file (default: stdout)
+
+  history <SERIAL> Export historical time-series readings (BigQuery)
+    --limit N      Show the N most recent readings
+    --format FMT   Output format: table, csv, or json (default: table)
     --output PATH  Write to file (default: stdout)
 
   guide [category] Show temperature guide (safe cooking temps)
@@ -224,6 +230,10 @@ async function main(): Promise<void> {
 
 		case "export":
 			await exportData(args);
+			break;
+
+		case "history":
+			await history(args.slice(1), options);
 			break;
 
 		case "fan":

@@ -223,6 +223,33 @@ export function createServer(): McpServer {
 		},
 	);
 
+	server.registerTool(
+		"start_session",
+		{
+			description: "Start a new monitoring session on a ThermoWorks device",
+			inputSchema: z.object({
+				serial: z.string().min(1).describe("The device serial number"),
+				label: z
+					.string()
+					.max(200)
+					.optional()
+					.describe("Optional session label, e.g., 'Brisket Low and Slow'"),
+			}),
+		},
+		({ serial, label }) => handleTool((client) => client.startSession(serial, label)),
+	);
+
+	server.registerTool(
+		"end_session",
+		{
+			description: "End the active monitoring session on a ThermoWorks device",
+			inputSchema: z.object({
+				serial: z.string().min(1).describe("The device serial number"),
+			}),
+		},
+		({ serial }) => handleTool((client) => client.endSession(serial)),
+	);
+
 	return server;
 }
 

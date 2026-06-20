@@ -12,6 +12,8 @@ vi.mock("thermoworks-sdk", () => {
 	const mockGetTemperatureGuide = vi.fn();
 	const mockSetAlarm = vi.fn();
 	const mockGetDeviceChannel = vi.fn();
+	const mockStartSession = vi.fn();
+	const mockEndSession = vi.fn();
 
 	class MockThermoworksCloud {
 		close = mockClose;
@@ -24,6 +26,8 @@ vi.mock("thermoworks-sdk", () => {
 		getTemperatureGuide = mockGetTemperatureGuide;
 		setAlarm = mockSetAlarm;
 		getDeviceChannel = mockGetDeviceChannel;
+		startSession = mockStartSession;
+		endSession = mockEndSession;
 	}
 
 	return {
@@ -38,10 +42,13 @@ vi.mock("thermoworks-sdk", () => {
 		mockGetTemperatureGuide,
 		mockSetAlarm,
 		mockGetDeviceChannel,
+		mockStartSession,
+		mockEndSession,
 	};
 });
 
 import {
+	mockEndSession,
 	mockGetAllDeviceChannels,
 	mockGetArchives,
 	mockGetAverageTemperature,
@@ -51,6 +58,7 @@ import {
 	mockGetEvents,
 	mockGetTemperatureGuide,
 	mockSetAlarm,
+	mockStartSession,
 } from "thermoworks-sdk";
 
 import { createServer } from "../src/server.js";
@@ -412,6 +420,106 @@ describe("MCP Server", () => {
 					"Error: set_alarm requires at least one of high_temp, low_temp, or clear",
 				);
 				expect(mockSetAlarm).not.toHaveBeenCalled();
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("start_session tool", () => {
+		it("starts a session without a label", async () => {
+			setupEnv();
+			try {
+				const actionResult = { success: true, data: { sessionId: "sess-001" }, error: null };
+				(mockStartSession as any).mockResolvedValueOnce(actionResult);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "start_session");
+				const result = await handler({ serial: "ABC123" }, {});
+
+				expect(mockStartSession).toHaveBeenCalledWith("ABC123", undefined);
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.success).toBe(true);
+				expect(parsed.data.sessionId).toBe("sess-001");
+				expect(parsed.error).toBeNull();
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("starts a session with a label", async () => {
+			setupEnv();
+			try {
+				const actionResult = { success: true, data: { sessionId: "sess-002" }, error: null };
+				(mockStartSession as any).mockResolvedValueOnce(actionResult);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "start_session");
+				const result = await handler({ serial: "ABC123", label: "Brisket Low and Slow" }, {});
+
+				expect(mockStartSession).toHaveBeenCalledWith("ABC123", "Brisket Low and Slow");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.success).toBe(true);
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns error result on failure", async () => {
+			setupEnv();
+			try {
+				const actionResult = { success: false, data: null, error: "Device not found" };
+				(mockStartSession as any).mockResolvedValueOnce(actionResult);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "start_session");
+				const result = await handler({ serial: "INVALID", label: "Test" }, {});
+
+				expect(mockStartSession).toHaveBeenCalledWith("INVALID", "Test");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.success).toBe(false);
+				expect(parsed.error).toBe("Device not found");
+				expect(parsed.data).toBeNull();
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("end_session tool", () => {
+		it("ends the active session", async () => {
+			setupEnv();
+			try {
+				const actionResult = { success: true, data: null, error: null };
+				(mockEndSession as any).mockResolvedValueOnce(actionResult);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "end_session");
+				const result = await handler({ serial: "ABC123" }, {});
+
+				expect(mockEndSession).toHaveBeenCalledWith("ABC123");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.success).toBe(true);
+				expect(parsed.error).toBeNull();
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns error result on failure", async () => {
+			setupEnv();
+			try {
+				const actionResult = { success: false, data: null, error: "No active session" };
+				(mockEndSession as any).mockResolvedValueOnce(actionResult);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "end_session");
+				const result = await handler({ serial: "ABC123" }, {});
+
+				expect(mockEndSession).toHaveBeenCalledWith("ABC123");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.success).toBe(false);
+				expect(parsed.error).toBe("No active session");
 			} finally {
 				teardownEnv();
 			}

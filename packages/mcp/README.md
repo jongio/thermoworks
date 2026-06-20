@@ -26,6 +26,7 @@ thermoworks mcp start
 | `get_events` | Get device events (alarms, status changes) |
 | `get_archives` | Get historical session archives |
 | `get_temperature_guide` | Get cooking temperature reference |
+| `set_alarm` | Set or clear high/low alarm thresholds on a device channel |
 
 ## Authentication
 

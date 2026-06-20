@@ -10,6 +10,8 @@ vi.mock("thermoworks-sdk", () => {
 	const mockGetEvents = vi.fn();
 	const mockGetArchives = vi.fn();
 	const mockGetTemperatureGuide = vi.fn();
+	const mockSetAlarm = vi.fn();
+	const mockGetDeviceChannel = vi.fn();
 
 	class MockThermoworksCloud {
 		close = mockClose;
@@ -20,6 +22,8 @@ vi.mock("thermoworks-sdk", () => {
 		getEvents = mockGetEvents;
 		getArchives = mockGetArchives;
 		getTemperatureGuide = mockGetTemperatureGuide;
+		setAlarm = mockSetAlarm;
+		getDeviceChannel = mockGetDeviceChannel;
 	}
 
 	return {
@@ -32,6 +36,8 @@ vi.mock("thermoworks-sdk", () => {
 		mockGetEvents,
 		mockGetArchives,
 		mockGetTemperatureGuide,
+		mockSetAlarm,
+		mockGetDeviceChannel,
 	};
 });
 
@@ -40,9 +46,11 @@ import {
 	mockGetArchives,
 	mockGetAverageTemperature,
 	mockGetDevice,
+	mockGetDeviceChannel,
 	mockGetDevices,
 	mockGetEvents,
 	mockGetTemperatureGuide,
+	mockSetAlarm,
 } from "thermoworks-sdk";
 
 import { createServer } from "../src/server.js";
@@ -260,6 +268,150 @@ describe("MCP Server", () => {
 				const parsed = JSON.parse(result.content[0].text);
 				expect(parsed.categories).toHaveLength(2);
 				expect(parsed.categories[0].label).toBe("Beef");
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("set_alarm tool", () => {
+		it("sets high and low thresholds", async () => {
+			setupEnv();
+			try {
+				(mockSetAlarm as any).mockResolvedValueOnce(undefined);
+				(mockGetDeviceChannel as any).mockResolvedValueOnce({
+					alarmHigh: {
+						enabled: true,
+						alarming: false,
+						muted: null,
+						value: 225,
+						units: "F",
+						lastNotified: null,
+					},
+					alarmLow: {
+						enabled: true,
+						alarming: false,
+						muted: null,
+						value: 150,
+						units: "F",
+						lastNotified: null,
+					},
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "set_alarm");
+				const result = await handler(
+					{ serial: "ABC123", channel: 1, high_temp: 225, low_temp: 150 },
+					{},
+				);
+
+				expect(mockSetAlarm).toHaveBeenCalledWith("ABC123", 1, {
+					high: { value: 225, enabled: true },
+					low: { value: 150, enabled: true },
+				});
+				expect(mockGetDeviceChannel).toHaveBeenCalledWith("ABC123", 1);
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.serial).toBe("ABC123");
+				expect(parsed.channel).toBe(1);
+				expect(parsed.alarmHigh.value).toBe(225);
+				expect(parsed.alarmHigh.enabled).toBe(true);
+				expect(parsed.alarmLow.value).toBe(150);
+				expect(parsed.alarmLow.enabled).toBe(true);
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("sets high threshold only (partial set)", async () => {
+			setupEnv();
+			try {
+				(mockSetAlarm as any).mockResolvedValueOnce(undefined);
+				(mockGetDeviceChannel as any).mockResolvedValueOnce({
+					alarmHigh: {
+						enabled: true,
+						alarming: false,
+						muted: null,
+						value: 300,
+						units: "F",
+						lastNotified: null,
+					},
+					alarmLow: null,
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "set_alarm");
+				const result = await handler({ serial: "DEF456", channel: 3, high_temp: 300 }, {});
+
+				expect(mockSetAlarm).toHaveBeenCalledWith("DEF456", 3, {
+					high: { value: 300, enabled: true },
+				});
+				expect(mockGetDeviceChannel).toHaveBeenCalledWith("DEF456", 3);
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.serial).toBe("DEF456");
+				expect(parsed.channel).toBe(3);
+				expect(parsed.alarmHigh.value).toBe(300);
+				expect(parsed.alarmLow).toBeNull();
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("clears both alarms when clear is true", async () => {
+			setupEnv();
+			try {
+				(mockSetAlarm as any).mockResolvedValueOnce(undefined);
+				(mockGetDeviceChannel as any).mockResolvedValueOnce({
+					alarmHigh: {
+						enabled: false,
+						alarming: false,
+						muted: null,
+						value: 0,
+						units: "F",
+						lastNotified: null,
+					},
+					alarmLow: {
+						enabled: false,
+						alarming: false,
+						muted: null,
+						value: 0,
+						units: "F",
+						lastNotified: null,
+					},
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "set_alarm");
+				const result = await handler({ serial: "ABC123", channel: 2, clear: true }, {});
+
+				expect(mockSetAlarm).toHaveBeenCalledWith("ABC123", 2, {
+					high: { value: 0, enabled: false },
+					low: { value: 0, enabled: false },
+				});
+				expect(mockGetDeviceChannel).toHaveBeenCalledWith("ABC123", 2);
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.alarmHigh.enabled).toBe(false);
+				expect(parsed.alarmLow.enabled).toBe(false);
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns error when none of high_temp, low_temp, or clear is provided", async () => {
+			setupEnv();
+			try {
+				(mockSetAlarm as any).mockClear();
+
+				const server = createServer();
+				const handler = getToolHandler(server, "set_alarm");
+				const result = await handler({ serial: "ABC123", channel: 1 }, {});
+
+				expect(result.content[0].text).toBe(
+					"Error: set_alarm requires at least one of high_temp, low_temp, or clear",
+				);
+				expect(mockSetAlarm).not.toHaveBeenCalled();
 			} finally {
 				teardownEnv();
 			}

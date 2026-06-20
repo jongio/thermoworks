@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import type { AlarmSetOptions } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 import { z } from "zod";
 
@@ -155,6 +156,71 @@ export function createServer(): McpServer {
 			inputSchema: z.object({}),
 		},
 		() => handleTool((client) => client.getTemperatureGuide()),
+	);
+
+	server.registerTool(
+		"set_alarm",
+		{
+			description:
+				"Set or clear high/low alarm thresholds on a device channel. Provide high_temp and/or low_temp to set thresholds, or clear=true to disable both alarms.",
+			inputSchema: z.object({
+				serial: z.string().describe("The device serial number"),
+				channel: z.number().int().min(1).max(9).describe("Channel number (1-9)"),
+				high_temp: z.number().optional().describe("High alarm threshold temperature"),
+				low_temp: z.number().optional().describe("Low alarm threshold temperature"),
+				clear: z.boolean().optional().describe("If true, disables both alarms on the channel"),
+			}),
+		},
+		async ({ serial, channel, high_temp, low_temp, clear }) => {
+			if (high_temp == null && low_temp == null && !clear) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: "Error: set_alarm requires at least one of high_temp, low_temp, or clear",
+						},
+					],
+				};
+			}
+
+			let config: AlarmSetOptions;
+			if (clear) {
+				config = {
+					high: { value: 0, enabled: false },
+					low: { value: 0, enabled: false },
+				};
+			} else {
+				config = {};
+				if (high_temp != null) {
+					config.high = { value: high_temp, enabled: true };
+				}
+				if (low_temp != null) {
+					config.low = { value: low_temp, enabled: true };
+				}
+			}
+
+			const client = getClient();
+			await client.setAlarm(serial, channel, config);
+			const updated = await client.getDeviceChannel(serial, channel);
+
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{
+								serial,
+								channel,
+								alarmHigh: updated.alarmHigh,
+								alarmLow: updated.alarmLow,
+							},
+							null,
+							2,
+						),
+					},
+				],
+			};
+		},
 	);
 
 	return server;

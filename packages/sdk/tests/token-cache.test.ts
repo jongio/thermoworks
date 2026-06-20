@@ -160,7 +160,8 @@ describe("token-cache module", () => {
 		it("rejects paths outside home and temp directories", async () => {
 			const { resolveTokenCachePath } = await import("../src/token-cache.js");
 			// Use a path that's outside both homedir and tmpdir on all platforms
-			const evilPath = process.platform === "win32" ? "D:\\evil\\cache.json" : "/opt/evil-cache.json";
+			const evilPath =
+				process.platform === "win32" ? "D:\\evil\\cache.json" : "/opt/evil-cache.json";
 			expect(() => resolveTokenCachePath(evilPath)).toThrow(
 				"tokenCachePath must be within the user home directory",
 			);

@@ -449,6 +449,11 @@ describe("Events page", () => {
 			expect(getEvents).toHaveBeenCalledWith({ limit: 200 });
 		});
 
+		// Wait for IntersectionObserver to be registered before triggering
+		await waitFor(() => {
+			expect(observerInstances.length).toBeGreaterThan(0);
+		});
+
 		await act(async () => {
 			triggerIntersection();
 		});

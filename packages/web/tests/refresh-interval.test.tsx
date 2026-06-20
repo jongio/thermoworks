@@ -1,7 +1,6 @@
 import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RefreshSelector } from "../src/components/RefreshSelector.tsx";
-import type { RefreshInterval } from "../src/hooks/useRefreshInterval.ts";
 import { useRefreshInterval } from "../src/hooks/useRefreshInterval.ts";
 
 describe("useRefreshInterval", () => {

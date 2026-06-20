@@ -825,13 +825,14 @@ describe("ThermoworksCloud", () => {
 			client.close();
 		});
 
-		it("returns null for 404", async () => {
+		it("throws NotFoundError for 404", async () => {
 			setupAuth();
 			mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
 
 			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
-			const result = await client.getFirmwareInfo("unknown_type");
-			expect(result).toBeNull();
+			await expect(client.getFirmwareInfo("unknown_type")).rejects.toThrow(
+				"Firmware info not found for type 'unknown_type'",
+			);
 			client.close();
 		});
 	});

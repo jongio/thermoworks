@@ -36,7 +36,6 @@ vi.mock("thermoworks-sdk", () => {
 });
 
 import {
-	mockClose,
 	mockGetAllDeviceChannels,
 	mockGetArchives,
 	mockGetAverageTemperature,

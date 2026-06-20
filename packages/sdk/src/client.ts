@@ -640,17 +640,12 @@ export class ThermoworksCloud {
 		);
 	}
 
-	/** Get firmware info for a device type. Returns null if not found. */
-	async getFirmwareInfo(deviceType: string): Promise<FirmwareInfo | null> {
-		const session = await this.ensureSession();
-		const path = `documents/firmware/${encodeURIComponent(deviceType)}`;
-		const response = await session.request("GET", path);
-		if (response.status === 404) {
-			await response.text().catch(() => {});
-			return null;
-		}
-		const doc = (await response.json()) as { fields?: FirestoreFields };
-		const fields = doc.fields ?? {};
+	/** Get firmware info for a device type. */
+	async getFirmwareInfo(deviceType: string): Promise<FirmwareInfo> {
+		const fields = await this.fetchDocFields(
+			`documents/firmware/${encodeURIComponent(deviceType)}`,
+			`Firmware info not found for type '${deviceType}'`,
+		);
 
 		return {
 			name: getString(fields, "name") ?? deviceType,
@@ -1312,11 +1307,13 @@ function parseArchiveChannel(fields: FirestoreFields): ArchiveChannel {
 		for (const item of readingsRaw) {
 			if ("mapValue" in item && item.mapValue.fields) {
 				const rf = item.mapValue.fields;
-				const value = getNumber(rf, "value");
-				const timestamp = getTimestamp(rf, "timestamp");
-				const units = getString(rf, "units");
-				if (value != null && timestamp != null && units != null) {
-					recentReadings.push({ value, timestamp, units });
+				// ThermoWorks uses short field names: v (value), ts (timestamp), u (units)
+				const rawValue =
+					getNumber(rf, "value") ?? getNumber(rf, "v") ?? parseFloat(getString(rf, "v") ?? "");
+				const timestamp = getTimestamp(rf, "timestamp") ?? getTimestamp(rf, "ts");
+				const units = getString(rf, "units") ?? getString(rf, "u");
+				if (rawValue != null && !Number.isNaN(rawValue) && timestamp != null && units != null) {
+					recentReadings.push({ value: rawValue, timestamp, units });
 				}
 			}
 		}

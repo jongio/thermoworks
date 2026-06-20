@@ -1,6 +1,7 @@
 import { Calendar, Clock } from "lucide-react";
 import React, { Suspense, useMemo, useState } from "react";
-import type { ArchiveChannel, DeviceHistory, TemperatureReading } from "thermoworks-sdk";
+import type { ArchiveChannel, TemperatureReading } from "thermoworks-sdk";
+import type { DeviceHistory } from "../lib/api.ts";
 import { ChartSkeleton } from "./Skeleton.tsx";
 
 const TemperatureChart = React.lazy(() => import("./TemperatureChart"));
@@ -32,8 +33,8 @@ export interface HistoryViewerProps {
 
 /**
  * Historical data viewer with time range selection.
- * Transforms flat HistoricalReading[] into ArchiveChannel format
- * for display via the existing TemperatureChart component.
+ * Transforms flat HistoricalReading[] (value/timestamp/units per reading)
+ * into ArchiveChannel format for display via TemperatureChart.
  */
 export function HistoryViewer({ history }: HistoryViewerProps) {
 	const [timeRange, setTimeRange] = useState<TimeRange>("1d");
@@ -43,40 +44,46 @@ export function HistoryViewer({ history }: HistoryViewerProps) {
 			return { channels: null, pointCount: 0, dateRange: null };
 		}
 
-		// Parse all readings into TemperatureReading format
-		const allReadings: TemperatureReading[] = [];
+		// Parse timestamps and filter invalid
+		const parsed: Array<{ value: number; timestamp: Date; units: string }> = [];
 		for (const r of history.readings) {
 			const date = new Date(r.timestamp);
 			if (!Number.isNaN(date.getTime())) {
-				allReadings.push({ value: r.value, timestamp: date, units: r.units });
+				parsed.push({ value: r.value, timestamp: date, units: r.units });
 			}
 		}
 
-		if (allReadings.length === 0) {
+		if (parsed.length === 0) {
 			return { channels: null, pointCount: 0, dateRange: null };
 		}
 
-		// Sort by timestamp ascending
-		allReadings.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+		// Sort ascending by timestamp
+		parsed.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
 		// Apply time range filter
 		const rangeOption = TIME_RANGES.find((r) => r.value === timeRange);
-		let filteredReadings = allReadings;
+		let filtered = parsed;
 		if (rangeOption?.ms != null) {
 			const cutoff = Date.now() - rangeOption.ms;
-			filteredReadings = allReadings.filter((r) => r.timestamp.getTime() >= cutoff);
+			filtered = parsed.filter((r) => r.timestamp.getTime() >= cutoff);
 		}
 
-		if (filteredReadings.length === 0) {
+		if (filtered.length === 0) {
 			return { channels: null, pointCount: 0, dateRange: null };
 		}
 
-		// Determine units from readings (use first reading's units)
-		const firstReading = filteredReadings[0] as TemperatureReading;
-		const lastReading = filteredReadings[filteredReadings.length - 1] as TemperatureReading;
-		const units = firstReading.units;
+		// Determine units from first reading
+		const units = filtered[0]?.units ?? "F";
+		// biome-ignore lint/style/noNonNullAssertion: guarded by length check above
+		const lastReading = filtered[filtered.length - 1]!;
 
-		// Build a single ArchiveChannel
+		// Build a single ArchiveChannel with all readings
+		const recentReadings: TemperatureReading[] = filtered.map((r) => ({
+			value: r.value,
+			timestamp: r.timestamp,
+			units: r.units,
+		}));
+
 		const channel: ArchiveChannel = {
 			number: "1",
 			label: "Temperature",
@@ -90,16 +97,16 @@ export function HistoryViewer({ history }: HistoryViewerProps) {
 			alarmLow: null,
 			minimum: null,
 			maximum: null,
-			recentReadings: filteredReadings,
+			recentReadings,
 		};
 
-		const first = firstReading.timestamp;
-		const last = lastReading.timestamp;
+		// biome-ignore lint/style/noNonNullAssertion: guarded by length check above
+		const first = filtered[0]!;
 
 		return {
 			channels: [channel],
-			pointCount: filteredReadings.length,
-			dateRange: { start: first, end: last },
+			pointCount: filtered.length,
+			dateRange: { start: first.timestamp, end: lastReading.timestamp },
 		};
 	}, [history, timeRange]);
 

@@ -81,9 +81,10 @@ interface CalibrationRecord {
 
 export type { CalibrationPoint, CalibrationRecord };
 
-interface HistoricalReading {
-	timestamp: Date;
-	channels: Record<string, number>;
+export interface HistoricalReading {
+	value: number;
+	timestamp: string;
+	units: string;
 }
 
 export interface DeviceHistory {
@@ -440,11 +441,13 @@ function parseArchiveChannel(fields: FirestoreFields): ArchiveChannel {
 		for (const item of readingsRaw) {
 			if ("mapValue" in item && item.mapValue.fields) {
 				const rf = item.mapValue.fields;
-				const value = getNumber(rf, "value");
-				const timestamp = getTimestamp(rf, "timestamp");
-				const units = getString(rf, "units");
-				if (value != null && timestamp != null && units != null) {
-					recentReadings.push({ value, timestamp, units });
+				// ThermoWorks uses short field names: v (value), ts (timestamp), u (units)
+				const rawValue =
+					getNumber(rf, "value") ?? getNumber(rf, "v") ?? parseFloat(getString(rf, "v") ?? "");
+				const timestamp = getTimestamp(rf, "timestamp") ?? getTimestamp(rf, "ts");
+				const units = getString(rf, "units") ?? getString(rf, "u");
+				if (rawValue != null && !Number.isNaN(rawValue) && timestamp != null && units != null) {
+					recentReadings.push({ value: rawValue, timestamp, units });
 				}
 			}
 		}
@@ -1056,7 +1059,18 @@ export class ThermoworksWebClient {
 		}
 		if (!data.documents) return [];
 
-		return data.documents.map((doc) => parseArchive(doc.fields ?? {}, extractDocId(doc.name)));
+		const archives = data.documents.map((doc) =>
+			parseArchive(doc.fields ?? {}, extractDocId(doc.name)),
+		);
+		if (isDev) {
+			console.log("[getArchives] Found:", archives.length, "archives");
+			for (const a of archives.slice(0, 3)) {
+				console.log(
+					`  - ${a.id}: channels=${a.channels?.length ?? 0}, readings=${a.channels?.[0]?.recentReadings?.length ?? 0}`,
+				);
+			}
+		}
+		return archives;
 	}
 
 	async getTemperatureGuide(): Promise<TemperatureGuide> {
@@ -1398,32 +1412,48 @@ export class ThermoworksWebClient {
 	}
 
 	async getHistory(serial: string): Promise<DeviceHistory> {
-		const path = `documents/devices/${encodeURIComponent(serial)}/history?pageSize=500&orderBy=timestamp%20desc`;
-		const response = await this.firestoreRequest("GET", path);
-		if (!response.ok) return { readings: [] };
-
-		const data = (await response.json()) as {
-			documents?: Array<{ fields?: FirestoreFields }>;
-		};
-		if (!data.documents) return { readings: [] };
-
-		const readings: HistoricalReading[] = data.documents.map((doc) => {
-			const fields = doc.fields ?? {};
-			const channels: Record<string, number> = {};
-			const channelMap = getMapFields(fields, "channels");
-			if (channelMap) {
-				for (const [key, val] of Object.entries(channelMap)) {
-					if ("doubleValue" in val) channels[key] = val.doubleValue;
-					else if ("integerValue" in val) channels[key] = Number(val.integerValue);
+		try {
+			const result = await this.callFunction("requestRetrieveInstrumentHistory", {
+				deviceId: serial,
+			});
+			if (isDev) {
+				console.log("[getHistory] Cloud Function result:", JSON.stringify(result).slice(0, 500));
+			}
+			const readings: HistoricalReading[] = [];
+			if (result && typeof result === "object") {
+				// Try multiple response shapes the function may return
+				let raw: unknown[] | undefined;
+				if ("readings" in result) {
+					raw = (result as { readings?: unknown }).readings as unknown[];
+				} else if (Array.isArray(result)) {
+					raw = result;
+				}
+				if (Array.isArray(raw)) {
+					for (const entry of raw) {
+						if (entry && typeof entry === "object") {
+							const r = entry as Record<string, unknown>;
+							// Support { v, ts, u } format (SDK format)
+							const value =
+								r.v != null ? Number(r.v) : r.value != null ? Number(r.value) : Number.NaN;
+							const timestamp = (r.ts ?? r.timestamp ?? "") as string;
+							const units = (r.u ?? r.units ?? "") as string;
+							if (!Number.isNaN(value) && timestamp && units) {
+								readings.push({ value, timestamp: String(timestamp), units: String(units) });
+							}
+						}
+					}
 				}
 			}
-			return {
-				timestamp: getTimestamp(fields, "timestamp") ?? new Date(),
-				channels,
-			};
-		});
-
-		return { readings };
+			if (isDev) {
+				console.log("[getHistory] Parsed readings:", readings.length);
+			}
+			return { readings };
+		} catch (err) {
+			if (isDev) {
+				console.warn("[getHistory] Cloud Function error:", err);
+			}
+			return { readings: [] };
+		}
 	}
 
 	async resetMinMax(serial: string, channel: number): Promise<{ success: boolean }> {

@@ -61,7 +61,7 @@ describe("toCSV", () => {
 	it("escapes fields containing newlines", () => {
 		const data = [{ name: "Line1\nLine2", temp: 50, unit: "C" }];
 		const result = toCSV(data, columns);
-		const lines = result.split("\n");
+		const _lines = result.split("\n");
 		// The field with embedded newline is quoted, so splitting on \n gives 3 parts
 		expect(result).toContain('"Line1\nLine2"');
 	});

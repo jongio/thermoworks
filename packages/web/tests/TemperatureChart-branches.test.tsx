@@ -1,6 +1,6 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { TemperatureChart } from "../src/components/TemperatureChart.tsx";
 import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";
 
@@ -10,7 +10,7 @@ class MockResizeObserver {
 	constructor(cb: ResizeObserverCallback) {
 		this.cb = cb;
 	}
-	observe(target: Element) {
+	observe(_target: Element) {
 		this.cb([{ contentRect: { width: 800, height: 300 } } as unknown as ResizeObserverEntry], this);
 	}
 	unobserve() {}

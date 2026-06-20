@@ -53,7 +53,9 @@ export class AlarmNotifier implements vscode.Disposable {
 
 	private fireNotification(deviceLabel: string, channel: DeviceChannel, state: AlarmState): void {
 		const channelLabel = channel.label ?? `Ch${channel.number ?? "?"}`;
+		// biome-ignore lint/style/noNonNullAssertion: value/units guaranteed present when alarm fires
 		const temp = Math.round(channel.value!);
+		// biome-ignore lint/style/noNonNullAssertion: value/units guaranteed present when alarm fires
 		const units = channel.units!;
 		const threshold = this.getThresholdText(channel, state);
 

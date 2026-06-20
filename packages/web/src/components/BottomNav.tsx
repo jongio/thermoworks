@@ -38,6 +38,7 @@ export function BottomNav() {
 								{item.badge != null && item.badge > 0 && (
 									<span
 										className="absolute -right-1.5 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground"
+										role="status"
 										aria-label={`${item.badge} notifications`}
 									>
 										{item.badge}

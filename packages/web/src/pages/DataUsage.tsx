@@ -144,8 +144,8 @@ export function DataUsage() {
 					<HardDrive className="mx-auto h-10 w-10 text-muted-foreground/60" aria-hidden="true" />
 					<h2 className="mt-4 text-base font-semibold">Usage data unavailable</h2>
 					<p className="mt-2 text-sm text-muted-foreground">
-						Storage usage details are not available for your account plan.
-						Device counts and account info are shown on the Settings page.
+						Storage usage details are not available for your account plan. Device counts and account
+						info are shown on the Settings page.
 					</p>
 				</div>
 			)}
@@ -232,49 +232,49 @@ export function DataUsage() {
 			)}
 
 			{!hasNoUsage && (
-			<section className="rounded-lg border border-border bg-card p-5">
-				<div className="flex items-center justify-between gap-3">
-					<div>
-						<h2 className="text-base font-semibold">Per-device usage</h2>
-						<p className="mt-1 text-sm text-muted-foreground">
-							See which devices are consuming the most storage.
-						</p>
+				<section className="rounded-lg border border-border bg-card p-5">
+					<div className="flex items-center justify-between gap-3">
+						<div>
+							<h2 className="text-base font-semibold">Per-device usage</h2>
+							<p className="mt-1 text-sm text-muted-foreground">
+								See which devices are consuming the most storage.
+							</p>
+						</div>
+						<span className="text-xs text-muted-foreground">{deviceUsage.length} devices</span>
 					</div>
-					<span className="text-xs text-muted-foreground">{deviceUsage.length} devices</span>
-				</div>
 
-				{!isLoading && deviceUsage.length === 0 ? (
-					<div className="mt-6 rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-						Per-device usage will appear here once device history is available.
-					</div>
-				) : (
-					<ul className="mt-6 space-y-4" aria-label="Per-device data usage">
-						{deviceUsage.map((device) => (
-							<li key={device.serial} className="space-y-2">
-								<div className="flex flex-wrap items-center justify-between gap-3">
-									<div>
-										<p className="font-medium">{device.label}</p>
-										<p className="text-xs text-muted-foreground">{device.serial}</p>
+					{!isLoading && deviceUsage.length === 0 ? (
+						<div className="mt-6 rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+							Per-device usage will appear here once device history is available.
+						</div>
+					) : (
+						<ul className="mt-6 space-y-4" aria-label="Per-device data usage">
+							{deviceUsage.map((device) => (
+								<li key={device.serial} className="space-y-2">
+									<div className="flex flex-wrap items-center justify-between gap-3">
+										<div>
+											<p className="font-medium">{device.label}</p>
+											<p className="text-xs text-muted-foreground">{device.serial}</p>
+										</div>
+										<div className="text-right">
+											<p className="font-medium">{formatBytes(device.bytes)}</p>
+											<p className="text-xs text-muted-foreground">
+												{Math.round(device.percentage)}% of total
+												{device.lastSync && ` • Synced ${formatDate(device.lastSync)}`}
+											</p>
+										</div>
 									</div>
-									<div className="text-right">
-										<p className="font-medium">{formatBytes(device.bytes)}</p>
-										<p className="text-xs text-muted-foreground">
-											{Math.round(device.percentage)}% of total
-											{device.lastSync && ` • Synced ${formatDate(device.lastSync)}`}
-										</p>
-									</div>
-								</div>
-								<UsageProgressBar
-									label={`${device.label} usage`}
-									percent={device.percentage}
-									tone="default"
-								/>
-							</li>
-						))}
-					</ul>
-				)}
-			</section>
-		)}
+									<UsageProgressBar
+										label={`${device.label} usage`}
+										percent={device.percentage}
+										tone="default"
+									/>
+								</li>
+							))}
+						</ul>
+					)}
+				</section>
+			)}
 		</div>
 	);
 }

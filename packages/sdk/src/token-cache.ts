@@ -51,9 +51,9 @@ export function resolveTokenCachePath(userPath?: string): string {
 		const home = homedir();
 		const tmp = tmpdir();
 		const isWithinHome =
-			resolved.startsWith(home + "/") || resolved.startsWith(home + "\\") || resolved === home;
+			resolved.startsWith(`${home}/`) || resolved.startsWith(`${home}\\`) || resolved === home;
 		const isWithinTmp =
-			resolved.startsWith(tmp + "/") || resolved.startsWith(tmp + "\\") || resolved === tmp;
+			resolved.startsWith(`${tmp}/`) || resolved.startsWith(`${tmp}\\`) || resolved === tmp;
 		if (!isWithinHome && !isWithinTmp) {
 			throw new Error("tokenCachePath must be within the user home directory");
 		}

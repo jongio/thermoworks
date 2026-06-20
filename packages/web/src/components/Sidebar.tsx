@@ -1,8 +1,10 @@
 import { ChevronsLeft, ChevronsRight, LogOut } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
+import type { StoredAccount } from "../hooks/useAccounts.ts";
 import { navigationItems } from "../lib/navigation.ts";
 import { cn } from "../lib/utils.ts";
+import { AccountSwitcher } from "./AccountSwitcher.tsx";
 import { ConnectionStatus } from "./ConnectionStatus.tsx";
 import { NotificationToggle } from "./NotificationToggle.tsx";
 import { ThemeToggle } from "./ThemeToggle.tsx";
@@ -11,9 +13,23 @@ const STORAGE_KEY = "thermoworks-sidebar-collapsed";
 
 interface SidebarProps {
 	onLogout: () => void;
+	accounts: StoredAccount[];
+	activeAccountId: string | null;
+	onSwitchAccount: (id: string) => void;
+	onAddAccount: () => void;
+	onRemoveAccount: (id: string) => void;
+	onSignOutAll: () => void;
 }
 
-export function Sidebar({ onLogout }: SidebarProps) {
+export function Sidebar({
+	onLogout,
+	accounts,
+	activeAccountId,
+	onSwitchAccount,
+	onAddAccount,
+	onRemoveAccount,
+	onSignOutAll,
+}: SidebarProps) {
 	const [collapsed, setCollapsed] = useState(() => {
 		try {
 			return localStorage.getItem(STORAGE_KEY) === "true";
@@ -78,6 +94,7 @@ export function Sidebar({ onLogout }: SidebarProps) {
 								{!collapsed && item.badge != null && item.badge > 0 && (
 									<span
 										className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-medium text-destructive-foreground"
+										role="status"
 										aria-label={`${item.badge} notifications`}
 									>
 										{item.badge}
@@ -91,6 +108,15 @@ export function Sidebar({ onLogout }: SidebarProps) {
 
 			{/* Footer actions */}
 			<div className="border-t border-border p-2 space-y-1">
+				<AccountSwitcher
+					accounts={accounts}
+					activeAccountId={activeAccountId}
+					collapsed={collapsed}
+					onSwitch={onSwitchAccount}
+					onAddAccount={onAddAccount}
+					onRemoveAccount={onRemoveAccount}
+					onSignOutAll={onSignOutAll}
+				/>
 				<ConnectionStatus />
 				<div
 					className={cn("flex items-center flex-wrap", collapsed ? "flex-col gap-1" : "px-1 gap-1")}

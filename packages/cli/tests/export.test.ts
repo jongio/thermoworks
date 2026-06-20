@@ -92,12 +92,12 @@ function makeArchive(overrides: Partial<Archive> & { id: string }): Archive {
 
 // --- Test suites ---
 
-let logSpy: ReturnType<typeof vi.spyOn>;
+let _logSpy: ReturnType<typeof vi.spyOn>;
 let errorSpy: ReturnType<typeof vi.spyOn>;
 let stdoutWriteSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
-	logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+	_logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 	errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 	stdoutWriteSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 });
@@ -245,9 +245,9 @@ describe("flattenArchive", () => {
 		});
 
 		const rows = flattenArchive(archive);
-		expect(rows[0]!.value).toBe(100);
-		expect(rows[1]!.value).toBe(200);
-		expect(rows[2]!.value).toBe(300);
+		expect(rows[0]?.value).toBe(100);
+		expect(rows[1]?.value).toBe(200);
+		expect(rows[2]?.value).toBe(300);
 	});
 
 	it("uses channel number when label is null", () => {
@@ -263,7 +263,7 @@ describe("flattenArchive", () => {
 		});
 
 		const rows = flattenArchive(archive);
-		expect(rows[0]!.channel).toBe("2");
+		expect(rows[0]?.channel).toBe("2");
 	});
 
 	it("uses 'unknown' when both label and number are null", () => {
@@ -279,7 +279,7 @@ describe("flattenArchive", () => {
 		});
 
 		const rows = flattenArchive(archive);
-		expect(rows[0]!.channel).toBe("unknown");
+		expect(rows[0]?.channel).toBe("unknown");
 	});
 
 	it("handles archive with null channels", () => {

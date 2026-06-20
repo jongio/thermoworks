@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { Device } from "thermoworks-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
@@ -14,6 +14,7 @@ import type { ThermoworksWebClient } from "../src/lib/api.ts";
 
 let notificationPermission: NotificationPermission = "default";
 
+// biome-ignore lint/complexity/noStaticOnlyClass: mock class must match Notification constructor API
 class MockNotification {
 	static get permission() {
 		return notificationPermission;
@@ -112,6 +113,7 @@ async function goToStep(step: 1 | 2 | 3) {
 }
 
 async function renderAppWithAuthenticatedClient() {
+	cleanup();
 	vi.resetModules();
 	vi.doMock("../src/components/AppLayout.tsx", () => ({
 		AppLayout: () => <div data-testid="app-layout">App layout</div>,
@@ -143,10 +145,10 @@ describe("Onboarding wizard gating", () => {
 	});
 
 	afterEach(() => {
+		localStorage.clear();
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
 		vi.resetModules();
-		localStorage.clear();
 	});
 
 	it("shows on first login when no onboarding flag or preferences exist", async () => {
@@ -195,9 +197,9 @@ describe("OnboardingWizard", () => {
 	});
 
 	afterEach(() => {
+		localStorage.clear();
 		vi.unstubAllGlobals();
 		vi.restoreAllMocks();
-		localStorage.clear();
 	});
 
 	it("renders each step and updates preferences", async () => {

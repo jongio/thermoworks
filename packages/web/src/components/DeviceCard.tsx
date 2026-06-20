@@ -47,7 +47,6 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 		error: archiveError,
 	} = useArchiveData(client, device.serial, showChart);
 
-	// Use the most recent archive's channels for the chart
 	const archiveChannels = archives[0]?.channels ?? null;
 
 	return (
@@ -177,7 +176,7 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 					)}
 					{!archiveLoading && !archiveError && !archiveChannels && (
 						<div className="text-xs text-muted-foreground text-center py-4">
-							No archive history found for this device
+							No temperature history available
 						</div>
 					)}
 				</div>

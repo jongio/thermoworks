@@ -19,6 +19,7 @@ export function KeyboardShortcutsHelp({ shortcuts, onClose }: KeyboardShortcutsH
 			aria-modal="true"
 			aria-label="Keyboard shortcuts"
 		>
+			{/* biome-ignore lint/a11y/noStaticElementInteractions: prevents click-to-dismiss propagation on dialog content */}
 			<div
 				className={cn(
 					"bg-card border border-border rounded-xl shadow-xl p-6 max-w-sm w-full mx-4",

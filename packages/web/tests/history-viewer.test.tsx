@@ -1,8 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
-import type { DeviceHistory } from "thermoworks-sdk";
 import { describe, expect, it, vi } from "vitest";
 import { HistoryViewer } from "../src/components/HistoryViewer.tsx";
 import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";
+import type { DeviceHistory } from "../src/lib/api.ts";
 
 // Mock the lazy-loaded TemperatureChart
 vi.mock("../src/components/TemperatureChart", () => ({
@@ -13,8 +13,10 @@ vi.mock("../src/components/TemperatureChart", () => ({
 	),
 }));
 
-function makeHistory(readings: DeviceHistory["readings"]): DeviceHistory {
-	return { deviceId: "TW-001", readings };
+function makeHistory(
+	readings: Array<{ value: number; timestamp: string; units: string }>,
+): DeviceHistory {
+	return { readings };
 }
 
 function renderViewer(history: DeviceHistory) {
@@ -59,11 +61,8 @@ describe("HistoryViewer", () => {
 	it("filters readings by selected time range", () => {
 		const now = Date.now();
 		const readings = [
-			// 30 minutes ago - should appear in 1h range
 			{ value: 72, timestamp: new Date(now - 30 * 60 * 1000).toISOString(), units: "F" },
-			// 2 hours ago - should NOT appear in 1h range
 			{ value: 74, timestamp: new Date(now - 2 * 60 * 60 * 1000).toISOString(), units: "F" },
-			// 3 days ago - should NOT appear in 1h or 1d range
 			{ value: 76, timestamp: new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString(), units: "F" },
 		];
 
@@ -82,7 +81,6 @@ describe("HistoryViewer", () => {
 	});
 
 	it("shows no-data message when time range has no readings", () => {
-		// Only readings from 2 days ago
 		const now = Date.now();
 		const readings = [
 			{ value: 72, timestamp: new Date(now - 2 * 24 * 60 * 60 * 1000).toISOString(), units: "F" },

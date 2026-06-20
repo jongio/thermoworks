@@ -40,7 +40,8 @@ export function DeviceListSkeleton({ count = 4 }: { count?: number }) {
 	return (
 		<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			{Array.from({ length: count }, (_, i) => (
-				<DeviceCardSkeleton key={i} />
+				// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders with no identity
+				<DeviceCardSkeleton key={`skeleton-card-${i}`} />
 			))}
 		</div>
 	);
@@ -62,8 +63,8 @@ export function ChartSkeleton() {
 export function EventListSkeleton({ count = 5 }: { count?: number }) {
 	return (
 		<div className="space-y-2">
-			{Array.from({ length: count }, (_, i) => (
-				<div key={i} className="flex items-center gap-3 p-3 rounded-md border border-border">
+			{Array.from({ length: count }, (_, i) => `skeleton-event-${i}`).map((id) => (
+				<div key={id} className="flex items-center gap-3 p-3 rounded-md border border-border">
 					<Skeleton className="h-8 w-8 rounded-full" />
 					<div className="flex-1 space-y-1">
 						<Skeleton className="h-4 w-3/4" />

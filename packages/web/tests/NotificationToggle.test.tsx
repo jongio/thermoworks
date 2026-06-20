@@ -144,13 +144,13 @@ describe("NotificationToggle", () => {
 	});
 
 	it("syncs permission change via navigator.permissions API", async () => {
-		let onChange: (() => void) | undefined;
+		let _onChange: (() => void) | undefined;
 		Object.defineProperty(navigator, "permissions", {
 			value: {
 				query: vi.fn().mockResolvedValue({
 					state: "granted",
 					addEventListener: (_event: string, handler: () => void) => {
-						onChange = handler;
+						_onChange = handler;
 					},
 					removeEventListener: vi.fn(),
 				}),

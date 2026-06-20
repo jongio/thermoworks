@@ -48,9 +48,9 @@ function PointsTable({ points, label }: { points: CalibrationPoint[]; label: str
 						</tr>
 					</thead>
 					<tbody>
-						{points.map((point, idx) => (
+						{points.map((point) => (
 							<tr
-								key={`${point.channel}-${idx}`}
+								key={`${point.channel}-${point.referenceValue}-${point.value}`}
 								className="border-b border-border/50 last:border-0"
 							>
 								<td className="py-1.5 pr-3 tabular-nums">{point.channel}</td>

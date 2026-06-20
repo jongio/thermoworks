@@ -533,6 +533,56 @@ npx thermoworks export ABC123 --archive arch-001 --format csv --output brisket.c
 - When writing to a file, a summary line is printed to stderr (not stdout) so piping works correctly.
 - Exits with an error if no archives are found for the device.
 
+## `thermoworks history`
+
+Export historical time-series readings from BigQuery for post-cook analysis or data pipelines. Unlike `export` (which reads from a single archive session), `history` retrieves the full BigQuery time-series for a device.
+
+**Usage**
+
+```bash
+npx thermoworks history <SERIAL> [--limit N] [--format table|csv|json] [--output PATH]
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--limit N` - Show the N most recent readings.
+- `--format table|csv|json` - Output format. Defaults to `table`. When the global `--json` flag is active and no explicit `--format` is given, defaults to `json`.
+- `--output PATH` - Write to a file instead of stdout.
+
+**Examples**
+
+```bash
+npx thermoworks history ABC123
+# Timestamp                  Value  Units
+# 2026-06-01T08:00:00.000Z  225    F
+# 2026-06-01T08:01:00.000Z  226    F
+
+npx thermoworks history ABC123 --limit 100 --format csv
+# timestamp,value,units
+# 2026-06-01T08:00:00.000Z,225,F
+# 2026-06-01T08:01:00.000Z,226,F
+
+npx thermoworks history ABC123 --format json
+# {
+#   "deviceId": "ABC123",
+#   "readings": [
+#     { "timestamp": "2026-06-01T08:00:00.000Z", "value": 225, "units": "F" }
+#   ]
+# }
+
+npx thermoworks history ABC123 --limit 50 --format csv --output brisket.csv
+# Wrote 50 readings to brisket.csv.
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Readings are a flat list of `{ timestamp, value, units }` from the BigQuery time-series API.
+- `--limit N` takes the N most recent readings from the end of the chronological list.
+- When the output format is `table` and no readings exist, prints `No history available for <SERIAL>.`
+- When writing to a file, a summary line is printed to stderr (not stdout) so piping works correctly.
+
 ## `thermoworks firmware`
 
 Show firmware versions for all devices and indicate whether updates are available.
@@ -565,6 +615,200 @@ npx thermoworks firmware --device ABC123 --json
 - Fetches the latest available firmware per device type in parallel.
 - Update available status is shown in yellow; up-to-date status in green.
 - Prints `No devices with firmware information found.` when no devices have firmware data.
+
+## `thermoworks data-usage`
+
+Show total account data storage usage.
+
+**Usage**
+
+```bash
+npx thermoworks data-usage [--by-device]
+```
+
+**Options**
+
+- `--by-device` - Show per-device breakdown (device id + formatted size) sorted by size descending.
+- `--json` - Output as JSON. Returns `DataUsage` for total view, `DeviceDataUsage[]` for `--by-device`.
+
+**Examples**
+
+```bash
+npx thermoworks data-usage
+# Account data usage: 12.4 MB
+
+npx thermoworks data-usage --by-device
+# DEV-C  48.8 KB
+# DEV-B   9.8 KB
+# DEV-A   1.0 KB
+
+npx thermoworks data-usage --json
+npx thermoworks data-usage --by-device --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Prints `No device data usage.` when no devices have data (with `--by-device`).
+- Zero bytes total is displayed as `0 B`.
+
+## `thermoworks fan <SERIAL>`
+
+Show the current fan/blower controller state for a Signals device.
+
+**Usage**
+
+```bash
+npx thermoworks fan <SERIAL>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--json` - Output as JSON (the raw `FanSettings` object, or `null` if no fan).
+
+**Examples**
+
+```bash
+npx thermoworks fan ABC123
+# Fan controller for ABC123:
+#   Connected:   yes
+#   Connection:  enabled
+#   Target temp: 225
+#   Channel:     1
+#   State:       1
+
+npx thermoworks fan ABC123 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Prints `No fan controller found for device <SERIAL>.` when the device has no fan.
+- With `--json`, outputs the `FanSettings` object or `null`.
+
+## `thermoworks fan set <SERIAL> --target <temp>`
+
+Set the fan controller target temperature.
+
+**Usage**
+
+```bash
+npx thermoworks fan set <SERIAL> --target <temp>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--target <temp>` - (Required) Target temperature. Must be a finite number.
+- `--json` - Output as JSON (the `ActionResult` object).
+
+**Examples**
+
+```bash
+npx thermoworks fan set ABC123 --target 225
+# Fan target temperature set to 225 for ABC123.
+
+npx thermoworks fan set ABC123 --target 225 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Exits with an error if `--target` is missing or the value is not a finite number.
+- Exits with an error if the operation fails (e.g., device offline).
+
+## `thermoworks fan enable <SERIAL>`
+
+Enable the fan controller connection on a device.
+
+**Usage**
+
+```bash
+npx thermoworks fan enable <SERIAL>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--json` - Output as JSON (the `ActionResult` object).
+
+**Examples**
+
+```bash
+npx thermoworks fan enable ABC123
+# Fan controller enabled for ABC123.
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Exits with an error if the operation fails.
+
+## `thermoworks fan disable <SERIAL>`
+
+Disable the fan controller connection on a device.
+
+**Usage**
+
+```bash
+npx thermoworks fan disable <SERIAL>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--json` - Output as JSON (the `ActionResult` object).
+
+**Examples**
+
+```bash
+npx thermoworks fan disable ABC123
+# Fan controller disabled for ABC123.
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Exits with an error if the operation fails.
+
+## `thermoworks search <query>`
+
+Full-text search across devices, accounts, or users.
+
+**Usage**
+
+```bash
+npx thermoworks search <query> [--collection device|accounts|users] [--limit N]
+```
+
+**Options**
+
+- `<query>` - (Required) Search query. Multiple words are joined automatically.
+- `--collection <value>` - Search collection: `device`, `accounts`, or `users` (default: `device`).
+- `--limit <N>` - Max results per page (default: 20, max: 100). Must be an integer from 1 to 100.
+- `--json` - Output the full `SearchResult` object as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks search "brisket"
+#   AB1234  Pit Boss Smoker  (score: 0.95)
+#   CD5678  Brisket Probe    (score: 0.82)
+
+npx thermoworks search pit boss --collection device --limit 5
+
+npx thermoworks search "chef" --collection users --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Searches the `device` collection by default.
+- Displays one line per hit: id, a display label (from `label`, `name`, `serial`, or `email`), and the relevance score.
+- Prints `No results found for "<query>".` when there are no hits.
+- Exits with an error if `--collection` is not one of `device`, `accounts`, `users`.
+- Exits with an error if `--limit` is not a valid integer between 1 and 100.
 
 ## `thermoworks guide`
 
@@ -606,6 +850,68 @@ npx thermoworks guide --json
 - The category filter is a case-insensitive substring match against category labels.
 - Prints `No categories matching "<filter>".` when the filter has no matches.
 - Prints `No temperature guide categories found.` when the guide data is empty.
+
+## `thermoworks device rename <SERIAL> --name <TEXT>`
+
+Rename a device label.
+
+**Usage**
+
+```bash
+npx thermoworks device rename <SERIAL> --name <TEXT>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--name <TEXT>` - (Required) New display name for the device.
+- `--json` - Output as JSON (the `ActionResult` object).
+
+**Examples**
+
+```bash
+npx thermoworks device rename ABC123 --name "Pit Boss Smoker"
+# Renamed ABC123 to "Pit Boss Smoker".
+
+npx thermoworks device rename ABC123 --name "Brisket Probe" --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Exits with an error if `--name` is missing.
+- Exits with an error if the operation fails (e.g., device offline).
+
+## `thermoworks device reset-minmax <SERIAL> --channel <N>`
+
+Reset the min/max readings for a specific device channel.
+
+**Usage**
+
+```bash
+npx thermoworks device reset-minmax <SERIAL> --channel <N>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--channel <N>` - (Required) Channel number (1 through 9).
+- `--json` - Output as JSON (the `ActionResult` object).
+
+**Examples**
+
+```bash
+npx thermoworks device reset-minmax ABC123 --channel 1
+# Min/max reset for ABC123 channel 1.
+
+npx thermoworks device reset-minmax ABC123 --channel 3 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Exits with an error if `--channel` is missing or outside the valid range (1 through 9).
+- Exits with an error if the operation fails.
 
 ## `thermoworks session start`
 
@@ -751,7 +1057,7 @@ npx thermoworks watch --device ABC123 --interval 5
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `calibration`, `guide`, `alarm set`, `alarm clear`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `data-usage`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

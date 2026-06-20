@@ -263,6 +263,29 @@ npx thermoworks firmware
 npx thermoworks firmware --device M100009168
 ```
 
+### `thermoworks fan <serial>`
+
+Show, configure, and toggle the Billows fan/blower controller on Signals devices.
+
+```bash
+npx thermoworks fan M100009168
+# Fan controller for M100009168:
+#   Connected:   yes
+#   Connection:  enabled
+#   Target temp: 225
+#   Channel:     1
+#   State:       1
+
+npx thermoworks fan set M100009168 --target 225
+# Fan target temperature set to 225 for M100009168.
+
+npx thermoworks fan enable M100009168
+# Fan controller enabled for M100009168.
+
+npx thermoworks fan disable M100009168
+# Fan controller disabled for M100009168.
+```
+
 ### `thermoworks session start|end|clear`
 
 Manage monitoring sessions on a device.

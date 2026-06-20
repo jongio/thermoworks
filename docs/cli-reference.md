@@ -566,6 +566,126 @@ npx thermoworks firmware --device ABC123 --json
 - Update available status is shown in yellow; up-to-date status in green.
 - Prints `No devices with firmware information found.` when no devices have firmware data.
 
+## `thermoworks fan <SERIAL>`
+
+Show the current fan/blower controller state for a Signals device.
+
+**Usage**
+
+```bash
+npx thermoworks fan <SERIAL>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--json` - Output as JSON (the raw `FanSettings` object, or `null` if no fan).
+
+**Examples**
+
+```bash
+npx thermoworks fan ABC123
+# Fan controller for ABC123:
+#   Connected:   yes
+#   Connection:  enabled
+#   Target temp: 225
+#   Channel:     1
+#   State:       1
+
+npx thermoworks fan ABC123 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Prints `No fan controller found for device <SERIAL>.` when the device has no fan.
+- With `--json`, outputs the `FanSettings` object or `null`.
+
+## `thermoworks fan set <SERIAL> --target <temp>`
+
+Set the fan controller target temperature.
+
+**Usage**
+
+```bash
+npx thermoworks fan set <SERIAL> --target <temp>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--target <temp>` - (Required) Target temperature. Must be a finite number.
+- `--json` - Output as JSON (the `ActionResult` object).
+
+**Examples**
+
+```bash
+npx thermoworks fan set ABC123 --target 225
+# Fan target temperature set to 225 for ABC123.
+
+npx thermoworks fan set ABC123 --target 225 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Exits with an error if `--target` is missing or the value is not a finite number.
+- Exits with an error if the operation fails (e.g., device offline).
+
+## `thermoworks fan enable <SERIAL>`
+
+Enable the fan controller connection on a device.
+
+**Usage**
+
+```bash
+npx thermoworks fan enable <SERIAL>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--json` - Output as JSON (the `ActionResult` object).
+
+**Examples**
+
+```bash
+npx thermoworks fan enable ABC123
+# Fan controller enabled for ABC123.
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Exits with an error if the operation fails.
+
+## `thermoworks fan disable <SERIAL>`
+
+Disable the fan controller connection on a device.
+
+**Usage**
+
+```bash
+npx thermoworks fan disable <SERIAL>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--json` - Output as JSON (the `ActionResult` object).
+
+**Examples**
+
+```bash
+npx thermoworks fan disable ABC123
+# Fan controller disabled for ABC123.
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Exits with an error if the operation fails.
+
 ## `thermoworks guide`
 
 Show the ThermoWorks temperature guide with safe cooking temperatures, organized by category.
@@ -751,7 +871,7 @@ npx thermoworks watch --device ABC123 --interval 5
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `calibration`, `guide`, `alarm set`, `alarm clear`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `fan`, `calibration`, `guide`, `alarm set`, `alarm clear`, `session start`, `session end`, `session clear`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

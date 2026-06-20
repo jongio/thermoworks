@@ -19,6 +19,7 @@ import type { DevicesOptions } from "./commands/devices.js";
 import { devices } from "./commands/devices.js";
 import { events, parseEventsArgs } from "./commands/events.js";
 import { exportData } from "./commands/export.js";
+import { fan } from "./commands/fan.js";
 import { firmware } from "./commands/firmware.js";
 import { guide } from "./commands/guide.js";
 import { mcpStart } from "./commands/mcp.js";
@@ -59,6 +60,11 @@ Commands:
   archives <serial>  List archived sessions for a device
 
   firmware         Show firmware versions and available updates
+
+  fan <SERIAL>     Show fan controller state
+  fan set <SERIAL> --target <temp>  Set fan target temperature
+  fan enable <SERIAL>   Enable fan controller
+  fan disable <SERIAL>  Disable fan controller
 
   session start    Start a monitoring session (--label TEXT)
   session end      End an active monitoring session
@@ -209,6 +215,10 @@ async function main(): Promise<void> {
 
 		case "export":
 			await exportData(args);
+			break;
+
+		case "fan":
+			await fan(args.slice(1), options);
 			break;
 
 		case "guide":

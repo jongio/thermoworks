@@ -263,6 +263,26 @@ npx thermoworks firmware
 npx thermoworks firmware --device M100009168
 ```
 
+### `thermoworks data-usage`
+
+Show account data storage usage. Use `--by-device` for a per-device breakdown sorted by size.
+
+```bash
+npx thermoworks data-usage
+# Account data usage: 12.4 MB
+
+npx thermoworks data-usage --by-device
+# DEV-C  48.8 KB
+# DEV-B   9.8 KB
+# DEV-A   1.0 KB
+
+npx thermoworks data-usage --json
+npx thermoworks data-usage --by-device --json
+```
+
+Options:
+- `--by-device` — Show per-device breakdown (device id + formatted size), sorted by size descending
+
 ### `thermoworks fan <serial>`
 
 Show, configure, and toggle the Billows fan/blower controller on Signals devices.

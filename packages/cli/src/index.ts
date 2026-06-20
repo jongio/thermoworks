@@ -15,6 +15,7 @@ import {
 	copilotStatusDemo,
 	nextDemoState,
 } from "./commands/copilot.js";
+import { dataUsage } from "./commands/data-usage.js";
 import { device } from "./commands/device.js";
 import type { DevicesOptions } from "./commands/devices.js";
 import { devices } from "./commands/devices.js";
@@ -52,6 +53,9 @@ Commands:
   copilot setup    Configure Copilot CLI statusline (wizard)
   copilot status   Show configured temperature reading
   copilot remove   Remove statusline configuration
+
+  data-usage       Show account data storage usage
+    --by-device    Show per-device breakdown
 
   devices          List connected devices
   device rename    Rename a device
@@ -186,6 +190,10 @@ async function main(): Promise<void> {
 					);
 					process.exit(1);
 			}
+			break;
+
+		case "data-usage":
+			await dataUsage(args.slice(1), options);
 			break;
 
 		case "device":

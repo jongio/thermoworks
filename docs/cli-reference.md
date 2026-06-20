@@ -616,6 +616,42 @@ npx thermoworks firmware --device ABC123 --json
 - Update available status is shown in yellow; up-to-date status in green.
 - Prints `No devices with firmware information found.` when no devices have firmware data.
 
+## `thermoworks data-usage`
+
+Show total account data storage usage.
+
+**Usage**
+
+```bash
+npx thermoworks data-usage [--by-device]
+```
+
+**Options**
+
+- `--by-device` - Show per-device breakdown (device id + formatted size) sorted by size descending.
+- `--json` - Output as JSON. Returns `DataUsage` for total view, `DeviceDataUsage[]` for `--by-device`.
+
+**Examples**
+
+```bash
+npx thermoworks data-usage
+# Account data usage: 12.4 MB
+
+npx thermoworks data-usage --by-device
+# DEV-C  48.8 KB
+# DEV-B   9.8 KB
+# DEV-A   1.0 KB
+
+npx thermoworks data-usage --json
+npx thermoworks data-usage --by-device --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Prints `No device data usage.` when no devices have data (with `--by-device`).
+- Zero bytes total is displayed as `0 B`.
+
 ## `thermoworks fan <SERIAL>`
 
 Show the current fan/blower controller state for a Signals device.
@@ -1021,7 +1057,7 @@ npx thermoworks watch --device ABC123 --interval 5
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `data-usage`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

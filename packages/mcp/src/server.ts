@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import type { AlarmSetOptions } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 import { z } from "zod";
 
@@ -155,6 +156,168 @@ export function createServer(): McpServer {
 			inputSchema: z.object({}),
 		},
 		() => handleTool((client) => client.getTemperatureGuide()),
+	);
+
+	server.registerTool(
+		"set_alarm",
+		{
+			description:
+				"Set or clear high/low alarm thresholds on a device channel. Provide high_temp and/or low_temp to set thresholds, or clear=true to disable both alarms.",
+			inputSchema: z.object({
+				serial: z.string().describe("The device serial number"),
+				channel: z.number().int().min(1).max(9).describe("Channel number (1-9)"),
+				high_temp: z.number().optional().describe("High alarm threshold temperature"),
+				low_temp: z.number().optional().describe("Low alarm threshold temperature"),
+				clear: z.boolean().optional().describe("If true, disables both alarms on the channel"),
+			}),
+		},
+		async ({ serial, channel, high_temp, low_temp, clear }) => {
+			if (high_temp == null && low_temp == null && !clear) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: "Error: set_alarm requires at least one of high_temp, low_temp, or clear",
+						},
+					],
+				};
+			}
+
+			let config: AlarmSetOptions;
+			if (clear) {
+				config = {
+					high: { value: 0, enabled: false },
+					low: { value: 0, enabled: false },
+				};
+			} else {
+				config = {};
+				if (high_temp != null) {
+					config.high = { value: high_temp, enabled: true };
+				}
+				if (low_temp != null) {
+					config.low = { value: low_temp, enabled: true };
+				}
+			}
+
+			const client = getClient();
+			await client.setAlarm(serial, channel, config);
+			const updated = await client.getDeviceChannel(serial, channel);
+
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{
+								serial,
+								channel,
+								alarmHigh: updated.alarmHigh,
+								alarmLow: updated.alarmLow,
+							},
+							null,
+							2,
+						),
+					},
+				],
+			};
+		},
+	);
+
+	server.registerTool(
+		"start_session",
+		{
+			description: "Start a new monitoring session on a ThermoWorks device",
+			inputSchema: z.object({
+				serial: z.string().min(1).describe("The device serial number"),
+				label: z
+					.string()
+					.max(200)
+					.optional()
+					.describe("Optional session label, e.g., 'Brisket Low and Slow'"),
+			}),
+		},
+		({ serial, label }) => handleTool((client) => client.startSession(serial, label)),
+	);
+
+	server.registerTool(
+		"end_session",
+		{
+			description: "End the active monitoring session on a ThermoWorks device",
+			inputSchema: z.object({
+				serial: z.string().min(1).describe("The device serial number"),
+			}),
+		},
+		({ serial }) => handleTool((client) => client.endSession(serial)),
+	);
+
+	server.registerTool(
+		"get_firmware_status",
+		{
+			description:
+				"Check firmware update status for all ThermoWorks devices. Returns current and latest firmware versions with update availability for each device.",
+			inputSchema: z.object({}),
+		},
+		async () => {
+			const client = getClient();
+			const devices = await client.getDevices();
+			const checkable = devices.filter((d) => d.type && d.firmware);
+
+			const uniqueTypes = [...new Set(checkable.map((d) => d.type as string))];
+			const firmwareMap = new Map<string, { version: string }>();
+			const settlements = await Promise.allSettled(
+				uniqueTypes.map(async (type) => {
+					const info = await client.getFirmwareInfo(type);
+					return { type, info };
+				}),
+			);
+			for (const settlement of settlements) {
+				if (settlement.status === "fulfilled" && settlement.value.info) {
+					firmwareMap.set(settlement.value.type, settlement.value.info);
+				}
+			}
+
+			const results = [];
+			for (const device of checkable) {
+				const type = device.type as string;
+				const latest = firmwareMap.get(type);
+				if (!latest) continue;
+
+				const current = device.firmware as string;
+				results.push({
+					serial: device.serial,
+					label: device.label || device.serial,
+					type,
+					current,
+					latest: latest.version,
+					updateAvailable: current !== latest.version,
+				});
+			}
+
+			return { content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };
+		},
+	);
+
+	server.registerTool(
+		"get_archive_detail",
+		{
+			description:
+				"Get full detail for a specific historical session archive, including channel min/max/last readings and computed duration",
+			inputSchema: z.object({
+				serial: z.string().min(1).describe("The device serial number"),
+				archive_id: z.string().min(1).describe("The archive ID"),
+			}),
+		},
+		async ({ serial, archive_id }) => {
+			const client = getClient();
+			const archive = await client.getArchive(serial, archive_id);
+			const durationSeconds =
+				archive.start && archive.end
+					? Math.round((new Date(archive.end).getTime() - new Date(archive.start).getTime()) / 1000)
+					: null;
+			return {
+				content: [{ type: "text", text: JSON.stringify({ ...archive, durationSeconds }, null, 2) }],
+			};
+		},
 	);
 
 	return server;

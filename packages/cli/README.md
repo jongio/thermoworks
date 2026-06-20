@@ -404,7 +404,7 @@ npx thermoworks mcp start
 Notes:
 - Launched by an MCP client (not used interactively).
 - Credentials resolved from env vars or OS keychain.
-- Exposes 7 tools: `get_devices`, `get_device`, `get_device_channels`, `get_average_temperature`, `get_events`, `get_archives`, `get_temperature_guide`.
+- Exposes 12 tools: `get_devices`, `get_device`, `get_device_channels`, `get_average_temperature`, `get_events`, `get_archives`, `get_temperature_guide`, `set_alarm`, `start_session`, `end_session`, `get_firmware_status`, `get_archive_detail`.
 - See [MCP server README](../mcp/README.md) for client configuration.
 
 ### `thermoworks demo <high|low|normal>`

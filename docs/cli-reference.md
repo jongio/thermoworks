@@ -274,7 +274,7 @@ npx thermoworks mcp start
 - The server runs over stdio — it is designed to be launched by an MCP client, not used interactively.
 - Credentials are resolved from environment variables (`THERMOWORKS_EMAIL` + `THERMOWORKS_PASSWORD`) first, then from the OS keychain.
 - If no credentials are available, the server exits with an error.
-- Exposes 7 tools: `get_devices`, `get_device`, `get_device_channels`, `get_average_temperature`, `get_events`, `get_archives`, `get_temperature_guide`.
+- Exposes 12 tools: `get_devices`, `get_device`, `get_device_channels`, `get_average_temperature`, `get_events`, `get_archives`, `get_temperature_guide`, `set_alarm`, `start_session`, `end_session`, `get_firmware_status`, `get_archive_detail`.
 - Errors from the ThermoWorks SDK are sanitized before being returned to the client.
 - Add to your MCP client config (e.g., `~/.copilot/settings.json`):
 

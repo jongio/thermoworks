@@ -4,6 +4,7 @@ import * as vscode from "vscode";
 import type { ClientManager } from "../client-manager";
 import type { CredentialStore } from "../credentials";
 import { DEMO_DEVICES, DEMO_LATEST_FIRMWARE, DEMO_USER, getDemoChannels } from "../demo-data";
+import { type DeviceSnapshot, DeviceStream } from "../device-stream";
 import {
 	AccountDetailNode,
 	AccountNode,
@@ -56,7 +57,7 @@ export class ThermoworksTreeProvider
 	private firmwareCaches = new Map<string, FirmwareCache>();
 	private archiveCaches = new Map<string, ArchiveCache>();
 	private firmwareUpdateCount = 0;
-	private refreshTimer: ReturnType<typeof setInterval> | undefined;
+	private deviceStream: DeviceStream | undefined;
 	private configDisposable: vscode.Disposable | undefined;
 	private disposed = false;
 	private demoMode: "normal" | "high" | "low" | false = false;
@@ -151,6 +152,7 @@ export class ThermoworksTreeProvider
 	async signOut(): Promise<void> {
 		await this.credentialStore.deleteCredentials();
 		this.invalidate();
+		this.deviceStream?.setDevices([]);
 		this.updateBadge(0);
 		await vscode.commands.executeCommand("setContext", "thermoworks.isAuthenticated", false);
 		vscode.window.showInformationMessage("ThermoWorks: Signed out.");
@@ -162,6 +164,7 @@ export class ThermoworksTreeProvider
 		this.channelCaches.clear();
 		this.archiveCaches.clear();
 		this._onDidChangeTreeData.fire(undefined);
+		void this.syncStreamDevices();
 	}
 
 	async refreshArchives(): Promise<void> {
@@ -169,9 +172,35 @@ export class ThermoworksTreeProvider
 		this._onDidChangeTreeData.fire(undefined);
 	}
 
-	private async refreshChannelsOnly(): Promise<void> {
-		this.channelCaches.clear();
+	private async fetchChannelsForStream(serial: string): Promise<DeviceChannel[]> {
+		const client = await this.getClient();
+		return client.getAllDeviceChannels(serial);
+	}
+
+	/** Apply a live channel snapshot to the cache and refresh affected nodes. */
+	private onStreamSnapshot(snapshot: DeviceSnapshot): void {
+		if (this.disposed || this.demoMode) return;
+		this.channelCaches.set(snapshot.serial, {
+			channels: snapshot.channels,
+			fetchedAt: Date.now(),
+		});
 		this._onDidChangeTreeData.fire(undefined);
+	}
+
+	/** Point the live stream at the current device set (or clear it when signed out). */
+	private async syncStreamDevices(): Promise<void> {
+		if (!this.deviceStream || this.demoMode) return;
+		const creds = await this.credentialStore.getCredentials();
+		if (!creds) {
+			this.deviceStream.setDevices([]);
+			return;
+		}
+		try {
+			const devices = await this.getCachedDevices();
+			this.deviceStream.setDevices(devices.map((d) => d.serial));
+		} catch {
+			// Device list unavailable right now; the next refresh will retry.
+		}
 	}
 
 	openCloud(): void {
@@ -213,36 +242,34 @@ export class ThermoworksTreeProvider
 
 	enterDemoMode(mode: "normal" | "high" | "low"): void {
 		this.demoMode = mode;
-		this.stopAutoRefresh();
+		this.deviceStream?.setDevices([]);
 		this._onDidChangeTreeData.fire(undefined);
 	}
 
 	exitDemoMode(): void {
 		this.demoMode = false;
+		void this.syncStreamDevices();
 		this._onDidChangeTreeData.fire(undefined);
 	}
 
 	startAutoRefresh(context: vscode.ExtensionContext): void {
 		this.stopAutoRefresh();
+		if (this.disposed) return;
 
-		const getIntervalMs = (): number => {
-			const seconds = vscode.workspace
-				.getConfiguration("thermoworks")
-				.get<number>("refreshInterval", 60);
-			return Math.max(seconds, 15) * 1000;
-		};
+		const intervalMs =
+			Math.max(
+				vscode.workspace.getConfiguration("thermoworks").get<number>("refreshInterval", 60),
+				15,
+			) * 1000;
 
-		const scheduleNext = (): void => {
-			if (this.disposed) return;
-			this.refreshTimer = setTimeout(async () => {
-				await this.refreshChannelsOnly();
-				scheduleNext();
-			}, getIntervalMs());
-		};
+		this.deviceStream = new DeviceStream(
+			(serial) => this.fetchChannelsForStream(serial),
+			{ onSnapshot: (snapshot) => this.onStreamSnapshot(snapshot) },
+			intervalMs,
+		);
+		void this.syncStreamDevices();
 
-		scheduleNext();
-
-		// Register config listener only once to avoid accumulating disposed entries
+		// Register the config listener only once to avoid accumulating disposed entries.
 		if (!this.configDisposable) {
 			this.configDisposable = vscode.workspace.onDidChangeConfiguration((e) => {
 				if (e.affectsConfiguration("thermoworks.refreshInterval")) {
@@ -519,9 +546,7 @@ export class ThermoworksTreeProvider
 	}
 
 	private stopAutoRefresh(): void {
-		if (this.refreshTimer) {
-			clearTimeout(this.refreshTimer);
-			this.refreshTimer = undefined;
-		}
+		this.deviceStream?.dispose();
+		this.deviceStream = undefined;
 	}
 }

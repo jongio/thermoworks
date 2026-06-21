@@ -1,5 +1,6 @@
 import {
 	type AlarmState,
+	type DeviceChannel,
 	escalateAlarm,
 	getChannelsAlarmState,
 	ThermoworksCloud,
@@ -8,12 +9,15 @@ import * as vscode from "vscode";
 import type { ClientManager } from "./client-manager";
 import { loadConfig } from "./config";
 import type { CredentialStore } from "./credentials";
+import { type DeviceSnapshot, DeviceStream } from "./device-stream";
 
-const MIN_REFRESH_MS = 15_000;
-const BACKOFF_BASE_MS = 5_000;
-const MAX_BACKOFF_MS = 300_000; // 5 minutes
 const BLINK_INTERVAL_MS = 800;
 const MIN_CYCLE_MS = 1_000;
+
+type ConfiguredDevice = {
+	config: { serial: string; label: string; channels: number[] | "avg" };
+	device: { serial: string };
+};
 
 export type StatusBarMode = "single" | "cycle" | "all";
 
@@ -21,20 +25,21 @@ export class TemperatureStatusBar implements vscode.Disposable {
 	private readonly item: vscode.StatusBarItem;
 	private readonly credentialStore: CredentialStore;
 	private readonly clientManager: ClientManager;
-	private timer: ReturnType<typeof setTimeout> | undefined;
+	private deviceStream: DeviceStream | undefined;
 	private blinkTimer: ReturnType<typeof setInterval> | undefined;
 	private cycleTimer: ReturnType<typeof setInterval> | undefined;
 	private refreshing = false;
-	private consecutiveFailures = 0;
+	private inDemo = false;
 	private disposed = false;
 	private generation = 0; // Incremented on login/logout/dispose to invalidate in-flight work
 	private blinkVisible = true;
 	private lastText = "";
-	private lastAlarm: AlarmState = "none";
 
 	// Multi-device cycling state
 	private cycleIndex = 0;
 	private deviceParts: string[][] = [];
+	private configuredDevices: ConfiguredDevice[] = [];
+	private channelsBySerial = new Map<string, DeviceChannel[]>();
 
 	constructor(
 		credentialStore: CredentialStore,
@@ -51,7 +56,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		context.subscriptions.push(
 			vscode.workspace.onDidChangeConfiguration((e) => {
 				if (e.affectsConfiguration("thermoworks.refreshInterval")) {
-					this.scheduleNext();
+					this.restartStream();
 				}
 				if (
 					e.affectsConfiguration("thermoworks.statusBarMode") ||
@@ -68,7 +73,6 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		this.item.show();
 		await this.refresh();
 		if (!this.disposed) {
-			this.scheduleNext();
 			this.restartCycleTimer();
 		}
 	}
@@ -113,9 +117,9 @@ export class TemperatureStatusBar implements vscode.Disposable {
 	}
 
 	simulateAlarm(mode: AlarmState): void {
-		// Invalidate in-flight refreshes and cancel scheduled ones
+		// Invalidate any in-flight refresh and pause live updates during the demo.
 		this.generation++;
-		this.cancelTimer();
+		this.deviceStream?.setDevices([]);
 
 		const demoText =
 			mode === "none"
@@ -137,8 +141,11 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		this.applyAlarmStyle(mode);
 
 		if (mode === "none") {
-			// Resume normal refresh after clearing demo
-			this.scheduleNext();
+			// Clearing the demo: resume live updates, which replace the demo text.
+			this.inDemo = false;
+			this.ensureStream();
+		} else {
+			this.inDemo = true;
 		}
 	}
 
@@ -156,16 +163,27 @@ export class TemperatureStatusBar implements vscode.Disposable {
 
 		try {
 			const data = await this.fetchDeviceData(gen);
-			if (!data || this.isStale(gen)) return;
+			if (this.isStale(gen)) return;
+			if (!data) {
+				// No credentials or no configured devices: stop streaming.
+				this.configuredDevices = [];
+				this.channelsBySerial.clear();
+				this.ensureStream();
+				return;
+			}
+
+			this.configuredDevices = data.configuredDevices;
+			this.channelsBySerial = new Map(
+				data.configuredDevices.map((d, i) => [d.device.serial, data.channelResults[i] ?? []]),
+			);
 
 			const parts = this.formatStatusParts(data.configuredDevices, data.channelResults);
 			if (this.isStale(gen)) return;
 
 			this.updateStatusBarUI(parts);
-			this.consecutiveFailures = 0;
+			this.ensureStream();
 		} catch (error) {
 			if (this.isStale(gen)) return;
-			this.consecutiveFailures++;
 			this.clientManager.close();
 			this.applyAlarmStyle("none");
 
@@ -175,11 +193,56 @@ export class TemperatureStatusBar implements vscode.Disposable {
 			this.item.tooltip = `ThermoWorks: Error — ${message}. Click to retry.`;
 		} finally {
 			this.refreshing = false;
-			// Always reschedule with the correct interval (normal or backoff)
-			if (!this.isStale(gen)) {
-				this.scheduleNext();
-			}
 		}
+	}
+
+	/** Fetch channels for a single device for the live stream. */
+	private async fetchChannelsForStream(serial: string): Promise<DeviceChannel[]> {
+		const creds = await this.credentialStore.getCredentials();
+		if (!creds) throw new Error("Not authenticated");
+		return this.clientManager.getClient(creds).getAllDeviceChannels(serial);
+	}
+
+	/** Apply a live channel snapshot and re-render the status bar from cached state. */
+	private onStreamSnapshot(snapshot: DeviceSnapshot): void {
+		if (this.disposed || this.inDemo) return;
+		this.channelsBySerial.set(snapshot.serial, snapshot.channels);
+		this.renderFromState();
+	}
+
+	/** Re-render the status bar from the most recent configured devices + channel cache. */
+	private renderFromState(): void {
+		if (this.disposed || this.inDemo || this.configuredDevices.length === 0) return;
+		const channelResults = this.configuredDevices.map(
+			(d) => this.channelsBySerial.get(d.device.serial) ?? [],
+		);
+		this.updateStatusBarUI(this.formatStatusParts(this.configuredDevices, channelResults));
+	}
+
+	/** Point the live stream at the configured devices (or stop it when there are none). */
+	private ensureStream(): void {
+		if (this.disposed) return;
+		const serials = this.configuredDevices.map((d) => d.device.serial);
+		if (serials.length === 0) {
+			this.deviceStream?.dispose();
+			this.deviceStream = undefined;
+			return;
+		}
+		if (!this.deviceStream) {
+			this.deviceStream = new DeviceStream(
+				(serial) => this.fetchChannelsForStream(serial),
+				{ onSnapshot: (snapshot) => this.onStreamSnapshot(snapshot) },
+				getRefreshIntervalMs(),
+			);
+		}
+		this.deviceStream.setDevices(serials);
+	}
+
+	/** Recreate the stream (e.g. after the refresh interval changes). */
+	private restartStream(): void {
+		this.deviceStream?.dispose();
+		this.deviceStream = undefined;
+		this.ensureStream();
 	}
 
 	/**
@@ -303,7 +366,6 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		const { perDevice, tooltipLines, overallAlarm } = parts;
 
 		this.deviceParts = perDevice;
-		this.lastAlarm = overallAlarm;
 
 		if (perDevice.length > 0) {
 			this.updateDisplayFromCache();
@@ -325,7 +387,8 @@ export class TemperatureStatusBar implements vscode.Disposable {
 	dispose(): void {
 		this.disposed = true;
 		this.generation++;
-		this.cancelTimer();
+		this.deviceStream?.dispose();
+		this.deviceStream = undefined;
 		this.stopCycleTimer();
 		this.stopBlink();
 		this.clientManager.close();
@@ -338,7 +401,10 @@ export class TemperatureStatusBar implements vscode.Disposable {
 
 	private invalidateAndReset(): void {
 		this.generation++;
-		this.consecutiveFailures = 0;
+		this.deviceStream?.dispose();
+		this.deviceStream = undefined;
+		this.configuredDevices = [];
+		this.channelsBySerial.clear();
 		this.applyAlarmStyle("none");
 		this.clientManager.close();
 	}
@@ -407,30 +473,6 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		}
 	}
 
-	private getRefreshMs(): number {
-		const configMs =
-			vscode.workspace.getConfiguration("thermoworks").get<number>("refreshInterval", 60) * 1000;
-		const backoffMs =
-			this.consecutiveFailures > 0
-				? Math.min(BACKOFF_BASE_MS * 2 ** (this.consecutiveFailures - 1), MAX_BACKOFF_MS)
-				: 0;
-		return Math.max(configMs, MIN_REFRESH_MS, backoffMs);
-	}
-
-	private scheduleNext(): void {
-		this.cancelTimer();
-		if (this.disposed) return;
-		const ms = this.getRefreshMs();
-		this.timer = setTimeout(() => this.refresh(), ms);
-	}
-
-	private cancelTimer(): void {
-		if (this.timer) {
-			clearTimeout(this.timer);
-			this.timer = undefined;
-		}
-	}
-
 	private applyAlarmStyle(alarm: AlarmState): void {
 		this.stopBlink();
 
@@ -474,4 +516,12 @@ export class TemperatureStatusBar implements vscode.Disposable {
 			this.item.text = this.lastText;
 		}
 	}
+}
+
+/** Live polling interval (ms) derived from the refresh-interval setting. */
+function getRefreshIntervalMs(): number {
+	const seconds = vscode.workspace
+		.getConfiguration("thermoworks")
+		.get<number>("refreshInterval", 60);
+	return Math.max(seconds, 15) * 1000;
 }

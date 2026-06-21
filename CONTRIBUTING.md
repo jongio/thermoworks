@@ -14,7 +14,7 @@ The following tools must be installed on your machine to build and run the full 
 
 ### Platform-Specific Dependencies
 
-The CLI and VS Code extension use [`@github/keytar`](https://github.com/nicedoc/keytar) for secure credential storage in the OS keychain. This requires native compilation support:
+The CLI and VS Code extension use [`@github/keytar`](https://github.com/atom/node-keytar) for secure credential storage in the OS keychain. This requires native compilation support:
 
 #### Windows
 

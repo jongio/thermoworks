@@ -243,7 +243,13 @@ Show device event history (alarms, status changes).
 ```bash
 npx thermoworks events
 npx thermoworks events --device M100009168 --limit 50
+npx thermoworks events --type alarm --json
 ```
+
+Options:
+- `--device SN` - Filter to a specific device by serial number
+- `--type TYPE` - Filter by event type (e.g., `alarm`, `status`, `connection`)
+- `--limit N` - Maximum number of events to return
 
 ### `thermoworks archives <serial>`
 

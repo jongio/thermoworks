@@ -19,19 +19,28 @@ vi.mock("vscode", () => ({
 	window: {
 		createWebviewPanel: mockCreateWebviewPanel,
 	},
+	workspace: {
+		getConfiguration: vi.fn(() => ({ get: (_key: string, fallback: number) => fallback })),
+	},
 }));
 
 // ─── SDK mock ────────────────────────────────────────────────────────────────
 
-const { mockGetArchives, mockGetHistory } = vi.hoisted(() => ({
-	mockGetArchives: vi.fn(),
-	mockGetHistory: vi.fn(),
-}));
+const { mockGetArchives, mockGetHistory, mockSubscribe, mockUnsubscribe } = vi.hoisted(() => {
+	const unsub = vi.fn();
+	return {
+		mockGetArchives: vi.fn(),
+		mockGetHistory: vi.fn(),
+		mockUnsubscribe: unsub,
+		mockSubscribe: vi.fn(() => ({ unsubscribe: unsub })),
+	};
+});
 
 vi.mock("thermoworks-sdk", () => ({
 	ThermoworksCloud: class {
 		getArchives = mockGetArchives;
 		getHistory = mockGetHistory;
+		subscribe = mockSubscribe;
 		close = vi.fn();
 	},
 }));
@@ -258,6 +267,7 @@ describe("buildChartPayload", () => {
 
 describe("ChartPanel.show", () => {
 	let messageHandler: ((msg: { type?: string }) => void) | undefined;
+	let disposeHandler: (() => void) | undefined;
 
 	const mockWebview = {
 		html: "",
@@ -300,13 +310,17 @@ describe("ChartPanel.show", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		messageHandler = undefined;
+		disposeHandler = undefined;
 		mockWebview.html = "";
 		ChartPanel.reset();
 		mockCreateWebviewPanel.mockReturnValue(mockPanel);
-		mockPanel.onDidDispose.mockImplementation(() => {});
+		mockPanel.onDidDispose.mockImplementation((cb: () => void) => {
+			disposeHandler = cb;
+		});
 		mockClientManager.getClient.mockReturnValue({
 			getArchives: mockGetArchives,
 			getHistory: mockGetHistory,
+			subscribe: mockSubscribe,
 		});
 	});
 
@@ -476,5 +490,89 @@ describe("ChartPanel.show", () => {
 		expect(mockWebview.html).toContain("Content-Security-Policy");
 		expect(mockWebview.html).not.toContain("cdn.jsdelivr.net");
 		expect(mockWebview.html).not.toContain("chart.js");
+	});
+
+	it("starts a live subscription and signals streaming after loading", async () => {
+		mockCredentialStore.getCredentials.mockResolvedValue({ email: "a@b.com", password: "pass" });
+		mockGetHistory.mockResolvedValue(makeHistory());
+		mockGetArchives.mockResolvedValue([makeArchive()]);
+
+		await ChartPanel.show(
+			"SERIAL-1",
+			mockCredentialStore as never,
+			mockClientManager as never,
+			mockExtensionUri,
+		);
+		signalReady();
+
+		expect(mockSubscribe).toHaveBeenCalledWith(
+			"SERIAL-1",
+			expect.any(Function),
+			expect.objectContaining({ intervalMs: expect.any(Number) }),
+		);
+		expect(mockPostMessage).toHaveBeenCalledWith({ type: "live-status", streaming: true });
+	});
+
+	it("streams live points onto the history series", async () => {
+		mockCredentialStore.getCredentials.mockResolvedValue({ email: "a@b.com", password: "pass" });
+		mockGetHistory.mockResolvedValue(makeHistory());
+		mockGetArchives.mockResolvedValue([makeArchive()]);
+
+		await ChartPanel.show(
+			"SERIAL-1",
+			mockCredentialStore as never,
+			mockClientManager as never,
+			mockExtensionUri,
+		);
+		signalReady();
+
+		const onUpdate = mockSubscribe.mock.calls[0]?.[1] as (u: unknown) => void;
+		onUpdate({
+			serial: "SERIAL-1",
+			channel: 1,
+			value: 230,
+			units: "F",
+			status: "normal",
+			timestamp: new Date().toISOString(),
+		});
+
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "live-point",
+				seriesId: "history",
+				point: expect.objectContaining({ y: 230 }),
+			}),
+		);
+	});
+
+	it("does not subscribe when not signed in", async () => {
+		mockCredentialStore.getCredentials.mockResolvedValue(null);
+
+		await ChartPanel.show(
+			"SERIAL-1",
+			mockCredentialStore as never,
+			mockClientManager as never,
+			mockExtensionUri,
+		);
+		signalReady();
+
+		expect(mockSubscribe).not.toHaveBeenCalled();
+	});
+
+	it("unsubscribes when the panel is disposed", async () => {
+		mockCredentialStore.getCredentials.mockResolvedValue({ email: "a@b.com", password: "pass" });
+		mockGetHistory.mockResolvedValue(makeHistory());
+		mockGetArchives.mockResolvedValue([makeArchive()]);
+
+		await ChartPanel.show(
+			"SERIAL-1",
+			mockCredentialStore as never,
+			mockClientManager as never,
+			mockExtensionUri,
+		);
+		signalReady();
+		disposeHandler?.();
+
+		expect(mockUnsubscribe).toHaveBeenCalled();
 	});
 });

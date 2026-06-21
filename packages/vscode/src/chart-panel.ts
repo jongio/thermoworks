@@ -1,7 +1,20 @@
 import { randomBytes } from "node:crypto";
-import type { Archive, ArchiveChannel, DeviceHistory } from "thermoworks-sdk";
+import type {
+	Archive,
+	ArchiveChannel,
+	ChannelUpdate,
+	DeviceHistory,
+	Subscription,
+	ThermoworksCloud,
+} from "thermoworks-sdk";
 import * as vscode from "vscode";
-import type { ChartInbound, ChartPayload, ChartSeries, ChartThresholds } from "./chart-protocol";
+import type {
+	ChartInbound,
+	ChartPayload,
+	ChartPoint,
+	ChartSeries,
+	ChartThresholds,
+} from "./chart-protocol";
 import type { ClientManager } from "./client-manager";
 import type { CredentialStore } from "./credentials";
 
@@ -125,6 +138,10 @@ export class ChartPanel {
 	private disposed = false;
 	private webviewReady = false;
 	private pending: ChartInbound[] = [];
+	private subscription: Subscription | undefined;
+	private liveSource: "history" | "archive" = "history";
+	private liveSeriesIds = new Set<string>();
+	private liveChannel: number | null = null;
 
 	private constructor(panel: vscode.WebviewPanel, serial: string) {
 		this.panel = panel;
@@ -142,6 +159,7 @@ export class ChartPanel {
 
 		this.panel.onDidDispose(() => {
 			this.disposed = true;
+			this.stopLiveTail();
 			ChartPanel.panels.delete(this.serial);
 		});
 	}
@@ -223,9 +241,68 @@ export class ChartPanel {
 			}
 
 			this.post({ type: "chart-data", payload });
+			this.startLiveTail(client, payload, channelNumber);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load chart data";
 			this.post({ type: "error", message });
+		}
+	}
+
+	/**
+	 * Subscribe to live channel updates and stream them to the webview as the cook
+	 * continues. Updates are mapped onto the appropriate series for the active view.
+	 */
+	private startLiveTail(
+		client: ThermoworksCloud,
+		payload: ChartPayload,
+		channelNumber?: string,
+	): void {
+		this.stopLiveTail();
+		this.liveSource = payload.source;
+		this.liveSeriesIds = new Set(payload.series.map((s) => s.id));
+		const parsed = channelNumber ? Number.parseInt(channelNumber, 10) : Number.NaN;
+		this.liveChannel = Number.isNaN(parsed) ? null : parsed;
+
+		try {
+			this.subscription = client.subscribe(this.serial, (update) => this.onLiveUpdate(update), {
+				intervalMs: getLiveIntervalMs(),
+				onError: () => this.post({ type: "live-status", streaming: false }),
+			});
+			this.post({ type: "live-status", streaming: true });
+		} catch {
+			// Streaming is best-effort; the static chart still renders if it can't start.
+			this.post({ type: "live-status", streaming: false });
+		}
+	}
+
+	/** Map a live channel update onto the correct series and push it to the webview. */
+	private onLiveUpdate(update: ChannelUpdate): void {
+		if (update.value == null) return;
+		const parsedTime = update.timestamp ? Date.parse(update.timestamp) : Number.NaN;
+		const point: ChartPoint = {
+			t: Number.isNaN(parsedTime) ? Date.now() : parsedTime,
+			y: update.value,
+		};
+
+		if (this.liveSource === "history") {
+			// The combined history line tracks a single channel; lock onto the first seen.
+			if (this.liveChannel == null) this.liveChannel = update.channel;
+			if (update.channel !== this.liveChannel) return;
+			this.post({ type: "live-point", seriesId: "history", point });
+			return;
+		}
+
+		const seriesId = `ch${update.channel}`;
+		if (this.liveSeriesIds.has(seriesId)) {
+			this.post({ type: "live-point", seriesId, point });
+		}
+	}
+
+	/** Stop the live subscription, if any. */
+	private stopLiveTail(): void {
+		if (this.subscription) {
+			this.subscription.unsubscribe();
+			this.subscription = undefined;
 		}
 	}
 
@@ -279,4 +356,12 @@ function getWebviewHtml(webview: vscode.Webview, extensionUri: vscode.Uri): stri
 
 function getNonce(): string {
 	return randomBytes(24).toString("base64url");
+}
+
+/** Live polling interval (ms) derived from the refresh-interval setting. */
+function getLiveIntervalMs(): number {
+	const seconds = vscode.workspace
+		.getConfiguration("thermoworks")
+		.get<number>("refreshInterval", 60);
+	return Math.max(seconds, 15) * 1000;
 }

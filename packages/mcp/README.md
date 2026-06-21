@@ -1,6 +1,6 @@
 # thermoworks-mcp
 
-MCP (Model Context Protocol) server for ThermoWorks Cloud. Exposes temperature device data to AI assistants like GitHub Copilot, Claude, and ChatGPT.
+MCP (Model Context Protocol) server for ThermoWorks Cloud. Gives AI assistants like GitHub Copilot, Claude, and ChatGPT read access to device temperatures, events, archives, and firmware status, plus safe write actions for alarms and cooking sessions.
 
 ## Quick Start
 

@@ -567,7 +567,11 @@ npx thermoworks history ABC123 --format json
 # {
 #   "deviceId": "ABC123",
 #   "readings": [
-#     { "timestamp": "2026-06-01T08:00:00.000Z", "value": 225, "units": "F" }
+#     {
+#       "timestamp": "2026-06-01T08:00:00.000Z",
+#       "value": 225,
+#       "units": "F"
+#     }
 #   ]
 # }
 

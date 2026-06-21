@@ -58,8 +58,8 @@ Commands:
     --by-device    Show per-device breakdown
 
   devices          List connected devices
-  device rename    Rename a device
-  device reset-minmax  Reset min/max readings for a channel
+  device rename <SERIAL> --name <TEXT>        Rename a device
+  device reset-minmax <SERIAL> --channel <N>  Reset min/max readings for a channel
   mcp start        Start MCP server for AI assistants
   devices          List connected devices and channel readings
   watch            Continuously monitor temperatures (live refresh)

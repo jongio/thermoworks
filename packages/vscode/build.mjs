@@ -7,6 +7,9 @@ import { fileURLToPath } from "node:url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const vendorDest = join(__dirname, "dist", "vendor", "@github", "keytar");
 
+// 0. Build the React/recharts chart webview (Vite -> dist/webview/webview.js + webview.css)
+execSync("npx vite build --config vite.webview.config.ts", { stdio: "inherit", cwd: __dirname });
+
 // 1. Bundle with esbuild (keytar externalized since it's native)
 execSync(
 	"npx esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --external:@github/keytar --format=cjs --platform=node --sourcemap",

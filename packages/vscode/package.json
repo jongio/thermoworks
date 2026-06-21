@@ -221,21 +221,29 @@
   },
   "scripts": {
     "build": "node build.mjs",
+    "build:webview": "vite build --config vite.webview.config.ts",
     "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --external:@github/keytar --format=cjs --platform=node --sourcemap --watch",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.webview.json --noEmit",
     "package": "vsce package --no-dependencies",
     "publish": "vsce publish --no-dependencies"
   },
   "devDependencies": {
     "@types/node": "^25.9.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
     "@types/vscode": "^1.120.0",
+    "@vitejs/plugin-react": "^6.0.2",
     "@vitest/coverage-v8": "^4.1.8",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.28.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "recharts": "^3.8.1",
     "thermoworks-sdk": "workspace:^",
     "typescript": "^6.0.3",
+    "vite": "^8.0.16",
     "vitest": "^4.1.8"
   },
   "dependencies": {

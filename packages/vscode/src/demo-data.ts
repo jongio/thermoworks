@@ -16,7 +16,7 @@ import type { ChartPayload, ChartPoint, ChartSeries } from "./chart-protocol";
 /** Simulated latest firmware versions per device type. */
 export const DEMO_LATEST_FIRMWARE: Record<string, string> = {
 	signals: "2.4.1",
-	smoke: "1.8.3", // Kitchen Smoke has 1.5.0 → outdated
+	smoke: "1.8.3", // Easter Brisket has 1.5.0 → outdated
 	node: "3.1.0",
 };
 
@@ -96,7 +96,7 @@ export const DEMO_DEVICES: Device[] = [
 	{
 		serial: "DEMO-SMOKE-2CH",
 		deviceId: "smoke-001",
-		label: "Kitchen Smoke",
+		label: "Easter Brisket",
 		type: "smoke",
 		device: "Smoke 2-Channel",
 		status: "online",
@@ -122,7 +122,7 @@ export const DEMO_DEVICES: Device[] = [
 		lastWifiConnection: tenMinAgo,
 		lastBluetoothConnection: null,
 		sessionStart: twoHoursAgo,
-		sessionLabel: "Oven Roast",
+		sessionLabel: "Easter Brisket",
 		lastArchive: null,
 		lastPurged: null,
 		assignedToAccountOn: new Date("2023-11-20"),
@@ -342,8 +342,8 @@ export function getDemoChannels(serial: string, mode: DemoMode): DeviceChannel[]
 		case "DEMO-SMOKE-2CH":
 			return [
 				makeChannel({
-					label: "Oven",
-					value: mode === "high" ? 475 : 350,
+					label: "Pit",
+					value: mode === "high" ? 292 : mode === "low" ? 208 : 250,
 					units: "F",
 					number: "1",
 					color: "#4ECDC4",
@@ -353,7 +353,7 @@ export function getDemoChannels(serial: string, mode: DemoMode): DeviceChannel[]
 									enabled: true,
 									alarming: true,
 									muted: false,
-									value: 425,
+									value: 285,
 									units: "F",
 									lastNotified: now,
 								}
@@ -361,33 +361,53 @@ export function getDemoChannels(serial: string, mode: DemoMode): DeviceChannel[]
 									enabled: true,
 									alarming: false,
 									muted: false,
-									value: 425,
+									value: 285,
 									units: "F",
 									lastNotified: null,
 								},
-					alarmLow: {
-						enabled: false,
-						alarming: false,
-						muted: false,
-						value: null,
-						units: null,
-						lastNotified: null,
-					},
+					alarmLow:
+						mode === "low"
+							? {
+									enabled: true,
+									alarming: true,
+									muted: false,
+									value: 220,
+									units: "F",
+									lastNotified: now,
+								}
+							: {
+									enabled: true,
+									alarming: false,
+									muted: false,
+									value: 220,
+									units: "F",
+									lastNotified: null,
+								},
 				}),
 				makeChannel({
-					label: "Roast",
-					value: mode === "high" ? 165 : 138,
+					label: "Brisket",
+					value: mode === "high" ? 207 : 168,
 					units: "F",
 					number: "2",
 					color: "#FFE66D",
-					alarmHigh: {
-						enabled: true,
-						alarming: false,
-						muted: false,
-						value: 160,
-						units: "F",
-						lastNotified: null,
-					},
+					alarmHigh:
+						mode === "high"
+							? {
+									enabled: true,
+									alarming: true,
+									muted: false,
+									value: 203,
+									units: "F",
+									lastNotified: now,
+								}
+							: {
+									enabled: true,
+									alarming: false,
+									muted: false,
+									value: 203,
+									units: "F",
+									lastNotified: null,
+								},
 					alarmLow: {
 						enabled: false,
 						alarming: false,
@@ -490,11 +510,28 @@ const DEMO_COOKS: Record<string, DemoCook> = {
 		],
 	},
 	"DEMO-SMOKE-2CH": {
-		high: 425,
-		low: null,
+		high: 285,
+		low: 220,
 		channels: [
-			{ id: "oven", label: "Oven", color: "#4ECDC4", from: 80, to: 350, high: 425, wobble: 6 },
-			{ id: "roast", label: "Roast", color: "#FFE66D", from: 44, to: 138, high: 160, wobble: 1 },
+			{
+				id: "pit",
+				label: "Pit",
+				color: "#4ECDC4",
+				from: 84,
+				to: 250,
+				high: 285,
+				low: 220,
+				wobble: 5,
+			},
+			{
+				id: "brisket",
+				label: "Brisket",
+				color: "#FFE66D",
+				from: 44,
+				to: 198,
+				high: 203,
+				wobble: 1,
+			},
 		],
 	},
 	"DEMO-NODE-1CH": {

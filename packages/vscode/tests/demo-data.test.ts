@@ -61,3 +61,36 @@ describe("DEMO_ARCHIVES", () => {
 		}
 	});
 });
+
+describe("Grilled Steak past session", () => {
+	it("adds a second archive on the Signals device, pulled at 125°F", () => {
+		const archives = DEMO_ARCHIVES["DEMO-SIGNALS-4CH"];
+		expect(archives?.length).toBe(2);
+
+		const steakSession = archives?.find((a) => a.label === "Grilled Steak");
+		expect(steakSession).toBeDefined();
+
+		const steak = steakSession?.channels?.find((c) => c.label === "Steak");
+		expect(steak).toBeDefined();
+		expect(steak?.alarmHigh?.value).toBe(125); // medium-rare pull temperature
+		expect(steak?.maximum?.value ?? 0).toBeGreaterThanOrEqual(124);
+		expect(steak?.maximum?.value ?? 0).toBeLessThanOrEqual(126);
+
+		const grill = steakSession?.channels?.find((c) => c.label === "Grill");
+		expect(grill?.maximum?.value ?? 0).toBeGreaterThan(450); // hot grate
+	});
+
+	it("charts the steak session by archive id, distinct from the current cook", () => {
+		const steakId = DEMO_ARCHIVES["DEMO-SIGNALS-4CH"]?.[1]?.id;
+		expect(steakId).toBeDefined();
+
+		const steakPayload = getDemoChartPayload("DEMO-SIGNALS-4CH", steakId);
+		expect(steakPayload?.series.map((s) => s.id)).toContain("steak");
+		expect(steakPayload?.thresholds.high).toBe(125);
+
+		// Without an archive id, the current session (brisket) is charted instead.
+		const current = getDemoChartPayload("DEMO-SIGNALS-4CH");
+		expect(current?.series.map((s) => s.id)).toContain("pit");
+		expect(current?.series.map((s) => s.id)).not.toContain("steak");
+	});
+});

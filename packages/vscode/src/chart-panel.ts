@@ -219,7 +219,7 @@ export class ChartPanel {
 	): Promise<void> {
 		try {
 			if (isDemoSerial(this.serial)) {
-				this.loadDemoData(opts.archiveId != null);
+				this.loadDemoData(opts.archiveId);
 				return;
 			}
 
@@ -290,14 +290,14 @@ export class ChartPanel {
 	}
 
 	/** Render a synthetic chart for a demo device; the current session also animates a live tail. */
-	private loadDemoData(isArchive: boolean): void {
-		const payload = getDemoChartPayload(this.serial);
+	private loadDemoData(archiveId?: string): void {
+		const payload = getDemoChartPayload(this.serial, archiveId);
 		if (!payload) {
 			this.post({ type: "error", message: "No demo data for this device." });
 			return;
 		}
 		this.post({ type: "chart-data", payload });
-		if (!isArchive) {
+		if (!archiveId) {
 			this.startDemoLiveTail(payload);
 		}
 	}

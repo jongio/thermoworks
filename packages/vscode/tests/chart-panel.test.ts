@@ -628,7 +628,7 @@ describe("ChartPanel.show", () => {
 		);
 	});
 
-	it("charts a demo past session without a live tail", async () => {
+	it("charts a specific demo past session (Grilled Steak) without a live tail", async () => {
 		mockCredentialStore.getCredentials.mockResolvedValue(null);
 
 		await ChartPanel.show(
@@ -636,14 +636,18 @@ describe("ChartPanel.show", () => {
 			mockCredentialStore as never,
 			mockClientManager as never,
 			mockExtensionUri,
-			{ archiveId: "demo-archive-DEMO-SIGNALS-4CH", archiveLabel: "Sunday Brisket" },
+			{ archiveId: "demo-DEMO-SIGNALS-4CH-1", archiveLabel: "Grilled Steak" },
 		);
 		signalReady();
 
+		// Charting archive index 1 yields the steak session, not the current brisket cook.
 		expect(mockPostMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
 				type: "chart-data",
-				payload: expect.objectContaining({ deviceLabel: "Backyard Smoker" }),
+				payload: expect.objectContaining({
+					deviceLabel: "Backyard Smoker",
+					series: expect.arrayContaining([expect.objectContaining({ id: "steak" })]),
+				}),
 			}),
 		);
 		expect(mockPostMessage).not.toHaveBeenCalledWith({ type: "live-status", streaming: true });

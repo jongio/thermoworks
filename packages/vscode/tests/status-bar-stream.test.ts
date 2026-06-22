@@ -41,6 +41,7 @@ vi.mock("vscode", () => ({
 
 let channelStore: Record<string, Array<{ value: number; units: string; label: string }>> = {};
 let failNextDevices = 0;
+let credsAvailable = true;
 
 vi.mock("thermoworks-sdk", () => ({
 	ThermoworksCloud: class {
@@ -61,7 +62,9 @@ import { TemperatureStatusBar } from "../src/status-bar";
 
 function createMockCredentialStore() {
 	return {
-		getCredentials: vi.fn().mockResolvedValue({ email: "a@b.com", password: "pass" }),
+		getCredentials: vi.fn(() =>
+			Promise.resolve(credsAvailable ? { email: "a@b.com", password: "pass" } : null),
+		),
 		storeCredentials: vi.fn(),
 		deleteCredentials: vi.fn(),
 	};
@@ -92,6 +95,7 @@ describe("TemperatureStatusBar - live streaming", () => {
 		configValues = { statusBarMode: "single", refreshInterval: 15 };
 		channelStore = { AAA: [{ value: 225, units: "F", label: "Pit" }] };
 		failNextDevices = 0;
+		credsAvailable = true;
 		statusBar = new TemperatureStatusBar(
 			createMockCredentialStore() as never,
 			createMockClientManager() as never,
@@ -149,6 +153,17 @@ describe("TemperatureStatusBar - live streaming", () => {
 		expect(mockStatusBarItem.text).toBe("$(flame) --");
 
 		// The scheduled retry recovers once the API responds.
+		await vi.advanceTimersByTimeAsync(15_000);
+		expect(mockStatusBarItem.text).toBe("$(flame) Smoker:225\u00B0F");
+	});
+
+	it("self-heals when credentials appear after start (e.g. tree sign-in)", async () => {
+		credsAvailable = false;
+		await statusBar.start();
+		expect(mockStatusBarItem.text).toBe("$(flame) Login");
+
+		// User signs in elsewhere; the idle re-check picks up the new credentials.
+		credsAvailable = true;
 		await vi.advanceTimersByTimeAsync(15_000);
 		expect(mockStatusBarItem.text).toBe("$(flame) Smoker:225\u00B0F");
 	});

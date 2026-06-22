@@ -166,15 +166,18 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		try {
 			const data = await this.fetchDeviceData(gen);
 			if (this.isStale(gen)) return;
-			this.clearRetry();
 			if (!data) {
-				// No credentials or no configured devices: stop streaming.
+				// No credentials or no configured devices yet: stop streaming and
+				// periodically re-check so the status bar self-heals once the user
+				// signs in or configures devices (there is no longer a polling loop).
 				this.configuredDevices = [];
 				this.channelsBySerial.clear();
 				this.ensureStream();
+				this.scheduleRetry();
 				return;
 			}
 
+			this.clearRetry();
 			this.configuredDevices = data.configuredDevices;
 			this.channelsBySerial = new Map(
 				data.configuredDevices.map((d, i) => [d.device.serial, data.channelResults[i] ?? []]),
@@ -202,7 +205,11 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		}
 	}
 
-	/** Schedule a one-shot retry of refresh() after a transient bootstrap failure. */
+	/**
+	 * Schedule a one-shot re-check of refresh(). Used both to recover from a transient
+	 * bootstrap failure and to self-heal while idle (no credentials / no devices), since
+	 * the DeviceStream only runs once there are devices to watch.
+	 */
 	private scheduleRetry(): void {
 		this.clearRetry();
 		if (this.disposed || this.inDemo) return;

@@ -91,8 +91,15 @@ export function activate(context: vscode.ExtensionContext): void {
 		}),
 
 		// Tree panel commands
-		vscode.commands.registerCommand("thermoworks.signIn", () => treeProvider.signIn()),
-		vscode.commands.registerCommand("thermoworks.signOut", () => treeProvider.signOut()),
+		vscode.commands.registerCommand("thermoworks.signIn", async () => {
+			await treeProvider.signIn();
+			// Keep the status bar in sync — signing in here must also refresh it.
+			await statusBar?.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.signOut", async () => {
+			await treeProvider.signOut();
+			await statusBar?.refresh();
+		}),
 		vscode.commands.registerCommand("thermoworks.refreshPanel", () => treeProvider.refresh()),
 		vscode.commands.registerCommand("thermoworks.openCloud", () => treeProvider.openCloud()),
 		vscode.commands.registerCommand("thermoworks.configureAlarm", () =>

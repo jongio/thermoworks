@@ -56,6 +56,7 @@ This saves your selection to `~/.thermoworks/config.json`, which the extension r
 | `ThermoWorks: Open Cloud Dashboard` | Open [cloud.thermoworks.com](https://cloud.thermoworks.com) in the browser |
 | `ThermoWorks: Show Event Details` | Show full details for a device event |
 | `ThermoWorks: Show Archive Details` | Open a detailed view of an archived session |
+| `ThermoWorks: Show Session Chart` | Chart a specific past session (archive) from the Archives list |
 | `ThermoWorks: Refresh Archives` | Reload the archives list for a device |
 | `ThermoWorks: Configure Alarm` | Set high/low alarm thresholds on a device channel |
 | `ThermoWorks: Show Temperature Chart` | Open a live temperature chart (full-session history) for a device |
@@ -70,6 +71,7 @@ This saves your selection to `~/.thermoworks/config.json`, which the extension r
 | `thermoworks.statusBarMode` | `single` | Status bar display mode: `single` shows the first device, `cycle` rotates through devices, `all` shows all devices compactly |
 | `thermoworks.cycleInterval` | `5` | Seconds between device rotations in cycle mode (minimum 1) |
 | `thermoworks.eventsLimit` | `20` | Maximum number of events to display in the Events panel (1-500) |
+| `thermoworks.archivesLimit` | `20` | Maximum number of past sessions (archives) to list per device (1-500) |
 | `thermoworks.notifications` | `true` | Show desktop notifications when a temperature alarm triggers |
 
 ## Device Panel
@@ -81,6 +83,7 @@ The extension adds a **ThermoWorks: Devices** panel to the VS Code sidebar showi
 - **Channel readings** — color-coded (green = normal, red = high alarm, blue = low alarm)
 - **Device metadata** — battery %, last seen, firmware version
 - **Firmware alerts** — orange warning when a device has outdated firmware
+- **Past sessions** — expand a device's **Archives** to browse completed sessions; each shows per-channel min/max, and the graph icon charts that session's full history
 - **Badge count** — activity bar icon shows number of devices with active alarms
 
 The panel updates live on the configured refresh interval via a shared per-device subscription. The device list is cached for 5 minutes (devices rarely change), while channel readings stream in at the configured interval.

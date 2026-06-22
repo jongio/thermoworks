@@ -127,15 +127,27 @@ export function buildChartPayload(
 
 const PANEL_COLUMN = vscode.ViewColumn.Beside;
 
+/** Options for {@link ChartPanel.show}. */
+export interface ChartOptions {
+	/** Restrict the chart to a single channel number. */
+	channelNumber?: string;
+	/** Chart a specific past session (archive) instead of the current session. */
+	archiveId?: string;
+	/** Label used for the past-session panel title. */
+	archiveLabel?: string;
+}
+
 /**
- * Manages a VS Code WebviewPanel displaying a temperature history chart rendered with
- * a bundled React + recharts app. Only one panel exists per device serial at a time.
+ * Manages a VS Code WebviewPanel displaying a temperature chart rendered with a bundled
+ * React + recharts app. One panel exists per target (a device's current session, or a
+ * specific past session).
  */
 export class ChartPanel {
 	private static panels = new Map<string, ChartPanel>();
 
 	private readonly panel: vscode.WebviewPanel;
 	private readonly serial: string;
+	private readonly panelKey: string;
 	private disposed = false;
 	private webviewReady = false;
 	private pending: ChartInbound[] = [];
@@ -145,9 +157,10 @@ export class ChartPanel {
 	private liveSeriesIds = new Set<string>();
 	private liveChannel: number | null = null;
 
-	private constructor(panel: vscode.WebviewPanel, serial: string) {
+	private constructor(panel: vscode.WebviewPanel, serial: string, panelKey: string) {
 		this.panel = panel;
 		this.serial = serial;
+		this.panelKey = panelKey;
 
 		this.panel.webview.onDidReceiveMessage((message: { type?: string }) => {
 			if (message?.type === "ready") {
@@ -162,54 +175,51 @@ export class ChartPanel {
 		this.panel.onDidDispose(() => {
 			this.disposed = true;
 			this.stopLiveTail();
-			ChartPanel.panels.delete(this.serial);
+			ChartPanel.panels.delete(this.panelKey);
 		});
 	}
 
 	/**
-	 * Show a temperature chart for a device.
-	 * Reuses an existing panel if one is already open for that serial.
+	 * Show a temperature chart for a device's current session, or for a specific past
+	 * session when `opts.archiveId` is set. Reuses an existing panel for the same target.
 	 */
 	static async show(
 		serial: string,
 		credentialStore: CredentialStore,
 		clientManager: ClientManager,
 		extensionUri: vscode.Uri,
-		channelNumber?: string,
+		opts: ChartOptions = {},
 	): Promise<void> {
-		const existing = ChartPanel.panels.get(serial);
+		const panelKey = opts.archiveId ? `${serial}::${opts.archiveId}` : serial;
+		const existing = ChartPanel.panels.get(panelKey);
 		if (existing && !existing.disposed) {
 			existing.panel.reveal(PANEL_COLUMN);
-			await existing.loadData(credentialStore, clientManager, channelNumber);
+			await existing.loadData(credentialStore, clientManager, opts);
 			return;
 		}
 
-		const panel = vscode.window.createWebviewPanel(
-			"thermoworksChart",
-			`Temperature - ${serial}`,
-			PANEL_COLUMN,
-			{
-				enableScripts: true,
-				retainContextWhenHidden: true,
-				localResourceRoots: [extensionUri],
-			},
-		);
+		const title = opts.archiveLabel ? `Session: ${opts.archiveLabel}` : `Temperature - ${serial}`;
+		const panel = vscode.window.createWebviewPanel("thermoworksChart", title, PANEL_COLUMN, {
+			enableScripts: true,
+			retainContextWhenHidden: true,
+			localResourceRoots: [extensionUri],
+		});
 
-		const instance = new ChartPanel(panel, serial);
-		ChartPanel.panels.set(serial, instance);
+		const instance = new ChartPanel(panel, serial, panelKey);
+		ChartPanel.panels.set(panelKey, instance);
 
 		panel.webview.html = getWebviewHtml(panel.webview, extensionUri);
-		await instance.loadData(credentialStore, clientManager, channelNumber);
+		await instance.loadData(credentialStore, clientManager, opts);
 	}
 
 	private async loadData(
 		credentialStore: CredentialStore,
 		clientManager: ClientManager,
-		channelNumber?: string,
+		opts: ChartOptions,
 	): Promise<void> {
 		try {
 			if (isDemoSerial(this.serial)) {
-				this.loadDemoData();
+				this.loadDemoData(opts.archiveId != null);
 				return;
 			}
 
@@ -220,6 +230,12 @@ export class ChartPanel {
 			}
 
 			const client = clientManager.getClient(creds);
+
+			if (opts.archiveId) {
+				await this.loadArchive(client, opts.archiveId, opts.channelNumber);
+				return;
+			}
+
 			const [historyResult, archivesResult] = await Promise.allSettled([
 				client.getHistory(this.serial),
 				client.getArchives(this.serial, { limit: 1 }),
@@ -240,7 +256,7 @@ export class ChartPanel {
 			}
 
 			const deviceLabel = archive?.deviceLabel ?? archive?.label ?? this.serial;
-			const payload = buildChartPayload(deviceLabel, history, archive ?? null, channelNumber);
+			const payload = buildChartPayload(deviceLabel, history, archive ?? null, opts.channelNumber);
 
 			if (payload.series.length === 0 || payload.series.every((s) => s.points.length === 0)) {
 				this.post({ type: "error", message: "No temperature readings found for this device." });
@@ -248,22 +264,42 @@ export class ChartPanel {
 			}
 
 			this.post({ type: "chart-data", payload });
-			this.startLiveTail(client, payload, channelNumber);
+			this.startLiveTail(client, payload, opts.channelNumber);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load chart data";
 			this.post({ type: "error", message });
 		}
 	}
 
-	/** Render a synthetic chart for a demo device with an animated live tail. */
-	private loadDemoData(): void {
+	/** Load and render a specific past session (archive). Past sessions are static — no live tail. */
+	private async loadArchive(
+		client: ThermoworksCloud,
+		archiveId: string,
+		channelNumber?: string,
+	): Promise<void> {
+		const archive = await client.getArchive(this.serial, archiveId);
+		const deviceLabel = archive.deviceLabel ?? archive.label ?? this.serial;
+		const payload = buildChartPayload(deviceLabel, null, archive, channelNumber);
+
+		if (payload.series.length === 0 || payload.series.every((s) => s.points.length === 0)) {
+			this.post({ type: "error", message: "No readings recorded for this session." });
+			return;
+		}
+
+		this.post({ type: "chart-data", payload });
+	}
+
+	/** Render a synthetic chart for a demo device; the current session also animates a live tail. */
+	private loadDemoData(isArchive: boolean): void {
 		const payload = getDemoChartPayload(this.serial);
 		if (!payload) {
 			this.post({ type: "error", message: "No demo data for this device." });
 			return;
 		}
 		this.post({ type: "chart-data", payload });
-		this.startDemoLiveTail(payload);
+		if (!isArchive) {
+			this.startDemoLiveTail(payload);
+		}
 	}
 
 	/** Simulate a live tail in demo mode by drifting the primary channel over time. */

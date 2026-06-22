@@ -26,19 +26,22 @@ vi.mock("vscode", () => ({
 
 // ─── SDK mock ────────────────────────────────────────────────────────────────
 
-const { mockGetArchives, mockGetHistory, mockSubscribe, mockUnsubscribe } = vi.hoisted(() => {
-	const unsub = vi.fn();
-	return {
-		mockGetArchives: vi.fn(),
-		mockGetHistory: vi.fn(),
-		mockUnsubscribe: unsub,
-		mockSubscribe: vi.fn(() => ({ unsubscribe: unsub })),
-	};
-});
+const { mockGetArchives, mockGetArchive, mockGetHistory, mockSubscribe, mockUnsubscribe } =
+	vi.hoisted(() => {
+		const unsub = vi.fn();
+		return {
+			mockGetArchives: vi.fn(),
+			mockGetArchive: vi.fn(),
+			mockGetHistory: vi.fn(),
+			mockUnsubscribe: unsub,
+			mockSubscribe: vi.fn(() => ({ unsubscribe: unsub })),
+		};
+	});
 
 vi.mock("thermoworks-sdk", () => ({
 	ThermoworksCloud: class {
 		getArchives = mockGetArchives;
+		getArchive = mockGetArchive;
 		getHistory = mockGetHistory;
 		subscribe = mockSubscribe;
 		close = vi.fn();
@@ -319,6 +322,7 @@ describe("ChartPanel.show", () => {
 		});
 		mockClientManager.getClient.mockReturnValue({
 			getArchives: mockGetArchives,
+			getArchive: mockGetArchive,
 			getHistory: mockGetHistory,
 			subscribe: mockSubscribe,
 		});
@@ -598,5 +602,50 @@ describe("ChartPanel.show", () => {
 		expect(mockGetHistory).not.toHaveBeenCalled();
 
 		disposeHandler?.(); // clear the demo animation interval
+	});
+
+	it("charts a specific past session (archive) without a live tail", async () => {
+		mockCredentialStore.getCredentials.mockResolvedValue({ email: "a@b.com", password: "pass" });
+		mockGetArchive.mockResolvedValue(makeArchive({ id: "A1", label: "Brisket" }));
+
+		await ChartPanel.show(
+			"SERIAL-1",
+			mockCredentialStore as never,
+			mockClientManager as never,
+			mockExtensionUri,
+			{ archiveId: "A1", archiveLabel: "Brisket" },
+		);
+		signalReady();
+
+		expect(mockGetArchive).toHaveBeenCalledWith("SERIAL-1", "A1");
+		expect(mockGetHistory).not.toHaveBeenCalled();
+		expect(mockSubscribe).not.toHaveBeenCalled();
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "chart-data",
+				payload: expect.objectContaining({ source: "archive" }),
+			}),
+		);
+	});
+
+	it("charts a demo past session without a live tail", async () => {
+		mockCredentialStore.getCredentials.mockResolvedValue(null);
+
+		await ChartPanel.show(
+			"DEMO-SIGNALS-4CH",
+			mockCredentialStore as never,
+			mockClientManager as never,
+			mockExtensionUri,
+			{ archiveId: "demo-archive-DEMO-SIGNALS-4CH", archiveLabel: "Sunday Brisket" },
+		);
+		signalReady();
+
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "chart-data",
+				payload: expect.objectContaining({ deviceLabel: "Backyard Smoker" }),
+			}),
+		);
+		expect(mockPostMessage).not.toHaveBeenCalledWith({ type: "live-status", streaming: true });
 	});
 });

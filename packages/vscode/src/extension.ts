@@ -129,13 +129,24 @@ export function activate(context: vscode.ExtensionContext): void {
 					vscode.window.showErrorMessage("ThermoWorks: No device serial provided.");
 					return;
 				}
-				await ChartPanel.show(
-					serial,
-					credentialStore,
-					clientManager,
-					context.extensionUri,
+				await ChartPanel.show(serial, credentialStore, clientManager, context.extensionUri, {
 					channelNumber,
-				);
+				});
+			},
+		),
+		vscode.commands.registerCommand(
+			"thermoworks.showArchiveChart",
+			async (archiveNode: { serial?: string; archive?: { id: string; label: string | null } }) => {
+				const serial = archiveNode?.serial;
+				const archive = archiveNode?.archive;
+				if (!serial || !archive) {
+					vscode.window.showErrorMessage("ThermoWorks: No session selected.");
+					return;
+				}
+				await ChartPanel.show(serial, credentialStore, clientManager, context.extensionUri, {
+					archiveId: archive.id,
+					archiveLabel: archive.label ?? "Session",
+				});
 			},
 		),
 		vscode.commands.registerCommand("thermoworks.showArchiveDetails", (archiveNode) => {

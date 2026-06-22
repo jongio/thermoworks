@@ -478,7 +478,7 @@ describe("ThermoworksTreeProvider", () => {
 			expect(children.length).toBe(1);
 			expect(children[0]).toBeInstanceOf(ArchiveNode);
 			expect((children[0] as ArchiveNode).label).toBe("Brisket Cook");
-			expect(mockGetArchives).toHaveBeenCalledWith("ABC123", { limit: 10 });
+			expect(mockGetArchives).toHaveBeenCalledWith("ABC123", { limit: 20 });
 		});
 
 		it("returns error node when no archives exist", async () => {

@@ -502,7 +502,8 @@ export class ThermoworksTreeProvider
 		}
 
 		const client = await this.getClient();
-		const archives = await client.getArchives(serial, { limit: 10 });
+		const limit = vscode.workspace.getConfiguration("thermoworks").get<number>("archivesLimit", 20);
+		const archives = await client.getArchives(serial, { limit });
 		this.archiveCaches.set(serial, { archives, fetchedAt: now });
 		return archives;
 	}

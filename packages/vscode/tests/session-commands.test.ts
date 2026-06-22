@@ -7,6 +7,7 @@ const mockShowQuickPick = vi.fn();
 const mockShowInputBox = vi.fn();
 const mockShowInformationMessage = vi.fn();
 const mockShowErrorMessage = vi.fn();
+const mockShowWarningMessage = vi.fn();
 
 vi.mock("vscode", () => ({
 	window: {
@@ -14,6 +15,7 @@ vi.mock("vscode", () => ({
 		showInputBox: (...args: unknown[]) => mockShowInputBox(...args),
 		showInformationMessage: (...args: unknown[]) => mockShowInformationMessage(...args),
 		showErrorMessage: (...args: unknown[]) => mockShowErrorMessage(...args),
+		showWarningMessage: (...args: unknown[]) => mockShowWarningMessage(...args),
 	},
 }));
 
@@ -22,19 +24,21 @@ vi.mock("vscode", () => ({
 const mockGetDevices = vi.fn();
 const mockStartSession = vi.fn();
 const mockEndSession = vi.fn();
+const mockClearSession = vi.fn();
 
 vi.mock("thermoworks-sdk", () => ({
 	ThermoworksCloud: class {
 		getDevices = mockGetDevices;
 		startSession = mockStartSession;
 		endSession = mockEndSession;
+		clearSession = mockClearSession;
 	},
 }));
 
 // ─── Import after mocks ──────────────────────────────────────────────────────
 
 import { ClientManager } from "../src/client-manager";
-import { endSession, startSession } from "../src/session-commands";
+import { clearSession, endSession, startSession } from "../src/session-commands";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -296,6 +300,107 @@ describe("session-commands", () => {
 			await endSession(clientManager, credentialStore);
 
 			expect(mockShowInformationMessage).toHaveBeenCalledWith("Session ended on ABC123.");
+		});
+	});
+
+	describe("clearSession", () => {
+		it("shows error when not signed in (via pickDevice)", async () => {
+			const credentialStore = makeCredentialStore(false);
+			await clearSession(clientManager, credentialStore);
+
+			expect(mockShowErrorMessage).toHaveBeenCalledWith("Not signed in. Please sign in first.");
+			expect(mockShowWarningMessage).not.toHaveBeenCalled();
+		});
+
+		it("shows info when no devices have active sessions", async () => {
+			const credentialStore = makeCredentialStore();
+			mockGetDevices.mockResolvedValue([makeDevice({ sessionStart: null })]);
+
+			await clearSession(clientManager, credentialStore);
+
+			expect(mockShowInformationMessage).toHaveBeenCalledWith("No devices match the criteria.");
+		});
+
+		it("does nothing when user cancels device picker", async () => {
+			const credentialStore = makeCredentialStore();
+			const device = makeDevice({ sessionStart: new Date() });
+			mockGetDevices.mockResolvedValue([device]);
+			mockShowQuickPick.mockResolvedValue(undefined);
+
+			await clearSession(clientManager, credentialStore);
+
+			expect(mockShowWarningMessage).not.toHaveBeenCalled();
+			expect(mockClearSession).not.toHaveBeenCalled();
+		});
+
+		it("does not call SDK when user cancels confirmation modal", async () => {
+			const credentialStore = makeCredentialStore();
+			const device = makeDevice({ sessionStart: new Date() });
+			mockGetDevices.mockResolvedValue([device]);
+			mockShowQuickPick.mockResolvedValue({ label: "Smoker", device });
+			mockShowWarningMessage.mockResolvedValue(undefined);
+
+			await clearSession(clientManager, credentialStore);
+
+			expect(mockShowWarningMessage).toHaveBeenCalled();
+			expect(mockClearSession).not.toHaveBeenCalled();
+		});
+
+		it("clears session after confirmation", async () => {
+			const credentialStore = makeCredentialStore();
+			const device = makeDevice({ sessionStart: new Date() });
+			mockGetDevices.mockResolvedValue([device]);
+			mockShowQuickPick.mockResolvedValue({ label: "Smoker", device });
+			mockShowWarningMessage.mockResolvedValue("Clear Session");
+			mockClearSession.mockResolvedValue({ success: true, data: null, error: null });
+
+			await clearSession(clientManager, credentialStore);
+
+			expect(mockClearSession).toHaveBeenCalledWith("ABC123");
+			expect(mockShowInformationMessage).toHaveBeenCalledWith("Session cleared on Smoker.");
+		});
+
+		it("shows error notification on SDK failure", async () => {
+			const credentialStore = makeCredentialStore();
+			const device = makeDevice({ sessionStart: new Date() });
+			mockGetDevices.mockResolvedValue([device]);
+			mockShowQuickPick.mockResolvedValue({ label: "Smoker", device });
+			mockShowWarningMessage.mockResolvedValue("Clear Session");
+			mockClearSession.mockResolvedValue({
+				success: false,
+				data: null,
+				error: "Session locked",
+			});
+
+			await clearSession(clientManager, credentialStore);
+
+			expect(mockShowErrorMessage).toHaveBeenCalledWith(
+				"Failed to clear session: Session locked",
+			);
+		});
+
+		it("skips picker when deviceNode is provided (tree action)", async () => {
+			const credentialStore = makeCredentialStore();
+			const node = { serial: "ABC123", label: "Smoker" } as any;
+			mockShowWarningMessage.mockResolvedValue("Clear Session");
+			mockClearSession.mockResolvedValue({ success: true, data: null, error: null });
+
+			await clearSession(clientManager, credentialStore, node);
+
+			expect(mockShowQuickPick).not.toHaveBeenCalled();
+			expect(mockClearSession).toHaveBeenCalledWith("ABC123");
+			expect(mockShowInformationMessage).toHaveBeenCalledWith("Session cleared on Smoker.");
+		});
+
+		it("uses serial as device name when node label is undefined", async () => {
+			const credentialStore = makeCredentialStore();
+			const node = { serial: "XYZ789", label: undefined } as any;
+			mockShowWarningMessage.mockResolvedValue("Clear Session");
+			mockClearSession.mockResolvedValue({ success: true, data: null, error: null });
+
+			await clearSession(clientManager, credentialStore, node);
+
+			expect(mockShowInformationMessage).toHaveBeenCalledWith("Session cleared on XYZ789.");
 		});
 	});
 });

@@ -104,7 +104,11 @@ export class DeviceNode extends vscode.TreeItem {
 		const statusParts: string[] = [device.type ?? "Unknown"];
 		if (!isOnline) statusParts.push("(Offline)");
 		if (firmwareOutdated) statusParts.push("\u2B06\uFE0F Update");
-		if (hasSession) statusParts.push("\uD83D\uDD34 Recording");
+		if (hasSession) {
+			const sessionText = device.sessionLabel || "Recording";
+			const elapsed = formatElapsed(device.sessionStart);
+			statusParts.push(`\uD83D\uDD34 ${sessionText}${elapsed ? ` ${elapsed}` : ""}`);
+		}
 		this.description = statusParts.join(" ");
 
 		// Icon priority: alarm > firmware outdated > session recording > thumbnail > online/offline
@@ -321,6 +325,28 @@ export class ArchiveChannelNode extends vscode.TreeItem {
 		this.iconPath = new vscode.ThemeIcon("graph-line");
 		this.contextValue = "archiveChannel";
 	}
+}
+
+// ─── Duration Helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Format elapsed time from a start date to now (or a given reference time).
+ * Returns compact human-readable duration: "2h 5m" / "45m" / "30s".
+ */
+export function formatElapsed(start: Date, now: Date = new Date()): string {
+	const ms = now.getTime() - start.getTime();
+	if (ms < 0) return "";
+	const totalSeconds = Math.floor(ms / 1_000);
+	if (totalSeconds < 60) {
+		return `${totalSeconds}s`;
+	}
+	const totalMinutes = Math.floor(totalSeconds / 60);
+	const hours = Math.floor(totalMinutes / 60);
+	const minutes = totalMinutes % 60;
+	if (hours > 0) {
+		return `${hours}h ${minutes}m`;
+	}
+	return `${minutes}m`;
 }
 
 // ─── Archive Helpers ─────────────────────────────────────────────────────────

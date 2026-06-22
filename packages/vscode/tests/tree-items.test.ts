@@ -50,6 +50,7 @@ import {
 	DeviceNode,
 	DevicesFolderNode,
 	ErrorNode,
+	formatElapsed,
 	LoadingNode,
 } from "../src/tree/tree-items";
 
@@ -235,18 +236,41 @@ describe("tree-items", () => {
 			expect(node.label).toBe("ABC123");
 		});
 
-		it("shows recording indicator for device with active session", () => {
-			const device = { ...mockDevice, sessionStart: new Date("2026-06-07T08:00:00Z") };
+		it("shows session label and elapsed time for active session", () => {
+			const now = new Date("2026-06-07T09:23:00Z");
+			const start = new Date("2026-06-07T08:00:00Z");
+			// Mock Date.now for elapsed calculation
+			vi.setSystemTime(now);
+			const device = {
+				...mockDevice,
+				sessionStart: start,
+				sessionLabel: "Sunday Brisket",
+			};
 			const node = new DeviceNode(device, false);
-			expect(node.description).toContain("\uD83D\uDD34 Recording");
+			expect(node.description).toContain("\uD83D\uDD34 Sunday Brisket 1h 23m");
 			expect((node.iconPath as { id: string }).id).toBe("record");
+			vi.useRealTimers();
+		});
+
+		it("shows Recording as fallback when sessionLabel is null", () => {
+			const now = new Date("2026-06-07T08:45:00Z");
+			const start = new Date("2026-06-07T08:00:00Z");
+			vi.setSystemTime(now);
+			const device = {
+				...mockDevice,
+				sessionStart: start,
+				sessionLabel: null,
+			};
+			const node = new DeviceNode(device, false);
+			expect(node.description).toContain("\uD83D\uDD34 Recording 45m");
+			vi.useRealTimers();
 		});
 
 		it("alarm icon takes priority over session icon", () => {
 			const device = { ...mockDevice, sessionStart: new Date("2026-06-07T08:00:00Z") };
 			const node = new DeviceNode(device, true);
 			expect((node.iconPath as { id: string }).id).toBe("warning");
-			expect(node.description).toContain("\uD83D\uDD34 Recording");
+			expect(node.description).toContain("\uD83D\uDD34");
 		});
 	});
 
@@ -316,6 +340,49 @@ describe("tree-items", () => {
 			const node = new DeviceDetailNode("Battery", "85%", "ABC123");
 			expect(node.label).toBe("Battery: 85%");
 			expect(node.id).toBe("thermoworks-detail-ABC123-battery");
+		});
+	});
+
+	describe("formatElapsed", () => {
+		it("returns hours and minutes for long durations", () => {
+			const start = new Date("2026-06-07T08:00:00Z");
+			const now = new Date("2026-06-07T10:05:00Z");
+			expect(formatElapsed(start, now)).toBe("2h 5m");
+		});
+
+		it("returns minutes only when under one hour", () => {
+			const start = new Date("2026-06-07T08:00:00Z");
+			const now = new Date("2026-06-07T08:45:00Z");
+			expect(formatElapsed(start, now)).toBe("45m");
+		});
+
+		it("returns seconds only when under one minute", () => {
+			const start = new Date("2026-06-07T08:00:00Z");
+			const now = new Date("2026-06-07T08:00:30Z");
+			expect(formatElapsed(start, now)).toBe("30s");
+		});
+
+		it("returns 0s for zero elapsed", () => {
+			const time = new Date("2026-06-07T08:00:00Z");
+			expect(formatElapsed(time, time)).toBe("0s");
+		});
+
+		it("returns empty string for negative elapsed (future start)", () => {
+			const start = new Date("2026-06-07T10:00:00Z");
+			const now = new Date("2026-06-07T08:00:00Z");
+			expect(formatElapsed(start, now)).toBe("");
+		});
+
+		it("handles exactly one hour", () => {
+			const start = new Date("2026-06-07T08:00:00Z");
+			const now = new Date("2026-06-07T09:00:00Z");
+			expect(formatElapsed(start, now)).toBe("1h 0m");
+		});
+
+		it("handles large durations (24+ hours)", () => {
+			const start = new Date("2026-06-06T08:00:00Z");
+			const now = new Date("2026-06-07T10:30:00Z");
+			expect(formatElapsed(start, now)).toBe("26h 30m");
 		});
 	});
 

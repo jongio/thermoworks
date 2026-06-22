@@ -7,7 +7,7 @@ import { ClientManager } from "./client-manager";
 import { CredentialStore } from "./credentials";
 import { renameDevice, resetMinMax, setFanEnabled, setFanTarget } from "./device-control";
 import { clearAlarmInline, setAlarmInline } from "./inline-alarm";
-import { endSession, startSession } from "./session-commands";
+import { clearSession, endSession, startSession } from "./session-commands";
 import { TemperatureStatusBar } from "./status-bar";
 import { EventsTreeProvider } from "./tree/events-tree-provider";
 import { ThermoworksTreeProvider } from "./tree/thermoworks-tree-provider";
@@ -176,6 +176,10 @@ export function activate(context: vscode.ExtensionContext): void {
 		}),
 		vscode.commands.registerCommand("thermoworks.endSession", async () => {
 			await endSession(clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.clearSession", async (node?: DeviceNode) => {
+			await clearSession(clientManager, credentialStore, node);
 			await treeProvider.refresh();
 		}),
 

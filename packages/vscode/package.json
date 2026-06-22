@@ -161,6 +161,11 @@
         "icon": "$(debug-stop)"
       },
       {
+        "command": "thermoworks.clearSession",
+        "title": "ThermoWorks: Clear Session",
+        "icon": "$(trash)"
+      },
+      {
         "command": "thermoworks.setAlarmInline",
         "title": "Set Alarm\u2026",
         "icon": "$(bell)"
@@ -301,6 +306,16 @@
         {
           "command": "thermoworks.resetMinMax",
           "when": "view == thermoworksPanel && viewItem == channelNode",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.clearSession",
+          "when": "view == thermoworksPanel && viewItem == device",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.clearSession",
+          "when": "view == thermoworksPanel && viewItem == deviceWithFan",
           "group": "inline"
         }
       ]

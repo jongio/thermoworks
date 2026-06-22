@@ -17,6 +17,7 @@ import type {
 } from "./chart-protocol";
 import type { ClientManager } from "./client-manager";
 import type { CredentialStore } from "./credentials";
+import { getDemoChartPayload, getDemoLiveSeriesId, isDemoSerial } from "./demo-data";
 
 /** Fallback line color when the API doesn't provide one. */
 export const FALLBACK_COLOR = "#4fc3f7";
@@ -139,6 +140,7 @@ export class ChartPanel {
 	private webviewReady = false;
 	private pending: ChartInbound[] = [];
 	private subscription: Subscription | undefined;
+	private demoTimer: ReturnType<typeof setInterval> | undefined;
 	private liveSource: "history" | "archive" = "history";
 	private liveSeriesIds = new Set<string>();
 	private liveChannel: number | null = null;
@@ -206,6 +208,11 @@ export class ChartPanel {
 		channelNumber?: string,
 	): Promise<void> {
 		try {
+			if (isDemoSerial(this.serial)) {
+				this.loadDemoData();
+				return;
+			}
+
 			const creds = await credentialStore.getCredentials();
 			if (!creds) {
 				this.post({ type: "error", message: "Not signed in. Please sign in first." });
@@ -246,6 +253,32 @@ export class ChartPanel {
 			const message = error instanceof Error ? error.message : "Failed to load chart data";
 			this.post({ type: "error", message });
 		}
+	}
+
+	/** Render a synthetic chart for a demo device with an animated live tail. */
+	private loadDemoData(): void {
+		const payload = getDemoChartPayload(this.serial);
+		if (!payload) {
+			this.post({ type: "error", message: "No demo data for this device." });
+			return;
+		}
+		this.post({ type: "chart-data", payload });
+		this.startDemoLiveTail(payload);
+	}
+
+	/** Simulate a live tail in demo mode by drifting the primary channel over time. */
+	private startDemoLiveTail(payload: ChartPayload): void {
+		this.stopLiveTail();
+		const seriesId = getDemoLiveSeriesId(this.serial);
+		if (!seriesId) return;
+		const series = payload.series.find((s) => s.id === seriesId);
+		let value = series?.points.at(-1)?.y ?? 200;
+
+		this.post({ type: "live-status", streaming: true });
+		this.demoTimer = setInterval(() => {
+			value = Math.round((value + (Math.random() - 0.4) * 2) * 10) / 10;
+			this.post({ type: "live-point", seriesId, point: { t: Date.now(), y: value } });
+		}, 2_000);
 	}
 
 	/**
@@ -298,11 +331,15 @@ export class ChartPanel {
 		}
 	}
 
-	/** Stop the live subscription, if any. */
+	/** Stop the live subscription and any demo animation. */
 	private stopLiveTail(): void {
 		if (this.subscription) {
 			this.subscription.unsubscribe();
 			this.subscription = undefined;
+		}
+		if (this.demoTimer) {
+			clearInterval(this.demoTimer);
+			this.demoTimer = undefined;
 		}
 	}
 

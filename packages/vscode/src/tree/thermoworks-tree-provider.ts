@@ -3,7 +3,13 @@ import { ThermoworksCloud } from "thermoworks-sdk";
 import * as vscode from "vscode";
 import type { ClientManager } from "../client-manager";
 import type { CredentialStore } from "../credentials";
-import { DEMO_DEVICES, DEMO_LATEST_FIRMWARE, DEMO_USER, getDemoChannels } from "../demo-data";
+import {
+	DEMO_ARCHIVES,
+	DEMO_DEVICES,
+	DEMO_LATEST_FIRMWARE,
+	DEMO_USER,
+	getDemoChannels,
+} from "../demo-data";
 import { type DeviceSnapshot, DeviceStream } from "../device-stream";
 import {
 	AccountDetailNode,
@@ -430,7 +436,11 @@ export class ThermoworksTreeProvider
 
 	private async getArchiveNodes(serial: string): Promise<TreeNode[]> {
 		if (this.demoMode) {
-			return [new ErrorNode("Archives not available in demo mode")];
+			const archives = DEMO_ARCHIVES[serial] ?? [];
+			if (archives.length === 0) {
+				return [new ErrorNode("No archived sessions")];
+			}
+			return archives.map((a) => new ArchiveNode(a, serial));
 		}
 
 		try {

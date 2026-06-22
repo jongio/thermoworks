@@ -575,4 +575,28 @@ describe("ChartPanel.show", () => {
 
 		expect(mockUnsubscribe).toHaveBeenCalled();
 	});
+
+	it("renders demo data (no credentials) for a demo serial", async () => {
+		// Demo serials never touch the SDK client.
+		mockCredentialStore.getCredentials.mockResolvedValue(null);
+
+		await ChartPanel.show(
+			"DEMO-SIGNALS-4CH",
+			mockCredentialStore as never,
+			mockClientManager as never,
+			mockExtensionUri,
+		);
+		signalReady();
+
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: "chart-data",
+				payload: expect.objectContaining({ deviceLabel: "Backyard Smoker", source: "history" }),
+			}),
+		);
+		expect(mockPostMessage).toHaveBeenCalledWith({ type: "live-status", streaming: true });
+		expect(mockGetHistory).not.toHaveBeenCalled();
+
+		disposeHandler?.(); // clear the demo animation interval
+	});
 });

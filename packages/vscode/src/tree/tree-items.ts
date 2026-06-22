@@ -124,6 +124,8 @@ export class DeviceNode extends vscode.TreeItem {
 
 export class ChannelNode extends vscode.TreeItem {
 	readonly type = "channel" as const;
+	readonly serial: string;
+	readonly channelNumber: number;
 
 	constructor(channel: DeviceChannel, deviceSerial: string, index: number) {
 		const label = channel.label || `Channel ${index + 1}`;
@@ -137,25 +139,36 @@ export class ChannelNode extends vscode.TreeItem {
 		}
 
 		super(label, vscode.TreeItemCollapsibleState.None);
+		this.serial = deviceSerial;
+		this.channelNumber = channel.number ? Number.parseInt(channel.number, 10) : index;
 		this.id = `thermoworks-channel-${deviceSerial}-${index}`;
 		this.description = valueText;
-		this.contextValue = "channel";
+		this.contextValue = "channelNode";
+
+		const thresholdParts: string[] = [];
+		if (channel.alarmHigh?.enabled && channel.alarmHigh.value != null) {
+			thresholdParts.push(`High: ${channel.alarmHigh.value}\u00B0${channel.alarmHigh.units ?? ""}`);
+		}
+		if (channel.alarmLow?.enabled && channel.alarmLow.value != null) {
+			thresholdParts.push(`Low: ${channel.alarmLow.value}\u00B0${channel.alarmLow.units ?? ""}`);
+		}
+		const thresholdInfo = thresholdParts.length > 0 ? ` [${thresholdParts.join(", ")}]` : "";
 
 		switch (alarm) {
 			case "high":
 				this.iconPath = new vscode.ThemeIcon("circle-filled", new vscode.ThemeColor("charts.red"));
-				this.tooltip = `${label}: ${valueText} - HIGH ALARM`;
+				this.tooltip = `${label}: ${valueText} - HIGH ALARM${thresholdInfo}`;
 				break;
 			case "low":
 				this.iconPath = new vscode.ThemeIcon("circle-filled", new vscode.ThemeColor("charts.blue"));
-				this.tooltip = `${label}: ${valueText} - LOW ALARM`;
+				this.tooltip = `${label}: ${valueText} - LOW ALARM${thresholdInfo}`;
 				break;
 			default:
 				this.iconPath = new vscode.ThemeIcon(
 					"circle-filled",
 					new vscode.ThemeColor("charts.green"),
 				);
-				this.tooltip = `${label}: ${valueText}`;
+				this.tooltip = `${label}: ${valueText}${thresholdInfo}`;
 				break;
 		}
 	}
@@ -199,7 +212,7 @@ export class EventsFolderNode extends vscode.TreeItem {
 }
 
 /** Maps numeric severity to icon, color, and label. */
-function getSeverityDisplay(severity: number): {
+export function getSeverityDisplay(severity: number): {
 	icon: string;
 	color: vscode.ThemeColor;
 	label: string;

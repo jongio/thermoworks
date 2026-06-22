@@ -5,9 +5,12 @@ import { ChartPanel } from "./chart-panel";
 import { registerChatParticipant } from "./chat-participant";
 import { ClientManager } from "./client-manager";
 import { CredentialStore } from "./credentials";
+import { clearAlarmInline, setAlarmInline } from "./inline-alarm";
 import { endSession, startSession } from "./session-commands";
 import { TemperatureStatusBar } from "./status-bar";
+import { EventsTreeProvider } from "./tree/events-tree-provider";
 import { ThermoworksTreeProvider } from "./tree/thermoworks-tree-provider";
+import type { ChannelNode, DeviceNode } from "./tree/tree-items";
 
 let statusBar: TemperatureStatusBar | undefined;
 
@@ -28,6 +31,13 @@ export function activate(context: vscode.ExtensionContext): void {
 
 	treeProvider.initialize();
 	treeProvider.startAutoRefresh(context);
+
+	// ─── Events View ────────────────────────────────────────────────────
+	const eventsProvider = new EventsTreeProvider(credentialStore, clientManager);
+	const eventsView = vscode.window.createTreeView("thermoworksEvents", {
+		treeDataProvider: eventsProvider,
+		showCollapseAll: false,
+	});
 
 	// ─── Events Output Channel ──────────────────────────────────────────
 	const eventsOutput = vscode.window.createOutputChannel("ThermoWorks Events");
@@ -168,6 +178,36 @@ export function activate(context: vscode.ExtensionContext): void {
 			await treeProvider.refresh();
 		}),
 
+		// Inline alarm commands (channel tree actions)
+		vscode.commands.registerCommand("thermoworks.setAlarmInline", async (node: ChannelNode) => {
+			await setAlarmInline(node, clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.clearAlarmInline", async (node: ChannelNode) => {
+			await clearAlarmInline(node, clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+
+		// Events view commands
+		vscode.commands.registerCommand("thermoworks.refreshEvents", () => eventsProvider.refresh()),
+		vscode.commands.registerCommand(
+			"thermoworks.filterEventsByDevice",
+			async (node: DeviceNode) => {
+				const serial = node?.serial;
+				const label = (node?.label as string) ?? serial;
+				if (!serial) {
+					vscode.window.showErrorMessage("ThermoWorks: No device selected.");
+					return;
+				}
+				eventsProvider.setDeviceFilter(serial, label);
+			},
+		),
+		vscode.commands.registerCommand("thermoworks.clearEventsFilter", () => {
+			eventsProvider.clearDeviceFilter();
+		}),
+
+		eventsView,
+		eventsProvider,
 		treeView,
 		treeProvider,
 		eventsOutput,

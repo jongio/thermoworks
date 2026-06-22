@@ -30,6 +30,7 @@
   ],
   "activationEvents": [
     "onView:thermoworksPanel",
+    "onView:thermoworksEvents",
     "onCommand:thermoworks.login"
   ],
   "main": "./dist/extension.js",
@@ -62,6 +63,11 @@
           "id": "thermoworksPanel",
           "name": "Devices",
           "icon": "images/fire.svg"
+        },
+        {
+          "id": "thermoworksEvents",
+          "name": "Events",
+          "icon": "images/fire.svg"
         }
       ]
     },
@@ -69,6 +75,11 @@
       {
         "view": "thermoworksPanel",
         "contents": "Sign in to ThermoWorks Cloud to view your devices and temperatures.\n[Sign In](command:thermoworks.signIn)\n\n[Open ThermoWorks Cloud](command:thermoworks.openCloud)",
+        "when": "!thermoworks.isAuthenticated"
+      },
+      {
+        "view": "thermoworksEvents",
+        "contents": "Sign in to ThermoWorks Cloud to view events.\n[Sign In](command:thermoworks.signIn)",
         "when": "!thermoworks.isAuthenticated"
       }
     ],
@@ -148,6 +159,31 @@
         "command": "thermoworks.endSession",
         "title": "ThermoWorks: End Session",
         "icon": "$(debug-stop)"
+      },
+      {
+        "command": "thermoworks.setAlarmInline",
+        "title": "Set Alarm\u2026",
+        "icon": "$(bell)"
+      },
+      {
+        "command": "thermoworks.clearAlarmInline",
+        "title": "Clear Alarm",
+        "icon": "$(bell-slash)"
+      },
+      {
+        "command": "thermoworks.refreshEvents",
+        "title": "ThermoWorks: Refresh Events",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "thermoworks.filterEventsByDevice",
+        "title": "ThermoWorks: Filter Events by Device",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "thermoworks.clearEventsFilter",
+        "title": "ThermoWorks: Show All Events",
+        "icon": "$(clear-all)"
       }
     ],
     "menus": {
@@ -160,6 +196,16 @@
         {
           "command": "thermoworks.openCloud",
           "when": "view == thermoworksPanel",
+          "group": "navigation"
+        },
+        {
+          "command": "thermoworks.refreshEvents",
+          "when": "view == thermoworksEvents && thermoworks.isAuthenticated",
+          "group": "navigation"
+        },
+        {
+          "command": "thermoworks.clearEventsFilter",
+          "when": "view == thermoworksEvents && thermoworks.isAuthenticated",
           "group": "navigation"
         }
       ],
@@ -184,6 +230,21 @@
         },
         {
           "command": "thermoworks.showTemperatureChart",
+          "when": "view == thermoworksPanel && viewItem == device",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.setAlarmInline",
+          "when": "view == thermoworksPanel && viewItem == channelNode",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.clearAlarmInline",
+          "when": "view == thermoworksPanel && viewItem == channelNode",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.filterEventsByDevice",
           "when": "view == thermoworksPanel && viewItem == device",
           "group": "inline"
         }

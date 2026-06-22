@@ -69,7 +69,6 @@ export function Chart({ series, liveRows, thresholds, units }: ChartProps) {
 					<XAxis
 						dataKey="t"
 						type="number"
-						scale="time"
 						domain={["dataMin", "dataMax"]}
 						tickFormatter={formatTime}
 						tick={{ fontSize: 11, fill: textColor }}

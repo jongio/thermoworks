@@ -26,6 +26,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 	private readonly credentialStore: CredentialStore;
 	private readonly clientManager: ClientManager;
 	private deviceStream: DeviceStream | undefined;
+	private retryTimer: ReturnType<typeof setTimeout> | undefined;
 	private blinkTimer: ReturnType<typeof setInterval> | undefined;
 	private cycleTimer: ReturnType<typeof setInterval> | undefined;
 	private refreshing = false;
@@ -119,6 +120,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 	simulateAlarm(mode: AlarmState): void {
 		// Invalidate any in-flight refresh and pause live updates during the demo.
 		this.generation++;
+		this.clearRetry();
 		this.deviceStream?.setDevices([]);
 
 		const demoText =
@@ -164,6 +166,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		try {
 			const data = await this.fetchDeviceData(gen);
 			if (this.isStale(gen)) return;
+			this.clearRetry();
 			if (!data) {
 				// No credentials or no configured devices: stop streaming.
 				this.configuredDevices = [];
@@ -184,15 +187,35 @@ export class TemperatureStatusBar implements vscode.Disposable {
 			this.ensureStream();
 		} catch (error) {
 			if (this.isStale(gen)) return;
-			this.clientManager.close();
 			this.applyAlarmStyle("none");
 
 			const message = error instanceof Error ? error.message : "Unknown error";
 			this.lastText = "$(flame) --";
 			this.item.text = this.lastText;
-			this.item.tooltip = `ThermoWorks: Error — ${message}. Click to retry.`;
+			this.item.tooltip = `ThermoWorks: Error — ${message}. Retrying…`;
+
+			// The DeviceStream only starts on success, so schedule a bootstrap retry to
+			// recover from a transient failure during start()/login().
+			this.scheduleRetry();
 		} finally {
 			this.refreshing = false;
+		}
+	}
+
+	/** Schedule a one-shot retry of refresh() after a transient bootstrap failure. */
+	private scheduleRetry(): void {
+		this.clearRetry();
+		if (this.disposed || this.inDemo) return;
+		this.retryTimer = setTimeout(() => {
+			this.retryTimer = undefined;
+			void this.refresh();
+		}, getRefreshIntervalMs());
+	}
+
+	private clearRetry(): void {
+		if (this.retryTimer) {
+			clearTimeout(this.retryTimer);
+			this.retryTimer = undefined;
 		}
 	}
 
@@ -387,6 +410,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 	dispose(): void {
 		this.disposed = true;
 		this.generation++;
+		this.clearRetry();
 		this.deviceStream?.dispose();
 		this.deviceStream = undefined;
 		this.stopCycleTimer();
@@ -401,6 +425,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 
 	private invalidateAndReset(): void {
 		this.generation++;
+		this.clearRetry();
 		this.deviceStream?.dispose();
 		this.deviceStream = undefined;
 		this.configuredDevices = [];

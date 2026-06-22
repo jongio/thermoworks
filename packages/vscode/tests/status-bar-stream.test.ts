@@ -40,6 +40,7 @@ vi.mock("vscode", () => ({
 // ─── Mock thermoworks-sdk with a mutable channel store ───────────────────────
 
 let channelStore: Record<string, Array<{ value: number; units: string; label: string }>> = {};
+let failNextDevices = 0;
 
 vi.mock("thermoworks-sdk", () => ({
 	ThermoworksCloud: class {
@@ -68,7 +69,13 @@ function createMockCredentialStore() {
 
 function createMockClientManager() {
 	const client = {
-		getDevices: vi.fn().mockResolvedValue([{ serial: "AAA" }]),
+		getDevices: vi.fn(() => {
+			if (failNextDevices > 0) {
+				failNextDevices--;
+				return Promise.reject(new Error("transient blip"));
+			}
+			return Promise.resolve([{ serial: "AAA" }]);
+		}),
 		getAllDeviceChannels: vi.fn((serial: string) => Promise.resolve(channelStore[serial] ?? [])),
 		close: vi.fn(),
 	};
@@ -84,6 +91,7 @@ describe("TemperatureStatusBar - live streaming", () => {
 		mockStatusBarItem.text = "";
 		configValues = { statusBarMode: "single", refreshInterval: 15 };
 		channelStore = { AAA: [{ value: 225, units: "F", label: "Pit" }] };
+		failNextDevices = 0;
 		statusBar = new TemperatureStatusBar(
 			createMockCredentialStore() as never,
 			createMockClientManager() as never,
@@ -132,5 +140,16 @@ describe("TemperatureStatusBar - live streaming", () => {
 
 		// The live reading (250) is never streamed into the status bar during a demo.
 		expect(mockStatusBarItem.text).not.toContain("250");
+	});
+
+	it("auto-retries after a transient bootstrap failure", async () => {
+		failNextDevices = 1;
+		await statusBar.start();
+		// Initial bootstrap failed -> error placeholder, no readings yet.
+		expect(mockStatusBarItem.text).toBe("$(flame) --");
+
+		// The scheduled retry recovers once the API responds.
+		await vi.advanceTimersByTimeAsync(15_000);
+		expect(mockStatusBarItem.text).toBe("$(flame) Smoker:225\u00B0F");
 	});
 });

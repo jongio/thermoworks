@@ -31,15 +31,17 @@ npm install -g thermoworks
 thermoworks auth login
 ```
 
-### 2. Configure Devices
+### 2. (Optional) Choose which devices to show
 
-Run the CLI setup to select which devices/channels to display:
+After signing in, the status bar shows **all** your devices (average temperature each), and the Devices panel lists everything automatically — no extra setup required.
+
+To curate which devices/channels appear in the **status bar** (e.g. specific probes instead of averages), run the CLI setup:
 
 ```bash
 thermoworks copilot setup
 ```
 
-This saves your selection to `~/.thermoworks/config.json`, which the extension reads.
+This saves your selection to `~/.thermoworks/config.json`, which the extension reads. Without it, the status bar falls back to showing every device.
 
 ## Commands
 

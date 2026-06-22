@@ -7,7 +7,7 @@ import {
 } from "thermoworks-sdk";
 import * as vscode from "vscode";
 import type { ClientManager } from "./client-manager";
-import { loadConfig } from "./config";
+import { type DeviceEntry, loadConfig } from "./config";
 import type { CredentialStore } from "./credentials";
 import { type DeviceSnapshot, DeviceStream } from "./device-stream";
 
@@ -293,18 +293,28 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		const config = await loadConfig();
 		if (this.isStale(gen)) return null;
 
-		if (config.devices.length === 0) {
-			this.item.text = "$(flame) No devices";
-			this.item.tooltip =
-				"ThermoWorks: No devices configured. Run 'thermoworks copilot setup' in your terminal.";
-			return null;
-		}
-
 		const client = this.clientManager.getClient(creds);
 		const allDevices = await client.getDevices();
 		if (this.isStale(gen)) return null;
 
-		const configuredDevices = config.devices
+		if (allDevices.length === 0) {
+			this.item.text = "$(flame) No devices";
+			this.item.tooltip = "ThermoWorks: No devices found on your account.";
+			return null;
+		}
+
+		// Use the curated device list, or fall back to every account device (average
+		// temperature) so the status bar works without running `thermoworks copilot setup`.
+		const deviceConfigs: DeviceEntry[] =
+			config.devices.length > 0
+				? config.devices
+				: allDevices.map((d) => ({
+						serial: d.serial,
+						label: d.label || d.serial,
+						channels: "avg" as const,
+					}));
+
+		const configuredDevices = deviceConfigs
 			.map((dc) => ({ config: dc, device: allDevices.find((d) => d.serial === dc.serial) }))
 			.filter(
 				(x): x is { config: typeof x.config; device: NonNullable<typeof x.device> } =>

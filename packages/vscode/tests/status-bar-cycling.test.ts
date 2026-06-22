@@ -14,6 +14,7 @@ const mockStatusBarItem = {
 };
 
 let configValues: Record<string, unknown> = {};
+let accountDevices: Array<{ serial: string; name?: string }> = [];
 let configChangeHandler: ((e: { affectsConfiguration: (key: string) => boolean }) => void) | null =
 	null;
 
@@ -88,11 +89,7 @@ function createMockCredentialStore() {
 function createMockClientManager() {
 	return {
 		getClient: vi.fn(() => ({
-			getDevices: vi.fn().mockResolvedValue([
-				{ serial: "AAA", name: "Smoker" },
-				{ serial: "BBB", name: "Fridge" },
-				{ serial: "CCC", name: "Oven" },
-			]),
+			getDevices: vi.fn(() => Promise.resolve(accountDevices)),
 			getAllDeviceChannels: vi.fn((serial: string) => {
 				const channelsByDevice: Record<
 					string,
@@ -140,6 +137,7 @@ describe("TemperatureStatusBar - Multi-device cycling", () => {
 		mockStatusBarItem.color = undefined;
 
 		configValues = {};
+		accountDevices = [{ serial: "AAA" }, { serial: "BBB" }, { serial: "CCC" }];
 
 		credStore = createMockCredentialStore();
 		clientManager = createMockClientManager();
@@ -289,7 +287,9 @@ describe("TemperatureStatusBar - Multi-device cycling", () => {
 	});
 
 	describe("edge cases", () => {
-		it("cycleNext does nothing with zero devices", async () => {
+		it("cycleNext does nothing when the account has no devices", async () => {
+			// Empty account (and no configured devices) -> "No devices".
+			accountDevices = [];
 			const { loadConfig } = await import("../src/config");
 			vi.mocked(loadConfig).mockResolvedValueOnce({ devices: [], refreshSeconds: 30 });
 
@@ -299,6 +299,20 @@ describe("TemperatureStatusBar - Multi-device cycling", () => {
 			// No devices -> cycleNext is a no-op
 			statusBar.cycleNext();
 			expect(mockStatusBarItem.text).toBe("$(flame) No devices");
+		});
+
+		it("falls back to all account devices when none are configured", async () => {
+			// No configured devices, but the account has devices -> show them all (avg temp).
+			const { loadConfig } = await import("../src/config");
+			vi.mocked(loadConfig).mockResolvedValueOnce({ devices: [], refreshSeconds: 30 });
+
+			configValues = { statusBarMode: "all", cycleInterval: 5 };
+			await statusBar.start();
+
+			// Device labels fall back to the serial; each shows its average temperature.
+			expect(mockStatusBarItem.text).toBe(
+				"$(flame) AAA:225\u00B0F \u00B7 BBB:38\u00B0F \u00B7 CCC:350\u00B0F",
+			);
 		});
 
 		it("cycleNext does nothing with exactly one device", async () => {

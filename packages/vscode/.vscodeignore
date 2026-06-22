@@ -1,7 +1,10 @@
 node_modules/
 src/
 tests/
+webview/
 tsconfig.json
+tsconfig.webview.json
+vite.webview.config.ts
 vitest.config.ts
 build.mjs
 .gitignore

@@ -8,8 +8,9 @@ Display real-time temperatures from your ThermoWorks connected devices (Smoke, S
 
 - 🔥 **Status Bar Temperature** — See live readings at a glance
 - 📋 **Device Panel** — Full tree view with all devices, channels, battery, and firmware info
+- 📈 **Live Temperature Chart** — Full-session history with a live tail and alarm threshold lines
 - 🚨 **Alarm Indicators** — Red/blue color-coded alerts with blinking status bar
-- 🔄 **Auto-Refresh** — Configurable interval (default 30s, minimum 15s)
+- 🔄 **Live Updates** — Configurable refresh interval (default 60s, minimum 15s)
 - 🔗 **Shared Credentials** — Works with the same login as the `thermoworks` CLI
 - 📊 **Detailed Tooltips** — Hover for per-device/channel breakdown
 
@@ -30,15 +31,17 @@ npm install -g thermoworks
 thermoworks auth login
 ```
 
-### 2. Configure Devices
+### 2. (Optional) Choose which devices to show
 
-Run the CLI setup to select which devices/channels to display:
+After signing in, the status bar shows **all** your devices (average temperature each), and the Devices panel lists everything automatically — no extra setup required.
+
+To curate which devices/channels appear in the **status bar** (e.g. specific probes instead of averages), run the CLI setup:
 
 ```bash
 thermoworks copilot setup
 ```
 
-This saves your selection to `~/.thermoworks/config.json`, which the extension reads.
+This saves your selection to `~/.thermoworks/config.json`, which the extension reads. Without it, the status bar falls back to showing every device.
 
 ## Commands
 
@@ -55,9 +58,10 @@ This saves your selection to `~/.thermoworks/config.json`, which the extension r
 | `ThermoWorks: Open Cloud Dashboard` | Open [cloud.thermoworks.com](https://cloud.thermoworks.com) in the browser |
 | `ThermoWorks: Show Event Details` | Show full details for a device event |
 | `ThermoWorks: Show Archive Details` | Open a detailed view of an archived session |
+| `ThermoWorks: Show Session Chart` | Chart a specific past session (archive) from the Archives list |
 | `ThermoWorks: Refresh Archives` | Reload the archives list for a device |
 | `ThermoWorks: Configure Alarm` | Set high/low alarm thresholds on a device channel |
-| `ThermoWorks: Show Temperature Chart` | Open an inline temperature chart for a device |
+| `ThermoWorks: Show Temperature Chart` | Open a live temperature chart (full-session history) for a device |
 | `ThermoWorks: Start Session` | Start a monitoring session on the selected device |
 | `ThermoWorks: End Session` | End an active monitoring session |
 
@@ -69,6 +73,7 @@ This saves your selection to `~/.thermoworks/config.json`, which the extension r
 | `thermoworks.statusBarMode` | `single` | Status bar display mode: `single` shows the first device, `cycle` rotates through devices, `all` shows all devices compactly |
 | `thermoworks.cycleInterval` | `5` | Seconds between device rotations in cycle mode (minimum 1) |
 | `thermoworks.eventsLimit` | `20` | Maximum number of events to display in the Events panel (1-500) |
+| `thermoworks.archivesLimit` | `20` | Maximum number of past sessions (archives) to list per device (1-500) |
 | `thermoworks.notifications` | `true` | Show desktop notifications when a temperature alarm triggers |
 
 ## Device Panel
@@ -80,9 +85,10 @@ The extension adds a **ThermoWorks: Devices** panel to the VS Code sidebar showi
 - **Channel readings** — color-coded (green = normal, red = high alarm, blue = low alarm)
 - **Device metadata** — battery %, last seen, firmware version
 - **Firmware alerts** — orange warning when a device has outdated firmware
+- **Past sessions** — expand a device's **Archives** to browse completed sessions; each shows per-channel min/max, and the graph icon charts that session's full history
 - **Badge count** — activity bar icon shows number of devices with active alarms
 
-The panel auto-refreshes on the same interval as the status bar. Device list is cached for 5 minutes (devices rarely change), while channel data refreshes at the configured interval.
+The panel updates live on the configured refresh interval via a shared per-device subscription. The device list is cached for 5 minutes (devices rarely change), while channel readings stream in at the configured interval.
 
 ### Firmware Update Detection
 

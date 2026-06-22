@@ -5,6 +5,7 @@ import { ChartPanel } from "./chart-panel";
 import { registerChatParticipant } from "./chat-participant";
 import { ClientManager } from "./client-manager";
 import { CredentialStore } from "./credentials";
+import { renameDevice, resetMinMax, setFanEnabled, setFanTarget } from "./device-control";
 import { clearAlarmInline, setAlarmInline } from "./inline-alarm";
 import { endSession, startSession } from "./session-commands";
 import { TemperatureStatusBar } from "./status-bar";
@@ -185,6 +186,24 @@ export function activate(context: vscode.ExtensionContext): void {
 		}),
 		vscode.commands.registerCommand("thermoworks.clearAlarmInline", async (node: ChannelNode) => {
 			await clearAlarmInline(node, clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+
+		// Device control commands
+		vscode.commands.registerCommand("thermoworks.setFanTarget", async (node: DeviceNode) => {
+			await setFanTarget(node, clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.setFanEnabled", async (node: DeviceNode) => {
+			await setFanEnabled(node, clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.renameDevice", async (node: DeviceNode) => {
+			await renameDevice(node, clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.resetMinMax", async (node: ChannelNode) => {
+			await resetMinMax(node, clientManager, credentialStore);
 			await treeProvider.refresh();
 		}),
 

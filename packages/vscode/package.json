@@ -184,6 +184,26 @@
         "command": "thermoworks.clearEventsFilter",
         "title": "ThermoWorks: Show All Events",
         "icon": "$(clear-all)"
+      },
+      {
+        "command": "thermoworks.setFanTarget",
+        "title": "Set Fan Target\u2026",
+        "icon": "$(flame)"
+      },
+      {
+        "command": "thermoworks.setFanEnabled",
+        "title": "Fan On/Off\u2026",
+        "icon": "$(plug)"
+      },
+      {
+        "command": "thermoworks.renameDevice",
+        "title": "Rename Device\u2026",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "thermoworks.resetMinMax",
+        "title": "Reset Min/Max",
+        "icon": "$(discard)"
       }
     ],
     "menus": {
@@ -246,6 +266,41 @@
         {
           "command": "thermoworks.filterEventsByDevice",
           "when": "view == thermoworksPanel && viewItem == device",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.filterEventsByDevice",
+          "when": "view == thermoworksPanel && viewItem == deviceWithFan",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.showTemperatureChart",
+          "when": "view == thermoworksPanel && viewItem == deviceWithFan",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.renameDevice",
+          "when": "view == thermoworksPanel && viewItem == device",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.renameDevice",
+          "when": "view == thermoworksPanel && viewItem == deviceWithFan",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.setFanTarget",
+          "when": "view == thermoworksPanel && viewItem == deviceWithFan",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.setFanEnabled",
+          "when": "view == thermoworksPanel && viewItem == deviceWithFan",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.resetMinMax",
+          "when": "view == thermoworksPanel && viewItem == channelNode",
           "group": "inline"
         }
       ]

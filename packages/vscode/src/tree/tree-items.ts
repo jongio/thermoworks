@@ -4,6 +4,7 @@ import {
 	type Device,
 	type DeviceChannel,
 	type DeviceEvent,
+	type FanSettings,
 	formatTimeAgo,
 	getChannelAlarmState,
 	type User,
@@ -19,6 +20,7 @@ export type TreeNode =
 	| DeviceNode
 	| ChannelNode
 	| DeviceDetailNode
+	| FanDetailNode
 	| FirmwareWarningNode
 	| EventsFolderNode
 	| EventNode
@@ -95,7 +97,7 @@ export class DeviceNode extends vscode.TreeItem {
 		super(label, vscode.TreeItemCollapsibleState.Collapsed);
 		this.serial = device.serial;
 		this.id = `thermoworks-device-${device.serial}`;
-		this.contextValue = "device";
+		this.contextValue = device.fan != null ? "deviceWithFan" : "device";
 
 		const isOnline = device.status === "online";
 		const hasSession = device.sessionStart != null;
@@ -181,6 +183,23 @@ export class DeviceDetailNode extends vscode.TreeItem {
 		super(`${label}: ${value}`, vscode.TreeItemCollapsibleState.None);
 		this.id = `thermoworks-detail-${deviceSerial}-${label.toLowerCase().replace(/\s+/g, "-")}`;
 		this.iconPath = new vscode.ThemeIcon("info");
+	}
+}
+
+export class FanDetailNode extends vscode.TreeItem {
+	readonly type = "fanDetail" as const;
+
+	constructor(fan: FanSettings, deviceSerial: string, units: string | null) {
+		const stateLabel = fan.state != null && fan.state > 0 ? "running" : "idle";
+		const tempPart = fan.setTemp != null ? `${fan.setTemp}\u00B0${units ?? "F"}` : "not set";
+		super(`Fan: ${tempPart} (${stateLabel})`, vscode.TreeItemCollapsibleState.None);
+		this.id = `thermoworks-fan-${deviceSerial}`;
+		this.iconPath = new vscode.ThemeIcon(
+			stateLabel === "running" ? "sync~spin" : "circle-outline",
+			stateLabel === "running" ? new vscode.ThemeColor("charts.green") : undefined,
+		);
+		this.contextValue = "fanDetail";
+		this.tooltip = `Fan controller: ${stateLabel}\nTarget: ${tempPart}\nConnected: ${fan.connected ? "yes" : "no"}`;
 	}
 }
 
@@ -393,6 +412,11 @@ export function buildDeviceChildren(
 		if (ch) {
 			children.push(new ChannelNode(ch, device.serial, i));
 		}
+	}
+
+	// Fan controller info (shown after channels for visibility)
+	if (device.fan != null) {
+		children.push(new FanDetailNode(device.fan, device.serial, device.deviceDisplayUnits));
 	}
 
 	// Device metadata

@@ -8,8 +8,9 @@ Display real-time temperatures from your ThermoWorks connected devices (Smoke, S
 
 - 🔥 **Status Bar Temperature** — See live readings at a glance
 - 📋 **Device Panel** — Full tree view with all devices, channels, battery, and firmware info
+- 📈 **Live Temperature Chart** — Full-session history with a live tail and alarm threshold lines
 - 🚨 **Alarm Indicators** — Red/blue color-coded alerts with blinking status bar
-- 🔄 **Auto-Refresh** — Configurable interval (default 30s, minimum 15s)
+- 🔄 **Live Updates** — Configurable refresh interval (default 60s, minimum 15s)
 - 🔗 **Shared Credentials** — Works with the same login as the `thermoworks` CLI
 - 📊 **Detailed Tooltips** — Hover for per-device/channel breakdown
 
@@ -57,7 +58,7 @@ This saves your selection to `~/.thermoworks/config.json`, which the extension r
 | `ThermoWorks: Show Archive Details` | Open a detailed view of an archived session |
 | `ThermoWorks: Refresh Archives` | Reload the archives list for a device |
 | `ThermoWorks: Configure Alarm` | Set high/low alarm thresholds on a device channel |
-| `ThermoWorks: Show Temperature Chart` | Open an inline temperature chart for a device |
+| `ThermoWorks: Show Temperature Chart` | Open a live temperature chart (full-session history) for a device |
 | `ThermoWorks: Start Session` | Start a monitoring session on the selected device |
 | `ThermoWorks: End Session` | End an active monitoring session |
 
@@ -82,7 +83,7 @@ The extension adds a **ThermoWorks: Devices** panel to the VS Code sidebar showi
 - **Firmware alerts** — orange warning when a device has outdated firmware
 - **Badge count** — activity bar icon shows number of devices with active alarms
 
-The panel auto-refreshes on the same interval as the status bar. Device list is cached for 5 minutes (devices rarely change), while channel data refreshes at the configured interval.
+The panel updates live on the configured refresh interval via a shared per-device subscription. The device list is cached for 5 minutes (devices rarely change), while channel readings stream in at the configured interval.
 
 ### Firmware Update Detection
 

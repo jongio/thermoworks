@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Retired the `@thermoworks` chat participant. AI access to ThermoWorks data now lives in the MCP server; use `thermoworks mcp start` (and `thermoworks copilot setup`) so Copilot and agents can call the ThermoWorks MCP tools.
+
 ## 0.2.0
 
 ### Minor Changes

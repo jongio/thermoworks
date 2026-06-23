@@ -40,14 +40,6 @@
     "theme": "dark"
   },
   "contributes": {
-    "chatParticipants": [
-      {
-        "id": "thermoworks",
-        "name": "thermoworks",
-        "description": "Query ThermoWorks device data",
-        "isSticky": true
-      }
-    ],
     "viewsContainers": {
       "activitybar": [
         {

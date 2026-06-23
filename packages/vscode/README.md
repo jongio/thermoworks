@@ -13,6 +13,7 @@ Display real-time temperatures from your ThermoWorks connected devices (Smoke, S
 - 🔄 **Live Updates** — Configurable refresh interval (default 60s, minimum 15s)
 - 🔗 **Shared Credentials** — Works with the same login as the `thermoworks` CLI
 - 📊 **Detailed Tooltips** — Hover for per-device/channel breakdown
+- 🤖 **AI / Copilot** — ThermoWorks data is available to Copilot and AI agents via the MCP server (`thermoworks mcp start`); run `thermoworks copilot setup` to configure
 
 ## Setup
 

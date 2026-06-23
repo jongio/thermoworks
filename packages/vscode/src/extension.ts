@@ -2,7 +2,6 @@ import type { DeviceEvent } from "thermoworks-sdk";
 import * as vscode from "vscode";
 import { configureAlarm } from "./alarm-config";
 import { ChartPanel } from "./chart-panel";
-import { registerChatParticipant } from "./chat-participant";
 import { ClientManager } from "./client-manager";
 import { CredentialStore } from "./credentials";
 import { renameDevice, resetMinMax, setFanEnabled, setFanTarget } from "./device-control";
@@ -43,11 +42,7 @@ export function activate(context: vscode.ExtensionContext): void {
 	// ─── Events Output Channel ──────────────────────────────────────────
 	const eventsOutput = vscode.window.createOutputChannel("ThermoWorks Events");
 
-	// ─── Copilot Chat Participant ────────────────────────────────────────
-	const chatParticipant = registerChatParticipant(credentialStore, clientManager);
-
 	context.subscriptions.push(
-		chatParticipant,
 		// Status bar commands
 		vscode.commands.registerCommand("thermoworks.login", async () => {
 			await statusBar?.login();

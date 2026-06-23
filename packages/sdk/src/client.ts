@@ -905,13 +905,18 @@ export class ThermoworksCloud {
 	 * Create a new device group in the account's deviceGroups subcollection.
 	 */
 	async createDeviceGroup(name: string, devices: string[]): Promise<DeviceGroup> {
-		const session = await this.ensureSession();
-		const userId = session.getUserId();
-		const userResponse = await session.request("GET", `documents/users/${userId}`);
-		const userDoc = (await userResponse.json()) as { fields?: FirestoreFields };
-		const accountId = getString(userDoc.fields ?? {}, "accountId");
-		if (!accountId) throw new Error("Account ID not found");
+		if (typeof name !== "string" || name.trim().length === 0) {
+			throw new Error("Group name must be a non-empty string");
+		}
+		if (name.length > 200) {
+			throw new Error("Group name exceeds maximum length of 200 characters");
+		}
+		for (const d of devices) {
+			validateSerial(d);
+		}
 
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
 		const path = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups`;
 		const body = {
 			fields: {
@@ -925,8 +930,8 @@ export class ThermoworksCloud {
 		};
 		const response = await session.request("POST", path, body);
 		if (!response.ok) {
-			const text = await response.text().catch(() => "");
-			throw new Error(`Failed to create group: ${response.status} ${text}`);
+			await response.text().catch(() => {});
+			throw new Error(`Failed to create group: ${response.status}`);
 		}
 		const doc = (await response.json()) as { name?: string; fields?: FirestoreFields };
 		const docName = doc.name ?? "";
@@ -950,18 +955,18 @@ export class ThermoworksCloud {
 	 * Add a device to an existing group by updating the group's devices array.
 	 */
 	async addDeviceToGroup(groupId: string, serial: string): Promise<void> {
+		if (!groupId || typeof groupId !== "string") {
+			throw new Error("groupId is required");
+		}
+		validateSerial(serial);
+
 		const groups = await this.getDeviceGroups();
 		const group = groups.find((g) => g.id === groupId);
 		if (!group) throw new NotFoundError(`Group ${groupId} not found`);
-		if (group.devices.includes(serial)) return; // already in group
+		if (group.devices.includes(serial)) return;
 
+		const accountId = await this.resolveAccountId();
 		const session = await this.ensureSession();
-		const userId = session.getUserId();
-		const userResponse = await session.request("GET", `documents/users/${userId}`);
-		const userDoc = (await userResponse.json()) as { fields?: FirestoreFields };
-		const accountId = getString(userDoc.fields ?? {}, "accountId");
-		if (!accountId) throw new Error("Account ID not found");
-
 		const newDevices = [...group.devices, serial];
 		const path = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups/${encodeURIComponent(groupId)}?updateMask.fieldPaths=devices`;
 		const body = {
@@ -973,25 +978,26 @@ export class ThermoworksCloud {
 				},
 			},
 		};
-		await session.request("PATCH", path, body);
+		const response = await session.request("PATCH", path, body);
+		await response.text().catch(() => {});
 	}
 
 	/**
 	 * Remove a device from a group by updating the group's devices array.
 	 */
 	async removeDeviceFromGroup(groupId: string, serial: string): Promise<void> {
+		if (!groupId || typeof groupId !== "string") {
+			throw new Error("groupId is required");
+		}
+		validateSerial(serial);
+
 		const groups = await this.getDeviceGroups();
 		const group = groups.find((g) => g.id === groupId);
 		if (!group) throw new NotFoundError(`Group ${groupId} not found`);
-		if (!group.devices.includes(serial)) return; // not in group
+		if (!group.devices.includes(serial)) return;
 
+		const accountId = await this.resolveAccountId();
 		const session = await this.ensureSession();
-		const userId = session.getUserId();
-		const userResponse = await session.request("GET", `documents/users/${userId}`);
-		const userDoc = (await userResponse.json()) as { fields?: FirestoreFields };
-		const accountId = getString(userDoc.fields ?? {}, "accountId");
-		if (!accountId) throw new Error("Account ID not found");
-
 		const newDevices = group.devices.filter((d) => d !== serial);
 		const path = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups/${encodeURIComponent(groupId)}?updateMask.fieldPaths=devices`;
 		const body = {
@@ -1003,7 +1009,8 @@ export class ThermoworksCloud {
 				},
 			},
 		};
-		await session.request("PATCH", path, body);
+		const response = await session.request("PATCH", path, body);
+		await response.text().catch(() => {});
 	}
 
 	// ─── Fan Controller ──────────────────────────────────────────────────────────
@@ -1357,8 +1364,8 @@ function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {
 /** Try to parse a timestamp stored as integerValue (epoch millis or seconds). */
 function getTimestampFromInt(fields: FirestoreFields, key: string): Date | null {
 	const n = getNumber(fields, key);
-	if (n == null) return null;
-	// Heuristic: values < 1e12 are epoch seconds, otherwise epoch millis
+	if (n == null || n < 0) return null;
+	// 1e12 ms ≈ Sep 2001; legitimate epoch-second timestamps stay below 1e10 until ~2286
 	const ms = n < 1e12 ? n * 1000 : n;
 	const date = new Date(ms);
 	return Number.isNaN(date.getTime()) ? null : date;

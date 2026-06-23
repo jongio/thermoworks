@@ -2,7 +2,7 @@ import type { DeviceEvent } from "thermoworks-sdk";
 import * as vscode from "vscode";
 import type { ClientManager } from "../client-manager";
 import type { CredentialStore } from "../credentials";
-import { ErrorNode, EventNode, EventsFolderNode, type TreeNode } from "./tree-items";
+import { ErrorNode, EventNode, type TreeNode } from "./tree-items";
 
 /**
  * Dedicated tree data provider for the Events view.
@@ -31,12 +31,7 @@ export class EventsTreeProvider implements vscode.TreeDataProvider<TreeNode>, vs
 	async getChildren(element?: TreeNode): Promise<TreeNode[]> {
 		if (this.disposed) return [];
 
-		// Only root produces children (flat list under a folder node)
-		if (element instanceof EventsFolderNode) {
-			return this.fetchEvents();
-		}
-
-		// Root level: show the folder node
+		// Root level: return events as a flat list
 		if (!element) {
 			return this.getRootChildren();
 		}
@@ -79,16 +74,9 @@ export class EventsTreeProvider implements vscode.TreeDataProvider<TreeNode>, vs
 
 		try {
 			const events = await this.fetchEvents();
-			const folderLabel = this.deviceFilter ? `Events (${this.deviceFilter.label})` : "Events";
-			const folder = new EventsFolderNode(events.length);
-			// Override label if filtered
-			if (this.deviceFilter) {
-				folder.label = folderLabel;
-			}
 			if (events.length === 0) {
 				return [new ErrorNode("No events found")];
 			}
-			// Return events directly (flat list)
 			return events;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load events";

@@ -5,6 +5,7 @@ import { ChartPanel } from "./chart-panel";
 import { ClientManager } from "./client-manager";
 import { CredentialStore } from "./credentials";
 import { renameDevice, resetMinMax, setFanEnabled, setFanTarget } from "./device-control";
+import { addToGroup, removeFromGroup } from "./group-commands";
 import { clearAlarmInline, setAlarmInline } from "./inline-alarm";
 import { clearSession, endSession, startSession } from "./session-commands";
 import { TemperatureStatusBar } from "./status-bar";
@@ -232,41 +233,10 @@ export function activate(context: vscode.ExtensionContext): void {
 				return;
 			}
 			try {
-				const creds = await credentialStore.getCredentials();
-				if (!creds) return;
-				const client = await clientManager.getClient(creds);
-				const groups = await client.getDeviceGroups();
-
-				const CREATE_NEW = "$(add) Create New Group…";
-				const items = [
-					...groups.filter((g) => g.name).map((g) => ({ label: g.name, groupId: g.id })),
-					{ label: CREATE_NEW, groupId: "__new__" },
-				];
-				const pick = await vscode.window.showQuickPick(items, {
-					placeHolder: "Select a group or create a new one",
-				});
-				if (!pick) return;
-
-				if (pick.groupId === "__new__") {
-					const name = await vscode.window.showInputBox({
-						prompt: "New group name",
-						placeHolder: "e.g. Backyard, Kitchen",
-						ignoreFocusOut: true,
-					});
-					if (!name) return;
-					await client.createDeviceGroup(name, [node.serial]);
-					vscode.window.showInformationMessage(`Created "${name}" and added device.`);
-					// Clear group cache so it shows up
-					treeProvider.clearGroupCache();
-				} else {
-					await client.addDeviceToGroup(pick.groupId, node.serial);
-					vscode.window.showInformationMessage(`Added to "${pick.label}".`);
-				}
-				await treeProvider.refresh();
+				await addToGroup(node, clientManager, credentialStore, treeProvider);
 			} catch (e) {
-				vscode.window.showErrorMessage(
-					`Failed to add to group: ${e instanceof Error ? e.message : e}`,
-				);
+				const msg = e instanceof Error ? e.message : "Unknown error";
+				vscode.window.showErrorMessage(`Failed to add to group: ${msg.slice(0, 150)}`);
 			}
 		}),
 		vscode.commands.registerCommand("thermoworks.removeFromGroup", async (node: DeviceNode) => {
@@ -275,33 +245,10 @@ export function activate(context: vscode.ExtensionContext): void {
 				return;
 			}
 			try {
-				const creds = await credentialStore.getCredentials();
-				if (!creds) return;
-				const client = await clientManager.getClient(creds);
-				const groups = await client.getDeviceGroups();
-				const deviceGroups = groups.filter((g) => g.devices.includes(node.serial));
-				if (deviceGroups.length === 0) {
-					vscode.window.showInformationMessage("Device is not in any group.");
-					return;
-				}
-				let groupId: string;
-				if (deviceGroups.length === 1) {
-					groupId = deviceGroups[0]?.id ?? "";
-				} else {
-					const pick = await vscode.window.showQuickPick(
-						deviceGroups.map((g) => ({ label: g.name || g.id, groupId: g.id })),
-						{ placeHolder: "Remove from which group?" },
-					);
-					if (!pick) return;
-					groupId = pick.groupId;
-				}
-				await client.removeDeviceFromGroup(groupId, node.serial);
-				vscode.window.showInformationMessage("Removed from group.");
-				await treeProvider.refresh();
+				await removeFromGroup(node, clientManager, credentialStore, treeProvider);
 			} catch (e) {
-				vscode.window.showErrorMessage(
-					`Failed to remove from group: ${e instanceof Error ? e.message : e}`,
-				);
+				const msg = e instanceof Error ? e.message : "Unknown error";
+				vscode.window.showErrorMessage(`Failed to remove from group: ${msg.slice(0, 150)}`);
 			}
 		}),
 

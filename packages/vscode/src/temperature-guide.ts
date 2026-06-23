@@ -19,7 +19,7 @@ export async function showTemperatureGuide(
 
 	let categories: TemperatureCategory[];
 	try {
-		const client = await clientManager.getClient(creds);
+		const client = clientManager.getClient(creds);
 		const guide = await client.getTemperatureGuide();
 		categories = guide.categories;
 	} catch {

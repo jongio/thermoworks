@@ -75,6 +75,18 @@ export function seriesToRows(series: ChartSeries[]): ChartRow[] {
 export function appendLivePoint(rows: ChartRow[], seriesId: string, point: ChartPoint): ChartRow[] {
 	if (!Number.isFinite(point.t) || !Number.isFinite(point.y)) return rows;
 
+	// Fast path: most live points append to the end (monotonically increasing time)
+	const lastRow = rows.length > 0 ? rows[rows.length - 1] : undefined;
+	if (lastRow && point.t === lastRow.t) {
+		const next = rows.slice();
+		next[rows.length - 1] = { ...lastRow, [seriesId]: point.y };
+		return next;
+	}
+	if (!lastRow || point.t > lastRow.t) {
+		return rows.concat({ t: point.t, [seriesId]: point.y });
+	}
+
+	// Slow path: out-of-order point (rare)
 	const existingIndex = rows.findIndex((r) => r.t === point.t);
 	if (existingIndex >= 0) {
 		const next = rows.slice();
@@ -83,14 +95,7 @@ export function appendLivePoint(rows: ChartRow[], seriesId: string, point: Chart
 	}
 
 	const row: ChartRow = { t: point.t, [seriesId]: point.y };
-	const lastT =
-		rows.length > 0
-			? (rows[rows.length - 1]?.t ?? Number.NEGATIVE_INFINITY)
-			: Number.NEGATIVE_INFINITY;
-	if (point.t >= lastT) {
-		return [...rows, row];
-	}
-	const next = [...rows, row];
+	const next = rows.concat(row);
 	next.sort((a, b) => a.t - b.t);
 	return next;
 }

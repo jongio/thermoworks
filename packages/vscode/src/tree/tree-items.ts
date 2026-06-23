@@ -13,6 +13,14 @@ import {
 import * as vscode from "vscode";
 import { applyUnitPreference, getUnitPreference, type TemperatureUnit } from "../temperature-utils";
 
+/** Safely extract the text label from a TreeItem, handling string | TreeItemLabel | undefined. */
+export function getNodeLabel(node: vscode.TreeItem): string {
+	if (typeof node.label === "string") return node.label;
+	if (node.label && typeof node.label === "object" && "label" in node.label)
+		return node.label.label;
+	return "";
+}
+
 // ─── Base Node ───────────────────────────────────────────────────────────────
 
 export type TreeNode =

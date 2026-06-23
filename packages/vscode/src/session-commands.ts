@@ -2,7 +2,7 @@ import type { Device } from "thermoworks-sdk";
 import * as vscode from "vscode";
 import type { ClientManager } from "./client-manager";
 import type { CredentialStore } from "./credentials";
-import type { DeviceNode } from "./tree/tree-items";
+import { type DeviceNode, getNodeLabel } from "./tree/tree-items";
 
 /**
  * Prompts the user to select a device from their account.
@@ -133,7 +133,7 @@ export async function clearSession(
 
 	if (deviceNode) {
 		serial = deviceNode.serial;
-		deviceName = (deviceNode.label as string) ?? deviceNode.serial;
+		deviceName = getNodeLabel(deviceNode) || deviceNode.serial;
 	} else {
 		const device = await pickDevice(
 			credentialStore,

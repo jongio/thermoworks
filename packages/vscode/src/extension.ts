@@ -12,7 +12,7 @@ import { TemperatureStatusBar } from "./status-bar";
 import { showTemperatureGuide } from "./temperature-guide";
 import { EventsTreeProvider } from "./tree/events-tree-provider";
 import { ThermoworksTreeProvider } from "./tree/thermoworks-tree-provider";
-import type { ChannelNode, DeviceNode } from "./tree/tree-items";
+import { type ChannelNode, type DeviceNode, getNodeLabel } from "./tree/tree-items";
 
 let statusBar: TemperatureStatusBar | undefined;
 
@@ -258,7 +258,7 @@ export function activate(context: vscode.ExtensionContext): void {
 			"thermoworks.filterEventsByDevice",
 			async (node: DeviceNode) => {
 				const serial = node?.serial;
-				const label = (node?.label as string) ?? serial;
+				const label = (node ? getNodeLabel(node) : "") || serial;
 				if (!serial) {
 					vscode.window.showErrorMessage("ThermoWorks: No device selected.");
 					return;

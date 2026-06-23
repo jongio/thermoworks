@@ -2,7 +2,12 @@ import * as vscode from "vscode";
 import { validateTemperature } from "./alarm-config";
 import type { ClientManager } from "./client-manager";
 import type { CredentialStore } from "./credentials";
-import type { ChannelNode, DeviceNode, FanDetailNode } from "./tree/tree-items";
+import {
+	type ChannelNode,
+	type DeviceNode,
+	type FanDetailNode,
+	getNodeLabel,
+} from "./tree/tree-items";
 
 /** A node that carries a device serial — DeviceNode or FanDetailNode. */
 type DeviceSerialNode = DeviceNode | FanDetailNode;
@@ -38,7 +43,7 @@ export async function setFanTarget(
 
 	if (result.success) {
 		vscode.window.showInformationMessage(
-			`Target temp set to ${targetTemp}\u00B0 on ${(node.label as string) ?? node.serial}.`,
+			`Target temp set to ${targetTemp}\u00B0 on ${getNodeLabel(node) || node.serial}.`,
 		);
 	} else {
 		vscode.window.showErrorMessage(`Failed to set target temp: ${result.error ?? "unknown error"}`);
@@ -80,9 +85,7 @@ export async function setFanEnabled(
 
 	const verb = pick.value ? "enable" : "disable";
 	if (result.success) {
-		vscode.window.showInformationMessage(
-			`Fan ${verb}d on ${(node.label as string) ?? node.serial}.`,
-		);
+		vscode.window.showInformationMessage(`Fan ${verb}d on ${getNodeLabel(node) || node.serial}.`);
 	} else {
 		vscode.window.showErrorMessage(`Failed to ${verb} fan: ${result.error ?? "unknown error"}`);
 	}
@@ -105,7 +108,7 @@ export async function renameDevice(
 		return;
 	}
 
-	const currentLabel = (node.label as string) ?? "";
+	const currentLabel = getNodeLabel(node);
 	const newName = await vscode.window.showInputBox({
 		prompt: "Enter new device name",
 		value: currentLabel,
@@ -141,7 +144,7 @@ export async function resetMinMax(
 		return;
 	}
 
-	const channelLabel = (node.label as string) ?? `Ch${node.channelNumber}`;
+	const channelLabel = getNodeLabel(node) || `Ch${node.channelNumber}`;
 	const confirm = await vscode.window.showWarningMessage(
 		`Reset min/max for ${channelLabel}? This cannot be undone.`,
 		{ modal: true },

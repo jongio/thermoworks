@@ -16,6 +16,11 @@ vi.mock("vscode", () => ({
 		showInformationMessage: (...args: unknown[]) => mockShowInformationMessage(...args),
 		showWarningMessage: (...args: unknown[]) => mockShowWarningMessage(...args),
 	},
+	TreeItem: class {},
+	TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
+	ThemeIcon: class {
+		constructor(public id: string) {}
+	},
 }));
 
 // ─── Mock thermoworks-sdk ────────────────────────────────────────────────────
@@ -33,6 +38,8 @@ vi.mock("thermoworks-sdk", () => ({
 		resetMinMax = mockResetMinMax;
 		close = vi.fn();
 	},
+	formatTimeAgo: () => "just now",
+	getChannelAlarmState: () => null,
 }));
 
 // ─── Import after mocks ──────────────────────────────────────────────────────

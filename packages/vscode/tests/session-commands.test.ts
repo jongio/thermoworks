@@ -17,6 +17,11 @@ vi.mock("vscode", () => ({
 		showErrorMessage: (...args: unknown[]) => mockShowErrorMessage(...args),
 		showWarningMessage: (...args: unknown[]) => mockShowWarningMessage(...args),
 	},
+	TreeItem: class {},
+	TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
+	ThemeIcon: class {
+		constructor(public id: string) {}
+	},
 }));
 
 // ─── SDK mock ────────────────────────────────────────────────────────────────
@@ -33,6 +38,8 @@ vi.mock("thermoworks-sdk", () => ({
 		endSession = mockEndSession;
 		clearSession = mockClearSession;
 	},
+	formatTimeAgo: () => "just now",
+	getChannelAlarmState: () => null,
 }));
 
 // ─── Import after mocks ──────────────────────────────────────────────────────

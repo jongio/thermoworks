@@ -133,6 +133,7 @@ import {
 	ArchivesFolderNode,
 	CalibrationFolderNode,
 	CalibrationRecordNode,
+	DetailsFolderNode,
 	DeviceNode,
 } from "../src/tree/tree-items";
 
@@ -675,7 +676,10 @@ describe("ThermoworksTreeProvider", () => {
 			const deviceNode = new DeviceNode(mockDevice, false);
 			const children = await provider.getChildren(deviceNode);
 
-			const labels = children.map((c) => c.label);
+			// Children are now folder nodes; find the DetailsFolderNode and check its contents
+			const detFolder = children.find((c) => c instanceof DetailsFolderNode) as DetailsFolderNode;
+			expect(detFolder).toBeDefined();
+			const labels = detFolder.details.map((c) => c.label);
 			expect(labels).toContain("Avg Temp: 221\u00B0F");
 		});
 

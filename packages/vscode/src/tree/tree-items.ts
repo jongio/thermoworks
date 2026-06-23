@@ -19,8 +19,11 @@ export type TreeNode =
 	| AccountNode
 	| AccountDetailNode
 	| DevicesFolderNode
+	| DeviceGroupFolderNode
 	| DeviceNode
+	| ChannelsFolderNode
 	| ChannelNode
+	| DetailsFolderNode
 	| DeviceDetailNode
 	| FanDetailNode
 	| FirmwareWarningNode
@@ -77,7 +80,7 @@ export class ActionNode extends vscode.TreeItem {
 export class DevicesFolderNode extends vscode.TreeItem {
 	readonly type = "devicesFolder" as const;
 
-	constructor(deviceCount: number, firmwareUpdateCount = 0) {
+	constructor(deviceCount: number, firmwareUpdateCount = 0, grouped = false) {
 		super("Devices", vscode.TreeItemCollapsibleState.Expanded);
 		this.id = "thermoworks-devices";
 		this.contextValue = "devicesFolder";
@@ -86,9 +89,25 @@ export class DevicesFolderNode extends vscode.TreeItem {
 			this.iconPath = new vscode.ThemeIcon("alert", new vscode.ThemeColor("charts.orange"));
 			this.description = `${deviceCount} - ${firmwareUpdateCount} update${firmwareUpdateCount > 1 ? "s" : ""} available`;
 		} else {
-			this.iconPath = new vscode.ThemeIcon("server");
+			this.iconPath = new vscode.ThemeIcon(grouped ? "list-tree" : "server");
 			this.description = `${deviceCount}`;
 		}
+	}
+}
+
+export class DeviceGroupFolderNode extends vscode.TreeItem {
+	readonly type = "deviceGroupFolder" as const;
+	readonly groupId: string;
+	readonly deviceSerials: string[];
+
+	constructor(groupId: string, name: string, deviceCount: number) {
+		super(name || "Unnamed Group", vscode.TreeItemCollapsibleState.Collapsed);
+		this.groupId = groupId;
+		this.deviceSerials = [];
+		this.id = `thermoworks-group-${groupId}`;
+		this.contextValue = "deviceGroupFolder";
+		this.iconPath = new vscode.ThemeIcon("folder");
+		this.description = `${deviceCount}`;
 	}
 }
 
@@ -132,6 +151,34 @@ export class DeviceNode extends vscode.TreeItem {
 	}
 }
 
+export class ChannelsFolderNode extends vscode.TreeItem {
+	readonly type = "channelsFolder" as const;
+	readonly serial: string;
+	readonly channels: TreeNode[];
+
+	constructor(serial: string, channelNodes: TreeNode[]) {
+		super("Channels", vscode.TreeItemCollapsibleState.Expanded);
+		this.serial = serial;
+		this.channels = channelNodes;
+		this.id = `thermoworks-channels-${serial}`;
+		this.iconPath = new vscode.ThemeIcon("symbol-variable");
+	}
+}
+
+export class DetailsFolderNode extends vscode.TreeItem {
+	readonly type = "detailsFolder" as const;
+	readonly serial: string;
+	readonly details: TreeNode[];
+
+	constructor(serial: string, detailNodes: TreeNode[]) {
+		super("Details", vscode.TreeItemCollapsibleState.Collapsed);
+		this.serial = serial;
+		this.details = detailNodes;
+		this.id = `thermoworks-details-${serial}`;
+		this.iconPath = new vscode.ThemeIcon("info");
+	}
+}
+
 export class ChannelNode extends vscode.TreeItem {
 	readonly type = "channel" as const;
 	readonly serial: string;
@@ -154,17 +201,30 @@ export class ChannelNode extends vscode.TreeItem {
 		this.serial = deviceSerial;
 		this.channelNumber = channel.number ? Number.parseInt(channel.number, 10) : index;
 		this.id = `thermoworks-channel-${deviceSerial}-${index}`;
-		this.description = valueText;
 		this.contextValue = "channelNode";
 
+		// Build compact alarm threshold indicators for the description
 		const thresholdParts: string[] = [];
 		if (channel.alarmHigh?.enabled && channel.alarmHigh.value != null) {
-			thresholdParts.push(`High: ${channel.alarmHigh.value}\u00B0${channel.alarmHigh.units ?? ""}`);
+			thresholdParts.push(`↑${channel.alarmHigh.value}\u00B0`);
 		}
 		if (channel.alarmLow?.enabled && channel.alarmLow.value != null) {
-			thresholdParts.push(`Low: ${channel.alarmLow.value}\u00B0${channel.alarmLow.units ?? ""}`);
+			thresholdParts.push(`↓${channel.alarmLow.value}\u00B0`);
 		}
-		const thresholdInfo = thresholdParts.length > 0 ? ` [${thresholdParts.join(", ")}]` : "";
+		const hasAlarmConfig = thresholdParts.length > 0;
+
+		// Show alarm thresholds inline with the temperature value
+		this.description = hasAlarmConfig ? `${valueText}  🔔 ${thresholdParts.join(" ")}` : valueText;
+
+		// Full tooltip with verbose alarm info
+		const tooltipThresholds: string[] = [];
+		if (channel.alarmHigh?.enabled && channel.alarmHigh.value != null) {
+			tooltipThresholds.push(`High: ${channel.alarmHigh.value}\u00B0${channel.alarmHigh.units ?? ""}`);
+		}
+		if (channel.alarmLow?.enabled && channel.alarmLow.value != null) {
+			tooltipThresholds.push(`Low: ${channel.alarmLow.value}\u00B0${channel.alarmLow.units ?? ""}`);
+		}
+		const thresholdInfo = tooltipThresholds.length > 0 ? ` [${tooltipThresholds.join(", ")}]` : "";
 
 		switch (alarm) {
 			case "high":
@@ -198,11 +258,13 @@ export class DeviceDetailNode extends vscode.TreeItem {
 
 export class FanDetailNode extends vscode.TreeItem {
 	readonly type = "fanDetail" as const;
+	readonly serial: string;
 
 	constructor(fan: FanSettings, deviceSerial: string, units: string | null) {
 		const stateLabel = fan.state != null && fan.state > 0 ? "running" : "idle";
 		const tempPart = fan.setTemp != null ? `${fan.setTemp}\u00B0${units ?? "F"}` : "not set";
 		super(`Fan: ${tempPart} (${stateLabel})`, vscode.TreeItemCollapsibleState.None);
+		this.serial = deviceSerial;
 		this.id = `thermoworks-fan-${deviceSerial}`;
 		this.iconPath = new vscode.ThemeIcon(
 			stateLabel === "running" ? "sync~spin" : "circle-outline",
@@ -255,27 +317,55 @@ export function getSeverityDisplay(severity: number): {
 	return { icon: "info", color: new vscode.ThemeColor("charts.blue"), label: "info" };
 }
 
+/** Format a date for event display — shows time context, not just "Xd ago". */
+export function formatEventTime(date: Date): string {
+	const now = new Date();
+	const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	const eventDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+	const time = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+
+	const dayDiff = Math.floor((today.getTime() - eventDay.getTime()) / 86_400_000);
+	if (dayDiff === 0) return time;
+	if (dayDiff === 1) return `Yesterday ${time}`;
+	const dateStr = date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+	if (date.getFullYear() !== now.getFullYear()) {
+		return `${dateStr}, ${date.getFullYear()}`;
+	}
+	return `${dateStr} ${time}`;
+}
+
+/** Build the description segments for an event row. */
+function buildEventDescription(event: DeviceEvent): string {
+	const parts: string[] = [];
+	if (event.channelId) parts.push(`Ch ${event.channelId}`);
+	if (event.valueBefore != null || event.valueAfter != null) {
+		parts.push(`${event.valueBefore ?? "–"} → ${event.valueAfter ?? "–"}`);
+	}
+	parts.push(formatEventTime(event.eventTime));
+	return parts.join(" · ");
+}
+
 export class EventNode extends vscode.TreeItem {
 	readonly type = "event" as const;
 	readonly event: DeviceEvent;
 
 	constructor(event: DeviceEvent) {
-		const label = event.eventType;
-		super(label, vscode.TreeItemCollapsibleState.None);
+		super(event.eventType, vscode.TreeItemCollapsibleState.None);
 		this.event = event;
 		this.id = `thermoworks-event-${event.id}`;
 		this.contextValue = "event";
 
 		const { icon, color, label: severityLabel } = getSeverityDisplay(event.severity);
 		this.iconPath = new vscode.ThemeIcon(icon, color);
-		this.description = formatTimeAgo(event.eventTime);
+		this.description = buildEventDescription(event);
 
 		const tooltipParts = [`**${event.eventType}** (${severityLabel})`, `Device: ${event.deviceId}`];
 		if (event.channelId) tooltipParts.push(`Channel: ${event.channelId}`);
 		if (event.valueBefore != null || event.valueAfter != null) {
-			tooltipParts.push(`Change: ${event.valueBefore ?? "--"} → ${event.valueAfter ?? "--"}`);
+			tooltipParts.push(`Change: ${event.valueBefore ?? "–"} → ${event.valueAfter ?? "–"}`);
 		}
 		tooltipParts.push(`Time: ${event.eventTime.toLocaleString()}`);
+		tooltipParts.push(`Relative: ${formatTimeAgo(event.eventTime)}`);
 		this.tooltip = new vscode.MarkdownString(tooltipParts.join("\n\n"));
 
 		this.command = {
@@ -480,23 +570,26 @@ export function buildDeviceChildren(
 		children.push(new FirmwareWarningNode(device.firmware, device.serial));
 	}
 
-	// Temperature channels (filter out humidity-only)
+	// Channels folder (expanded by default)
 	const tempChannels = channels.filter((ch) => ch.enabled !== false && ch.units !== "H");
+	const channelNodes: TreeNode[] = [];
 	for (let i = 0; i < tempChannels.length; i++) {
 		const ch = tempChannels[i];
 		if (ch) {
-			children.push(new ChannelNode(ch, device.serial, i));
+			channelNodes.push(new ChannelNode(ch, device.serial, i));
 		}
 	}
-
-	// Fan controller info (shown after channels for visibility)
-	if (device.fan != null) {
-		children.push(new FanDetailNode(device.fan, device.serial, device.deviceDisplayUnits));
+	if (channelNodes.length > 0) {
+		children.push(new ChannelsFolderNode(device.serial, channelNodes));
 	}
 
-	// Average temperature (when available)
+	// Details folder (collapsed by default)
+	const detailNodes: TreeNode[] = [];
+	if (device.fan != null) {
+		detailNodes.push(new FanDetailNode(device.fan, device.serial, device.deviceDisplayUnits));
+	}
 	if (averageTemp) {
-		children.push(
+		detailNodes.push(
 			new DeviceDetailNode(
 				"Avg Temp",
 				`${Math.round(averageTemp.value)}\u00B0${averageTemp.units}`,
@@ -504,23 +597,21 @@ export function buildDeviceChildren(
 			),
 		);
 	}
-
-	// Device metadata
 	if (device.battery != null) {
-		children.push(new DeviceDetailNode("Battery", `${device.battery}%`, device.serial));
+		detailNodes.push(new DeviceDetailNode("Battery", `${device.battery}%`, device.serial));
 	}
 	if (device.lastSeen) {
-		children.push(new DeviceDetailNode("Last Seen", formatTimeAgo(device.lastSeen), device.serial));
+		detailNodes.push(new DeviceDetailNode("Last Seen", formatTimeAgo(device.lastSeen), device.serial));
 	}
 	if (device.firmware && !firmwareOutdated) {
-		children.push(new DeviceDetailNode("Firmware", device.firmware, device.serial));
+		detailNodes.push(new DeviceDetailNode("Firmware", device.firmware, device.serial));
 	}
+	detailNodes.push(new CalibrationFolderNode(device.serial));
+	detailNodes.push(new ArchivesFolderNode(device.serial));
 
-	// Calibration folder (loads on expand)
-	children.push(new CalibrationFolderNode(device.serial));
-
-	// Archives folder (always present, loads on expand)
-	children.push(new ArchivesFolderNode(device.serial));
+	if (detailNodes.length > 0) {
+		children.push(new DetailsFolderNode(device.serial, detailNodes));
+	}
 
 	return children;
 }

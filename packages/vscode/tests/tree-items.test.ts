@@ -56,6 +56,8 @@ import {
 	CalibrationFolderNode,
 	CalibrationRecordNode,
 	ChannelNode,
+	ChannelsFolderNode,
+	DetailsFolderNode,
 	DeviceDetailNode,
 	DeviceNode,
 	DevicesFolderNode,
@@ -359,6 +361,46 @@ describe("tree-items", () => {
 			expect(node.description).toBe("225\u00B0F");
 			delete treeItemsConfigValues.units;
 		});
+
+		it("shows alarm indicator when high alarm is set", () => {
+			const ch = makeChannel({
+				value: 200,
+				units: "F",
+				alarmHigh: { enabled: true, value: 250, units: "F" },
+			});
+			const node = new ChannelNode(ch, "ABC123", 0);
+			expect(node.description).toContain("🔔");
+			expect(node.description).toContain("↑250°");
+		});
+
+		it("shows alarm indicator when low alarm is set", () => {
+			const ch = makeChannel({
+				value: 100,
+				units: "F",
+				alarmLow: { enabled: true, value: 80, units: "F" },
+			});
+			const node = new ChannelNode(ch, "ABC123", 0);
+			expect(node.description).toContain("🔔");
+			expect(node.description).toContain("↓80°");
+		});
+
+		it("shows both alarm thresholds when both are set", () => {
+			const ch = makeChannel({
+				value: 180,
+				units: "F",
+				alarmHigh: { enabled: true, value: 250, units: "F" },
+				alarmLow: { enabled: true, value: 80, units: "F" },
+			});
+			const node = new ChannelNode(ch, "ABC123", 0);
+			expect(node.description).toContain("↑250°");
+			expect(node.description).toContain("↓80°");
+		});
+
+		it("no alarm indicator when alarms are null", () => {
+			const ch = makeChannel({ alarmHigh: null, alarmLow: null });
+			const node = new ChannelNode(ch, "ABC123", 0);
+			expect(node.description).not.toContain("🔔");
+		});
 	});
 
 	describe("DeviceDetailNode", () => {
@@ -436,14 +478,21 @@ describe("tree-items", () => {
 			];
 			const children = buildDeviceChildren(mockDevice, channels);
 
-			// 2 channels + battery + last seen + firmware + calibration folder + archives folder = 7
-			expect(children.length).toBe(7);
-			expect(children[0]).toBeInstanceOf(ChannelNode);
-			expect(children[1]).toBeInstanceOf(ChannelNode);
-			expect(children[2]).toBeInstanceOf(DeviceDetailNode);
-			expect((children[2] as DeviceDetailNode).label).toBe("Battery: 85%");
-			expect(children[5]).toBeInstanceOf(CalibrationFolderNode);
-			expect(children[6]).toBeInstanceOf(ArchivesFolderNode);
+			// ChannelsFolderNode + DetailsFolderNode = 2
+			expect(children.length).toBe(2);
+			expect(children[0]).toBeInstanceOf(ChannelsFolderNode);
+			expect(children[1]).toBeInstanceOf(DetailsFolderNode);
+
+			const chFolder = children[0] as ChannelsFolderNode;
+			expect(chFolder.channels.length).toBe(2);
+			expect(chFolder.channels[0]).toBeInstanceOf(ChannelNode);
+			expect(chFolder.channels[1]).toBeInstanceOf(ChannelNode);
+
+			const detFolder = children[1] as DetailsFolderNode;
+			const detailLabels = detFolder.details.map((d) => d.label);
+			expect(detailLabels).toContain("Battery: 85%");
+			expect(detFolder.details.find((c) => c instanceof CalibrationFolderNode)).toBeDefined();
+			expect(detFolder.details.find((c) => c instanceof ArchivesFolderNode)).toBeDefined();
 		});
 
 		it("filters out disabled channels", () => {
@@ -452,8 +501,8 @@ describe("tree-items", () => {
 				makeChannel({ label: "Disabled", enabled: false }),
 			];
 			const children = buildDeviceChildren(mockDevice, channels);
-			const channelNodes = children.filter((c) => c instanceof ChannelNode);
-			expect(channelNodes.length).toBe(1);
+			const chFolder = children.find((c) => c instanceof ChannelsFolderNode) as ChannelsFolderNode;
+			expect(chFolder.channels.length).toBe(1);
 		});
 
 		it("filters out humidity channels", () => {
@@ -462,26 +511,27 @@ describe("tree-items", () => {
 				makeChannel({ label: "Humidity", units: "H" }),
 			];
 			const children = buildDeviceChildren(mockDevice, channels);
-			const channelNodes = children.filter((c) => c instanceof ChannelNode);
-			expect(channelNodes.length).toBe(1);
+			const chFolder = children.find((c) => c instanceof ChannelsFolderNode) as ChannelsFolderNode;
+			expect(chFolder.channels.length).toBe(1);
 		});
 
 		it("omits metadata when not available", () => {
 			const channels = [makeChannel()];
 			const children = buildDeviceChildren(mockOfflineDevice, channels);
-			// 1 channel + calibration folder + archives folder, no battery, no lastSeen, no firmware
-			const detailNodes = children.filter((c) => c instanceof DeviceDetailNode);
+			const detFolder = children.find((c) => c instanceof DetailsFolderNode) as DetailsFolderNode;
+			// No battery, no lastSeen, no firmware — only calibration + archives
+			const detailNodes = detFolder.details.filter((c) => c instanceof DeviceDetailNode);
 			expect(detailNodes.length).toBe(0);
-			expect(children[children.length - 1]).toBeInstanceOf(ArchivesFolderNode);
-			expect(children[children.length - 2]).toBeInstanceOf(CalibrationFolderNode);
+			expect(detFolder.details.find((c) => c instanceof CalibrationFolderNode)).toBeDefined();
+			expect(detFolder.details.find((c) => c instanceof ArchivesFolderNode)).toBeDefined();
 		});
 
 		it("includes average temp node when provided", () => {
 			const channels = [makeChannel({ label: "Pit", value: 225, units: "F" })];
 			const avgTemp = { value: 218.5, units: "F" };
 			const children = buildDeviceChildren(mockDevice, channels, false, avgTemp);
-			const detailNodes = children.filter((c) => c instanceof DeviceDetailNode);
-			const avgNode = detailNodes.find(
+			const detFolder = children.find((c) => c instanceof DetailsFolderNode) as DetailsFolderNode;
+			const avgNode = detFolder.details.find(
 				(n) => (n as DeviceDetailNode).label === "Avg Temp: 219\u00B0F",
 			);
 			expect(avgNode).toBeDefined();
@@ -490,8 +540,8 @@ describe("tree-items", () => {
 		it("omits average temp node when null", () => {
 			const channels = [makeChannel({ label: "Pit", value: 225, units: "F" })];
 			const children = buildDeviceChildren(mockDevice, channels, false, null);
-			const detailNodes = children.filter((c) => c instanceof DeviceDetailNode);
-			const avgNode = detailNodes.find((n) =>
+			const detFolder = children.find((c) => c instanceof DetailsFolderNode) as DetailsFolderNode;
+			const avgNode = detFolder.details.find((n) =>
 				((n as DeviceDetailNode).label as string).startsWith("Avg Temp"),
 			);
 			expect(avgNode).toBeUndefined();
@@ -500,7 +550,8 @@ describe("tree-items", () => {
 		it("includes calibration folder for every device", () => {
 			const channels = [makeChannel()];
 			const children = buildDeviceChildren(mockDevice, channels);
-			const calFolder = children.find((c) => c instanceof CalibrationFolderNode);
+			const detFolder = children.find((c) => c instanceof DetailsFolderNode) as DetailsFolderNode;
+			const calFolder = detFolder.details.find((c) => c instanceof CalibrationFolderNode);
 			expect(calFolder).toBeDefined();
 			expect((calFolder as CalibrationFolderNode).serial).toBe("ABC123");
 		});

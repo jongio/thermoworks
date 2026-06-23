@@ -24,6 +24,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
 	// ─── TreeView Panel ──────────────────────────────────────────────────
 	const treeProvider = new ThermoworksTreeProvider(credentialStore, clientManager);
+	treeProvider.setGlobalState(context.globalState);
 	const treeView = vscode.window.createTreeView("thermoworksPanel", {
 		treeDataProvider: treeProvider,
 		showCollapseAll: true,
@@ -108,6 +109,9 @@ export function activate(context: vscode.ExtensionContext): void {
 			await statusBar?.refresh();
 		}),
 		vscode.commands.registerCommand("thermoworks.refreshPanel", () => treeProvider.refresh()),
+		vscode.commands.registerCommand("thermoworks.toggleDeviceView", () =>
+			treeProvider.toggleDeviceView(),
+		),
 		vscode.commands.registerCommand("thermoworks.openCloud", () => treeProvider.openCloud()),
 		vscode.commands.registerCommand("thermoworks.configureAlarm", () =>
 			configureAlarm(clientManager, credentialStore),
@@ -120,7 +124,7 @@ export function activate(context: vscode.ExtensionContext): void {
 				...(event.channelId ? [`Channel: ${event.channelId}`] : []),
 				`Time: ${event.eventTime.toLocaleString()}`,
 				...(event.valueBefore != null || event.valueAfter != null
-					? [`Change: ${event.valueBefore ?? "--"} -> ${event.valueAfter ?? "--"}`]
+					? [`Change: ${event.valueBefore ?? "–"} → ${event.valueAfter ?? "–"}`]
 					: []),
 				...(event.groups?.length ? [`Groups: ${event.groups.join(", ")}`] : []),
 				"---",
@@ -191,20 +195,110 @@ export function activate(context: vscode.ExtensionContext): void {
 
 		// Device control commands
 		vscode.commands.registerCommand("thermoworks.setFanTarget", async (node: DeviceNode) => {
+			if (!node?.serial) {
+				vscode.window.showErrorMessage("ThermoWorks: Select a fan-capable device first.");
+				return;
+			}
 			await setFanTarget(node, clientManager, credentialStore);
 			await treeProvider.refresh();
 		}),
 		vscode.commands.registerCommand("thermoworks.setFanEnabled", async (node: DeviceNode) => {
+			if (!node?.serial) {
+				vscode.window.showErrorMessage("ThermoWorks: Select a fan-capable device first.");
+				return;
+			}
 			await setFanEnabled(node, clientManager, credentialStore);
 			await treeProvider.refresh();
 		}),
 		vscode.commands.registerCommand("thermoworks.renameDevice", async (node: DeviceNode) => {
+			if (!node?.serial) {
+				vscode.window.showErrorMessage("ThermoWorks: Select a device first.");
+				return;
+			}
 			await renameDevice(node, clientManager, credentialStore);
 			await treeProvider.refresh();
 		}),
 		vscode.commands.registerCommand("thermoworks.resetMinMax", async (node: ChannelNode) => {
+			if (!node?.serial) {
+				vscode.window.showErrorMessage("ThermoWorks: Select a channel first.");
+				return;
+			}
 			await resetMinMax(node, clientManager, credentialStore);
 			await treeProvider.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.addToGroup", async (node: DeviceNode) => {
+			if (!node?.serial) {
+				vscode.window.showErrorMessage("ThermoWorks: Select a device first.");
+				return;
+			}
+			try {
+				const creds = await credentialStore.getCredentials();
+				if (!creds) return;
+				const client = await clientManager.getClient(creds);
+				const groups = await client.getDeviceGroups();
+
+				const CREATE_NEW = "$(add) Create New Group…";
+				const items = [
+					...groups.filter((g) => g.name).map((g) => ({ label: g.name, groupId: g.id })),
+					{ label: CREATE_NEW, groupId: "__new__" },
+				];
+				const pick = await vscode.window.showQuickPick(items, {
+					placeHolder: "Select a group or create a new one",
+				});
+				if (!pick) return;
+
+				if (pick.groupId === "__new__") {
+					const name = await vscode.window.showInputBox({
+						prompt: "New group name",
+						placeHolder: "e.g. Backyard, Kitchen",
+						ignoreFocusOut: true,
+					});
+					if (!name) return;
+					const newGroup = await client.createDeviceGroup(name, [node.serial]);
+					vscode.window.showInformationMessage(`Created "${name}" and added device.`);
+					// Clear group cache so it shows up
+					treeProvider.clearGroupCache();
+				} else {
+					await client.addDeviceToGroup(pick.groupId, node.serial);
+					vscode.window.showInformationMessage(`Added to "${pick.label}".`);
+				}
+				await treeProvider.refresh();
+			} catch (e) {
+				vscode.window.showErrorMessage(`Failed to add to group: ${e instanceof Error ? e.message : e}`);
+			}
+		}),
+		vscode.commands.registerCommand("thermoworks.removeFromGroup", async (node: DeviceNode) => {
+			if (!node?.serial) {
+				vscode.window.showErrorMessage("ThermoWorks: Select a device first.");
+				return;
+			}
+			try {
+				const creds = await credentialStore.getCredentials();
+				if (!creds) return;
+				const client = await clientManager.getClient(creds);
+				const groups = await client.getDeviceGroups();
+				const deviceGroups = groups.filter((g) => g.devices.includes(node.serial));
+				if (deviceGroups.length === 0) {
+					vscode.window.showInformationMessage("Device is not in any group.");
+					return;
+				}
+				let groupId: string;
+				if (deviceGroups.length === 1) {
+					groupId = deviceGroups[0]!.id;
+				} else {
+					const pick = await vscode.window.showQuickPick(
+						deviceGroups.map((g) => ({ label: g.name || g.id, groupId: g.id })),
+						{ placeHolder: "Remove from which group?" },
+					);
+					if (!pick) return;
+					groupId = pick.groupId;
+				}
+				await client.removeDeviceFromGroup(groupId, node.serial);
+				vscode.window.showInformationMessage("Removed from group.");
+				await treeProvider.refresh();
+			} catch (e) {
+				vscode.window.showErrorMessage(`Failed to remove from group: ${e instanceof Error ? e.message : e}`);
+			}
 		}),
 
 		// Events view commands
@@ -219,10 +313,12 @@ export function activate(context: vscode.ExtensionContext): void {
 					return;
 				}
 				eventsProvider.setDeviceFilter(serial, label);
+				eventsView.description = label;
 			},
 		),
 		vscode.commands.registerCommand("thermoworks.clearEventsFilter", () => {
 			eventsProvider.clearDeviceFilter();
+			eventsView.description = undefined;
 		}),
 
 		// Temperature guide command

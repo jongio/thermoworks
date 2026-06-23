@@ -3,7 +3,7 @@
   "private": true,
   "displayName": "ThermoWorks",
   "description": "Display real-time ThermoWorks device temperatures in the VS Code status bar",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "publisher": "jongio",
   "author": "Jon Gallant",
   "license": "MIT",
@@ -86,80 +86,102 @@
       },
       {
         "command": "thermoworks.refresh",
-        "title": "ThermoWorks: Refresh Temperatures"
+        "title": "Refresh Temperatures",
+        "category": "ThermoWorks"
       },
       {
         "command": "thermoworks.cycleNext",
-        "title": "ThermoWorks: Cycle to Next Device"
+        "title": "Cycle to Next Device",
+        "category": "ThermoWorks"
       },
       {
         "command": "thermoworks.demo",
-        "title": "ThermoWorks: Demo (Simulate Alarm)"
+        "title": "Demo (Simulate Alarm)",
+        "category": "ThermoWorks"
       },
       {
         "command": "thermoworks.signIn",
-        "title": "ThermoWorks: Sign In"
+        "title": "Sign In",
+        "category": "ThermoWorks"
       },
       {
         "command": "thermoworks.signOut",
-        "title": "ThermoWorks: Sign Out"
+        "title": "Sign Out",
+        "category": "ThermoWorks"
       },
       {
         "command": "thermoworks.refreshPanel",
-        "title": "ThermoWorks: Refresh Panel",
+        "title": "Refresh Panel",
+        "category": "ThermoWorks",
         "icon": "$(refresh)"
       },
       {
+        "command": "thermoworks.toggleDeviceView",
+        "title": "Toggle Grouped/List View",
+        "category": "ThermoWorks",
+        "icon": "$(list-tree)"
+      },
+      {
         "command": "thermoworks.openCloud",
-        "title": "ThermoWorks: Open Cloud Dashboard",
+        "title": "Open Cloud Dashboard",
+        "category": "ThermoWorks",
         "icon": "$(link-external)"
       },
       {
         "command": "thermoworks.showEventDetails",
-        "title": "ThermoWorks: Show Event Details"
+        "title": "Show Event Details",
+        "category": "ThermoWorks"
       },
       {
         "command": "thermoworks.showArchiveDetails",
-        "title": "ThermoWorks: Show Archive Details",
+        "title": "Show Archive Details",
+        "category": "ThermoWorks",
         "icon": "$(open-preview)"
       },
       {
         "command": "thermoworks.refreshArchives",
-        "title": "ThermoWorks: Refresh Archives",
+        "title": "Refresh Archives",
+        "category": "ThermoWorks",
         "icon": "$(refresh)"
       },
       {
         "command": "thermoworks.configureAlarm",
-        "title": "ThermoWorks: Configure Alarm"
+        "title": "Configure Alarm",
+        "category": "ThermoWorks"
       },
       {
         "command": "thermoworks.showTemperatureChart",
-        "title": "ThermoWorks: Show Temperature Chart",
+        "title": "Show Temperature Chart",
+        "category": "ThermoWorks",
         "icon": "$(graph-line)"
       },
       {
         "command": "thermoworks.showArchiveChart",
-        "title": "ThermoWorks: Show Session Chart",
+        "title": "Show Session Chart",
+        "category": "ThermoWorks",
         "icon": "$(graph-line)"
       },
       {
         "command": "thermoworks.startSession",
-        "title": "ThermoWorks: Start Session",
+        "title": "Start Session",
+        "category": "ThermoWorks",
         "icon": "$(record)"
       },
       {
         "command": "thermoworks.endSession",
-        "title": "ThermoWorks: End Session",
+        "title": "End Session",
+        "category": "ThermoWorks",
         "icon": "$(debug-stop)"
       },
       {
         "command": "thermoworks.clearSession",
-        "title": "ThermoWorks: Clear Session",
+        "title": "Clear Session",
+        "category": "ThermoWorks",
         "icon": "$(trash)"
       },
       {
         "command": "thermoworks.setAlarmInline",
-        "title": "Set Alarm\u2026",
+        "title": "Set Alarm…",
         "icon": "$(bell)"
       },
       {
@@ -169,32 +191,35 @@
       },
       {
         "command": "thermoworks.refreshEvents",
-        "title": "ThermoWorks: Refresh Events",
+        "title": "Refresh Events",
+        "category": "ThermoWorks",
         "icon": "$(refresh)"
       },
       {
         "command": "thermoworks.filterEventsByDevice",
-        "title": "ThermoWorks: Filter Events by Device",
+        "title": "Filter Events by Device",
+        "category": "ThermoWorks",
         "icon": "$(filter)"
       },
       {
         "command": "thermoworks.clearEventsFilter",
-        "title": "ThermoWorks: Show All Events",
-        "icon": "$(clear-all)"
+        "title": "Show All Events",
+        "category": "ThermoWorks",
+        "icon": "$(list-flat)"
       },
       {
         "command": "thermoworks.setFanTarget",
-        "title": "Set Fan Target\u2026",
-        "icon": "$(flame)"
+        "title": "Set Target Temp…",
+        "icon": "$(dashboard)"
       },
       {
         "command": "thermoworks.setFanEnabled",
-        "title": "Fan On/Off\u2026",
+        "title": "Fan On/Off…",
         "icon": "$(plug)"
       },
       {
         "command": "thermoworks.renameDevice",
-        "title": "Rename Device\u2026",
+        "title": "Rename Device…",
         "icon": "$(edit)"
       },
       {
@@ -204,8 +229,21 @@
       },
       {
         "command": "thermoworks.showTemperatureGuide",
-        "title": "ThermoWorks: Temperature Guide",
+        "title": "Temperature Guide",
+        "category": "ThermoWorks",
         "icon": "$(book)"
+      },
+      {
+        "command": "thermoworks.addToGroup",
+        "title": "Add to Group…",
+        "category": "ThermoWorks",
+        "icon": "$(add)"
+      },
+      {
+        "command": "thermoworks.removeFromGroup",
+        "title": "Remove from Group",
+        "category": "ThermoWorks",
+        "icon": "$(remove)"
       }
     ],
     "menus": {
@@ -242,6 +280,11 @@
           "when": "view == thermoworksPanel && viewItem == account"
         },
         {
+          "command": "thermoworks.toggleDeviceView",
+          "when": "view == thermoworksPanel && viewItem == devicesFolder",
+          "group": "inline"
+        },
+        {
           "command": "thermoworks.refreshPanel",
           "when": "view == thermoworksPanel && viewItem == devicesFolder"
         },
@@ -257,7 +300,12 @@
         },
         {
           "command": "thermoworks.showTemperatureChart",
-          "when": "view == thermoworksPanel && viewItem == device",
+          "when": "view == thermoworksPanel && viewItem =~ /^device(WithFan)?$/",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.filterEventsByDevice",
+          "when": "view == thermoworksPanel && viewItem =~ /^device(WithFan)?$/",
           "group": "inline"
         },
         {
@@ -271,28 +319,13 @@
           "group": "inline"
         },
         {
-          "command": "thermoworks.filterEventsByDevice",
-          "when": "view == thermoworksPanel && viewItem == device",
-          "group": "inline"
-        },
-        {
-          "command": "thermoworks.filterEventsByDevice",
-          "when": "view == thermoworksPanel && viewItem == deviceWithFan",
-          "group": "inline"
-        },
-        {
-          "command": "thermoworks.showTemperatureChart",
-          "when": "view == thermoworksPanel && viewItem == deviceWithFan",
+          "command": "thermoworks.resetMinMax",
+          "when": "view == thermoworksPanel && viewItem == channelNode",
           "group": "inline"
         },
         {
           "command": "thermoworks.renameDevice",
-          "when": "view == thermoworksPanel && viewItem == device",
-          "group": "inline"
-        },
-        {
-          "command": "thermoworks.renameDevice",
-          "when": "view == thermoworksPanel && viewItem == deviceWithFan",
+          "when": "view == thermoworksPanel && viewItem =~ /^device(WithFan)?$/",
           "group": "inline"
         },
         {
@@ -306,19 +339,74 @@
           "group": "inline"
         },
         {
+          "command": "thermoworks.setFanTarget",
+          "when": "view == thermoworksPanel && viewItem == fanDetail",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.setFanEnabled",
+          "when": "view == thermoworksPanel && viewItem == fanDetail",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.clearSession",
+          "when": "view == thermoworksPanel && viewItem =~ /^device(WithFan)?$/",
+          "group": "inline"
+        },
+        {
+          "command": "thermoworks.showTemperatureChart",
+          "when": "view == thermoworksPanel && viewItem =~ /^device(WithFan)?$/",
+          "group": "1_view"
+        },
+        {
+          "command": "thermoworks.filterEventsByDevice",
+          "when": "view == thermoworksPanel && viewItem =~ /^device(WithFan)?$/",
+          "group": "1_view"
+        },
+        {
+          "command": "thermoworks.renameDevice",
+          "when": "view == thermoworksPanel && viewItem =~ /^device(WithFan)?$/",
+          "group": "2_edit"
+        },
+        {
+          "command": "thermoworks.clearSession",
+          "when": "view == thermoworksPanel && viewItem =~ /^device(WithFan)?$/",
+          "group": "2_edit"
+        },
+        {
+          "command": "thermoworks.setFanTarget",
+          "when": "view == thermoworksPanel && viewItem == deviceWithFan",
+          "group": "3_fan"
+        },
+        {
+          "command": "thermoworks.setFanEnabled",
+          "when": "view == thermoworksPanel && viewItem == deviceWithFan",
+          "group": "3_fan"
+        },
+        {
+          "command": "thermoworks.setAlarmInline",
+          "when": "view == thermoworksPanel && viewItem == channelNode",
+          "group": "1_alarm"
+        },
+        {
+          "command": "thermoworks.clearAlarmInline",
+          "when": "view == thermoworksPanel && viewItem == channelNode",
+          "group": "1_alarm"
+        },
+        {
           "command": "thermoworks.resetMinMax",
           "when": "view == thermoworksPanel && viewItem == channelNode",
-          "group": "inline"
+          "group": "2_reset"
         },
         {
-          "command": "thermoworks.clearSession",
-          "when": "view == thermoworksPanel && viewItem == device",
-          "group": "inline"
+          "command": "thermoworks.addToGroup",
+          "when": "view == thermoworksPanel && viewItem =~ /^device(WithFan)?$/",
+          "group": "4_group"
         },
         {
-          "command": "thermoworks.clearSession",
-          "when": "view == thermoworksPanel && viewItem == deviceWithFan",
-          "group": "inline"
+          "command": "thermoworks.removeFromGroup",
+          "when": "view == thermoworksPanel && viewItem =~ /^device(WithFan)?$/ && thermoworks.groupedView",
+          "group": "4_group"
         }
       ]
     },

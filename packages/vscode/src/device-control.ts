@@ -2,7 +2,10 @@ import * as vscode from "vscode";
 import { validateTemperature } from "./alarm-config";
 import type { ClientManager } from "./client-manager";
 import type { CredentialStore } from "./credentials";
-import type { ChannelNode, DeviceNode } from "./tree/tree-items";
+import type { ChannelNode, DeviceNode, FanDetailNode } from "./tree/tree-items";
+
+/** A node that carries a device serial — DeviceNode or FanDetailNode. */
+type DeviceSerialNode = DeviceNode | FanDetailNode;
 
 /**
  * Set the fan target temperature for a device.
@@ -11,7 +14,7 @@ import type { ChannelNode, DeviceNode } from "./tree/tree-items";
  * then calls setFanTarget on the SDK. Only meaningful for fan-capable devices.
  */
 export async function setFanTarget(
-	node: DeviceNode,
+	node: DeviceSerialNode,
 	clientManager: ClientManager,
 	credentialStore: CredentialStore,
 ): Promise<void> {
@@ -22,7 +25,7 @@ export async function setFanTarget(
 	}
 
 	const input = await vscode.window.showInputBox({
-		prompt: "Enter fan target temperature",
+		prompt: "Enter target temperature for the fan controller",
 		placeHolder: "e.g. 225",
 		validateInput: validateTemperature,
 	});
@@ -35,10 +38,10 @@ export async function setFanTarget(
 
 	if (result.success) {
 		vscode.window.showInformationMessage(
-			`Fan target set to ${targetTemp}\u00B0 on ${(node.label as string) ?? node.serial}.`,
+			`Target temp set to ${targetTemp}\u00B0 on ${(node.label as string) ?? node.serial}.`,
 		);
 	} else {
-		vscode.window.showErrorMessage(`Failed to set fan target: ${result.error ?? "unknown error"}`);
+		vscode.window.showErrorMessage(`Failed to set target temp: ${result.error ?? "unknown error"}`);
 	}
 }
 
@@ -48,7 +51,7 @@ export async function setFanTarget(
  * Shows a quick pick to choose enable/disable, then calls setFanEnabled.
  */
 export async function setFanEnabled(
-	node: DeviceNode,
+	node: DeviceSerialNode,
 	clientManager: ClientManager,
 	credentialStore: CredentialStore,
 ): Promise<void> {

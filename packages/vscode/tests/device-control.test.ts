@@ -111,7 +111,7 @@ describe("setFanTarget", () => {
 
 		expect(mockSetFanTarget).toHaveBeenCalledWith("ABC123", 225);
 		expect(mockShowInformationMessage).toHaveBeenCalledWith(
-			"Fan target set to 225\u00B0 on Smoker.",
+			"Target temp set to 225\u00B0 on Smoker.",
 		);
 	});
 
@@ -128,7 +128,7 @@ describe("setFanTarget", () => {
 
 		await setFanTarget(node, cm as any, cs as any);
 
-		expect(mockShowErrorMessage).toHaveBeenCalledWith("Failed to set fan target: Device offline");
+		expect(mockShowErrorMessage).toHaveBeenCalledWith("Failed to set target temp: Device offline");
 	});
 
 	it("uses serial when label is null", async () => {
@@ -141,7 +141,7 @@ describe("setFanTarget", () => {
 		await setFanTarget(node, cm as any, cs as any);
 
 		expect(mockShowInformationMessage).toHaveBeenCalledWith(
-			"Fan target set to 300\u00B0 on XYZ789.",
+			"Target temp set to 300\u00B0 on XYZ789.",
 		);
 	});
 

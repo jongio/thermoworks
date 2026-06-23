@@ -902,15 +902,36 @@ export class ThermoworksCloud {
 	}
 
 	/**
-	 * Create a new device group.
-	 *
-	 * @throws Error - This method is not yet supported as the full device group
-	 * API is not documented.
+	 * Create a new device group in the account's deviceGroups subcollection.
 	 */
-	async createDeviceGroup(_name: string, _devices: string[]): Promise<DeviceGroup> {
-		throw new Error(
-			"createDeviceGroup is not yet supported: the device group write API is not fully documented",
-		);
+	async createDeviceGroup(name: string, devices: string[]): Promise<DeviceGroup> {
+		const session = await this.ensureSession();
+		const userId = session.getUserId();
+		const userResponse = await session.request("GET", `documents/users/${userId}`);
+		const userDoc = (await userResponse.json()) as { fields?: FirestoreFields };
+		const accountId = getString(userDoc.fields ?? {}, "accountId");
+		if (!accountId) throw new Error("Account ID not found");
+
+		const path = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups`;
+		const body = {
+			fields: {
+				name: { stringValue: name },
+				devices: {
+					arrayValue: {
+						values: devices.map((d) => ({ stringValue: d })),
+					},
+				},
+			},
+		};
+		const response = await session.request("POST", path, body);
+		if (!response.ok) {
+			const text = await response.text().catch(() => "");
+			throw new Error(`Failed to create group: ${response.status} ${text}`);
+		}
+		const doc = (await response.json()) as { name?: string; fields?: FirestoreFields };
+		const docName = doc.name ?? "";
+		const id = docName.split("/").pop() ?? "";
+		return { id, name, devices };
 	}
 
 	/**
@@ -923,6 +944,66 @@ export class ThermoworksCloud {
 		throw new Error(
 			"deleteDeviceGroup is not yet supported: the device group write API is not fully documented",
 		);
+	}
+
+	/**
+	 * Add a device to an existing group by updating the group's devices array.
+	 */
+	async addDeviceToGroup(groupId: string, serial: string): Promise<void> {
+		const groups = await this.getDeviceGroups();
+		const group = groups.find((g) => g.id === groupId);
+		if (!group) throw new NotFoundError(`Group ${groupId} not found`);
+		if (group.devices.includes(serial)) return; // already in group
+
+		const session = await this.ensureSession();
+		const userId = session.getUserId();
+		const userResponse = await session.request("GET", `documents/users/${userId}`);
+		const userDoc = (await userResponse.json()) as { fields?: FirestoreFields };
+		const accountId = getString(userDoc.fields ?? {}, "accountId");
+		if (!accountId) throw new Error("Account ID not found");
+
+		const newDevices = [...group.devices, serial];
+		const path = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups/${encodeURIComponent(groupId)}?updateMask.fieldPaths=devices`;
+		const body = {
+			fields: {
+				devices: {
+					arrayValue: {
+						values: newDevices.map((d) => ({ stringValue: d })),
+					},
+				},
+			},
+		};
+		await session.request("PATCH", path, body);
+	}
+
+	/**
+	 * Remove a device from a group by updating the group's devices array.
+	 */
+	async removeDeviceFromGroup(groupId: string, serial: string): Promise<void> {
+		const groups = await this.getDeviceGroups();
+		const group = groups.find((g) => g.id === groupId);
+		if (!group) throw new NotFoundError(`Group ${groupId} not found`);
+		if (!group.devices.includes(serial)) return; // not in group
+
+		const session = await this.ensureSession();
+		const userId = session.getUserId();
+		const userResponse = await session.request("GET", `documents/users/${userId}`);
+		const userDoc = (await userResponse.json()) as { fields?: FirestoreFields };
+		const accountId = getString(userDoc.fields ?? {}, "accountId");
+		if (!accountId) throw new Error("Account ID not found");
+
+		const newDevices = group.devices.filter((d) => d !== serial);
+		const path = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups/${encodeURIComponent(groupId)}?updateMask.fieldPaths=devices`;
+		const body = {
+			fields: {
+				devices: {
+					arrayValue: {
+						values: newDevices.map((d) => ({ stringValue: d })),
+					},
+				},
+			},
+		};
+		await session.request("PATCH", path, body);
 	}
 
 	// ─── Fan Controller ──────────────────────────────────────────────────────────
@@ -1256,16 +1337,31 @@ function parseNotificationSettings(fields: FirestoreFields | null): Notification
 function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {
 	return {
 		id,
-		eventType: getString(fields, "eventType") ?? "",
-		severity: getNumber(fields, "severity") ?? 0,
-		eventTime: getTimestamp(fields, "eventTime") ?? new Date(0),
+		eventType: getString(fields, "EventType") ?? getString(fields, "eventType") ?? "",
+		severity: getNumber(fields, "Severity") ?? getNumber(fields, "severity") ?? 0,
+		eventTime:
+			getTimestamp(fields, "EventTime") ??
+			getTimestamp(fields, "eventTime") ??
+			getTimestampFromInt(fields, "EventTime") ??
+			getTimestampFromInt(fields, "eventTime") ??
+			new Date(0),
 		deviceId: getString(fields, "deviceId") ?? "",
 		channelId: getString(fields, "channelId"),
 		accountId: getString(fields, "accountId") ?? "",
-		valueBefore: getString(fields, "valueBefore"),
-		valueAfter: getString(fields, "valueAfter"),
+		valueBefore: getString(fields, "ValueBefore") ?? getString(fields, "valueBefore"),
+		valueAfter: getString(fields, "ValueAfter") ?? getString(fields, "valueAfter"),
 		groups: getStringArray(fields, "groups"),
 	};
+}
+
+/** Try to parse a timestamp stored as integerValue (epoch millis or seconds). */
+function getTimestampFromInt(fields: FirestoreFields, key: string): Date | null {
+	const n = getNumber(fields, key);
+	if (n == null) return null;
+	// Heuristic: values < 1e12 are epoch seconds, otherwise epoch millis
+	const ms = n < 1e12 ? n * 1000 : n;
+	const date = new Date(ms);
+	return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function parseArchive(fields: FirestoreFields, id: string): Archive {

@@ -11,6 +11,7 @@ import {
 	type User,
 } from "thermoworks-sdk";
 import * as vscode from "vscode";
+import { applyUnitPreference, getUnitPreference, type TemperatureUnit } from "../temperature-utils";
 
 // ─── Base Node ───────────────────────────────────────────────────────────────
 
@@ -142,7 +143,9 @@ export class ChannelNode extends vscode.TreeItem {
 
 		let valueText: string;
 		if (channel.value != null && channel.units != null) {
-			valueText = `${Math.round(channel.value)}\u00B0${channel.units}`;
+			const pref = getUnitPreference();
+			const converted = applyUnitPreference(channel.value, channel.units as TemperatureUnit, pref);
+			valueText = `${Math.round(converted.value)}\u00B0${converted.unit}`;
 		} else {
 			valueText = "--";
 		}

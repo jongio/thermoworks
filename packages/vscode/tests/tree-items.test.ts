@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── VS Code mock ────────────────────────────────────────────────────────────
 
-const { MockThemeColor, MockThemeIcon } = vi.hoisted(() => {
+const { MockThemeColor, MockThemeIcon, treeItemsConfigValues } = vi.hoisted(() => {
+	const configValues: Record<string, unknown> = {};
 	function MockThemeColor(this: { id: string }, id: string) {
 		this.id = id;
 	}
@@ -11,7 +12,7 @@ const { MockThemeColor, MockThemeIcon } = vi.hoisted(() => {
 		this.id = id;
 		this.color = color;
 	}
-	return { MockThemeColor, MockThemeIcon };
+	return { MockThemeColor, MockThemeIcon, treeItemsConfigValues: configValues };
 });
 
 const mockTreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 };
@@ -35,6 +36,13 @@ vi.mock("vscode", () => ({
 	},
 	TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
 	Uri: { parse: vi.fn((s: string) => ({ toString: () => s })) },
+	workspace: {
+		getConfiguration: vi.fn(() => ({
+			get: vi.fn(
+				(key: string, defaultValue: unknown) => treeItemsConfigValues[key] ?? defaultValue,
+			),
+		})),
+	},
 }));
 
 // ─── Imports (after mock) ────────────────────────────────────────────────────
@@ -334,6 +342,22 @@ describe("tree-items", () => {
 			const ch = makeChannel({ label: null });
 			const node = new ChannelNode(ch, "ABC123", 2);
 			expect(node.label).toBe("Channel 3");
+		});
+
+		it("converts temperature when units preference is C and native is F", () => {
+			treeItemsConfigValues.units = "C";
+			const ch = makeChannel({ value: 212, units: "F", label: "Boiling" });
+			const node = new ChannelNode(ch, "ABC123", 0);
+			expect(node.description).toBe("100\u00B0C");
+			delete treeItemsConfigValues.units;
+		});
+
+		it("keeps native units when preference is auto", () => {
+			treeItemsConfigValues.units = "auto";
+			const ch = makeChannel({ value: 225, units: "F", label: "Pit" });
+			const node = new ChannelNode(ch, "ABC123", 0);
+			expect(node.description).toBe("225\u00B0F");
+			delete treeItemsConfigValues.units;
 		});
 	});
 

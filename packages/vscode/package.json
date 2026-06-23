@@ -365,9 +365,74 @@
           "type": "boolean",
           "default": true,
           "description": "Show desktop notifications when a temperature alarm triggers"
+        },
+        "thermoworks.defaultDevice": {
+          "type": "string",
+          "default": "",
+          "description": "Preferred device for status bar in 'single' mode (match by serial or label, case-insensitive)"
+        },
+        "thermoworks.streaming": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable live WebSocket streaming for real-time updates. When false, only interval-based polling is used."
+        },
+        "thermoworks.units": {
+          "type": "string",
+          "enum": ["auto", "F", "C"],
+          "default": "auto",
+          "description": "Temperature display units: 'auto' uses the device's native units, 'F' converts to Fahrenheit, 'C' converts to Celsius"
         }
       }
-    }
+    },
+    "walkthroughs": [
+      {
+        "id": "thermoworks.gettingStarted",
+        "title": "Getting Started with ThermoWorks",
+        "description": "Connect your ThermoWorks devices to VS Code in a few steps.",
+        "steps": [
+          {
+            "id": "thermoworks.walkthrough.signIn",
+            "title": "Sign in to ThermoWorks Cloud",
+            "description": "Sign in with your ThermoWorks Cloud account to access your devices.\n\n[Sign In](command:thermoworks.signIn)",
+            "media": {
+              "image": "images/icon.png",
+              "altText": "ThermoWorks logo"
+            },
+            "completionEvents": ["onCommand:thermoworks.signIn"]
+          },
+          {
+            "id": "thermoworks.walkthrough.devices",
+            "title": "Find your devices in the tree",
+            "description": "Open the ThermoWorks panel in the activity bar to see all your connected devices, channels, and battery status.\n\n[Open Devices Panel](command:thermoworksPanel.focus)",
+            "media": {
+              "image": "images/icon.png",
+              "altText": "ThermoWorks devices panel"
+            },
+            "completionEvents": ["onView:thermoworksPanel"]
+          },
+          {
+            "id": "thermoworks.walkthrough.alarm",
+            "title": "Set an alarm on a channel",
+            "description": "Right-click any channel in the Devices panel and choose **Set Alarm** to configure high/low temperature thresholds.\n\n[Configure Alarm](command:thermoworks.configureAlarm)",
+            "media": {
+              "image": "images/icon.png",
+              "altText": "Configure alarm thresholds"
+            },
+            "completionEvents": ["onCommand:thermoworks.configureAlarm"]
+          },
+          {
+            "id": "thermoworks.walkthrough.chart",
+            "title": "Open a temperature chart",
+            "description": "Click the chart icon on any device to see a live temperature graph with alarm threshold lines.\n\n[Show Chart](command:thermoworks.showTemperatureChart)",
+            "media": {
+              "image": "images/icon.png",
+              "altText": "Live temperature chart"
+            },
+            "completionEvents": ["onCommand:thermoworks.showTemperatureChart"]
+          }
+        ]
+      }
+    ]
   },
   "scripts": {
     "build": "node build.mjs",

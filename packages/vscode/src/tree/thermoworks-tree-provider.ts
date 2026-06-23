@@ -269,23 +269,27 @@ export class ThermoworksTreeProvider
 		this.stopAutoRefresh();
 		if (this.disposed) return;
 
-		const intervalMs =
-			Math.max(
-				vscode.workspace.getConfiguration("thermoworks").get<number>("refreshInterval", 60),
-				15,
-			) * 1000;
+		const config = vscode.workspace.getConfiguration("thermoworks");
+		const streaming = config.get<boolean>("streaming", true);
 
-		this.deviceStream = new DeviceStream(
-			(serial) => this.fetchChannelsForStream(serial),
-			{ onSnapshot: (snapshot) => this.onStreamSnapshot(snapshot) },
-			intervalMs,
-		);
-		void this.syncStreamDevices();
+		if (streaming) {
+			const intervalMs = Math.max(config.get<number>("refreshInterval", 60), 15) * 1000;
+
+			this.deviceStream = new DeviceStream(
+				(serial) => this.fetchChannelsForStream(serial),
+				{ onSnapshot: (snapshot) => this.onStreamSnapshot(snapshot) },
+				intervalMs,
+			);
+			void this.syncStreamDevices();
+		}
 
 		// Register the config listener only once to avoid accumulating disposed entries.
 		if (!this.configDisposable) {
 			this.configDisposable = vscode.workspace.onDidChangeConfiguration((e) => {
-				if (e.affectsConfiguration("thermoworks.refreshInterval")) {
+				if (
+					e.affectsConfiguration("thermoworks.refreshInterval") ||
+					e.affectsConfiguration("thermoworks.streaming")
+				) {
 					this.startAutoRefresh(context);
 				}
 			});

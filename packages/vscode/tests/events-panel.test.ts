@@ -138,7 +138,12 @@ describe("events-panel", () => {
 		});
 
 		it("description includes channel, values, and formatted time", () => {
-			const event = makeEvent({ deviceId: "SN12345678", channelId: "2", valueBefore: "165", valueAfter: "180" });
+			const event = makeEvent({
+				deviceId: "SN12345678",
+				channelId: "2",
+				valueBefore: "165",
+				valueAfter: "180",
+			});
 			const node = new EventNode(event);
 			const desc = node.description as string;
 			// Channel, value change, and formatted date (no device ID)
@@ -148,7 +153,12 @@ describe("events-panel", () => {
 		});
 
 		it("description omits device ID entirely", () => {
-			const event = makeEvent({ deviceId: "ABC123", channelId: null, valueBefore: null, valueAfter: null });
+			const event = makeEvent({
+				deviceId: "ABC123",
+				channelId: null,
+				valueBefore: null,
+				valueAfter: null,
+			});
 			const node = new EventNode(event);
 			const desc = node.description as string;
 			expect(desc).not.toContain("ABC123");

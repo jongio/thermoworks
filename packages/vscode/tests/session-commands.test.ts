@@ -374,9 +374,7 @@ describe("session-commands", () => {
 
 			await clearSession(clientManager, credentialStore);
 
-			expect(mockShowErrorMessage).toHaveBeenCalledWith(
-				"Failed to clear session: Session locked",
-			);
+			expect(mockShowErrorMessage).toHaveBeenCalledWith("Failed to clear session: Session locked");
 		});
 
 		it("skips picker when deviceNode is provided (tree action)", async () => {

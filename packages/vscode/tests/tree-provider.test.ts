@@ -120,14 +120,13 @@ vi.mock("thermoworks-sdk", () => ({
 		close = mockClose;
 	},
 	getChannelAlarmState: () => null,
-	formatTimeAgo: (date: Date) => "just now",
+	formatTimeAgo: (_date: Date) => "just now",
 }));
 
 // ─── Import after mocks ─────────────────────────────────────────────────────
 
 import { ThermoworksTreeProvider } from "../src/tree/thermoworks-tree-provider";
 import {
-	AccountDetailNode,
 	ArchiveChannelNode,
 	ArchiveNode,
 	ArchivesFolderNode,

@@ -13,7 +13,11 @@ vi.mock("vscode", () => ({
 	ThemeColor: function ThemeColor(this: { id: string }, id: string) {
 		this.id = id;
 	},
-	ThemeIcon: function ThemeIcon(this: { id: string; color?: unknown }, id: string, color?: unknown) {
+	ThemeIcon: function ThemeIcon(
+		this: { id: string; color?: unknown },
+		id: string,
+		color?: unknown,
+	) {
 		this.id = id;
 		this.color = color;
 	},

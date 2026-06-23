@@ -219,7 +219,7 @@ describe("TemperatureStatusBar - streaming setting", () => {
 		// Advance timers; with streaming=false, the DeviceStream is never created
 		// so no live snapshots fire. The initial fetch reading persists.
 		const client = manager.getClient();
-		const callsBefore = client.getAllDeviceChannels.mock.calls.length;
+		const _callsBefore = client.getAllDeviceChannels.mock.calls.length;
 
 		await vi.advanceTimersByTimeAsync(15_000);
 

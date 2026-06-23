@@ -254,7 +254,7 @@ export function activate(context: vscode.ExtensionContext): void {
 						ignoreFocusOut: true,
 					});
 					if (!name) return;
-					const newGroup = await client.createDeviceGroup(name, [node.serial]);
+					await client.createDeviceGroup(name, [node.serial]);
 					vscode.window.showInformationMessage(`Created "${name}" and added device.`);
 					// Clear group cache so it shows up
 					treeProvider.clearGroupCache();
@@ -264,7 +264,9 @@ export function activate(context: vscode.ExtensionContext): void {
 				}
 				await treeProvider.refresh();
 			} catch (e) {
-				vscode.window.showErrorMessage(`Failed to add to group: ${e instanceof Error ? e.message : e}`);
+				vscode.window.showErrorMessage(
+					`Failed to add to group: ${e instanceof Error ? e.message : e}`,
+				);
 			}
 		}),
 		vscode.commands.registerCommand("thermoworks.removeFromGroup", async (node: DeviceNode) => {
@@ -284,7 +286,7 @@ export function activate(context: vscode.ExtensionContext): void {
 				}
 				let groupId: string;
 				if (deviceGroups.length === 1) {
-					groupId = deviceGroups[0]!.id;
+					groupId = deviceGroups[0]?.id ?? "";
 				} else {
 					const pick = await vscode.window.showQuickPick(
 						deviceGroups.map((g) => ({ label: g.name || g.id, groupId: g.id })),
@@ -297,7 +299,9 @@ export function activate(context: vscode.ExtensionContext): void {
 				vscode.window.showInformationMessage("Removed from group.");
 				await treeProvider.refresh();
 			} catch (e) {
-				vscode.window.showErrorMessage(`Failed to remove from group: ${e instanceof Error ? e.message : e}`);
+				vscode.window.showErrorMessage(
+					`Failed to remove from group: ${e instanceof Error ? e.message : e}`,
+				);
 			}
 		}),
 

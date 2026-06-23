@@ -273,12 +273,49 @@ describe("ThermoworksCloud - Device Groups", () => {
 	});
 
 	describe("createDeviceGroup", () => {
-		it("throws not supported error", async () => {
-			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
-
-			await expect(client.createDeviceGroup("Kitchen", ["ABC123"])).rejects.toThrow(
-				"createDeviceGroup is not yet supported",
+		it("creates group and returns it", async () => {
+			setupAuth();
+			// User document with accountId
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: {
+						accountId: { stringValue: "acct-123" },
+					},
+				}) as any,
 			);
+			// POST response for new group document
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					name: "projects/thermoworks-app/databases/(default)/documents/accounts/acct-123/deviceGroups/new-group-id",
+					fields: {
+						name: { stringValue: "Kitchen" },
+						devices: {
+							arrayValue: {
+								values: [{ stringValue: "ABC123" }],
+							},
+						},
+					},
+				}) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const group = await client.createDeviceGroup("Kitchen", ["ABC123"]);
+
+			expect(group).toEqual({ id: "new-group-id", name: "Kitchen", devices: ["ABC123"] });
+			client.close();
+		});
+
+		it("throws on API failure", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: { accountId: { stringValue: "acct-123" } },
+				}) as any,
+			);
+			mockRequest.mockResolvedValueOnce(mockRes(400, "Bad request") as any);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			await expect(client.createDeviceGroup("Kitchen", ["ABC123"])).rejects.toThrow("HTTP 400");
 			client.close();
 		});
 	});

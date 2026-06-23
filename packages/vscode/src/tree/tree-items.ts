@@ -219,7 +219,9 @@ export class ChannelNode extends vscode.TreeItem {
 		// Full tooltip with verbose alarm info
 		const tooltipThresholds: string[] = [];
 		if (channel.alarmHigh?.enabled && channel.alarmHigh.value != null) {
-			tooltipThresholds.push(`High: ${channel.alarmHigh.value}\u00B0${channel.alarmHigh.units ?? ""}`);
+			tooltipThresholds.push(
+				`High: ${channel.alarmHigh.value}\u00B0${channel.alarmHigh.units ?? ""}`,
+			);
 		}
 		if (channel.alarmLow?.enabled && channel.alarmLow.value != null) {
 			tooltipThresholds.push(`Low: ${channel.alarmLow.value}\u00B0${channel.alarmLow.units ?? ""}`);
@@ -601,7 +603,9 @@ export function buildDeviceChildren(
 		detailNodes.push(new DeviceDetailNode("Battery", `${device.battery}%`, device.serial));
 	}
 	if (device.lastSeen) {
-		detailNodes.push(new DeviceDetailNode("Last Seen", formatTimeAgo(device.lastSeen), device.serial));
+		detailNodes.push(
+			new DeviceDetailNode("Last Seen", formatTimeAgo(device.lastSeen), device.serial),
+		);
 	}
 	if (device.firmware && !firmwareOutdated) {
 		detailNodes.push(new DeviceDetailNode("Firmware", device.firmware, device.serial));

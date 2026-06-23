@@ -14,11 +14,7 @@ vi.mock("vscode", () => ({
 
 // ─── Import after mock ───────────────────────────────────────────────────────
 
-import {
-	applyUnitPreference,
-	convertTemp,
-	getUnitPreference,
-} from "../src/temperature-utils";
+import { applyUnitPreference, convertTemp, getUnitPreference } from "../src/temperature-utils";
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 

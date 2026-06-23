@@ -92,7 +92,9 @@ export class ThermoworksTreeProvider
 	setGlobalState(state: vscode.Memento): void {
 		this.globalState = state;
 		// Restore persisted device cache on startup (rehydrate Date fields)
-		const persisted = state.get<{ devices: Device[]; fetchedAt: number }>("thermoworks.deviceCache");
+		const persisted = state.get<{ devices: Device[]; fetchedAt: number }>(
+			"thermoworks.deviceCache",
+		);
 		if (persisted && persisted.devices.length > 0) {
 			const devices = persisted.devices.map((d) => ({
 				...d,
@@ -517,8 +519,9 @@ export class ThermoworksTreeProvider
 			}
 
 			// Flat list (default)
-			return results.map(({ device, hasAlarm, firmwareOutdated }) =>
-				new DeviceNode(device, hasAlarm, firmwareOutdated),
+			return results.map(
+				({ device, hasAlarm, firmwareOutdated }) =>
+					new DeviceNode(device, hasAlarm, firmwareOutdated),
 			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load devices";
@@ -746,7 +749,9 @@ export class ThermoworksTreeProvider
 		})();
 	}
 
-	private async getCachedAverageTemp(serial: string): Promise<{ value: number; units: string } | null> {
+	private async getCachedAverageTemp(
+		serial: string,
+	): Promise<{ value: number; units: string } | null> {
 		const now = Date.now();
 		const cached = this.avgTempCaches.get(serial);
 		if (cached) {

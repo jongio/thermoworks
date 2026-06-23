@@ -8,6 +8,7 @@ import { renameDevice, resetMinMax, setFanEnabled, setFanTarget } from "./device
 import { clearAlarmInline, setAlarmInline } from "./inline-alarm";
 import { clearSession, endSession, startSession } from "./session-commands";
 import { TemperatureStatusBar } from "./status-bar";
+import { showTemperatureGuide } from "./temperature-guide";
 import { EventsTreeProvider } from "./tree/events-tree-provider";
 import { ThermoworksTreeProvider } from "./tree/thermoworks-tree-provider";
 import type { ChannelNode, DeviceNode } from "./tree/tree-items";
@@ -223,6 +224,11 @@ export function activate(context: vscode.ExtensionContext): void {
 		vscode.commands.registerCommand("thermoworks.clearEventsFilter", () => {
 			eventsProvider.clearDeviceFilter();
 		}),
+
+		// Temperature guide command
+		vscode.commands.registerCommand("thermoworks.showTemperatureGuide", () =>
+			showTemperatureGuide(clientManager, credentialStore),
+		),
 
 		eventsView,
 		eventsProvider,

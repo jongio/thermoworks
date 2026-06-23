@@ -19,6 +19,8 @@ import {
 	ArchiveNode,
 	ArchivesFolderNode,
 	buildDeviceChildren,
+	CalibrationFolderNode,
+	CalibrationRecordNode,
 	DeviceNode,
 	DevicesFolderNode,
 	ErrorNode,
@@ -116,6 +118,11 @@ export class ThermoworksTreeProvider
 		// Archive children (channel summaries)
 		if (element instanceof ArchiveNode) {
 			return this.getArchiveChildren(element.archive, element.serial);
+		}
+
+		// Calibration folder children
+		if (element instanceof CalibrationFolderNode) {
+			return this.getCalibrationNodes(element.serial);
 		}
 
 		return [];
@@ -343,7 +350,7 @@ export class ThermoworksTreeProvider
 		}
 	}
 
-	private getAccountChildren(user: User): TreeNode[] {
+	private async getAccountChildren(user: User): Promise<TreeNode[]> {
 		const children: TreeNode[] = [];
 
 		if (user.email) {
@@ -357,6 +364,43 @@ export class ThermoworksTreeProvider
 		}
 		if (user.timeZone) {
 			children.push(new AccountDetailNode("Timezone", user.timeZone, "globe"));
+		}
+
+		// Enrich with Account metadata (graceful fallback)
+		if (!this.demoMode) {
+			try {
+				const client = await this.getClient();
+				const account = await client.getAccount();
+				if (account.type) {
+					children.push(new AccountDetailNode("Account Type", account.type, "organization"));
+				}
+				if (account.createdOn) {
+					children.push(
+						new AccountDetailNode("Created", account.createdOn.toLocaleDateString(), "calendar"),
+					);
+				}
+			} catch {
+				// Account metadata unavailable; omit silently
+			}
+		}
+
+		// Data usage (total)
+		if (!this.demoMode) {
+			try {
+				const client = await this.getClient();
+				const usage = await client.getDataUsage();
+				children.push(new AccountDetailNode("Data Usage", usage.formattedSize, "database"));
+
+				// Per-device breakdown
+				const perDevice = await client.getDataUsageByDevice();
+				for (const entry of perDevice) {
+					children.push(
+						new AccountDetailNode(`  ${entry.deviceId}`, entry.formattedSize, "server"),
+					);
+				}
+			} catch {
+				// Data usage unavailable; omit silently
+			}
 		}
 
 		children.push(
@@ -427,7 +471,18 @@ export class ThermoworksTreeProvider
 
 			const firmwareOutdated = await this.checkFirmwareOutdated(device);
 
-			return buildDeviceChildren(device, channels, firmwareOutdated);
+			// Fetch average temperature (graceful fallback)
+			let averageTemp: { value: number; units: string } | null = null;
+			if (!this.demoMode) {
+				try {
+					const client = await this.getClient();
+					averageTemp = await client.getAverageTemperature(serial);
+				} catch {
+					// Average temp unavailable; omit silently
+				}
+			}
+
+			return buildDeviceChildren(device, channels, firmwareOutdated, averageTemp);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load channels";
 			return [new ErrorNode(message)];
@@ -460,6 +515,23 @@ export class ThermoworksTreeProvider
 			return [new ErrorNode("No channel data")];
 		}
 		return archive.channels.map((ch, i) => new ArchiveChannelNode(ch, serial, archive.id, i));
+	}
+
+	private async getCalibrationNodes(serial: string): Promise<TreeNode[]> {
+		if (this.demoMode) {
+			return [new ErrorNode("No calibration records")];
+		}
+
+		try {
+			const client = await this.getClient();
+			const records = await client.getCalibration(serial);
+			if (records.length === 0) {
+				return [new ErrorNode("No calibration records")];
+			}
+			return records.map((r, i) => new CalibrationRecordNode(r, i));
+		} catch {
+			return [new ErrorNode("No calibration records")];
+		}
 	}
 
 	// ─── Private: Caching ────────────────────────────────────────────────────

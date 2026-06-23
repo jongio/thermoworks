@@ -201,12 +201,22 @@
         "command": "thermoworks.resetMinMax",
         "title": "Reset Min/Max",
         "icon": "$(discard)"
+      },
+      {
+        "command": "thermoworks.showTemperatureGuide",
+        "title": "ThermoWorks: Temperature Guide",
+        "icon": "$(book)"
       }
     ],
     "menus": {
       "view/title": [
         {
           "command": "thermoworks.refreshPanel",
+          "when": "view == thermoworksPanel && thermoworks.isAuthenticated",
+          "group": "navigation"
+        },
+        {
+          "command": "thermoworks.showTemperatureGuide",
           "when": "view == thermoworksPanel && thermoworks.isAuthenticated",
           "group": "navigation"
         },

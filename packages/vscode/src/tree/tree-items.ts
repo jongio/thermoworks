@@ -1,6 +1,7 @@
 import {
 	type Archive,
 	type ArchiveChannel,
+	type CalibrationRecord,
 	type Device,
 	type DeviceChannel,
 	type DeviceEvent,
@@ -27,6 +28,8 @@ export type TreeNode =
 	| ArchivesFolderNode
 	| ArchiveNode
 	| ArchiveChannelNode
+	| CalibrationFolderNode
+	| CalibrationRecordNode
 	| ActionNode
 	| ErrorNode
 	| LoadingNode;
@@ -327,6 +330,48 @@ export class ArchiveChannelNode extends vscode.TreeItem {
 	}
 }
 
+// ─── Calibration Nodes ───────────────────────────────────────────────────────
+
+export class CalibrationFolderNode extends vscode.TreeItem {
+	readonly type = "calibrationFolder" as const;
+	readonly serial: string;
+
+	constructor(serial: string) {
+		super("Calibration", vscode.TreeItemCollapsibleState.Collapsed);
+		this.serial = serial;
+		this.id = `thermoworks-calibration-${serial}`;
+		this.iconPath = new vscode.ThemeIcon("beaker");
+		this.contextValue = "calibrationFolder";
+	}
+}
+
+export class CalibrationRecordNode extends vscode.TreeItem {
+	readonly type = "calibrationRecord" as const;
+
+	constructor(record: CalibrationRecord, index: number) {
+		const dateStr = record.calibrationDate
+			? record.calibrationDate.toLocaleDateString()
+			: "Unknown date";
+		const resultStr = record.result ?? "No result";
+		super(`${dateStr}`, vscode.TreeItemCollapsibleState.None);
+		this.id = `thermoworks-calibration-record-${record.calibrationId}-${index}`;
+		this.description = resultStr;
+		this.iconPath = new vscode.ThemeIcon("check");
+
+		const tooltipParts = [`Date: ${dateStr}`, `Result: ${resultStr}`];
+		if (record.performedBy) {
+			tooltipParts.push(`Performed by: ${record.performedBy}`);
+		}
+		if (record.lowPointAdjustments.length > 0) {
+			tooltipParts.push(`Low points: ${record.lowPointAdjustments.length}`);
+		}
+		if (record.highPointReference.length > 0) {
+			tooltipParts.push(`High points: ${record.highPointReference.length}`);
+		}
+		this.tooltip = tooltipParts.join("\n");
+	}
+}
+
 // ─── Duration Helpers ─────────────────────────────────────────────────────────
 
 /**
@@ -423,6 +468,7 @@ export function buildDeviceChildren(
 	device: Device,
 	channels: DeviceChannel[],
 	firmwareOutdated = false,
+	averageTemp?: { value: number; units: string } | null,
 ): TreeNode[] {
 	const children: TreeNode[] = [];
 
@@ -445,6 +491,17 @@ export function buildDeviceChildren(
 		children.push(new FanDetailNode(device.fan, device.serial, device.deviceDisplayUnits));
 	}
 
+	// Average temperature (when available)
+	if (averageTemp) {
+		children.push(
+			new DeviceDetailNode(
+				"Avg Temp",
+				`${Math.round(averageTemp.value)}\u00B0${averageTemp.units}`,
+				device.serial,
+			),
+		);
+	}
+
 	// Device metadata
 	if (device.battery != null) {
 		children.push(new DeviceDetailNode("Battery", `${device.battery}%`, device.serial));
@@ -455,6 +512,9 @@ export function buildDeviceChildren(
 	if (device.firmware && !firmwareOutdated) {
 		children.push(new DeviceDetailNode("Firmware", device.firmware, device.serial));
 	}
+
+	// Calibration folder (loads on expand)
+	children.push(new CalibrationFolderNode(device.serial));
 
 	// Archives folder (always present, loads on expand)
 	children.push(new ArchivesFolderNode(device.serial));

@@ -3,6 +3,11 @@
 ## Unreleased
 
 - Retired the `@thermoworks` chat participant. AI access to ThermoWorks data now lives in the MCP server; use `thermoworks mcp start` (and `thermoworks copilot setup`) so Copilot and agents can call the ThermoWorks MCP tools.
+- Added **Temperature Guide** command (`thermoworks.showTemperatureGuide`) browsable via QuickPick with category labels, icons, and warnings.
+- Added **Average Temperature** as a detail node under each device (updates on refresh).
+- Added **Data Usage** (total + per-device) under the Account node.
+- Added **Calibration** folder under each device showing calibration records (date, result, points).
+- Enriched **Account** node with account type and creation date from `getAccount()`.
 
 ## 0.2.0
 

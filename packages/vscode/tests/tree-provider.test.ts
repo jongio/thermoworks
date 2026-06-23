@@ -81,6 +81,12 @@ const {
 	mockGetAllDeviceChannels,
 	mockGetEvents,
 	mockGetArchives,
+	mockGetAverageTemperature,
+	mockGetAccount,
+	mockGetDataUsage,
+	mockGetDataUsageByDevice,
+	mockGetCalibration,
+	mockGetFirmwareInfo,
 	mockClose,
 } = vi.hoisted(() => ({
 	mockGetUser: vi.fn(),
@@ -89,6 +95,12 @@ const {
 	mockGetEvents: vi.fn(),
 
 	mockGetArchives: vi.fn(),
+	mockGetAverageTemperature: vi.fn(),
+	mockGetAccount: vi.fn(),
+	mockGetDataUsage: vi.fn(),
+	mockGetDataUsageByDevice: vi.fn(),
+	mockGetCalibration: vi.fn(),
+	mockGetFirmwareInfo: vi.fn(),
 	mockClose: vi.fn(),
 }));
 
@@ -100,14 +112,29 @@ vi.mock("thermoworks-sdk", () => ({
 		getEvents = mockGetEvents;
 
 		getArchives = mockGetArchives;
+		getAverageTemperature = mockGetAverageTemperature;
+		getAccount = mockGetAccount;
+		getDataUsage = mockGetDataUsage;
+		getDataUsageByDevice = mockGetDataUsageByDevice;
+		getCalibration = mockGetCalibration;
 		close = mockClose;
 	},
+	getChannelAlarmState: () => null,
+	formatTimeAgo: (date: Date) => "just now",
 }));
 
 // ─── Import after mocks ─────────────────────────────────────────────────────
 
 import { ThermoworksTreeProvider } from "../src/tree/thermoworks-tree-provider";
-import { ArchiveChannelNode, ArchiveNode, ArchivesFolderNode } from "../src/tree/tree-items";
+import {
+	AccountDetailNode,
+	ArchiveChannelNode,
+	ArchiveNode,
+	ArchivesFolderNode,
+	CalibrationFolderNode,
+	CalibrationRecordNode,
+	DeviceNode,
+} from "../src/tree/tree-items";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
 
@@ -221,6 +248,12 @@ function createProvider(): ThermoworksTreeProvider {
 			getEvents: mockGetEvents,
 
 			getArchives: mockGetArchives,
+			getAverageTemperature: mockGetAverageTemperature,
+			getAccount: mockGetAccount,
+			getDataUsage: mockGetDataUsage,
+			getDataUsageByDevice: mockGetDataUsageByDevice,
+			getCalibration: mockGetCalibration,
+			getFirmwareInfo: mockGetFirmwareInfo,
 			close: mockClose,
 		})),
 		close: vi.fn(),
@@ -565,6 +598,188 @@ describe("ThermoworksTreeProvider", () => {
 			await provider.refreshArchives();
 			await provider.getChildren(folder);
 			expect(mockGetArchives).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe("getChildren (account enrichment)", () => {
+		it("includes account type and data usage when available", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetUser.mockResolvedValue(mockUser);
+			mockGetDevices.mockResolvedValue([mockDevice]);
+			mockGetAccount.mockResolvedValue({
+				accountId: "account-1",
+				name: "Test Account",
+				type: "Pro",
+				createdOn: new Date("2024-01-15"),
+				exportVersion: 2,
+			});
+			mockGetDataUsage.mockResolvedValue({
+				totalBytes: 1048576,
+				formattedSize: "1.0 MB",
+			});
+			mockGetDataUsageByDevice.mockResolvedValue([
+				{ deviceId: "ABC123", bytes: 524288, formattedSize: "512 KB" },
+			]);
+
+			// Get root, then expand AccountNode
+			const root = await provider.getChildren();
+			const accountNode = root[0];
+			const children = await provider.getChildren(accountNode);
+
+			// Should have: Email, Name, Units, Timezone, Account Type, Created, Data Usage, device entry, action
+			const labels = children.map((c) => c.label);
+			expect(labels).toContain("Account Type: Pro");
+			expect(labels).toContain("Data Usage: 1.0 MB");
+		});
+
+		it("degrades gracefully when account API fails", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetUser.mockResolvedValue(mockUser);
+			mockGetDevices.mockResolvedValue([mockDevice]);
+			mockGetAccount.mockRejectedValue(new Error("Not available"));
+			mockGetDataUsage.mockRejectedValue(new Error("Not available"));
+
+			const root = await provider.getChildren();
+			const accountNode = root[0];
+			const children = await provider.getChildren(accountNode);
+
+			// Should still have base info + action, no crash
+			const labels = children.map((c) => c.label);
+			expect(labels).toContain("Email: test@example.com");
+			expect(labels).toContain("Open ThermoWorks Cloud");
+			expect(labels).not.toContain("Account Type: Pro");
+		});
+	});
+
+	describe("getChildren (device average temperature)", () => {
+		it("includes average temp when available", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetUser.mockResolvedValue(mockUser);
+			mockGetDevices.mockResolvedValue([mockDevice]);
+			mockGetAllDeviceChannels.mockResolvedValue([mockChannel]);
+			mockGetFirmwareInfo.mockResolvedValue(null);
+			mockGetAverageTemperature.mockResolvedValue({ value: 220.5, units: "F" });
+
+			// Populate device cache via root
+			await provider.getChildren();
+
+			const deviceNode = new DeviceNode(mockDevice, false);
+			const children = await provider.getChildren(deviceNode);
+
+			const labels = children.map((c) => c.label);
+			expect(labels).toContain("Avg Temp: 221\u00B0F");
+		});
+
+		it("omits average temp when null", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetUser.mockResolvedValue(mockUser);
+			mockGetDevices.mockResolvedValue([mockDevice]);
+			mockGetAllDeviceChannels.mockResolvedValue([mockChannel]);
+			mockGetAverageTemperature.mockResolvedValue(null);
+
+			await provider.getChildren();
+
+			const deviceNode = new DeviceNode(mockDevice, false);
+			const children = await provider.getChildren(deviceNode);
+
+			const labels = children.map((c) => c.label as string);
+			const hasAvg = labels.some((l) => l.startsWith("Avg Temp"));
+			expect(hasAvg).toBe(false);
+		});
+
+		it("omits average temp gracefully on error", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetUser.mockResolvedValue(mockUser);
+			mockGetDevices.mockResolvedValue([mockDevice]);
+			mockGetAllDeviceChannels.mockResolvedValue([mockChannel]);
+			mockGetAverageTemperature.mockRejectedValue(new Error("Timeout"));
+
+			await provider.getChildren();
+
+			const deviceNode = new DeviceNode(mockDevice, false);
+			const children = await provider.getChildren(deviceNode);
+
+			// Should still render without crashing
+			expect(children.length).toBeGreaterThan(0);
+			const labels = children.map((c) => c.label as string);
+			const hasAvg = labels.some((l) => l.startsWith("Avg Temp"));
+			expect(hasAvg).toBe(false);
+		});
+	});
+
+	describe("getChildren (calibration folder)", () => {
+		it("returns calibration records when expanding folder", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetCalibration.mockResolvedValue([
+				{
+					calibrationId: "cal-001",
+					calibrationDate: new Date("2025-06-01"),
+					deviceId: "ABC123",
+					sessionId: null,
+					performedBy: "Tech",
+					manager: null,
+					referenceDetail: null,
+					statedAccuracy: null,
+					ambientTemperature: null,
+					ambientHumidity: null,
+					result: "Pass",
+					lowPointAdjustments: [],
+					highPointReference: [],
+				},
+			]);
+
+			const folder = new CalibrationFolderNode("ABC123");
+			const children = await provider.getChildren(folder);
+
+			expect(children.length).toBe(1);
+			expect(children[0]).toBeInstanceOf(CalibrationRecordNode);
+			expect(mockGetCalibration).toHaveBeenCalledWith("ABC123");
+		});
+
+		it("returns error node when no records", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetCalibration.mockResolvedValue([]);
+
+			const folder = new CalibrationFolderNode("ABC123");
+			const children = await provider.getChildren(folder);
+
+			expect(children.length).toBe(1);
+			expect(children[0]?.label).toBe("No calibration records");
+		});
+
+		it("returns error node on API failure", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetCalibration.mockRejectedValue(new Error("Not found"));
+
+			const folder = new CalibrationFolderNode("ABC123");
+			const children = await provider.getChildren(folder);
+
+			expect(children.length).toBe(1);
+			expect(children[0]?.label).toBe("No calibration records");
 		});
 	});
 });

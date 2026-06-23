@@ -45,6 +45,8 @@ import {
 	ActionNode,
 	ArchivesFolderNode,
 	buildDeviceChildren,
+	CalibrationFolderNode,
+	CalibrationRecordNode,
 	ChannelNode,
 	DeviceDetailNode,
 	DeviceNode,
@@ -410,13 +412,14 @@ describe("tree-items", () => {
 			];
 			const children = buildDeviceChildren(mockDevice, channels);
 
-			// 2 channels + battery + last seen + firmware + archives folder = 6
-			expect(children.length).toBe(6);
+			// 2 channels + battery + last seen + firmware + calibration folder + archives folder = 7
+			expect(children.length).toBe(7);
 			expect(children[0]).toBeInstanceOf(ChannelNode);
 			expect(children[1]).toBeInstanceOf(ChannelNode);
 			expect(children[2]).toBeInstanceOf(DeviceDetailNode);
 			expect((children[2] as DeviceDetailNode).label).toBe("Battery: 85%");
-			expect(children[5]).toBeInstanceOf(ArchivesFolderNode);
+			expect(children[5]).toBeInstanceOf(CalibrationFolderNode);
+			expect(children[6]).toBeInstanceOf(ArchivesFolderNode);
 		});
 
 		it("filters out disabled channels", () => {
@@ -442,10 +445,117 @@ describe("tree-items", () => {
 		it("omits metadata when not available", () => {
 			const channels = [makeChannel()];
 			const children = buildDeviceChildren(mockOfflineDevice, channels);
-			// 1 channel + archives folder, no battery, no lastSeen, no firmware on offline device
+			// 1 channel + calibration folder + archives folder, no battery, no lastSeen, no firmware
 			const detailNodes = children.filter((c) => c instanceof DeviceDetailNode);
 			expect(detailNodes.length).toBe(0);
 			expect(children[children.length - 1]).toBeInstanceOf(ArchivesFolderNode);
+			expect(children[children.length - 2]).toBeInstanceOf(CalibrationFolderNode);
+		});
+
+		it("includes average temp node when provided", () => {
+			const channels = [makeChannel({ label: "Pit", value: 225, units: "F" })];
+			const avgTemp = { value: 218.5, units: "F" };
+			const children = buildDeviceChildren(mockDevice, channels, false, avgTemp);
+			const detailNodes = children.filter((c) => c instanceof DeviceDetailNode);
+			const avgNode = detailNodes.find(
+				(n) => (n as DeviceDetailNode).label === "Avg Temp: 219\u00B0F",
+			);
+			expect(avgNode).toBeDefined();
+		});
+
+		it("omits average temp node when null", () => {
+			const channels = [makeChannel({ label: "Pit", value: 225, units: "F" })];
+			const children = buildDeviceChildren(mockDevice, channels, false, null);
+			const detailNodes = children.filter((c) => c instanceof DeviceDetailNode);
+			const avgNode = detailNodes.find((n) =>
+				((n as DeviceDetailNode).label as string).startsWith("Avg Temp"),
+			);
+			expect(avgNode).toBeUndefined();
+		});
+
+		it("includes calibration folder for every device", () => {
+			const channels = [makeChannel()];
+			const children = buildDeviceChildren(mockDevice, channels);
+			const calFolder = children.find((c) => c instanceof CalibrationFolderNode);
+			expect(calFolder).toBeDefined();
+			expect((calFolder as CalibrationFolderNode).serial).toBe("ABC123");
+		});
+	});
+
+	describe("CalibrationFolderNode", () => {
+		it("creates with collapsed state and beaker icon", () => {
+			const node = new CalibrationFolderNode("ABC123");
+			expect(node.label).toBe("Calibration");
+			expect(node.serial).toBe("ABC123");
+			expect(node.collapsibleState).toBe(mockTreeItemCollapsibleState.Collapsed);
+			expect(node.id).toBe("thermoworks-calibration-ABC123");
+			expect((node.iconPath as { id: string }).id).toBe("beaker");
+			expect(node.contextValue).toBe("calibrationFolder");
+		});
+	});
+
+	describe("CalibrationRecordNode", () => {
+		it("renders date and result", () => {
+			const record = {
+				calibrationId: "cal-001",
+				calibrationDate: new Date(2025, 2, 15), // March 15, 2025 local time
+				deviceId: "ABC123",
+				sessionId: null,
+				performedBy: "Technician A",
+				manager: null,
+				referenceDetail: null,
+				statedAccuracy: null,
+				ambientTemperature: null,
+				ambientHumidity: null,
+				result: "Pass",
+				lowPointAdjustments: [
+					{
+						channel: 1,
+						value: 32.1,
+						units: "F",
+						referenceValue: 32.0,
+						deviation: 0.1,
+						trimValue: null,
+						result: "Pass",
+					},
+				],
+				highPointReference: [],
+			};
+			const node = new CalibrationRecordNode(record, 0);
+			// Date formatting is locale-dependent; just verify it's not the fallback
+			expect(node.label).not.toBe("Unknown date");
+			expect(node.description).toBe("Pass");
+			expect(node.id).toBe("thermoworks-calibration-record-cal-001-0");
+			expect((node.iconPath as { id: string }).id).toBe("check");
+			expect(node.tooltip).toContain("Result: Pass");
+			expect(node.tooltip).toContain("Performed by: Technician A");
+			expect(node.tooltip).toContain("Low points: 1");
+		});
+
+		it("handles null date and result gracefully", () => {
+			const record = {
+				calibrationId: "cal-002",
+				calibrationDate: null,
+				deviceId: "DEF456",
+				sessionId: null,
+				performedBy: null,
+				manager: null,
+				referenceDetail: null,
+				statedAccuracy: null,
+				ambientTemperature: null,
+				ambientHumidity: null,
+				result: null,
+				lowPointAdjustments: [],
+				highPointReference: [],
+			};
+			const node = new CalibrationRecordNode(record, 1);
+			expect(node.label).toBe("Unknown date");
+			expect(node.description).toBe("No result");
+			expect(node.tooltip).toContain("Date: Unknown date");
+			expect(node.tooltip).toContain("Result: No result");
+			// Should NOT contain performer or points lines
+			expect(node.tooltip).not.toContain("Performed by");
+			expect(node.tooltip).not.toContain("Low points");
 		});
 	});
 });

@@ -59,10 +59,10 @@
 		"clean": "rimraf dist"
 	},
 	"devDependencies": {
-		"@types/node": "^25.9.2",
-		"@vitest/coverage-v8": "^4.1.8",
+		"@types/node": "^26.0.1",
+		"@vitest/coverage-v8": "^4.1.9",
 		"tsup": "^8.5.1",
-		"vitest": "^4.1.8"
+		"vitest": "^4.1.9"
 	},
 	"dependencies": {
 		"undici": "^8.5.0"

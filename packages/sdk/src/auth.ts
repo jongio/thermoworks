@@ -337,7 +337,10 @@ export async function createAuthSession(
 			}
 
 			const result = await response.json();
-			return (result as { result?: unknown }).result ?? result;
+			if (result && typeof result === "object" && "result" in result) {
+				return (result as { result: unknown }).result;
+			}
+			return result;
 		},
 
 		getUserId(): string {

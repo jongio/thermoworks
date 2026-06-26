@@ -10,16 +10,34 @@ const {
 	mockShowInformationMessage,
 	mockOpenExternal,
 	mockGetConfiguration,
-} = vi.hoisted(() => ({
-	mockExecuteCommand: vi.fn(),
-	mockShowInputBox: vi.fn(),
-	mockShowErrorMessage: vi.fn(),
-	mockShowInformationMessage: vi.fn(),
-	mockOpenExternal: vi.fn(),
-	mockGetConfiguration: vi.fn(() => ({
-		get: (_key: string, defaultValue: number) => defaultValue,
-	})),
-}));
+	mockOnDidChangeConfiguration,
+	mockCreateOutputChannel,
+	mockOutputChannel,
+	configValues,
+} = vi.hoisted(() => {
+	const configValues: Record<string, unknown> = {};
+	const mockOutputChannel = {
+		clear: vi.fn(),
+		appendLine: vi.fn(),
+		show: vi.fn(),
+		dispose: vi.fn(),
+	};
+
+	return {
+		mockExecuteCommand: vi.fn(),
+		mockShowInputBox: vi.fn(),
+		mockShowErrorMessage: vi.fn(),
+		mockShowInformationMessage: vi.fn(),
+		mockOpenExternal: vi.fn(),
+		configValues,
+		mockGetConfiguration: vi.fn(() => ({
+			get: vi.fn((key: string, defaultValue: unknown) => configValues[key] ?? defaultValue),
+		})),
+		mockOnDidChangeConfiguration: vi.fn(() => ({ dispose: vi.fn() })),
+		mockOutputChannel,
+		mockCreateOutputChannel: vi.fn(() => mockOutputChannel),
+	};
+});
 
 vi.mock("vscode", () => ({
 	ThemeColor: function ThemeColor(this: { id: string }, id: string) {
@@ -65,10 +83,11 @@ vi.mock("vscode", () => ({
 		showInputBox: mockShowInputBox,
 		showErrorMessage: mockShowErrorMessage,
 		showInformationMessage: mockShowInformationMessage,
+		createOutputChannel: mockCreateOutputChannel,
 	},
 	workspace: {
 		getConfiguration: mockGetConfiguration,
-		onDidChangeConfiguration: vi.fn(() => ({ dispose: () => {} })),
+		onDidChangeConfiguration: mockOnDidChangeConfiguration,
 	},
 	env: { openExternal: mockOpenExternal },
 }));
@@ -87,6 +106,7 @@ const {
 	mockGetDataUsageByDevice,
 	mockGetCalibration,
 	mockGetFirmwareInfo,
+	mockGetDeviceGroups,
 	mockClose,
 } = vi.hoisted(() => ({
 	mockGetUser: vi.fn(),
@@ -101,6 +121,7 @@ const {
 	mockGetDataUsageByDevice: vi.fn(),
 	mockGetCalibration: vi.fn(),
 	mockGetFirmwareInfo: vi.fn(),
+	mockGetDeviceGroups: vi.fn(),
 	mockClose: vi.fn(),
 }));
 
@@ -117,23 +138,64 @@ vi.mock("thermoworks-sdk", () => ({
 		getDataUsage = mockGetDataUsage;
 		getDataUsageByDevice = mockGetDataUsageByDevice;
 		getCalibration = mockGetCalibration;
+		getDeviceGroups = mockGetDeviceGroups;
 		close = mockClose;
 	},
 	getChannelAlarmState: () => null,
 	formatTimeAgo: (_date: Date) => "just now",
 }));
 
+const { mockDeviceStreamSetDevices, mockDeviceStreamDispose, deviceStreamInstances } = vi.hoisted(
+	() => ({
+		mockDeviceStreamSetDevices: vi.fn(),
+		mockDeviceStreamDispose: vi.fn(),
+		deviceStreamInstances: [] as Array<{
+			fetchChannels: (serial: string) => Promise<DeviceChannel[]>;
+			callbacks: { onSnapshot: (snapshot: unknown) => void };
+			intervalMs: number;
+		}>,
+	}),
+);
+
+vi.mock("../src/device-stream", () => ({
+	DeviceStream: class {
+		fetchChannels: (serial: string) => Promise<DeviceChannel[]>;
+		callbacks: { onSnapshot: (snapshot: unknown) => void };
+		intervalMs: number;
+
+		constructor(
+			fetchChannels: (serial: string) => Promise<DeviceChannel[]>,
+			callbacks: { onSnapshot: (snapshot: unknown) => void },
+			intervalMs: number,
+		) {
+			this.fetchChannels = fetchChannels;
+			this.callbacks = callbacks;
+			this.intervalMs = intervalMs;
+			deviceStreamInstances.push(this);
+		}
+
+		setDevices = mockDeviceStreamSetDevices;
+		dispose = mockDeviceStreamDispose;
+	},
+}));
+
 // ─── Import after mocks ─────────────────────────────────────────────────────
 
+import { DEMO_DEVICES, DEMO_USER } from "../src/demo-data";
 import { ThermoworksTreeProvider } from "../src/tree/thermoworks-tree-provider";
 import {
+	AccountNode,
 	ArchiveChannelNode,
 	ArchiveNode,
 	ArchivesFolderNode,
 	CalibrationFolderNode,
 	CalibrationRecordNode,
+	ChannelsFolderNode,
 	DetailsFolderNode,
+	DeviceGroupFolderNode,
 	DeviceNode,
+	DevicesFolderNode,
+	ErrorNode,
 } from "../src/tree/tree-items";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -222,16 +284,25 @@ const mockChannel: DeviceChannel = {
 	maximum: null,
 };
 
+const mockSecondDevice: Device = {
+	...mockDevice,
+	serial: "XYZ789",
+	deviceId: "dev-2",
+	label: "Grill",
+	type: "node",
+	firmware: "3.0.0",
+};
+
+const mockSecondChannel: DeviceChannel = {
+	...mockChannel,
+	label: "Food",
+	number: "2",
+	value: 175,
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function createProvider(): ThermoworksTreeProvider {
-	const _mockSecrets = {
-		get: vi.fn(),
-		store: vi.fn(),
-		delete: vi.fn(),
-		onDidChange: vi.fn(() => ({ dispose: () => {} })),
-	};
-
 	// Construct with a mock credential store
 	const credStore = {
 		getCredentials: vi.fn(),
@@ -254,6 +325,7 @@ function createProvider(): ThermoworksTreeProvider {
 			getDataUsageByDevice: mockGetDataUsageByDevice,
 			getCalibration: mockGetCalibration,
 			getFirmwareInfo: mockGetFirmwareInfo,
+			getDeviceGroups: mockGetDeviceGroups,
 			close: mockClose,
 		})),
 		close: vi.fn(),
@@ -272,7 +344,12 @@ describe("ThermoworksTreeProvider", () => {
 	let provider: ThermoworksTreeProvider;
 
 	beforeEach(() => {
+		vi.useRealTimers();
 		vi.clearAllMocks();
+		for (const key of Object.keys(configValues)) {
+			delete configValues[key];
+		}
+		deviceStreamInstances.length = 0;
 		provider = createProvider();
 	});
 
@@ -783,6 +860,343 @@ describe("ThermoworksTreeProvider", () => {
 
 			expect(children.length).toBe(1);
 			expect(children[0]?.label).toBe("No calibration records");
+		});
+	});
+
+	describe("getTreeItem", () => {
+		it("returns the same node instance", () => {
+			const node = new DeviceNode(mockDevice, false);
+			expect(provider.getTreeItem(node)).toBe(node);
+		});
+	});
+
+	describe("persisted cache", () => {
+		it("rehydrates persisted device cache from global state", async () => {
+			const state = {
+				get: vi.fn(() => ({
+					devices: [{ ...mockDevice, lastSeen: mockDevice.lastSeen?.toISOString() }] as any[],
+					fetchedAt: Date.now(),
+				})),
+				update: vi.fn(),
+			};
+
+			provider.setGlobalState(state as any);
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetUser.mockResolvedValue(mockUser);
+
+			const children = await provider.getChildren();
+
+			expect(children[1]).toBeInstanceOf(DevicesFolderNode);
+			expect((children[1] as DevicesFolderNode).description).toBe("1");
+			expect(mockGetDevices).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("demo mode", () => {
+		it("returns demo account and device folder at the root", async () => {
+			provider.enterDemoMode("normal");
+
+			const children = await provider.getChildren();
+
+			expect(children[0]).toBeInstanceOf(AccountNode);
+			expect(children[1]).toBeInstanceOf(DevicesFolderNode);
+			expect((children[1] as DevicesFolderNode).description).toBe(String(DEMO_DEVICES.length));
+		});
+
+		it("returns demo devices without calling the SDK", async () => {
+			provider.enterDemoMode("high");
+
+			const children = await provider.getChildren(new DevicesFolderNode(DEMO_DEVICES.length));
+
+			expect(children).toHaveLength(DEMO_DEVICES.length);
+			expect(children.every((child) => child instanceof DeviceNode)).toBe(true);
+			expect(children.map((child) => child.label)).toEqual(
+				expect.arrayContaining(DEMO_DEVICES.map((device) => device.label)),
+			);
+			expect(mockGetDevices).not.toHaveBeenCalled();
+			expect(mockGetAllDeviceChannels).not.toHaveBeenCalled();
+		});
+
+		it("uses demo user details when expanding the account node", async () => {
+			provider.enterDemoMode("normal");
+
+			const children = await provider.getChildren(new AccountNode(DEMO_USER));
+
+			expect(children.map((child) => child.label)).toEqual(
+				expect.arrayContaining([
+					`Email: ${DEMO_USER.email}`,
+					`Name: ${DEMO_USER.displayName}`,
+					"Open ThermoWorks Cloud",
+				]),
+			);
+			expect(mockGetAccount).not.toHaveBeenCalled();
+			expect(mockGetDataUsage).not.toHaveBeenCalled();
+		});
+	});
+
+	describe("cache ttl behavior", () => {
+		it("returns stale devices first and refreshes them in the background", async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetUser.mockResolvedValue(mockUser);
+			mockGetDevices
+				.mockResolvedValueOnce([mockDevice])
+				.mockResolvedValueOnce([mockDevice, mockSecondDevice]);
+
+			const first = await provider.getChildren();
+			expect((first[1] as DevicesFolderNode).description).toBe("1");
+
+			vi.setSystemTime(new Date("2026-01-01T00:06:00Z"));
+			const stale = await provider.getChildren();
+			expect((stale[1] as DevicesFolderNode).description).toBe("1");
+
+			await vi.waitFor(() => {
+				expect(mockGetDevices).toHaveBeenCalledTimes(2);
+			});
+
+			const refreshed = await provider.getChildren();
+			expect((refreshed[1] as DevicesFolderNode).description).toBe("2");
+		});
+
+		it("returns stale channels first and refreshes them in the background", async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetUser.mockResolvedValue(mockUser);
+			mockGetDevices.mockResolvedValue([mockDevice]);
+			mockGetAllDeviceChannels
+				.mockResolvedValueOnce([mockChannel])
+				.mockResolvedValueOnce([mockChannel, mockSecondChannel]);
+			mockGetAverageTemperature.mockResolvedValue(null);
+
+			await provider.getChildren();
+
+			const first = await provider.getChildren(new DeviceNode(mockDevice, false));
+			const firstChannels = first.find(
+				(child) => child instanceof ChannelsFolderNode,
+			) as ChannelsFolderNode;
+			expect(firstChannels.channels).toHaveLength(1);
+
+			vi.setSystemTime(new Date("2026-01-01T00:01:30Z"));
+			const stale = await provider.getChildren(new DeviceNode(mockDevice, false));
+			const staleChannels = stale.find(
+				(child) => child instanceof ChannelsFolderNode,
+			) as ChannelsFolderNode;
+			expect(staleChannels.channels).toHaveLength(1);
+
+			await vi.waitFor(() => {
+				expect(mockGetAllDeviceChannels).toHaveBeenCalledTimes(2);
+			});
+
+			const refreshed = await provider.getChildren(new DeviceNode(mockDevice, false));
+			const refreshedChannels = refreshed.find(
+				(child) => child instanceof ChannelsFolderNode,
+			) as ChannelsFolderNode;
+			expect(refreshedChannels.channels).toHaveLength(2);
+		});
+
+		it("reuses firmware info until its ttl expires", async () => {
+			vi.useFakeTimers();
+			vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetAllDeviceChannels.mockResolvedValue([mockChannel]);
+			mockGetFirmwareInfo.mockResolvedValue({ version: "9.9.9" });
+			(provider as any).deviceCache = { devices: [mockDevice], fetchedAt: Date.now() };
+
+			const folder = new DevicesFolderNode(1);
+			await provider.getChildren(folder);
+			await provider.getChildren(folder);
+
+			expect(mockGetFirmwareInfo).toHaveBeenCalledTimes(1);
+
+			vi.setSystemTime(new Date("2026-01-01T02:00:00Z"));
+			(provider as any).deviceCache = { devices: [mockDevice], fetchedAt: Date.now() };
+
+			await provider.getChildren(folder);
+
+			expect(mockGetFirmwareInfo).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe("device grouping", () => {
+		it("returns grouped folders and ungrouped devices when grouped view is enabled", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetUser.mockResolvedValue(mockUser);
+			mockGetDevices.mockResolvedValue([mockDevice, mockSecondDevice]);
+			mockGetAllDeviceChannels.mockResolvedValue([mockChannel]);
+			mockGetDeviceGroups.mockResolvedValue([
+				{ id: "group-1", name: "Kitchen", devices: [mockDevice.serial, "MISSING"] },
+			]);
+
+			await provider.getChildren();
+			provider.toggleDeviceView();
+
+			expect(mockExecuteCommand).toHaveBeenCalledWith(
+				"setContext",
+				"thermoworks.groupedView",
+				true,
+			);
+
+			const children = await provider.getChildren(new DevicesFolderNode(2));
+			expect(children[0]).toBeInstanceOf(DeviceGroupFolderNode);
+			expect(children[0]?.label).toBe("Kitchen");
+			expect(children[1]).toBeInstanceOf(DeviceNode);
+			expect(children[1]?.label).toBe("Grill");
+
+			const groupedChildren = await provider.getChildren(children[0] as DeviceGroupFolderNode);
+			expect(groupedChildren).toHaveLength(1);
+			expect(groupedChildren[0]?.label).toBe("Smoker");
+		});
+	});
+
+	describe("error handling", () => {
+		it("returns an error node when fetching device channels fails", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetUser.mockResolvedValue(mockUser);
+			mockGetDevices.mockResolvedValue([mockDevice]);
+			mockGetAllDeviceChannels.mockRejectedValue(new Error("Channel fetch failed"));
+
+			await provider.getChildren();
+			const children = await provider.getChildren(new DevicesFolderNode(1));
+
+			expect(children).toHaveLength(1);
+			expect(children[0]).toBeInstanceOf(ErrorNode);
+			expect(children[0]?.label).toBe("Channel fetch failed");
+		});
+	});
+
+	describe("refresh invalidation", () => {
+		it("clears channel cache so device children are fetched again", async () => {
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetUser.mockResolvedValue(mockUser);
+			mockGetDevices.mockResolvedValue([mockDevice]);
+			mockGetAllDeviceChannels.mockResolvedValue([mockChannel]);
+			mockGetAverageTemperature.mockResolvedValue(null);
+
+			await provider.getChildren();
+			await provider.getChildren(new DeviceNode(mockDevice, false));
+			await provider.getChildren(new DeviceNode(mockDevice, false));
+			expect(mockGetAllDeviceChannels).toHaveBeenCalledTimes(1);
+
+			await provider.refresh();
+			await provider.getChildren(new DeviceNode(mockDevice, false));
+			expect(mockGetAllDeviceChannels).toHaveBeenCalledTimes(2);
+		});
+	});
+
+	describe("stream lifecycle", () => {
+		it("starts a device stream and syncs device serials when streaming is enabled", async () => {
+			configValues.streaming = true;
+			configValues.refreshInterval = 1;
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetDevices.mockResolvedValue([mockDevice]);
+
+			const context = { subscriptions: [] as unknown[] };
+			provider.startAutoRefresh(context as any);
+
+			expect(deviceStreamInstances).toHaveLength(1);
+			expect(deviceStreamInstances[0]?.intervalMs).toBe(15_000);
+			await vi.waitFor(() => {
+				expect(mockDeviceStreamSetDevices).toHaveBeenCalledWith([mockDevice.serial]);
+			});
+			expect(context.subscriptions).toHaveLength(1);
+		});
+
+		it("clears stream devices in demo mode and resyncs them when demo mode exits", async () => {
+			configValues.streaming = true;
+			getCredStoreMock(provider).getCredentials.mockResolvedValue({
+				email: "test@example.com",
+				password: "pass",
+			});
+			mockGetDevices.mockResolvedValue([mockDevice]);
+
+			provider.startAutoRefresh({ subscriptions: [] } as any);
+			await vi.waitFor(() => {
+				expect(mockDeviceStreamSetDevices).toHaveBeenCalledWith([mockDevice.serial]);
+			});
+
+			mockDeviceStreamSetDevices.mockClear();
+			provider.enterDemoMode("normal");
+			expect(mockDeviceStreamSetDevices).toHaveBeenCalledWith([]);
+
+			mockDeviceStreamSetDevices.mockClear();
+			mockGetDevices.mockResolvedValue([mockSecondDevice]);
+			(provider as any).deviceCache = undefined;
+			provider.exitDemoMode();
+			await vi.waitFor(() => {
+				expect(mockDeviceStreamSetDevices).toHaveBeenCalledWith([mockSecondDevice.serial]);
+			});
+		});
+	});
+
+	describe("showArchiveDetails", () => {
+		it("writes archive details to an output channel", () => {
+			const archive: Archive = {
+				id: "arch-001",
+				start: new Date("2026-01-01T08:00:00Z"),
+				end: new Date("2026-01-01T14:30:00Z"),
+				count: 390,
+				type: "session",
+				label: "Brisket Cook",
+				deviceLabel: "Smoker",
+				notes: "Wrapped at 165F",
+				createdOn: new Date("2026-01-01T14:31:00Z"),
+				public: false,
+				publicLink: null,
+				filename: null,
+				channels: [
+					{
+						number: "1",
+						label: "Pit",
+						units: "F",
+						value: 225,
+						status: "ok",
+						enabled: true,
+						color: null,
+						type: "temperature",
+						alarmHigh: null,
+						alarmLow: null,
+						minimum: { value: 180, units: "F", date: null },
+						maximum: { value: 275, units: "F", date: null },
+						recentReadings: [],
+					},
+				],
+			};
+
+			provider.showArchiveDetails(archive);
+
+			expect(mockCreateOutputChannel).toHaveBeenCalledWith("ThermoWorks Archives");
+			expect(mockOutputChannel.clear).toHaveBeenCalled();
+			expect(mockOutputChannel.appendLine).toHaveBeenCalledWith("=== Brisket Cook ===");
+			expect(mockOutputChannel.show).toHaveBeenCalledWith(true);
 		});
 	});
 });

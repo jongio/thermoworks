@@ -33,6 +33,10 @@ describe("ShareManager", () => {
 		});
 
 		expect(client.shareDevice).toHaveBeenCalledWith("TW-001");
+		expect(screen.getByAltText("QR code for shared device link")).toHaveAttribute(
+			"src",
+			expect.stringContaining("data:image/svg+xml"),
+		);
 	});
 
 	it("generates and displays an archive share link", async () => {
@@ -48,6 +52,10 @@ describe("ShareManager", () => {
 		});
 
 		expect(client.shareArchive).toHaveBeenCalledWith("TW-001", "arc-1");
+		expect(screen.getByAltText("QR code for shared archive link")).toHaveAttribute(
+			"src",
+			expect.stringContaining("data:image/svg+xml"),
+		);
 	});
 
 	it("shows error when share fails", async () => {

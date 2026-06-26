@@ -1,6 +1,7 @@
 import { Check, Copy, Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ThermoworksWebClient } from "../lib/api.ts";
+import { generateQrCodeSvgDataUrl } from "../lib/qr.ts";
 import { cn } from "../lib/utils.ts";
 
 interface ShareManagerProps {
@@ -128,6 +129,13 @@ export function ShareManager({ serial, archiveId, client, onClose }: ShareManage
 						<p className="text-xs text-muted-foreground">
 							Anyone with this link can view the {archiveId ? "archive" : "device"} readings.
 						</p>
+						<div className="flex justify-center rounded-lg border border-border bg-white p-3">
+							<img
+								src={generateQrCodeSvgDataUrl(shareUrl)}
+								alt={`QR code for shared ${archiveId ? "archive" : "device"} link`}
+								className="h-40 w-40"
+							/>
+						</div>
 						<div className="flex items-center gap-2">
 							<input
 								type="text"

@@ -305,4 +305,26 @@ describe("formatWatchFrame", () => {
 		// Should contain the ANSI-colored [HIGH] from formatChannelLine
 		expect(frame).toContain("[HIGH]");
 	});
+
+	it("shows channel trends when recent readings are available", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1", label: "Smoker" }),
+				channels: [
+					{
+						...makeChannel({ value: 170, units: "F", label: "Meat", number: "1" }),
+						recentReadings: [
+							{ value: 150, timestamp: new Date("2026-01-15T12:00:00Z"), units: "F" },
+							{ value: 160, timestamp: new Date("2026-01-15T12:01:00Z"), units: "F" },
+							{ value: 170, timestamp: new Date("2026-01-15T12:02:00Z"), units: "F" },
+						],
+					} as DeviceChannel,
+				],
+			},
+		];
+		const frame = formatWatchFrame(devices, fixedDate, 10);
+		expect(frame).toContain("Ch1 Meat: 170°F");
+		expect(frame).toContain("trend");
+		expect(frame).toContain("█");
+	});
 });

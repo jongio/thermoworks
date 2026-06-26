@@ -23,6 +23,7 @@ thermoworks mcp start
 | `get_device` | Get detailed info for a specific device |
 | `get_device_channels` | Get temperature/sensor readings for a device |
 | `get_average_temperature` | Get average temperature across device channels |
+| `get_live_cook_snapshot` | Get one JSON snapshot with devices, channels, alarms, battery, firmware, and active session info |
 | `get_events` | Get device events (alarms, status changes) |
 | `get_archives` | Get historical session archives |
 | `get_archive_detail` | Get full detail for a specific session archive, including channel readings and duration |

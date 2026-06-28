@@ -1,0 +1,99 @@
+:root {
+	color-scheme: light dark;
+}
+
+* {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	padding: 12px 16px;
+	font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, sans-serif);
+	font-size: 13px;
+	background: var(--vscode-editor-background, #1e1e1e);
+	color: var(--vscode-editor-foreground, #d4d4d4);
+}
+
+#root {
+	display: flex;
+	flex-direction: column;
+	height: calc(100vh - 24px);
+}
+
+.tw-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 8px;
+}
+
+.tw-title {
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--vscode-foreground, #ccc);
+}
+
+.tw-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 11px;
+	padding: 1px 7px;
+	border-radius: 9px;
+	border: 1px solid var(--vscode-editorWidget-border, rgba(255, 255, 255, 0.15));
+	color: var(--vscode-descriptionForeground, #999);
+}
+
+.tw-badge.live {
+	color: var(--vscode-testing-iconPassed, #4caf50);
+	border-color: currentColor;
+}
+
+.tw-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: currentColor;
+}
+
+.tw-badge.live .tw-dot {
+	animation: tw-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes tw-pulse {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.3;
+	}
+}
+
+.tw-meta {
+	margin-left: auto;
+	font-size: 11px;
+	color: var(--vscode-descriptionForeground, #999);
+}
+
+.tw-chart {
+	flex: 1;
+	min-height: 240px;
+}
+
+.tw-message {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	min-height: 200px;
+	font-size: 13px;
+	color: var(--vscode-descriptionForeground, #999);
+	text-align: center;
+	padding: 0 24px;
+}
+
+.tw-message.error {
+	color: var(--vscode-errorForeground, #f48771);
+}

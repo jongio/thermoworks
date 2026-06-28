@@ -1,4 +1,4 @@
-import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConnectionStatus } from "../src/components/ConnectionStatus.tsx";
 import { ErrorBoundary } from "../src/components/ErrorBoundary.tsx";

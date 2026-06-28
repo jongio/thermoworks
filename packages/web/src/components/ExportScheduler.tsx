@@ -1,12 +1,4 @@
-import {
-	Calendar,
-	CheckCircle2,
-	Clock,
-	Download,
-	Plus,
-	Trash2,
-	XCircle,
-} from "lucide-react";
+import { Calendar, CheckCircle2, Clock, Download, Plus, Trash2, XCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useDevices } from "../hooks/useDevices.ts";
 import {
@@ -171,9 +163,7 @@ function CreateScheduleForm({ client, onSubmit, onCancel }: CreateScheduleFormPr
 
 			{/* Channel Selection */}
 			<div>
-				<p className="text-xs font-medium mb-2">
-					Channels ({channels.length} selected)
-				</p>
+				<p className="text-xs font-medium mb-2">Channels ({channels.length} selected)</p>
 				<DeviceChannelPicker client={client} selected={channels} onChange={setChannels} />
 			</div>
 
@@ -230,16 +220,6 @@ export function ExportScheduler({ client }: ExportSchedulerProps) {
 	const { data: devices } = useDevices(client, { pollingInterval: 60_000 });
 	const [showForm, setShowForm] = useState(false);
 
-	// Check for due schedules on mount and run them.
-	useEffect(() => {
-		const due = getDueSchedules();
-		for (const schedule of due) {
-			runExport(schedule.id);
-		}
-		// Only run on mount — intentionally omit deps to avoid re-running.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
-
 	const runExport = useCallback(
 		(scheduleId: string) => {
 			const schedule = schedules.find((s) => s.id === scheduleId);
@@ -291,15 +271,20 @@ export function ExportScheduler({ client }: ExportSchedulerProps) {
 
 				markRun(scheduleId, "completed");
 			} catch (err) {
-				markRun(
-					scheduleId,
-					"failed",
-					err instanceof Error ? err.message : "Export failed",
-				);
+				markRun(scheduleId, "failed", err instanceof Error ? err.message : "Export failed");
 			}
 		},
 		[schedules, devices, markRun],
 	);
+
+	// Check for due schedules on mount and run them.
+	useEffect(() => {
+		if (devices.length === 0) return;
+		const due = getDueSchedules();
+		for (const schedule of due) {
+			runExport(schedule.id);
+		}
+	}, [runExport, getDueSchedules, devices.length]);
 
 	const frequencyLabel = useMemo(
 		() =>
@@ -344,8 +329,8 @@ export function ExportScheduler({ client }: ExportSchedulerProps) {
 			{/* Info Banner */}
 			<div className="rounded-md border border-border bg-muted/50 p-3">
 				<p className="text-xs text-muted-foreground">
-					Scheduled exports run automatically when you open the app and a schedule is due.
-					CSV files download directly to your browser. Email notifications are not yet supported.
+					Scheduled exports run automatically when you open the app and a schedule is due. CSV files
+					download directly to your browser. Email notifications are not yet supported.
 				</p>
 			</div>
 
@@ -420,9 +405,7 @@ export function ExportScheduler({ client }: ExportSchedulerProps) {
 											"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 										)}
 										aria-label={
-											schedule.enabled
-												? `Disable ${schedule.name}`
-												: `Enable ${schedule.name}`
+											schedule.enabled ? `Disable ${schedule.name}` : `Enable ${schedule.name}`
 										}
 										aria-pressed={schedule.enabled}
 									>

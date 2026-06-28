@@ -66,8 +66,12 @@ describe("AccountSwitcher", () => {
 		render(<AccountSwitcher {...defaultProps} accounts={accounts} />);
 		fireEvent.click(screen.getByRole("button", { name: /alice@example.com/i }));
 
-		expect(screen.getByRole("menuitem", { name: /alice@example.com.*current/i })).toBeInTheDocument();
-		expect(screen.getByRole("menuitem", { name: /switch to bob@example.com/i })).toBeInTheDocument();
+		expect(
+			screen.getByRole("menuitem", { name: /alice@example.com.*current/i }),
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole("menuitem", { name: /switch to bob@example.com/i }),
+		).toBeInTheDocument();
 	});
 
 	it("calls onSwitch when clicking a non-active account", () => {

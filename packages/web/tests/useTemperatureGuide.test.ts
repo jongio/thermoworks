@@ -167,7 +167,7 @@ describe("useTemperatureGuide", () => {
 
 		const client = createMockClient({ getTemperatureGuide });
 
-		const { result, rerender } = renderHook(({ c }) => useTemperatureGuide(c), {
+		const { result } = renderHook(({ c }) => useTemperatureGuide(c), {
 			initialProps: { c: client as ThermoworksWebClient | null },
 		});
 

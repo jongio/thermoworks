@@ -640,17 +640,12 @@ export class ThermoworksCloud {
 		);
 	}
 
-	/** Get firmware info for a device type. Returns null if not found. */
-	async getFirmwareInfo(deviceType: string): Promise<FirmwareInfo | null> {
-		const session = await this.ensureSession();
-		const path = `documents/firmware/${encodeURIComponent(deviceType)}`;
-		const response = await session.request("GET", path);
-		if (response.status === 404) {
-			await response.text().catch(() => {});
-			return null;
-		}
-		const doc = (await response.json()) as { fields?: FirestoreFields };
-		const fields = doc.fields ?? {};
+	/** Get firmware info for a device type. */
+	async getFirmwareInfo(deviceType: string): Promise<FirmwareInfo> {
+		const fields = await this.fetchDocFields(
+			`documents/firmware/${encodeURIComponent(deviceType)}`,
+			`Firmware info not found for type '${deviceType}'`,
+		);
 
 		return {
 			name: getString(fields, "name") ?? deviceType,
@@ -907,15 +902,41 @@ export class ThermoworksCloud {
 	}
 
 	/**
-	 * Create a new device group.
-	 *
-	 * @throws Error - This method is not yet supported as the full device group
-	 * API is not documented.
+	 * Create a new device group in the account's deviceGroups subcollection.
 	 */
-	async createDeviceGroup(_name: string, _devices: string[]): Promise<DeviceGroup> {
-		throw new Error(
-			"createDeviceGroup is not yet supported: the device group write API is not fully documented",
-		);
+	async createDeviceGroup(name: string, devices: string[]): Promise<DeviceGroup> {
+		if (typeof name !== "string" || name.trim().length === 0) {
+			throw new Error("Group name must be a non-empty string");
+		}
+		if (name.length > 200) {
+			throw new Error("Group name exceeds maximum length of 200 characters");
+		}
+		for (const d of devices) {
+			validateSerial(d);
+		}
+
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+		const path = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups`;
+		const body = {
+			fields: {
+				name: { stringValue: name },
+				devices: {
+					arrayValue: {
+						values: devices.map((d) => ({ stringValue: d })),
+					},
+				},
+			},
+		};
+		const response = await session.request("POST", path, body);
+		if (!response.ok) {
+			await response.text().catch(() => {});
+			throw new Error(`Failed to create group: ${response.status}`);
+		}
+		const doc = (await response.json()) as { name?: string; fields?: FirestoreFields };
+		const docName = doc.name ?? "";
+		const id = docName.split("/").pop() ?? "";
+		return { id, name, devices };
 	}
 
 	/**
@@ -928,6 +949,68 @@ export class ThermoworksCloud {
 		throw new Error(
 			"deleteDeviceGroup is not yet supported: the device group write API is not fully documented",
 		);
+	}
+
+	/**
+	 * Add a device to an existing group by updating the group's devices array.
+	 */
+	async addDeviceToGroup(groupId: string, serial: string): Promise<void> {
+		if (!groupId || typeof groupId !== "string") {
+			throw new Error("groupId is required");
+		}
+		validateSerial(serial);
+
+		const groups = await this.getDeviceGroups();
+		const group = groups.find((g) => g.id === groupId);
+		if (!group) throw new NotFoundError(`Group ${groupId} not found`);
+		if (group.devices.includes(serial)) return;
+
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+		const newDevices = [...group.devices, serial];
+		const path = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups/${encodeURIComponent(groupId)}?updateMask.fieldPaths=devices`;
+		const body = {
+			fields: {
+				devices: {
+					arrayValue: {
+						values: newDevices.map((d) => ({ stringValue: d })),
+					},
+				},
+			},
+		};
+		const response = await session.request("PATCH", path, body);
+		await response.text().catch(() => {});
+	}
+
+	/**
+	 * Remove a device from a group by updating the group's devices array.
+	 */
+	async removeDeviceFromGroup(groupId: string, serial: string): Promise<void> {
+		if (!groupId || typeof groupId !== "string") {
+			throw new Error("groupId is required");
+		}
+		validateSerial(serial);
+
+		const groups = await this.getDeviceGroups();
+		const group = groups.find((g) => g.id === groupId);
+		if (!group) throw new NotFoundError(`Group ${groupId} not found`);
+		if (!group.devices.includes(serial)) return;
+
+		const accountId = await this.resolveAccountId();
+		const session = await this.ensureSession();
+		const newDevices = group.devices.filter((d) => d !== serial);
+		const path = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups/${encodeURIComponent(groupId)}?updateMask.fieldPaths=devices`;
+		const body = {
+			fields: {
+				devices: {
+					arrayValue: {
+						values: newDevices.map((d) => ({ stringValue: d })),
+					},
+				},
+			},
+		};
+		const response = await session.request("PATCH", path, body);
+		await response.text().catch(() => {});
 	}
 
 	// ─── Fan Controller ──────────────────────────────────────────────────────────
@@ -1261,16 +1344,31 @@ function parseNotificationSettings(fields: FirestoreFields | null): Notification
 function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {
 	return {
 		id,
-		eventType: getString(fields, "eventType") ?? "",
-		severity: getNumber(fields, "severity") ?? 0,
-		eventTime: getTimestamp(fields, "eventTime") ?? new Date(0),
+		eventType: getString(fields, "EventType") ?? getString(fields, "eventType") ?? "",
+		severity: getNumber(fields, "Severity") ?? getNumber(fields, "severity") ?? 0,
+		eventTime:
+			getTimestamp(fields, "EventTime") ??
+			getTimestamp(fields, "eventTime") ??
+			getTimestampFromInt(fields, "EventTime") ??
+			getTimestampFromInt(fields, "eventTime") ??
+			new Date(0),
 		deviceId: getString(fields, "deviceId") ?? "",
 		channelId: getString(fields, "channelId"),
 		accountId: getString(fields, "accountId") ?? "",
-		valueBefore: getString(fields, "valueBefore"),
-		valueAfter: getString(fields, "valueAfter"),
+		valueBefore: getString(fields, "ValueBefore") ?? getString(fields, "valueBefore"),
+		valueAfter: getString(fields, "ValueAfter") ?? getString(fields, "valueAfter"),
 		groups: getStringArray(fields, "groups"),
 	};
+}
+
+/** Try to parse a timestamp stored as integerValue (epoch millis or seconds). */
+function getTimestampFromInt(fields: FirestoreFields, key: string): Date | null {
+	const n = getNumber(fields, key);
+	if (n == null || n < 0) return null;
+	// 1e12 ms ≈ Sep 2001; legitimate epoch-second timestamps stay below 1e10 until ~2286
+	const ms = n < 1e12 ? n * 1000 : n;
+	const date = new Date(ms);
+	return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function parseArchive(fields: FirestoreFields, id: string): Archive {
@@ -1313,7 +1411,8 @@ function parseArchiveChannel(fields: FirestoreFields): ArchiveChannel {
 			if ("mapValue" in item && item.mapValue.fields) {
 				const rf = item.mapValue.fields;
 				// ThermoWorks uses short field names: v (value), ts (timestamp), u (units)
-				const rawValue = getNumber(rf, "value") ?? getNumber(rf, "v") ?? parseFloat(getString(rf, "v") ?? "");
+				const rawValue =
+					getNumber(rf, "value") ?? getNumber(rf, "v") ?? parseFloat(getString(rf, "v") ?? "");
 				const timestamp = getTimestamp(rf, "timestamp") ?? getTimestamp(rf, "ts");
 				const units = getString(rf, "units") ?? getString(rf, "u");
 				if (rawValue != null && !Number.isNaN(rawValue) && timestamp != null && units != null) {

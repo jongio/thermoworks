@@ -15,13 +15,18 @@ import {
 	copilotStatusDemo,
 	nextDemoState,
 } from "./commands/copilot.js";
+import { dataUsage } from "./commands/data-usage.js";
+import { device } from "./commands/device.js";
 import type { DevicesOptions } from "./commands/devices.js";
 import { devices } from "./commands/devices.js";
 import { events, parseEventsArgs } from "./commands/events.js";
 import { exportData } from "./commands/export.js";
+import { fan } from "./commands/fan.js";
 import { firmware } from "./commands/firmware.js";
 import { guide } from "./commands/guide.js";
+import { history } from "./commands/history.js";
 import { mcpStart } from "./commands/mcp.js";
+import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
 import { watch } from "./commands/watch.js";
 import { parseGlobalFlags } from "./output.js";
@@ -49,7 +54,12 @@ Commands:
   copilot status   Show configured temperature reading
   copilot remove   Remove statusline configuration
 
+  data-usage       Show account data storage usage
+    --by-device    Show per-device breakdown
+
   devices          List connected devices
+  device rename <SERIAL> --name <TEXT>        Rename a device
+  device reset-minmax <SERIAL> --channel <N>  Reset min/max readings for a channel
   mcp start        Start MCP server for AI assistants
   devices          List connected devices and channel readings
   watch            Continuously monitor temperatures (live refresh)
@@ -60,6 +70,15 @@ Commands:
 
   firmware         Show firmware versions and available updates
 
+  fan <SERIAL>     Show fan controller state
+  fan set <SERIAL> --target <temp>  Set fan target temperature
+  fan enable <SERIAL>   Enable fan controller
+  fan disable <SERIAL>  Disable fan controller
+
+  search <query>   Full-text search across devices
+    --collection C Search collection: device, accounts, or users (default: device)
+    --limit N      Max results to return (default: 20, max: 100)
+
   session start    Start a monitoring session (--label TEXT)
   session end      End an active monitoring session
   session clear    Clear session data (--yes to skip confirmation)
@@ -67,6 +86,11 @@ Commands:
   export SERIAL    Export archive readings to CSV or JSON
     --archive ID   Export a specific archive (default: latest)
     --format FMT   Output format: csv or json (default: json)
+    --output PATH  Write to file (default: stdout)
+
+  history <SERIAL> Export historical time-series readings (BigQuery)
+    --limit N      Show the N most recent readings
+    --format FMT   Output format: table, csv, or json (default: table)
     --output PATH  Write to file (default: stdout)
 
   guide [category] Show temperature guide (safe cooking temps)
@@ -168,6 +192,14 @@ async function main(): Promise<void> {
 			}
 			break;
 
+		case "data-usage":
+			await dataUsage(args.slice(1), options);
+			break;
+
+		case "device":
+			await device(args.slice(1), options);
+			break;
+
 		case "devices": {
 			const devicesOpts: DevicesOptions = {
 				...options,
@@ -203,12 +235,24 @@ async function main(): Promise<void> {
 			break;
 		}
 
+		case "search":
+			await search(args.slice(1), options);
+			break;
+
 		case "session":
 			await session(args.slice(1), options);
 			break;
 
 		case "export":
 			await exportData(args);
+			break;
+
+		case "history":
+			await history(args.slice(1), options);
+			break;
+
+		case "fan":
+			await fan(args.slice(1), options);
 			break;
 
 		case "guide":

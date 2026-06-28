@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ─── VS Code mock ────────────────────────────────────────────────────────────
 
-const { MockThemeColor, MockThemeIcon } = vi.hoisted(() => {
+const { MockThemeColor, MockThemeIcon, treeItemsConfigValues } = vi.hoisted(() => {
+	const configValues: Record<string, unknown> = {};
 	function MockThemeColor(this: { id: string }, id: string) {
 		this.id = id;
 	}
@@ -11,7 +12,7 @@ const { MockThemeColor, MockThemeIcon } = vi.hoisted(() => {
 		this.id = id;
 		this.color = color;
 	}
-	return { MockThemeColor, MockThemeIcon };
+	return { MockThemeColor, MockThemeIcon, treeItemsConfigValues: configValues };
 });
 
 const mockTreeItemCollapsibleState = { None: 0, Collapsed: 1, Expanded: 2 };
@@ -35,6 +36,13 @@ vi.mock("vscode", () => ({
 	},
 	TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
 	Uri: { parse: vi.fn((s: string) => ({ toString: () => s })) },
+	workspace: {
+		getConfiguration: vi.fn(() => ({
+			get: vi.fn(
+				(key: string, defaultValue: unknown) => treeItemsConfigValues[key] ?? defaultValue,
+			),
+		})),
+	},
 }));
 
 // ─── Imports (after mock) ────────────────────────────────────────────────────
@@ -45,11 +53,16 @@ import {
 	ActionNode,
 	ArchivesFolderNode,
 	buildDeviceChildren,
+	CalibrationFolderNode,
+	CalibrationRecordNode,
 	ChannelNode,
+	ChannelsFolderNode,
+	DetailsFolderNode,
 	DeviceDetailNode,
 	DeviceNode,
 	DevicesFolderNode,
 	ErrorNode,
+	formatElapsed,
 	LoadingNode,
 } from "../src/tree/tree-items";
 
@@ -235,18 +248,41 @@ describe("tree-items", () => {
 			expect(node.label).toBe("ABC123");
 		});
 
-		it("shows recording indicator for device with active session", () => {
-			const device = { ...mockDevice, sessionStart: new Date("2026-06-07T08:00:00Z") };
+		it("shows session label and elapsed time for active session", () => {
+			const now = new Date("2026-06-07T09:23:00Z");
+			const start = new Date("2026-06-07T08:00:00Z");
+			// Mock Date.now for elapsed calculation
+			vi.setSystemTime(now);
+			const device = {
+				...mockDevice,
+				sessionStart: start,
+				sessionLabel: "Sunday Brisket",
+			};
 			const node = new DeviceNode(device, false);
-			expect(node.description).toContain("\uD83D\uDD34 Recording");
+			expect(node.description).toContain("\uD83D\uDD34 Sunday Brisket 1h 23m");
 			expect((node.iconPath as { id: string }).id).toBe("record");
+			vi.useRealTimers();
+		});
+
+		it("shows Recording as fallback when sessionLabel is null", () => {
+			const now = new Date("2026-06-07T08:45:00Z");
+			const start = new Date("2026-06-07T08:00:00Z");
+			vi.setSystemTime(now);
+			const device = {
+				...mockDevice,
+				sessionStart: start,
+				sessionLabel: null,
+			};
+			const node = new DeviceNode(device, false);
+			expect(node.description).toContain("\uD83D\uDD34 Recording 45m");
+			vi.useRealTimers();
 		});
 
 		it("alarm icon takes priority over session icon", () => {
 			const device = { ...mockDevice, sessionStart: new Date("2026-06-07T08:00:00Z") };
 			const node = new DeviceNode(device, true);
 			expect((node.iconPath as { id: string }).id).toBe("warning");
-			expect(node.description).toContain("\uD83D\uDD34 Recording");
+			expect(node.description).toContain("\uD83D\uDD34");
 		});
 	});
 
@@ -309,6 +345,62 @@ describe("tree-items", () => {
 			const node = new ChannelNode(ch, "ABC123", 2);
 			expect(node.label).toBe("Channel 3");
 		});
+
+		it("converts temperature when units preference is C and native is F", () => {
+			treeItemsConfigValues.units = "C";
+			const ch = makeChannel({ value: 212, units: "F", label: "Boiling" });
+			const node = new ChannelNode(ch, "ABC123", 0);
+			expect(node.description).toBe("100\u00B0C");
+			delete treeItemsConfigValues.units;
+		});
+
+		it("keeps native units when preference is auto", () => {
+			treeItemsConfigValues.units = "auto";
+			const ch = makeChannel({ value: 225, units: "F", label: "Pit" });
+			const node = new ChannelNode(ch, "ABC123", 0);
+			expect(node.description).toBe("225\u00B0F");
+			delete treeItemsConfigValues.units;
+		});
+
+		it("shows alarm indicator when high alarm is set", () => {
+			const ch = makeChannel({
+				value: 200,
+				units: "F",
+				alarmHigh: { enabled: true, value: 250, units: "F" },
+			});
+			const node = new ChannelNode(ch, "ABC123", 0);
+			expect(node.description).toContain("🔔");
+			expect(node.description).toContain("↑250°");
+		});
+
+		it("shows alarm indicator when low alarm is set", () => {
+			const ch = makeChannel({
+				value: 100,
+				units: "F",
+				alarmLow: { enabled: true, value: 80, units: "F" },
+			});
+			const node = new ChannelNode(ch, "ABC123", 0);
+			expect(node.description).toContain("🔔");
+			expect(node.description).toContain("↓80°");
+		});
+
+		it("shows both alarm thresholds when both are set", () => {
+			const ch = makeChannel({
+				value: 180,
+				units: "F",
+				alarmHigh: { enabled: true, value: 250, units: "F" },
+				alarmLow: { enabled: true, value: 80, units: "F" },
+			});
+			const node = new ChannelNode(ch, "ABC123", 0);
+			expect(node.description).toContain("↑250°");
+			expect(node.description).toContain("↓80°");
+		});
+
+		it("no alarm indicator when alarms are null", () => {
+			const ch = makeChannel({ alarmHigh: null, alarmLow: null });
+			const node = new ChannelNode(ch, "ABC123", 0);
+			expect(node.description).not.toContain("🔔");
+		});
 	});
 
 	describe("DeviceDetailNode", () => {
@@ -316,6 +408,49 @@ describe("tree-items", () => {
 			const node = new DeviceDetailNode("Battery", "85%", "ABC123");
 			expect(node.label).toBe("Battery: 85%");
 			expect(node.id).toBe("thermoworks-detail-ABC123-battery");
+		});
+	});
+
+	describe("formatElapsed", () => {
+		it("returns hours and minutes for long durations", () => {
+			const start = new Date("2026-06-07T08:00:00Z");
+			const now = new Date("2026-06-07T10:05:00Z");
+			expect(formatElapsed(start, now)).toBe("2h 5m");
+		});
+
+		it("returns minutes only when under one hour", () => {
+			const start = new Date("2026-06-07T08:00:00Z");
+			const now = new Date("2026-06-07T08:45:00Z");
+			expect(formatElapsed(start, now)).toBe("45m");
+		});
+
+		it("returns seconds only when under one minute", () => {
+			const start = new Date("2026-06-07T08:00:00Z");
+			const now = new Date("2026-06-07T08:00:30Z");
+			expect(formatElapsed(start, now)).toBe("30s");
+		});
+
+		it("returns 0s for zero elapsed", () => {
+			const time = new Date("2026-06-07T08:00:00Z");
+			expect(formatElapsed(time, time)).toBe("0s");
+		});
+
+		it("returns empty string for negative elapsed (future start)", () => {
+			const start = new Date("2026-06-07T10:00:00Z");
+			const now = new Date("2026-06-07T08:00:00Z");
+			expect(formatElapsed(start, now)).toBe("");
+		});
+
+		it("handles exactly one hour", () => {
+			const start = new Date("2026-06-07T08:00:00Z");
+			const now = new Date("2026-06-07T09:00:00Z");
+			expect(formatElapsed(start, now)).toBe("1h 0m");
+		});
+
+		it("handles large durations (24+ hours)", () => {
+			const start = new Date("2026-06-06T08:00:00Z");
+			const now = new Date("2026-06-07T10:30:00Z");
+			expect(formatElapsed(start, now)).toBe("26h 30m");
 		});
 	});
 
@@ -343,13 +478,21 @@ describe("tree-items", () => {
 			];
 			const children = buildDeviceChildren(mockDevice, channels);
 
-			// 2 channels + battery + last seen + firmware + archives folder = 6
-			expect(children.length).toBe(6);
-			expect(children[0]).toBeInstanceOf(ChannelNode);
-			expect(children[1]).toBeInstanceOf(ChannelNode);
-			expect(children[2]).toBeInstanceOf(DeviceDetailNode);
-			expect((children[2] as DeviceDetailNode).label).toBe("Battery: 85%");
-			expect(children[5]).toBeInstanceOf(ArchivesFolderNode);
+			// ChannelsFolderNode + DetailsFolderNode = 2
+			expect(children.length).toBe(2);
+			expect(children[0]).toBeInstanceOf(ChannelsFolderNode);
+			expect(children[1]).toBeInstanceOf(DetailsFolderNode);
+
+			const chFolder = children[0] as ChannelsFolderNode;
+			expect(chFolder.channels.length).toBe(2);
+			expect(chFolder.channels[0]).toBeInstanceOf(ChannelNode);
+			expect(chFolder.channels[1]).toBeInstanceOf(ChannelNode);
+
+			const detFolder = children[1] as DetailsFolderNode;
+			const detailLabels = detFolder.details.map((d) => d.label);
+			expect(detailLabels).toContain("Battery: 85%");
+			expect(detFolder.details.find((c) => c instanceof CalibrationFolderNode)).toBeDefined();
+			expect(detFolder.details.find((c) => c instanceof ArchivesFolderNode)).toBeDefined();
 		});
 
 		it("filters out disabled channels", () => {
@@ -358,8 +501,8 @@ describe("tree-items", () => {
 				makeChannel({ label: "Disabled", enabled: false }),
 			];
 			const children = buildDeviceChildren(mockDevice, channels);
-			const channelNodes = children.filter((c) => c instanceof ChannelNode);
-			expect(channelNodes.length).toBe(1);
+			const chFolder = children.find((c) => c instanceof ChannelsFolderNode) as ChannelsFolderNode;
+			expect(chFolder.channels.length).toBe(1);
 		});
 
 		it("filters out humidity channels", () => {
@@ -368,17 +511,126 @@ describe("tree-items", () => {
 				makeChannel({ label: "Humidity", units: "H" }),
 			];
 			const children = buildDeviceChildren(mockDevice, channels);
-			const channelNodes = children.filter((c) => c instanceof ChannelNode);
-			expect(channelNodes.length).toBe(1);
+			const chFolder = children.find((c) => c instanceof ChannelsFolderNode) as ChannelsFolderNode;
+			expect(chFolder.channels.length).toBe(1);
 		});
 
 		it("omits metadata when not available", () => {
 			const channels = [makeChannel()];
 			const children = buildDeviceChildren(mockOfflineDevice, channels);
-			// 1 channel + archives folder, no battery, no lastSeen, no firmware on offline device
-			const detailNodes = children.filter((c) => c instanceof DeviceDetailNode);
+			const detFolder = children.find((c) => c instanceof DetailsFolderNode) as DetailsFolderNode;
+			// No battery, no lastSeen, no firmware — only calibration + archives
+			const detailNodes = detFolder.details.filter((c) => c instanceof DeviceDetailNode);
 			expect(detailNodes.length).toBe(0);
-			expect(children[children.length - 1]).toBeInstanceOf(ArchivesFolderNode);
+			expect(detFolder.details.find((c) => c instanceof CalibrationFolderNode)).toBeDefined();
+			expect(detFolder.details.find((c) => c instanceof ArchivesFolderNode)).toBeDefined();
+		});
+
+		it("includes average temp node when provided", () => {
+			const channels = [makeChannel({ label: "Pit", value: 225, units: "F" })];
+			const avgTemp = { value: 218.5, units: "F" };
+			const children = buildDeviceChildren(mockDevice, channels, false, avgTemp);
+			const detFolder = children.find((c) => c instanceof DetailsFolderNode) as DetailsFolderNode;
+			const avgNode = detFolder.details.find(
+				(n) => (n as DeviceDetailNode).label === "Avg Temp: 219\u00B0F",
+			);
+			expect(avgNode).toBeDefined();
+		});
+
+		it("omits average temp node when null", () => {
+			const channels = [makeChannel({ label: "Pit", value: 225, units: "F" })];
+			const children = buildDeviceChildren(mockDevice, channels, false, null);
+			const detFolder = children.find((c) => c instanceof DetailsFolderNode) as DetailsFolderNode;
+			const avgNode = detFolder.details.find((n) =>
+				((n as DeviceDetailNode).label as string).startsWith("Avg Temp"),
+			);
+			expect(avgNode).toBeUndefined();
+		});
+
+		it("includes calibration folder for every device", () => {
+			const channels = [makeChannel()];
+			const children = buildDeviceChildren(mockDevice, channels);
+			const detFolder = children.find((c) => c instanceof DetailsFolderNode) as DetailsFolderNode;
+			const calFolder = detFolder.details.find((c) => c instanceof CalibrationFolderNode);
+			expect(calFolder).toBeDefined();
+			expect((calFolder as CalibrationFolderNode).serial).toBe("ABC123");
+		});
+	});
+
+	describe("CalibrationFolderNode", () => {
+		it("creates with collapsed state and beaker icon", () => {
+			const node = new CalibrationFolderNode("ABC123");
+			expect(node.label).toBe("Calibration");
+			expect(node.serial).toBe("ABC123");
+			expect(node.collapsibleState).toBe(mockTreeItemCollapsibleState.Collapsed);
+			expect(node.id).toBe("thermoworks-calibration-ABC123");
+			expect((node.iconPath as { id: string }).id).toBe("beaker");
+			expect(node.contextValue).toBe("calibrationFolder");
+		});
+	});
+
+	describe("CalibrationRecordNode", () => {
+		it("renders date and result", () => {
+			const record = {
+				calibrationId: "cal-001",
+				calibrationDate: new Date(2025, 2, 15), // March 15, 2025 local time
+				deviceId: "ABC123",
+				sessionId: null,
+				performedBy: "Technician A",
+				manager: null,
+				referenceDetail: null,
+				statedAccuracy: null,
+				ambientTemperature: null,
+				ambientHumidity: null,
+				result: "Pass",
+				lowPointAdjustments: [
+					{
+						channel: 1,
+						value: 32.1,
+						units: "F",
+						referenceValue: 32.0,
+						deviation: 0.1,
+						trimValue: null,
+						result: "Pass",
+					},
+				],
+				highPointReference: [],
+			};
+			const node = new CalibrationRecordNode(record, 0);
+			// Date formatting is locale-dependent; just verify it's not the fallback
+			expect(node.label).not.toBe("Unknown date");
+			expect(node.description).toBe("Pass");
+			expect(node.id).toBe("thermoworks-calibration-record-cal-001-0");
+			expect((node.iconPath as { id: string }).id).toBe("check");
+			expect(node.tooltip).toContain("Result: Pass");
+			expect(node.tooltip).toContain("Performed by: Technician A");
+			expect(node.tooltip).toContain("Low points: 1");
+		});
+
+		it("handles null date and result gracefully", () => {
+			const record = {
+				calibrationId: "cal-002",
+				calibrationDate: null,
+				deviceId: "DEF456",
+				sessionId: null,
+				performedBy: null,
+				manager: null,
+				referenceDetail: null,
+				statedAccuracy: null,
+				ambientTemperature: null,
+				ambientHumidity: null,
+				result: null,
+				lowPointAdjustments: [],
+				highPointReference: [],
+			};
+			const node = new CalibrationRecordNode(record, 1);
+			expect(node.label).toBe("Unknown date");
+			expect(node.description).toBe("No result");
+			expect(node.tooltip).toContain("Date: Unknown date");
+			expect(node.tooltip).toContain("Result: No result");
+			// Should NOT contain performer or points lines
+			expect(node.tooltip).not.toContain("Performed by");
+			expect(node.tooltip).not.toContain("Low points");
 		});
 	});
 });

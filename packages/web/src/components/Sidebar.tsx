@@ -94,6 +94,7 @@ export function Sidebar({
 								{!collapsed && item.badge != null && item.badge > 0 && (
 									<span
 										className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-medium text-destructive-foreground"
+										role="status"
 										aria-label={`${item.badge} notifications`}
 									>
 										{item.badge}

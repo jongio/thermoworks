@@ -2,6 +2,7 @@ import type { Device } from "thermoworks-sdk";
 import * as vscode from "vscode";
 import type { ClientManager } from "./client-manager";
 import type { CredentialStore } from "./credentials";
+import { type DeviceNode, getNodeLabel } from "./tree/tree-items";
 
 /**
  * Prompts the user to select a device from their account.
@@ -112,5 +113,59 @@ export async function endSession(
 		vscode.window.showInformationMessage(`Session ended on ${deviceName}.`);
 	} else {
 		vscode.window.showErrorMessage(`Failed to end session: ${result.error ?? "unknown error"}`);
+	}
+}
+
+/**
+ * Clear (discard) the active session on a device.
+ * Requires explicit user confirmation before calling the SDK.
+ *
+ * When called from a tree action, `deviceNode` provides the serial directly
+ * so the quick pick is skipped. From the command palette, uses pickDevice.
+ */
+export async function clearSession(
+	clientManager: ClientManager,
+	credentialStore: CredentialStore,
+	deviceNode?: DeviceNode,
+): Promise<void> {
+	let serial: string;
+	let deviceName: string;
+
+	if (deviceNode) {
+		serial = deviceNode.serial;
+		deviceName = getNodeLabel(deviceNode) || deviceNode.serial;
+	} else {
+		const device = await pickDevice(
+			credentialStore,
+			clientManager,
+			(d) => d.sessionStart != null,
+			"Select device to clear session",
+		);
+		if (!device) return;
+		serial = device.serial;
+		deviceName = device.label || device.serial;
+	}
+
+	const confirm = await vscode.window.showWarningMessage(
+		`Clear session on ${deviceName}? All unsaved session data will be lost.`,
+		{ modal: true },
+		"Clear Session",
+	);
+
+	if (confirm !== "Clear Session") return;
+
+	const credentials = await credentialStore.getCredentials();
+	if (!credentials) {
+		vscode.window.showErrorMessage("Not signed in. Please sign in first.");
+		return;
+	}
+
+	const client = clientManager.getClient(credentials);
+	const result = await client.clearSession(serial);
+
+	if (result.success) {
+		vscode.window.showInformationMessage(`Session cleared on ${deviceName}.`);
+	} else {
+		vscode.window.showErrorMessage(`Failed to clear session: ${result.error ?? "unknown error"}`);
 	}
 }

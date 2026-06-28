@@ -70,7 +70,8 @@ export function DeviceDetail() {
 					<div className="h-4 w-32 bg-muted rounded" />
 					<div className="grid gap-3 sm:grid-cols-2">
 						{Array.from({ length: 4 }, (_, i) => (
-							<div key={i} className="h-12 bg-muted rounded-md" />
+							// biome-ignore lint/suspicious/noArrayIndexKey: static skeleton placeholders with no identity
+							<div key={`detail-skeleton-${i}`} className="h-12 bg-muted rounded-md" />
 						))}
 					</div>
 				</div>
@@ -238,7 +239,8 @@ export function DeviceDetail() {
 				)}
 				{!archiveLoading && !archiveError && archives.length > 0 && !archiveChannels && (
 					<div className="text-sm text-muted-foreground text-center py-4 border border-border rounded-md">
-						{archives.length} session{archives.length !== 1 ? "s" : ""} recorded — no chart data available
+						{archives.length} session{archives.length !== 1 ? "s" : ""} recorded — no chart data
+						available
 					</div>
 				)}
 				{!archiveLoading && !archiveError && archives.length === 0 && (

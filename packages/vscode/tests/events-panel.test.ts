@@ -43,7 +43,7 @@ vi.mock("vscode", () => ({
 
 // ─── Imports (after mock) ────────────────────────────────────────────────────
 
-import { EventNode, EventsFolderNode } from "../src/tree/tree-items";
+import { EventNode, EventsFolderNode, formatEventTime } from "../src/tree/tree-items";
 
 // ─── Test fixtures ───────────────────────────────────────────────────────────
 
@@ -137,11 +137,32 @@ describe("events-panel", () => {
 			expect((node.iconPath as { color: { id: string } }).color.id).toBe("charts.blue");
 		});
 
-		it("uses formatTimeAgo for description", () => {
-			const event = makeEvent({ eventTime: new Date(Date.now() - 60_000) });
+		it("description includes channel, values, and formatted time", () => {
+			const event = makeEvent({
+				deviceId: "SN12345678",
+				channelId: "2",
+				valueBefore: "165",
+				valueAfter: "180",
+			});
 			const node = new EventNode(event);
-			// formatTimeAgo returns something like "1m ago"
-			expect(node.description).toMatch(/ago/);
+			const desc = node.description as string;
+			// Channel, value change, and formatted date (no device ID)
+			expect(desc).not.toContain("SN12345678");
+			expect(desc).toContain("Ch 2");
+			expect(desc).toContain("165 → 180");
+		});
+
+		it("description omits device ID entirely", () => {
+			const event = makeEvent({
+				deviceId: "ABC123",
+				channelId: null,
+				valueBefore: null,
+				valueAfter: null,
+			});
+			const node = new EventNode(event);
+			const desc = node.description as string;
+			expect(desc).not.toContain("ABC123");
+			expect(desc).not.toContain("…");
 		});
 
 		it("sets command to showEventDetails with event argument", () => {
@@ -183,11 +204,11 @@ describe("events-panel", () => {
 			expect(tooltipValue).not.toContain("Change:");
 		});
 
-		it("shows -- for null valueBefore with present valueAfter", () => {
+		it("shows – for null valueBefore with present valueAfter", () => {
 			const event = makeEvent({ valueBefore: null, valueAfter: "250" });
 			const node = new EventNode(event);
 			const tooltipValue = (node.tooltip as { value: string }).value;
-			expect(tooltipValue).toContain("-- ");
+			expect(tooltipValue).toContain("–");
 			expect(tooltipValue).toContain("250");
 		});
 
@@ -204,6 +225,49 @@ describe("events-panel", () => {
 			const node = new EventNode(event);
 			const tooltipValue = (node.tooltip as { value: string }).value;
 			expect(tooltipValue).toContain("Device: XYZ789");
+		});
+
+		it("includes relative time in tooltip", () => {
+			const event = makeEvent({ eventTime: new Date(Date.now() - 120_000) });
+			const node = new EventNode(event);
+			const tooltipValue = (node.tooltip as { value: string }).value;
+			expect(tooltipValue).toContain("Relative:");
+		});
+	});
+
+	describe("formatEventTime", () => {
+		it("returns just time for today", () => {
+			const now = new Date();
+			const todayEvent = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 14, 30);
+			const result = formatEventTime(todayEvent);
+			expect(result).toMatch(/2:30/);
+			expect(result).not.toContain("Yesterday");
+		});
+
+		it("returns 'Yesterday' prefix for yesterday", () => {
+			const yesterday = new Date();
+			yesterday.setDate(yesterday.getDate() - 1);
+			yesterday.setHours(9, 15, 0, 0);
+			const result = formatEventTime(yesterday);
+			expect(result).toContain("Yesterday");
+			expect(result).toMatch(/9:15/);
+		});
+
+		it("returns month + day + time for older dates this year", () => {
+			const now = new Date();
+			const older = new Date(now.getFullYear(), 0, 15, 10, 0);
+			// Only test if Jan 15 is more than 1 day ago
+			if (now.getTime() - older.getTime() > 2 * 86_400_000) {
+				const result = formatEventTime(older);
+				expect(result).toContain("Jan");
+				expect(result).toContain("15");
+			}
+		});
+
+		it("includes year for dates from a different year", () => {
+			const oldDate = new Date(2024, 5, 20, 12, 0);
+			const result = formatEventTime(oldDate);
+			expect(result).toContain("2024");
 		});
 	});
 });

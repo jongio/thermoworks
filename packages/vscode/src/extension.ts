@@ -2,12 +2,17 @@ import type { DeviceEvent } from "thermoworks-sdk";
 import * as vscode from "vscode";
 import { configureAlarm } from "./alarm-config";
 import { ChartPanel } from "./chart-panel";
-import { registerChatParticipant } from "./chat-participant";
 import { ClientManager } from "./client-manager";
 import { CredentialStore } from "./credentials";
-import { endSession, startSession } from "./session-commands";
+import { renameDevice, resetMinMax, setFanEnabled, setFanTarget } from "./device-control";
+import { addToGroup, removeFromGroup } from "./group-commands";
+import { clearAlarmInline, setAlarmInline } from "./inline-alarm";
+import { clearSession, endSession, startSession } from "./session-commands";
 import { TemperatureStatusBar } from "./status-bar";
+import { showTemperatureGuide } from "./temperature-guide";
+import { EventsTreeProvider } from "./tree/events-tree-provider";
 import { ThermoworksTreeProvider } from "./tree/thermoworks-tree-provider";
+import { type ChannelNode, type DeviceNode, getNodeLabel } from "./tree/tree-items";
 
 let statusBar: TemperatureStatusBar | undefined;
 
@@ -20,6 +25,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
 	// ─── TreeView Panel ──────────────────────────────────────────────────
 	const treeProvider = new ThermoworksTreeProvider(credentialStore, clientManager);
+	treeProvider.setGlobalState(context.globalState);
 	const treeView = vscode.window.createTreeView("thermoworksPanel", {
 		treeDataProvider: treeProvider,
 		showCollapseAll: true,
@@ -29,14 +35,17 @@ export function activate(context: vscode.ExtensionContext): void {
 	treeProvider.initialize();
 	treeProvider.startAutoRefresh(context);
 
+	// ─── Events View ────────────────────────────────────────────────────
+	const eventsProvider = new EventsTreeProvider(credentialStore, clientManager);
+	const eventsView = vscode.window.createTreeView("thermoworksEvents", {
+		treeDataProvider: eventsProvider,
+		showCollapseAll: false,
+	});
+
 	// ─── Events Output Channel ──────────────────────────────────────────
 	const eventsOutput = vscode.window.createOutputChannel("ThermoWorks Events");
 
-	// ─── Copilot Chat Participant ────────────────────────────────────────
-	const chatParticipant = registerChatParticipant(credentialStore, clientManager);
-
 	context.subscriptions.push(
-		chatParticipant,
 		// Status bar commands
 		vscode.commands.registerCommand("thermoworks.login", async () => {
 			await statusBar?.login();
@@ -91,9 +100,19 @@ export function activate(context: vscode.ExtensionContext): void {
 		}),
 
 		// Tree panel commands
-		vscode.commands.registerCommand("thermoworks.signIn", () => treeProvider.signIn()),
-		vscode.commands.registerCommand("thermoworks.signOut", () => treeProvider.signOut()),
+		vscode.commands.registerCommand("thermoworks.signIn", async () => {
+			await treeProvider.signIn();
+			// Keep the status bar in sync — signing in here must also refresh it.
+			await statusBar?.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.signOut", async () => {
+			await treeProvider.signOut();
+			await statusBar?.refresh();
+		}),
 		vscode.commands.registerCommand("thermoworks.refreshPanel", () => treeProvider.refresh()),
+		vscode.commands.registerCommand("thermoworks.toggleDeviceView", () =>
+			treeProvider.toggleDeviceView(),
+		),
 		vscode.commands.registerCommand("thermoworks.openCloud", () => treeProvider.openCloud()),
 		vscode.commands.registerCommand("thermoworks.configureAlarm", () =>
 			configureAlarm(clientManager, credentialStore),
@@ -106,7 +125,7 @@ export function activate(context: vscode.ExtensionContext): void {
 				...(event.channelId ? [`Channel: ${event.channelId}`] : []),
 				`Time: ${event.eventTime.toLocaleString()}`,
 				...(event.valueBefore != null || event.valueAfter != null
-					? [`Change: ${event.valueBefore ?? "--"} -> ${event.valueAfter ?? "--"}`]
+					? [`Change: ${event.valueBefore ?? "–"} → ${event.valueAfter ?? "–"}`]
 					: []),
 				...(event.groups?.length ? [`Groups: ${event.groups.join(", ")}`] : []),
 				"---",
@@ -122,13 +141,24 @@ export function activate(context: vscode.ExtensionContext): void {
 					vscode.window.showErrorMessage("ThermoWorks: No device serial provided.");
 					return;
 				}
-				await ChartPanel.show(
-					serial,
-					credentialStore,
-					clientManager,
-					context.extensionUri,
+				await ChartPanel.show(serial, credentialStore, clientManager, context.extensionUri, {
 					channelNumber,
-				);
+				});
+			},
+		),
+		vscode.commands.registerCommand(
+			"thermoworks.showArchiveChart",
+			async (archiveNode: { serial?: string; archive?: { id: string; label: string | null } }) => {
+				const serial = archiveNode?.serial;
+				const archive = archiveNode?.archive;
+				if (!serial || !archive) {
+					vscode.window.showErrorMessage("ThermoWorks: No session selected.");
+					return;
+				}
+				await ChartPanel.show(serial, credentialStore, clientManager, context.extensionUri, {
+					archiveId: archive.id,
+					archiveLabel: archive.label ?? "Session",
+				});
 			},
 		),
 		vscode.commands.registerCommand("thermoworks.showArchiveDetails", (archiveNode) => {
@@ -149,7 +179,106 @@ export function activate(context: vscode.ExtensionContext): void {
 			await endSession(clientManager, credentialStore);
 			await treeProvider.refresh();
 		}),
+		vscode.commands.registerCommand("thermoworks.clearSession", async (node?: DeviceNode) => {
+			await clearSession(clientManager, credentialStore, node);
+			await treeProvider.refresh();
+		}),
 
+		// Inline alarm commands (channel tree actions)
+		vscode.commands.registerCommand("thermoworks.setAlarmInline", async (node: ChannelNode) => {
+			await setAlarmInline(node, clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.clearAlarmInline", async (node: ChannelNode) => {
+			await clearAlarmInline(node, clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+
+		// Device control commands
+		vscode.commands.registerCommand("thermoworks.setFanTarget", async (node: DeviceNode) => {
+			if (!node?.serial) {
+				vscode.window.showErrorMessage("ThermoWorks: Select a fan-capable device first.");
+				return;
+			}
+			await setFanTarget(node, clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.setFanEnabled", async (node: DeviceNode) => {
+			if (!node?.serial) {
+				vscode.window.showErrorMessage("ThermoWorks: Select a fan-capable device first.");
+				return;
+			}
+			await setFanEnabled(node, clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.renameDevice", async (node: DeviceNode) => {
+			if (!node?.serial) {
+				vscode.window.showErrorMessage("ThermoWorks: Select a device first.");
+				return;
+			}
+			await renameDevice(node, clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.resetMinMax", async (node: ChannelNode) => {
+			if (!node?.serial) {
+				vscode.window.showErrorMessage("ThermoWorks: Select a channel first.");
+				return;
+			}
+			await resetMinMax(node, clientManager, credentialStore);
+			await treeProvider.refresh();
+		}),
+		vscode.commands.registerCommand("thermoworks.addToGroup", async (node: DeviceNode) => {
+			if (!node?.serial) {
+				vscode.window.showErrorMessage("ThermoWorks: Select a device first.");
+				return;
+			}
+			try {
+				await addToGroup(node, clientManager, credentialStore, treeProvider);
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : "Unknown error";
+				vscode.window.showErrorMessage(`Failed to add to group: ${msg.slice(0, 150)}`);
+			}
+		}),
+		vscode.commands.registerCommand("thermoworks.removeFromGroup", async (node: DeviceNode) => {
+			if (!node?.serial) {
+				vscode.window.showErrorMessage("ThermoWorks: Select a device first.");
+				return;
+			}
+			try {
+				await removeFromGroup(node, clientManager, credentialStore, treeProvider);
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : "Unknown error";
+				vscode.window.showErrorMessage(`Failed to remove from group: ${msg.slice(0, 150)}`);
+			}
+		}),
+
+		// Events view commands
+		vscode.commands.registerCommand("thermoworks.refreshEvents", () => eventsProvider.refresh()),
+		vscode.commands.registerCommand(
+			"thermoworks.filterEventsByDevice",
+			async (node: DeviceNode) => {
+				const serial = node?.serial;
+				const label = (node ? getNodeLabel(node) : "") || serial;
+				if (!serial) {
+					vscode.window.showErrorMessage("ThermoWorks: No device selected.");
+					return;
+				}
+				eventsProvider.setDeviceFilter(serial, label);
+				eventsView.description = label;
+			},
+		),
+		vscode.commands.registerCommand("thermoworks.clearEventsFilter", () => {
+			eventsProvider.clearDeviceFilter();
+			eventsView.description = undefined;
+		}),
+
+		// Temperature guide command
+		vscode.commands.registerCommand("thermoworks.showTemperatureGuide", () =>
+			showTemperatureGuide(clientManager, credentialStore),
+		),
+
+		eventsView,
+		eventsProvider,
 		treeView,
 		treeProvider,
 		eventsOutput,

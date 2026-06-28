@@ -81,6 +81,7 @@ function sleep(seconds: number): { promise: Promise<void>; cancel: () => void } 
 	const promise = new Promise<void>((resolve) => {
 		timer = setTimeout(resolve, seconds * 1000);
 	});
+	// biome-ignore lint/style/noNonNullAssertion: timer assigned before cancel is callable
 	return { promise, cancel: () => clearTimeout(timer!) };
 }
 

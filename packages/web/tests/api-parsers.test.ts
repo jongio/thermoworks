@@ -24,7 +24,7 @@ function jsonResponse(body: unknown, status = 200): Response {
 	} as Response;
 }
 
-function errorResponse(status: number): Response {
+function _errorResponse(status: number): Response {
 	return { ok: false, status, json: () => Promise.resolve({}) } as Response;
 }
 

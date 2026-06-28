@@ -204,11 +204,21 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 
 		setIsEnablingNotifications(true);
 		try {
-			const permission = await Notification.requestPermission();
+			// Race requestPermission against a timeout in case the browser
+			// silently blocks or the user dismisses without responding.
+			const permission = await Promise.race([
+				Notification.requestPermission(),
+				new Promise<NotificationPermission>((resolve) =>
+					setTimeout(() => resolve(Notification.permission as NotificationPermission), 10_000),
+				),
+			]);
 			setNotificationStatus(permission);
 			if (permission === "granted") {
 				setNotificationsEnabled(true);
 			}
+		} catch {
+			// Permission request failed (e.g., insecure context)
+			setNotificationStatus("denied");
 		} finally {
 			setIsEnablingNotifications(false);
 		}
@@ -398,7 +408,7 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 				aria-labelledby="onboarding-title"
 				aria-describedby="onboarding-description"
 				tabIndex={-1}
-				className="w-full max-w-2xl rounded-2xl border border-border bg-background p-6 shadow-2xl focus-visible:outline-none"
+				className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-background p-6 shadow-2xl focus-visible:outline-none"
 			>
 				<div className="flex items-center justify-between gap-4">
 					<div>

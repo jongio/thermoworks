@@ -570,9 +570,9 @@ describe("ThermoworksCloud", () => {
 						document: {
 							name: "projects/thermoworks-app/databases/(default)/documents/events/evt-1",
 							fields: {
-								eventType: { stringValue: "High Alarm" },
-								severity: { integerValue: "2" },
-								eventTime: { timestampValue: "2026-06-01T10:00:00.000Z" },
+								EventType: { stringValue: "High Alarm" },
+								Severity: { integerValue: "2" },
+								EventTime: { timestampValue: "2026-06-01T10:00:00.000Z" },
 								deviceId: { stringValue: "ABC123" },
 								accountId: { stringValue: "acct-123" },
 							},
@@ -825,13 +825,14 @@ describe("ThermoworksCloud", () => {
 			client.close();
 		});
 
-		it("returns null for 404", async () => {
+		it("throws NotFoundError for 404", async () => {
 			setupAuth();
 			mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
 
 			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
-			const result = await client.getFirmwareInfo("unknown_type");
-			expect(result).toBeNull();
+			await expect(client.getFirmwareInfo("unknown_type")).rejects.toThrow(
+				"Firmware info not found for type 'unknown_type'",
+			);
 			client.close();
 		});
 	});

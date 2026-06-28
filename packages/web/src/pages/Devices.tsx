@@ -1,5 +1,5 @@
-import { Link, useOutletContext } from "react-router-dom";
 import { Loader2, ThermometerSun } from "lucide-react";
+import { Link, useOutletContext } from "react-router-dom";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { useDevices } from "../hooks/useDevices.ts";
 import { cn } from "../lib/utils.ts";
@@ -65,9 +65,7 @@ export function Devices() {
 									<td className="px-4 py-2 text-muted-foreground">
 										{item.device.type ?? item.device.device ?? "—"}
 									</td>
-									<td className="px-4 py-2 text-muted-foreground">
-										{item.channels.length}
-									</td>
+									<td className="px-4 py-2 text-muted-foreground">{item.channels.length}</td>
 								</tr>
 							))}
 						</tbody>

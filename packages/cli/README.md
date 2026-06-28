@@ -243,7 +243,13 @@ Show device event history (alarms, status changes).
 ```bash
 npx thermoworks events
 npx thermoworks events --device M100009168 --limit 50
+npx thermoworks events --type alarm --json
 ```
+
+Options:
+- `--device SN` - Filter to a specific device by serial number
+- `--type TYPE` - Filter by event type (e.g., `alarm`, `status`, `connection`)
+- `--limit N` - Maximum number of events to return
 
 ### `thermoworks archives <serial>`
 
@@ -261,6 +267,88 @@ Show firmware versions and available updates for all devices.
 ```bash
 npx thermoworks firmware
 npx thermoworks firmware --device M100009168
+```
+
+### `thermoworks data-usage`
+
+Show account data storage usage. Use `--by-device` for a per-device breakdown sorted by size.
+
+```bash
+npx thermoworks data-usage
+# Account data usage: 12.4 MB
+
+npx thermoworks data-usage --by-device
+# DEV-C  48.8 KB
+# DEV-B   9.8 KB
+# DEV-A   1.0 KB
+
+npx thermoworks data-usage --json
+npx thermoworks data-usage --by-device --json
+```
+
+Options:
+- `--by-device` — Show per-device breakdown (device id + formatted size), sorted by size descending
+
+### `thermoworks fan <serial>`
+
+Show, configure, and toggle the Billows fan/blower controller on Signals devices.
+
+```bash
+npx thermoworks fan M100009168
+# Fan controller for M100009168:
+#   Connected:   yes
+#   Connection:  enabled
+#   Target temp: 225
+#   Channel:     1
+#   State:       1
+
+npx thermoworks fan set M100009168 --target 225
+# Fan target temperature set to 225 for M100009168.
+
+npx thermoworks fan enable M100009168
+# Fan controller enabled for M100009168.
+
+npx thermoworks fan disable M100009168
+# Fan controller disabled for M100009168.
+```
+
+### `thermoworks search <query>`
+
+Full-text search across devices, accounts, or users.
+
+```bash
+npx thermoworks search "brisket"
+#   AB1234  Pit Boss Smoker  (score: 0.95)
+#   CD5678  Brisket Probe    (score: 0.82)
+
+npx thermoworks search "brisket" --collection accounts --limit 5
+npx thermoworks search "brisket" --json
+```
+
+Options:
+- `--collection C` — Search collection: `device`, `accounts`, or `users` (default: `device`)
+- `--limit N` — Max results to return (default: 20, max: 100)
+
+### `thermoworks device rename <SERIAL> --name <TEXT>`
+
+Rename a device.
+
+```bash
+npx thermoworks device rename M100009168 --name "Pit Boss Smoker"
+# Renamed M100009168 to "Pit Boss Smoker".
+
+npx thermoworks device rename M100009168 --name "Pit Boss Smoker" --json
+```
+
+### `thermoworks device reset-minmax <SERIAL> --channel <N>`
+
+Reset the min/max readings for a specific channel (1 through 9).
+
+```bash
+npx thermoworks device reset-minmax M100009168 --channel 1
+# Min/max reset for M100009168 channel 1.
+
+npx thermoworks device reset-minmax M100009168 --channel 3 --json
 ```
 
 ### `thermoworks session start|end|clear`
@@ -287,6 +375,21 @@ Options:
 - `--format FMT` — Output format: `csv` or `json` (default: `json`)
 - `--output PATH` — Write to file (default: stdout)
 
+### `thermoworks history <serial>`
+
+Export historical time-series readings from BigQuery for post-cook analysis or data pipelines. Unlike `export` (which reads from a single archive session), `history` retrieves the full BigQuery time-series for a device.
+
+```bash
+npx thermoworks history M100009168
+npx thermoworks history M100009168 --limit 100 --format csv --output readings.csv
+npx thermoworks history M100009168 --format json
+```
+
+Options:
+- `--limit N` — Show the N most recent readings
+- `--format FMT` — Output format: `table`, `csv`, or `json` (default: `table`)
+- `--output PATH` — Write to file (default: stdout)
+
 ### `thermoworks guide [category]`
 
 Show the temperature guide (safe cooking temps from USDA).
@@ -307,7 +410,7 @@ npx thermoworks mcp start
 Notes:
 - Launched by an MCP client (not used interactively).
 - Credentials resolved from env vars or OS keychain.
-- Exposes 7 tools: `get_devices`, `get_device`, `get_device_channels`, `get_average_temperature`, `get_events`, `get_archives`, `get_temperature_guide`.
+- Exposes 12 tools: `get_devices`, `get_device`, `get_device_channels`, `get_average_temperature`, `get_events`, `get_archives`, `get_temperature_guide`, `set_alarm`, `start_session`, `end_session`, `get_firmware_status`, `get_archive_detail`.
 - See [MCP server README](../mcp/README.md) for client configuration.
 
 ### `thermoworks demo <high|low|normal>`

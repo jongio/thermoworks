@@ -99,12 +99,17 @@ export function formatCsv(rows: ExportRow[]): string {
 	return `${[header, ...lines].join("\n")}\n`;
 }
 
-/** Escape a CSV field if it contains commas, quotes, or newlines. */
+/** Escape a CSV field if it contains commas, quotes, or newlines. Also prevents formula injection. */
 function escapeCsvField(field: string): string {
-	if (field.includes(",") || field.includes('"') || field.includes("\n")) {
-		return `"${field.replace(/"/g, '""')}"`;
+	let escaped = field;
+	// OWASP: Prefix formula-trigger characters to prevent spreadsheet injection
+	if (/^[=+\-@|\t]/.test(escaped)) {
+		escaped = `'${escaped}`;
 	}
-	return field;
+	if (escaped.includes(",") || escaped.includes('"') || escaped.includes("\n")) {
+		return `"${escaped.replace(/"/g, '""')}"`;
+	}
+	return escaped;
 }
 
 /** Format rows as JSON (pretty-printed array of objects). */

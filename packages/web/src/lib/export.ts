@@ -121,36 +121,38 @@ export async function downloadPNG(container: HTMLElement, filename: string): Pro
 	const img = new Image();
 	img.crossOrigin = "anonymous";
 
-	await new Promise<void>((resolve, reject) => {
-		img.onload = () => {
-			const scale = 2;
-			const canvas = document.createElement("canvas");
-			canvas.width = width * scale;
-			canvas.height = height * scale;
+	try {
+		await new Promise<void>((resolve, reject) => {
+			img.onload = () => {
+				const scale = 2;
+				const canvas = document.createElement("canvas");
+				canvas.width = width * scale;
+				canvas.height = height * scale;
 
-			const ctx = canvas.getContext("2d");
-			if (!ctx) {
-				reject(new Error("Failed to get canvas 2d context"));
-				return;
-			}
-
-			ctx.scale(scale, scale);
-			ctx.fillStyle = "#ffffff";
-			ctx.fillRect(0, 0, canvas.width, canvas.height);
-			ctx.drawImage(img, 0, 0, width, height);
-
-			canvas.toBlob((blob) => {
-				if (blob) {
-					triggerDownload(blob, filename);
+				const ctx = canvas.getContext("2d");
+				if (!ctx) {
+					reject(new Error("Failed to get canvas 2d context"));
+					return;
 				}
-				resolve();
-			}, "image/png");
-		};
-		img.onerror = () => reject(new Error("Failed to load SVG as image"));
-		img.src = url;
-	});
 
-	URL.revokeObjectURL(url);
+				ctx.scale(scale, scale);
+				ctx.fillStyle = "#ffffff";
+				ctx.fillRect(0, 0, canvas.width, canvas.height);
+				ctx.drawImage(img, 0, 0, width, height);
+
+				canvas.toBlob((blob) => {
+					if (blob) {
+						triggerDownload(blob, filename);
+					}
+					resolve();
+				}, "image/png");
+			};
+			img.onerror = () => reject(new Error("Failed to load SVG as image"));
+			img.src = url;
+		});
+	} finally {
+		URL.revokeObjectURL(url);
+	}
 }
 
 /** Escape a CSV field per RFC 4180 with formula injection prevention (OWASP). */

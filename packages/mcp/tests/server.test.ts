@@ -511,10 +511,8 @@ describe("MCP Server", () => {
 
 				const server = createServer();
 				const handler = getToolHandler(server, "set_alarm");
-				const result = await handler({ serial: "ABC123", channel: 1 }, {});
-
-				expect(result.content[0].text).toBe(
-					"Error: set_alarm requires at least one of high_temp, low_temp, or clear",
+				await expect(handler({ serial: "ABC123", channel: 1 }, {})).rejects.toThrow(
+					"set_alarm requires at least one of high_temp, low_temp, or clear",
 				);
 				expect(mockSetAlarm).not.toHaveBeenCalled();
 			} finally {

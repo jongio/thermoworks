@@ -301,6 +301,13 @@ interface TokenState {
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
+/** Parse expiresIn from Firebase auth responses, guarding against NaN/Infinity/negative. */
+function parseExpiresIn(raw: unknown): number {
+	const n = Number(raw);
+	if (!Number.isFinite(n) || n < 0) return 3600; // Default to 1 hour for invalid values
+	return n;
+}
+
 async function login(email: string, password: string): Promise<TokenState> {
 	const url = `${IDENTITY_HOST}/v1/accounts:signInWithPassword?key=${DEFAULT_API_KEY}`;
 	const response = await fetch(url, {
@@ -331,7 +338,7 @@ async function login(email: string, password: string): Promise<TokenState> {
 		accessToken: data.idToken,
 		refreshToken: data.refreshToken,
 		userId: data.localId,
-		expiresAt: Date.now() + Number(data.expiresIn) * 1000,
+		expiresAt: Date.now() + parseExpiresIn(data.expiresIn) * 1000,
 	};
 }
 
@@ -364,7 +371,7 @@ async function refreshAccessToken(refreshToken: string): Promise<TokenState> {
 		accessToken: data.id_token,
 		refreshToken: data.refresh_token,
 		userId: data.user_id,
-		expiresAt: Date.now() + Number(data.expires_in) * 1000,
+		expiresAt: Date.now() + parseExpiresIn(data.expires_in) * 1000,
 	};
 }
 
@@ -709,7 +716,10 @@ export class ThermoworksWebClient {
 					this.refreshPromise = null;
 				});
 			}
-			this.token = await this.refreshPromise;
+			const refreshed = await this.refreshPromise;
+			// If logout() was called while refresh was in flight, discard the refreshed token
+			if (!this.token) throw new AuthError("Not authenticated", "NOT_AUTHENTICATED");
+			this.token = refreshed;
 			this.persistSession();
 		}
 		return this.token.accessToken;

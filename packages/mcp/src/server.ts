@@ -4,7 +4,11 @@ import type { AlarmSetOptions } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 import { z } from "zod";
 
+let cachedCreds: { email: string; password: string } | null = null;
+
 function resolveCredentials(): { email: string; password: string } {
+	if (cachedCreds) return cachedCreds;
+
 	const email = process.env.THERMOWORKS_EMAIL;
 	const password = process.env.THERMOWORKS_PASSWORD;
 
@@ -17,7 +21,8 @@ function resolveCredentials(): { email: string; password: string } {
 	// Clear password from environment to prevent leaking to child processes
 	delete process.env.THERMOWORKS_PASSWORD;
 
-	return { email, password };
+	cachedCreds = { email, password };
+	return cachedCreds;
 }
 
 let cachedClient: ThermoworksCloud | null = null;
@@ -36,6 +41,7 @@ export function resetClient(): void {
 		cachedClient.close();
 		cachedClient = null;
 	}
+	cachedCreds = null;
 }
 
 type ToolResult = { content: Array<{ type: "text"; text: string }> };
@@ -173,14 +179,7 @@ export function createServer(): McpServer {
 		},
 		async ({ serial, channel, high_temp, low_temp, clear }) => {
 			if (high_temp == null && low_temp == null && !clear) {
-				return {
-					content: [
-						{
-							type: "text",
-							text: "Error: set_alarm requires at least one of high_temp, low_temp, or clear",
-						},
-					],
-				};
+				throw new Error("set_alarm requires at least one of high_temp, low_temp, or clear");
 			}
 
 			let config: AlarmSetOptions;

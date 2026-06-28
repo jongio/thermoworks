@@ -224,6 +224,7 @@ export class ChartPanel {
 			}
 
 			const creds = await credentialStore.getCredentials();
+			if (this.disposed) return;
 			if (!creds) {
 				this.post({ type: "error", message: "Not signed in. Please sign in first." });
 				return;
@@ -240,6 +241,7 @@ export class ChartPanel {
 				client.getHistory(this.serial),
 				client.getArchives(this.serial, { limit: 1 }),
 			]);
+			if (this.disposed) return;
 
 			const history =
 				historyResult.status === "fulfilled" && historyResult.value.readings.length > 0
@@ -266,6 +268,7 @@ export class ChartPanel {
 			this.post({ type: "chart-data", payload });
 			this.startLiveTail(client, payload, opts.channelNumber);
 		} catch (error) {
+			if (this.disposed) return;
 			const message = error instanceof Error ? error.message : "Failed to load chart data";
 			this.post({ type: "error", message });
 		}
@@ -304,6 +307,7 @@ export class ChartPanel {
 
 	/** Simulate a live tail in demo mode by drifting the primary channel over time. */
 	private startDemoLiveTail(payload: ChartPayload): void {
+		if (this.disposed) return;
 		this.stopLiveTail();
 		const seriesId = getDemoLiveSeriesId(this.serial);
 		if (!seriesId) return;
@@ -326,6 +330,7 @@ export class ChartPanel {
 		payload: ChartPayload,
 		channelNumber?: string,
 	): void {
+		if (this.disposed) return;
 		this.stopLiveTail();
 		this.liveSource = payload.source;
 		this.liveSeriesIds = new Set(payload.series.map((s) => s.id));

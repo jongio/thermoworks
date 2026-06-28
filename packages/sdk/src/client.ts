@@ -1,4 +1,5 @@
 import { type AuthSession, createAuthSession } from "./auth.js";
+import { toFahrenheit } from "./convert.js";
 import {
 	type FirestoreFields,
 	type FirestoreValue,
@@ -304,10 +305,18 @@ export class ThermoworksCloud {
 		const first = temps[0];
 		if (!first) return null;
 
-		const sum = temps.reduce((acc, ch) => acc + ch.value, 0);
+		// Normalize all values to the first channel's unit system before averaging
+		const targetUnits = first.units;
+		const normalized = temps.map((ch) => {
+			if (ch.units === targetUnits) return ch.value;
+			// Convert between F and C as needed
+			return targetUnits === "F" ? toFahrenheit(ch.value) : (ch.value - 32) * (5 / 9);
+		});
+
+		const sum = normalized.reduce((acc, v) => acc + v, 0);
 		return {
-			value: Math.round((sum / temps.length) * 10) / 10,
-			units: first.units,
+			value: Math.round((sum / normalized.length) * 10) / 10,
+			units: targetUnits,
 		};
 	}
 
@@ -1563,7 +1572,7 @@ function buildAlarmMapValue(opts: AlarmThresholdOptions): FirestoreValue {
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB"] as const;
 
 function formatBytes(bytes: number): string {
-	if (bytes === 0) return "0 B";
+	if (bytes <= 0 || !Number.isFinite(bytes)) return "0 B";
 	const exponent = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), BYTE_UNITS.length - 1);
 	const value = bytes / 1024 ** exponent;
 	const formatted = exponent === 0 ? value.toString() : value.toFixed(2);

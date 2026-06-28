@@ -173,12 +173,13 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 
 	const handleNext = useCallback(() => {
 		setStepIndex((current) => {
-			if (current >= 3) {
-				handleComplete();
-				return current;
-			}
+			if (current >= 3) return current;
 			return current + 1;
 		});
+	}, []);
+
+	const handleFinish = useCallback(() => {
+		handleComplete();
 	}, [handleComplete]);
 
 	const handleBack = useCallback(() => {
@@ -468,7 +469,7 @@ export function OnboardingWizard({ client, onComplete }: OnboardingWizardProps) 
 						)}
 						<button
 							type="button"
-							onClick={handleNext}
+							onClick={isLastStep ? handleFinish : handleNext}
 							className="rounded-md bg-foreground px-4 py-2 text-sm font-medium text-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						>
 							{isLastStep ? "Finish" : "Next"}

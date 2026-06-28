@@ -9,7 +9,7 @@ The following tools must be installed on your machine to build and run the full 
 | Tool | Version | Purpose | Install |
 |------|---------|---------|---------|
 | **Node.js** | ≥ 18.0.0 | JavaScript runtime | [nodejs.org](https://nodejs.org) or `nvm install 22` |
-| **pnpm** | 10.12.1+ | Package manager (monorepo workspaces) | `corepack enable && corepack prepare pnpm@latest --activate` |
+| **pnpm** | 11.9.0+ | Package manager (monorepo workspaces) | `corepack enable && corepack prepare pnpm@latest --activate` |
 | **Git** | Any recent | Source control | [git-scm.com](https://git-scm.com) |
 
 ### Platform-Specific Dependencies
@@ -115,6 +115,7 @@ pnpm format
 |------|---------|-------------|
 | `packages/sdk` | `thermoworks-sdk` | Node.js client library for ThermoWorks Cloud API |
 | `packages/cli` | `thermoworks` | CLI for auth, device listing, Copilot statusline setup |
+| `packages/mcp` | `thermoworks-mcp` | MCP server exposing device data to AI assistants |
 | `packages/vscode` | VS Code extension | Status bar + device panel extension |
 | `packages/web` | `thermoworks-web` | React 19 dashboard with real-time temperatures, charts, alarm UI, and public share viewer |
 

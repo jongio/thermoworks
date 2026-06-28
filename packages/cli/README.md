@@ -145,10 +145,10 @@ Possible output includes:
 
 ### `thermoworks alarm set`
 
-Set alarm thresholds on a device channel.
+Set alarm thresholds on a device channel. At least one of `--high` or `--low` is required.
 
 ```bash
-npx thermoworks alarm set <serial> <channel> --high <temp> --low <temp>
+npx thermoworks alarm set <serial> --channel <1-9> --high <temp> --low <temp>
 ```
 
 ### `thermoworks alarm clear`
@@ -156,7 +156,7 @@ npx thermoworks alarm set <serial> <channel> --high <temp> --low <temp>
 Clear alarm thresholds on a device channel.
 
 ```bash
-npx thermoworks alarm clear <serial> <channel>
+npx thermoworks alarm clear <serial> --channel <1-9>
 ```
 
 ### `thermoworks calibration <serial>`
@@ -392,7 +392,7 @@ Options:
 
 ### `thermoworks guide [category]`
 
-Show the temperature guide (safe cooking temps from USDA).
+Show the temperature guide (safe cooking temperatures).
 
 ```bash
 npx thermoworks guide

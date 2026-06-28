@@ -66,6 +66,7 @@ This saves your selection to `~/.thermoworks/config.json`, which the extension r
 | `ThermoWorks: Sign Out` | Sign out (right-click account node) |
 | `ThermoWorks: Refresh Temperatures` | Force an immediate temperature refresh |
 | `ThermoWorks: Refresh Panel` | Refresh the device tree panel |
+| `ThermoWorks: Toggle Grouped/List View` | Switch the device panel between grouped and flat list view |
 | `ThermoWorks: Cycle to Next Device` | Advance to the next device in cycle mode |
 | `ThermoWorks: Open Cloud Dashboard` | Open [cloud.thermoworks.com](https://cloud.thermoworks.com) |
 | `ThermoWorks: Show Temperature Chart` | Open a live temperature chart for a device |
@@ -79,10 +80,12 @@ This saves your selection to `~/.thermoworks/config.json`, which the extension r
 | `ThermoWorks: Refresh Events` | Reload the Events panel |
 | `ThermoWorks: Filter Events by Device` | Filter events to a single device |
 | `ThermoWorks: Show All Events` | Clear the events device filter |
-| `Set Fan Target...` | Set the fan controller target temperature |
-| `Fan On/Off...` | Toggle the fan controller |
-| `Rename Device...` | Rename a device |
+| `Set Target Temp…` | Set the fan controller target temperature |
+| `Fan On/Off…` | Toggle the fan controller |
+| `Rename Device…` | Rename a device |
 | `Reset Min/Max` | Reset the min/max readings on a channel |
+| `Add to Group…` | Add a device to a group |
+| `Remove from Group` | Remove a device from its group |
 | `ThermoWorks: Start Session` | Start a monitoring session |
 | `ThermoWorks: End Session` | End an active monitoring session |
 | `ThermoWorks: Clear Session` | Clear session data (with confirmation) |

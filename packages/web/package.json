@@ -16,7 +16,7 @@
 		"@dnd-kit/utilities": "^3.2.2",
 		"@tanstack/react-virtual": "^3.14.4",
 		"clsx": "^2.1.1",
-		"lucide-react": "^1.21.0",
+		"lucide-react": "^1.22.0",
 		"react": "^19.2.7",
 		"react-dom": "^19.2.7",
 		"react-router-dom": "^7.18.0",

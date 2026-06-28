@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { navigationItems } from "../lib/navigation.ts";
 
@@ -26,24 +26,30 @@ export function useKeyboardShortcuts() {
 	const navigate = useNavigate();
 	const [showHelp, setShowHelp] = useState(false);
 
-	const shortcuts: Shortcut[] = [
-		{ key: "r", description: "Refresh page", action: () => window.location.reload() },
-		{
-			key: "/",
-			description: "Focus search bar",
-			action: () => {
-				const searchInput = document.querySelector<HTMLInputElement>("[data-search-input]");
-				searchInput?.focus();
+	const toggleHelp = useCallback(() => setShowHelp((prev) => !prev), []);
+	const closeHelp = useCallback(() => setShowHelp(false), []);
+
+	const shortcuts: Shortcut[] = useMemo(
+		() => [
+			{ key: "r", description: "Refresh page", action: () => window.location.reload() },
+			{
+				key: "/",
+				description: "Focus search bar",
+				action: () => {
+					const searchInput = document.querySelector<HTMLInputElement>("[data-search-input]");
+					searchInput?.focus();
+				},
 			},
-		},
-		{ key: "?", description: "Show shortcuts help", action: () => setShowHelp((prev) => !prev) },
-		{ key: "Escape", description: "Close modals/panels", action: () => setShowHelp(false) },
-		...navigationItems.map((item, i) => ({
-			key: String(i + 1),
-			description: `Navigate to ${item.label}`,
-			action: () => navigate(item.path),
-		})),
-	];
+			{ key: "?", description: "Show shortcuts help", action: toggleHelp },
+			{ key: "Escape", description: "Close modals/panels", action: closeHelp },
+			...navigationItems.map((item, i) => ({
+				key: String(i + 1),
+				description: `Navigate to ${item.label}`,
+				action: () => navigate(item.path),
+			})),
+		],
+		[navigate, toggleHelp, closeHelp],
+	);
 
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
@@ -58,7 +64,7 @@ export function useKeyboardShortcuts() {
 		}
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	});
+	}, [shortcuts]);
 
 	return { shortcuts, showHelp, setShowHelp };
 }

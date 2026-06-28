@@ -69,10 +69,14 @@ export function useRetry<T>(fn: () => Promise<T>, options?: UseRetryOptions): Us
 				const backoff = Math.min(delay * 2 ** attempt, 30_000);
 				await new Promise<void>((resolve) => {
 					const timer = setTimeout(resolve, backoff);
-					controller.signal.addEventListener("abort", () => {
-						clearTimeout(timer);
-						resolve();
-					});
+					controller.signal.addEventListener(
+						"abort",
+						() => {
+							clearTimeout(timer);
+							resolve();
+						},
+						{ once: true },
+					);
 				});
 			}
 		}

@@ -326,8 +326,9 @@ export class TemperatureStatusBar implements vscode.Disposable {
 						channels: "avg" as const,
 					}));
 
+		const deviceMap = new Map(allDevices.map((d) => [d.serial, d]));
 		const configuredDevices = deviceConfigs
-			.map((dc) => ({ config: dc, device: allDevices.find((d) => d.serial === dc.serial) }))
+			.map((dc) => ({ config: dc, device: deviceMap.get(dc.serial) }))
 			.filter(
 				(x): x is { config: typeof x.config; device: NonNullable<typeof x.device> } =>
 					x.device != null,

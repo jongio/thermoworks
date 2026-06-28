@@ -38,6 +38,12 @@ export function AppLayout({
 
 	return (
 		<div className="flex h-screen overflow-hidden">
+			<a
+				href="#main-content"
+				className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md"
+			>
+				Skip to main content
+			</a>
 			<Sidebar
 				onLogout={onLogout}
 				accounts={accounts}
@@ -48,7 +54,7 @@ export function AppLayout({
 				onSignOutAll={onSignOutAll}
 			/>
 
-			<main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+			<main id="main-content" className="flex-1 overflow-y-auto pb-20 md:pb-0">
 				<div className="mx-auto max-w-7xl px-4 py-6">
 					<OfflineBanner />
 					<Outlet context={context} />

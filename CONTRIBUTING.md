@@ -116,7 +116,7 @@ pnpm format
 | `packages/sdk` | `thermoworks-sdk` | Node.js client library for ThermoWorks Cloud API |
 | `packages/cli` | `thermoworks` | CLI for auth, device listing, Copilot statusline setup |
 | `packages/vscode` | VS Code extension | Status bar + device panel extension |
-| `packages/web` | Landing page | Static marketing/landing page |
+| `packages/web` | `thermoworks-web` | React 19 dashboard with real-time temperatures, charts, alarm UI, and public share viewer |
 
 ## Environment Variables
 

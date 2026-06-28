@@ -42,13 +42,15 @@ export function NotificationToggle() {
 		if (permission === "denied") return;
 
 		if (permission === "default") {
-			Notification.requestPermission().then((result) => {
-				setPermission(result);
-				if (result === "granted") {
-					setEnabled(true);
-					setNotificationsEnabled(true);
-				}
-			});
+			Notification.requestPermission()
+				.then((result) => {
+					setPermission(result);
+					if (result === "granted") {
+						setEnabled(true);
+						setNotificationsEnabled(true);
+					}
+				})
+				.catch(() => {});
 			return;
 		}
 

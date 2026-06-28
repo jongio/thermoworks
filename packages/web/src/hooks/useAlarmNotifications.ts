@@ -89,15 +89,17 @@ export function useAlarmNotifications(data: DeviceWithChannels[]): void {
 						n.close();
 					};
 				} else if (Notification.permission === "default") {
-					Notification.requestPermission().then((perm) => {
-						if (perm === "granted") {
-							const n = new Notification(title, { body, tag: key, icon: "/favicon.svg" });
-							n.onclick = () => {
-								window.focus();
-								n.close();
-							};
-						}
-					});
+					Notification.requestPermission()
+						.then((perm) => {
+							if (perm === "granted") {
+								const n = new Notification(title, { body, tag: key, icon: "/favicon.svg" });
+								n.onclick = () => {
+									window.focus();
+									n.close();
+								};
+							}
+						})
+						.catch(() => {});
 				}
 			}
 		}

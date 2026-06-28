@@ -156,7 +156,7 @@ export function AccountSwitcher({
 													type="button"
 													onClick={() => onRemoveAccount(account.id)}
 													className={cn(
-														"hidden group-hover:inline-flex",
+														"opacity-0 group-hover:opacity-100 focus-visible:opacity-100 inline-flex",
 														"h-5 w-5 items-center justify-center rounded",
 														"text-muted-foreground hover:text-destructive hover:bg-destructive/10",
 														"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",

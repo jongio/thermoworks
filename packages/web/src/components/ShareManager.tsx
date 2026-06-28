@@ -80,12 +80,10 @@ export function ShareManager({ serial, archiveId, client, onClose }: ShareManage
 	};
 
 	return (
+		// biome-ignore lint/a11y/useKeyWithClickEvents: Escape handled by document-level keydown listener
 		<div
 			className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
 			onClick={handleBackdropClick}
-			onKeyDown={(e) => {
-				if (e.key === "Escape") handleBackdropClick(e as unknown as React.MouseEvent);
-			}}
 			role="dialog"
 			aria-modal="true"
 			aria-label="Share device"

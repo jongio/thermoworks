@@ -1,7 +1,6 @@
 import { Outlet } from "react-router-dom";
 import type { StoredAccount } from "../hooks/useAccounts.ts";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts.ts";
-import type { StoredAccount } from "../hooks/useAccounts.ts";
 import type { ThermoworksWebClient } from "../lib/api.ts";
 import { BottomNav } from "./BottomNav.tsx";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp.tsx";

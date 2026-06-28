@@ -33,9 +33,14 @@ jobs:
 
       - run: pnpm -r build
 
+      - run: pnpm audit --audit-level=high
+        continue-on-error: true
+
       - run: pnpm -r test
 
       - run: pnpm -r typecheck
+
+      - run: pnpm lint
 
   skill-lint:
     runs-on: ubuntu-latest

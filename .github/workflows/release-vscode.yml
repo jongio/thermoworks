@@ -25,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.repository_owner == 'jongio'
     timeout-minutes: 20
+    environment: npm-publish
     permissions:
       contents: write
     steps:
@@ -43,10 +44,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
       - run: pnpm -r test
+      - run: pnpm -r typecheck
+      - run: pnpm lint
 
       - name: Bump, publish, tag
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
@@ -55,6 +59,10 @@ jobs:
           VERSION="${VERSION#v}"
           echo "Publishing jongio.thermoworks@$VERSION to VS Code Marketplace"
           npx vsce publish --no-dependencies --pat "$VSCE_PAT"
+          if [ -n "$OVSX_PAT" ]; then
+            echo "Publishing to Open VSX Registry"
+            npx ovsx publish --pat "$OVSX_PAT" --no-dependencies
+          fi
           cd ../..
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

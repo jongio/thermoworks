@@ -47,6 +47,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm -r build
       - run: pnpm -r test
+      - run: pnpm -r typecheck
+      - run: pnpm lint
 
       - name: Bump, publish, tag
         env:

@@ -42,8 +42,8 @@
 	],
 	"files": {
 		"includes": [
-			"packages/**/src/**",
-			"packages/**/tests/**",
+			"packages/*/src/**",
+			"packages/*/tests/**",
 			"packages/*/webview/**",
 			"*.json",
 			"*.ts"

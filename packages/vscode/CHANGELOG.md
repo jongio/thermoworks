@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+### Features (#125-#130)
+
+- **Inline alarms** (#125): set and clear alarms directly from channel nodes in the tree
+- **Events panel** (#125): dedicated `thermoworksEvents` view with per-device filtering, severity icons, and configurable limit
+- **Device control** (#126): set fan target/enable on Signals devices, rename devices, reset min/max readings
+- **Session management** (#127): clear session data with modal confirmation; active session timer displayed on device nodes
+- **Temperature Guide** (#129): browsable reference for safe cooking temperatures via QuickPick
+- **Average Temperature** (#129): shown as a detail node under each device
+- **Data Usage** (#129): total and per-device usage under the Account node
+- **Calibration** (#129): calibration records folder under each device
+- **Account enrichment** (#129): account type and creation date from `getAccount()`
+- **Getting Started walkthrough** (#130): four-step onboarding (sign in, find devices, set alarm, open chart)
+- **`thermoworks.defaultDevice`** (#130): preferred device for status bar in single mode (by serial or label)
+- **`thermoworks.streaming`** (#130): toggle live WebSocket streaming on/off; interval polling still works when disabled
+- **`thermoworks.units`** (#130): display temperatures in auto (native), Fahrenheit, or Celsius with a pure `convertTemp` helper
+
+### Changed
+
+- Retired the `@thermoworks` chat participant (#128). AI access now lives in the MCP server; use `thermoworks mcp start` and `thermoworks copilot setup`
+
 ## 0.2.0
 
 ### Minor Changes

@@ -124,6 +124,67 @@ describe("token-cache module", () => {
 		});
 	});
 
+	describe("writeTokenCache (symlink and error paths)", () => {
+		it("skips write when cache path is a symlink", async () => {
+			const { symlink } = await import("node:fs/promises");
+			const realFile = join(testDir, "real-cache.json");
+			const linkPath = join(testDir, "symlinked-cache.json");
+			await writeFile(realFile, "{}", "utf8");
+			await symlink(realFile, linkPath);
+
+			const warnSpy = vi.spyOn(process, "emitWarning").mockImplementation(() => {});
+			const { writeTokenCache } = await import("../src/token-cache.js");
+			const data = {
+				idToken: "tok",
+				refreshToken: "ref",
+				userId: "uid",
+				expiresAt: new Date().toISOString(),
+				projectId: "proj",
+			};
+			await writeTokenCache(linkPath, data);
+
+			// The real file should NOT have been overwritten with new data
+			const content = await readFile(realFile, "utf8");
+			expect(content).toBe("{}");
+			expect(warnSpy).toHaveBeenCalledWith(
+				expect.stringContaining("symlink"),
+				"ThermoWorksSecurityWarning",
+			);
+			warnSpy.mockRestore();
+		});
+
+		it("emits warning when write fails (e.g. read-only path)", async () => {
+			const { chmod } = await import("node:fs/promises");
+			const readOnlyDir = join(testDir, "readonly-dir");
+			await mkdir(readOnlyDir, { recursive: true });
+
+			// Make directory read-only on Unix (skip on Windows where chmod is unreliable)
+			if (process.platform !== "win32") {
+				await chmod(readOnlyDir, 0o444);
+			}
+
+			const warnSpy = vi.spyOn(process, "emitWarning").mockImplementation(() => {});
+			const { writeTokenCache } = await import("../src/token-cache.js");
+			const data = {
+				idToken: "tok",
+				refreshToken: "ref",
+				userId: "uid",
+				expiresAt: new Date().toISOString(),
+				projectId: "proj",
+			};
+
+			if (process.platform !== "win32") {
+				await writeTokenCache(join(readOnlyDir, "subdir", "cache.json"), data);
+				expect(warnSpy).toHaveBeenCalledWith(
+					expect.stringContaining("Token cache write failed"),
+					"ThermoWorksSecurityWarning",
+				);
+				await chmod(readOnlyDir, 0o755);
+			}
+			warnSpy.mockRestore();
+		});
+	});
+
 	describe("invalidateTokenCache", () => {
 		it("removes cache file", async () => {
 			const cachePath = join(testDir, "to-delete.json");
@@ -165,6 +226,28 @@ describe("token-cache module", () => {
 			expect(() => resolveTokenCachePath(evilPath)).toThrow(
 				"tokenCachePath must be within the user home directory",
 			);
+		});
+
+		it("rejects paths with directory traversal (..)", async () => {
+			const { resolveTokenCachePath } = await import("../src/token-cache.js");
+			expect(() => resolveTokenCachePath("/home/user/../etc/passwd")).toThrow(
+				"tokenCachePath must not contain '..' or UNC paths",
+			);
+		});
+
+		it("rejects UNC paths on Windows", async () => {
+			const { resolveTokenCachePath } = await import("../src/token-cache.js");
+			expect(() => resolveTokenCachePath("\\\\server\\share\\cache.json")).toThrow(
+				"tokenCachePath must not contain '..' or UNC paths",
+			);
+		});
+
+		it("accepts paths within tmpdir", async () => {
+			const { tmpdir } = await import("node:os");
+			const { join } = await import("node:path");
+			const { resolveTokenCachePath } = await import("../src/token-cache.js");
+			const tmpPath = join(tmpdir(), "thermoworks-test-cache.json");
+			expect(resolveTokenCachePath(tmpPath)).toBe(tmpPath);
 		});
 	});
 });

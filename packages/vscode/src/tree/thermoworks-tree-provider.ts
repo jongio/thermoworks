@@ -1,4 +1,4 @@
-import type { Archive, Device, DeviceChannel, User } from "thermoworks-sdk";
+import type { Archive, Device, DeviceChannel, DeviceGroup, User } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 import * as vscode from "vscode";
 import type { ClientManager } from "../client-manager";
@@ -19,6 +19,11 @@ import {
 	ArchiveNode,
 	ArchivesFolderNode,
 	buildDeviceChildren,
+	CalibrationFolderNode,
+	CalibrationRecordNode,
+	ChannelsFolderNode,
+	DetailsFolderNode,
+	DeviceGroupFolderNode,
 	DeviceNode,
 	DevicesFolderNode,
 	ErrorNode,
@@ -48,6 +53,11 @@ interface ArchiveCache {
 	fetchedAt: number;
 }
 
+interface AvgTempCache {
+	value: { value: number; units: string } | null;
+	fetchedAt: number;
+}
+
 export class ThermoworksTreeProvider
 	implements vscode.TreeDataProvider<TreeNode>, vscode.Disposable
 {
@@ -62,16 +72,37 @@ export class ThermoworksTreeProvider
 	private channelCaches = new Map<string, ChannelCache>();
 	private firmwareCaches = new Map<string, FirmwareCache>();
 	private archiveCaches = new Map<string, ArchiveCache>();
+	private avgTempCaches = new Map<string, AvgTempCache>();
+	private inflightDevices: Promise<Device[]> | undefined;
+	private groupCache: { groups: DeviceGroup[]; fetchedAt: number } | undefined;
+	private groupedView = false;
 	private firmwareUpdateCount = 0;
 	private deviceStream: DeviceStream | undefined;
 	private configDisposable: vscode.Disposable | undefined;
 	private disposed = false;
 	private demoMode: "normal" | "high" | "low" | false = false;
 	private outputChannel: vscode.OutputChannel | undefined;
+	private globalState: vscode.Memento | undefined;
 
 	constructor(credentialStore: CredentialStore, clientManager: ClientManager) {
 		this.credentialStore = credentialStore;
 		this.clientManager = clientManager;
+	}
+
+	setGlobalState(state: vscode.Memento): void {
+		this.globalState = state;
+		// Restore persisted device cache on startup (rehydrate Date fields)
+		const persisted = state.get<{ devices: Device[]; fetchedAt: number }>(
+			"thermoworks.deviceCache",
+		);
+		if (persisted && persisted.devices.length > 0) {
+			const devices = persisted.devices.map((d) => ({
+				...d,
+				lastSeen: d.lastSeen ? new Date(d.lastSeen) : null,
+				sessionStart: d.sessionStart ? new Date(d.sessionStart) : null,
+			})) as Device[];
+			this.deviceCache = { devices, fetchedAt: persisted.fetchedAt };
+		}
 	}
 
 	setTreeView(view: vscode.TreeView<TreeNode>): void {
@@ -103,9 +134,24 @@ export class ThermoworksTreeProvider
 			return this.getDeviceNodes();
 		}
 
+		// Device group folder — show devices in that group
+		if (element instanceof DeviceGroupFolderNode) {
+			return this.getGroupDeviceNodes(element.deviceSerials);
+		}
+
 		// Device children (channels + metadata)
 		if (element instanceof DeviceNode) {
 			return this.getDeviceChildren(element.serial);
+		}
+
+		// Channels folder — return pre-built channel nodes
+		if (element instanceof ChannelsFolderNode) {
+			return element.channels;
+		}
+
+		// Details folder — return pre-built detail nodes
+		if (element instanceof DetailsFolderNode) {
+			return element.details;
 		}
 
 		// Archives folder children
@@ -116,6 +162,11 @@ export class ThermoworksTreeProvider
 		// Archive children (channel summaries)
 		if (element instanceof ArchiveNode) {
 			return this.getArchiveChildren(element.archive, element.serial);
+		}
+
+		// Calibration folder children
+		if (element instanceof CalibrationFolderNode) {
+			return this.getCalibrationNodes(element.serial);
 		}
 
 		return [];
@@ -169,6 +220,7 @@ export class ThermoworksTreeProvider
 		this.deviceCache = undefined;
 		this.channelCaches.clear();
 		this.archiveCaches.clear();
+		this.avgTempCaches.clear();
 		this._onDidChangeTreeData.fire(undefined);
 		void this.syncStreamDevices();
 	}
@@ -176,6 +228,16 @@ export class ThermoworksTreeProvider
 	async refreshArchives(): Promise<void> {
 		this.archiveCaches.clear();
 		this._onDidChangeTreeData.fire(undefined);
+	}
+
+	toggleDeviceView(): void {
+		this.groupedView = !this.groupedView;
+		void vscode.commands.executeCommand("setContext", "thermoworks.groupedView", this.groupedView);
+		this._onDidChangeTreeData.fire(undefined);
+	}
+
+	clearGroupCache(): void {
+		this.groupCache = undefined;
 	}
 
 	private async fetchChannelsForStream(serial: string): Promise<DeviceChannel[]> {
@@ -262,23 +324,27 @@ export class ThermoworksTreeProvider
 		this.stopAutoRefresh();
 		if (this.disposed) return;
 
-		const intervalMs =
-			Math.max(
-				vscode.workspace.getConfiguration("thermoworks").get<number>("refreshInterval", 60),
-				15,
-			) * 1000;
+		const config = vscode.workspace.getConfiguration("thermoworks");
+		const streaming = config.get<boolean>("streaming", true);
 
-		this.deviceStream = new DeviceStream(
-			(serial) => this.fetchChannelsForStream(serial),
-			{ onSnapshot: (snapshot) => this.onStreamSnapshot(snapshot) },
-			intervalMs,
-		);
-		void this.syncStreamDevices();
+		if (streaming) {
+			const intervalMs = Math.max(config.get<number>("refreshInterval", 60), 15) * 1000;
+
+			this.deviceStream = new DeviceStream(
+				(serial) => this.fetchChannelsForStream(serial),
+				{ onSnapshot: (snapshot) => this.onStreamSnapshot(snapshot) },
+				intervalMs,
+			);
+			void this.syncStreamDevices();
+		}
 
 		// Register the config listener only once to avoid accumulating disposed entries.
 		if (!this.configDisposable) {
 			this.configDisposable = vscode.workspace.onDidChangeConfiguration((e) => {
-				if (e.affectsConfiguration("thermoworks.refreshInterval")) {
+				if (
+					e.affectsConfiguration("thermoworks.refreshInterval") ||
+					e.affectsConfiguration("thermoworks.streaming")
+				) {
 					this.startAutoRefresh(context);
 				}
 			});
@@ -335,7 +401,7 @@ export class ThermoworksTreeProvider
 
 			return [
 				new AccountNode(this.user),
-				new DevicesFolderNode(devices.length, this.firmwareUpdateCount),
+				new DevicesFolderNode(devices.length, this.firmwareUpdateCount, this.groupedView),
 			];
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load data";
@@ -343,7 +409,7 @@ export class ThermoworksTreeProvider
 		}
 	}
 
-	private getAccountChildren(user: User): TreeNode[] {
+	private async getAccountChildren(user: User): Promise<TreeNode[]> {
 		const children: TreeNode[] = [];
 
 		if (user.email) {
@@ -357,6 +423,43 @@ export class ThermoworksTreeProvider
 		}
 		if (user.timeZone) {
 			children.push(new AccountDetailNode("Timezone", user.timeZone, "globe"));
+		}
+
+		// Enrich with Account metadata (graceful fallback)
+		if (!this.demoMode) {
+			try {
+				const client = await this.getClient();
+				const account = await client.getAccount();
+				if (account.type) {
+					children.push(new AccountDetailNode("Account Type", account.type, "organization"));
+				}
+				if (account.createdOn) {
+					children.push(
+						new AccountDetailNode("Created", account.createdOn.toLocaleDateString(), "calendar"),
+					);
+				}
+			} catch {
+				// Account metadata unavailable; omit silently
+			}
+		}
+
+		// Data usage (total)
+		if (!this.demoMode) {
+			try {
+				const client = await this.getClient();
+				const usage = await client.getDataUsage();
+				children.push(new AccountDetailNode("Data Usage", usage.formattedSize, "database"));
+
+				// Per-device breakdown
+				const perDevice = await client.getDataUsageByDevice();
+				for (const entry of perDevice) {
+					children.push(
+						new AccountDetailNode(`  ${entry.deviceId}`, entry.formattedSize, "server"),
+					);
+				}
+			} catch {
+				// Data usage unavailable; omit silently
+			}
 		}
 
 		children.push(
@@ -400,17 +503,81 @@ export class ThermoworksTreeProvider
 
 			let alarmCount = 0;
 			let firmwareUpdateCount = 0;
-			const nodes: TreeNode[] = [];
-			for (const { device, hasAlarm, firmwareOutdated } of results) {
+			for (const { hasAlarm, firmwareOutdated } of results) {
 				if (hasAlarm) alarmCount++;
 				if (firmwareOutdated) firmwareUpdateCount++;
-				nodes.push(new DeviceNode(device, hasAlarm, firmwareOutdated));
 			}
 			this.updateBadge(alarmCount);
 			this.firmwareUpdateCount = firmwareUpdateCount;
-			return nodes;
+
+			// Grouped view: organize devices into groups
+			if (this.groupedView && !this.demoMode) {
+				const groups = await this.getCachedGroups();
+				if (groups.length > 0) {
+					return this.buildGroupedNodes(devices, results, groups);
+				}
+			}
+
+			// Flat list (default)
+			return results.map(
+				({ device, hasAlarm, firmwareOutdated }) =>
+					new DeviceNode(device, hasAlarm, firmwareOutdated),
+			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load devices";
+			return [new ErrorNode(message)];
+		}
+	}
+
+	private buildGroupedNodes(
+		devices: Device[],
+		results: Array<{ device: Device; hasAlarm: boolean; firmwareOutdated: boolean }>,
+		groups: DeviceGroup[],
+	): TreeNode[] {
+		const nodes: TreeNode[] = [];
+		const assignedSerials = new Set<string>();
+
+		for (const group of groups) {
+			if (!group.name && group.devices.length === 0) continue;
+			const groupDevices = group.devices.filter((serial) =>
+				devices.some((d) => d.serial === serial),
+			);
+			if (groupDevices.length === 0) continue;
+
+			const folder = new DeviceGroupFolderNode(group.id, group.name, groupDevices.length);
+			folder.deviceSerials.push(...groupDevices);
+			nodes.push(folder);
+			for (const serial of groupDevices) assignedSerials.add(serial);
+		}
+
+		// Ungrouped devices
+		const ungrouped = results.filter((r) => !assignedSerials.has(r.device.serial));
+		for (const { device, hasAlarm, firmwareOutdated } of ungrouped) {
+			nodes.push(new DeviceNode(device, hasAlarm, firmwareOutdated));
+		}
+
+		return nodes;
+	}
+
+	private async getGroupDeviceNodes(serials: string[]): Promise<TreeNode[]> {
+		try {
+			const devices = this.demoMode ? DEMO_DEVICES : await this.getCachedDevices();
+			const filtered = devices.filter((d) => serials.includes(d.serial));
+
+			const results = await Promise.all(
+				filtered.map(async (device) => {
+					const channels = this.demoMode
+						? getDemoChannels(device.serial, this.demoMode)
+						: await this.getCachedChannels(device.serial);
+					const hasAlarm = channels.some((ch) => ch.alarmHigh?.alarming || ch.alarmLow?.alarming);
+					const firmwareOutdated = await this.checkFirmwareOutdated(device);
+					return new DeviceNode(device, hasAlarm, firmwareOutdated);
+				}),
+			);
+
+			return results.length > 0 ? results : [new ErrorNode("No devices in group")];
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to load group devices";
 			return [new ErrorNode(message)];
 		}
 	}
@@ -427,7 +594,13 @@ export class ThermoworksTreeProvider
 
 			const firmwareOutdated = await this.checkFirmwareOutdated(device);
 
-			return buildDeviceChildren(device, channels, firmwareOutdated);
+			// Fetch average temperature (cached)
+			let averageTemp: { value: number; units: string } | null = null;
+			if (!this.demoMode) {
+				averageTemp = await this.getCachedAverageTemp(serial);
+			}
+
+			return buildDeviceChildren(device, channels, firmwareOutdated, averageTemp);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load channels";
 			return [new ErrorNode(message)];
@@ -462,18 +635,80 @@ export class ThermoworksTreeProvider
 		return archive.channels.map((ch, i) => new ArchiveChannelNode(ch, serial, archive.id, i));
 	}
 
+	private async getCalibrationNodes(serial: string): Promise<TreeNode[]> {
+		if (this.demoMode) {
+			return [new ErrorNode("No calibration records")];
+		}
+
+		try {
+			const client = await this.getClient();
+			const records = await client.getCalibration(serial);
+			if (records.length === 0) {
+				return [new ErrorNode("No calibration records")];
+			}
+			return records.map((r, i) => new CalibrationRecordNode(r, i));
+		} catch {
+			return [new ErrorNode("No calibration records")];
+		}
+	}
+
 	// ─── Private: Caching ────────────────────────────────────────────────────
 
 	private async getCachedDevices(): Promise<Device[]> {
 		const now = Date.now();
+
+		// Return fresh cache immediately
 		if (this.deviceCache && now - this.deviceCache.fetchedAt < DEVICE_CACHE_TTL_MS) {
 			return this.deviceCache.devices;
 		}
 
-		const client = await this.getClient();
-		const devices = await client.getDevices();
-		this.deviceCache = { devices, fetchedAt: now };
-		return devices;
+		// Stale cache exists — return it immediately, refresh in background
+		if (this.deviceCache) {
+			this.backgroundRefreshDevices();
+			return this.deviceCache.devices;
+		}
+
+		// No cache at all — must wait for network (first load)
+		if (this.inflightDevices) {
+			return this.inflightDevices;
+		}
+
+		this.inflightDevices = (async () => {
+			try {
+				const client = await this.getClient();
+				const devices = await client.getDevices();
+				this.deviceCache = { devices, fetchedAt: Date.now() };
+				this.persistDeviceCache();
+				return devices;
+			} finally {
+				this.inflightDevices = undefined;
+			}
+		})();
+
+		return this.inflightDevices;
+	}
+
+	private backgroundRefreshDevices(): void {
+		if (this.inflightDevices) return; // already refreshing
+		const refreshPromise = (async () => {
+			try {
+				const client = await this.getClient();
+				const devices = await client.getDevices();
+				this.deviceCache = { devices, fetchedAt: Date.now() };
+				this.persistDeviceCache();
+				this._onDidChangeTreeData.fire(undefined);
+				return devices;
+			} finally {
+				this.inflightDevices = undefined;
+			}
+		})();
+		this.inflightDevices = refreshPromise;
+	}
+
+	private persistDeviceCache(): void {
+		if (this.globalState && this.deviceCache) {
+			void this.globalState.update("thermoworks.deviceCache", this.deviceCache);
+		}
 	}
 
 	private async getCachedChannels(serial: string): Promise<DeviceChannel[]> {
@@ -484,14 +719,70 @@ export class ThermoworksTreeProvider
 		);
 
 		const cached = this.channelCaches.get(serial);
-		if (cached && now - cached.fetchedAt < refreshMs) {
+		if (cached) {
+			if (now - cached.fetchedAt < refreshMs) {
+				return cached.channels;
+			}
+			// Stale — return immediately, refresh in background
+			this.backgroundRefreshChannels(serial, refreshMs);
 			return cached.channels;
 		}
 
+		// No cache — must wait
 		const client = await this.getClient();
 		const channels = await client.getAllDeviceChannels(serial);
 		this.channelCaches.set(serial, { channels, fetchedAt: now });
 		return channels;
+	}
+
+	private backgroundRefreshChannels(serial: string, _refreshMs: number): void {
+		// Fire-and-forget refresh
+		void (async () => {
+			try {
+				const client = await this.getClient();
+				const channels = await client.getAllDeviceChannels(serial);
+				this.channelCaches.set(serial, { channels, fetchedAt: Date.now() });
+				this._onDidChangeTreeData.fire(undefined);
+			} catch {
+				// Silently fail — stale data is still visible
+			}
+		})();
+	}
+
+	private async getCachedAverageTemp(
+		serial: string,
+	): Promise<{ value: number; units: string } | null> {
+		const now = Date.now();
+		const cached = this.avgTempCaches.get(serial);
+		if (cached) {
+			if (now - cached.fetchedAt < DEVICE_CACHE_TTL_MS) {
+				return cached.value;
+			}
+			// Stale — return immediately, refresh in background
+			void this.backgroundRefreshAvgTemp(serial);
+			return cached.value;
+		}
+
+		try {
+			const client = await this.getClient();
+			const value = await client.getAverageTemperature(serial);
+			this.avgTempCaches.set(serial, { value, fetchedAt: now });
+			return value;
+		} catch {
+			this.avgTempCaches.set(serial, { value: null, fetchedAt: now });
+			return null;
+		}
+	}
+
+	private async backgroundRefreshAvgTemp(serial: string): Promise<void> {
+		try {
+			const client = await this.getClient();
+			const value = await client.getAverageTemperature(serial);
+			this.avgTempCaches.set(serial, { value, fetchedAt: Date.now() });
+			this._onDidChangeTreeData.fire(undefined);
+		} catch {
+			// Keep stale value
+		}
 	}
 
 	private async getCachedArchives(serial: string): Promise<Archive[]> {
@@ -506,6 +797,22 @@ export class ThermoworksTreeProvider
 		const archives = await client.getArchives(serial, { limit });
 		this.archiveCaches.set(serial, { archives, fetchedAt: now });
 		return archives;
+	}
+
+	private async getCachedGroups(): Promise<DeviceGroup[]> {
+		const now = Date.now();
+		if (this.groupCache && now - this.groupCache.fetchedAt < DEVICE_CACHE_TTL_MS) {
+			return this.groupCache.groups;
+		}
+
+		try {
+			const client = await this.getClient();
+			const groups = await client.getDeviceGroups();
+			this.groupCache = { groups, fetchedAt: now };
+			return groups;
+		} catch {
+			return [];
+		}
 	}
 
 	private async isFirmwareOutdated(device: Device): Promise<boolean> {

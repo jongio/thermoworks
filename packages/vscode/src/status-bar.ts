@@ -59,9 +59,13 @@ export class TemperatureStatusBar implements vscode.Disposable {
 				if (e.affectsConfiguration("thermoworks.refreshInterval")) {
 					this.restartStream();
 				}
+				if (e.affectsConfiguration("thermoworks.streaming")) {
+					this.ensureStream();
+				}
 				if (
 					e.affectsConfiguration("thermoworks.statusBarMode") ||
-					e.affectsConfiguration("thermoworks.cycleInterval")
+					e.affectsConfiguration("thermoworks.cycleInterval") ||
+					e.affectsConfiguration("thermoworks.defaultDevice")
 				) {
 					this.restartCycleTimer();
 					this.updateDisplayFromCache();
@@ -252,6 +256,14 @@ export class TemperatureStatusBar implements vscode.Disposable {
 	/** Point the live stream at the configured devices (or stop it when there are none). */
 	private ensureStream(): void {
 		if (this.disposed) return;
+		const streaming = vscode.workspace
+			.getConfiguration("thermoworks")
+			.get<boolean>("streaming", true);
+		if (!streaming) {
+			this.deviceStream?.dispose();
+			this.deviceStream = undefined;
+			return;
+		}
 		const serials = this.configuredDevices.map((d) => d.device.serial);
 		if (serials.length === 0) {
 			this.deviceStream?.dispose();
@@ -464,6 +476,21 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		return Math.max(seconds * 1000, MIN_CYCLE_MS);
 	}
 
+	/**
+	 * Find the index in configuredDevices matching the `thermoworks.defaultDevice` setting.
+	 * Matches by serial or label (case-insensitive). Returns -1 if no match.
+	 */
+	private getDefaultDeviceIndex(): number {
+		const defaultDevice = vscode.workspace
+			.getConfiguration("thermoworks")
+			.get<string>("defaultDevice", "");
+		if (!defaultDevice) return -1;
+		const lower = defaultDevice.toLowerCase();
+		return this.configuredDevices.findIndex(
+			(d) => d.device.serial.toLowerCase() === lower || d.config.label.toLowerCase() === lower,
+		);
+	}
+
 	/** Render the status bar text from cached deviceParts based on current mode. */
 	private updateDisplayFromCache(): void {
 		if (this.deviceParts.length === 0) return;
@@ -474,7 +501,12 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		switch (mode) {
 			case "single":
 			case "cycle": {
-				const idx = this.cycleIndex % this.deviceParts.length;
+				let idx = this.cycleIndex % this.deviceParts.length;
+				// In single mode, prefer the configured default device
+				if (mode === "single" && this.cycleIndex === 0) {
+					const preferred = this.getDefaultDeviceIndex();
+					if (preferred >= 0) idx = preferred;
+				}
 				displayParts = this.deviceParts[idx] ?? [];
 				break;
 			}

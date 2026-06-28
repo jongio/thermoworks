@@ -4,9 +4,9 @@
 
 CLI for [ThermoWorks Cloud](https://cloud.thermoworks.com/) — authenticate, inspect your devices, and show live temperatures in the GitHub Copilot CLI statusline.
 
-![ThermoWorks statusline in GitHub Copilot CLI](../../docs/images/statusline.png)
+![ThermoWorks statusline in GitHub Copilot CLI](https://raw.githubusercontent.com/jongio/thermoworks/main/docs/images/statusline.png)
 
-![ThermoWorks statusline with per-channel display](../../docs/images/statusline-channels.png)
+![ThermoWorks statusline with per-channel display](https://raw.githubusercontent.com/jongio/thermoworks/main/docs/images/statusline-channels.png)
 
 ## Usage
 

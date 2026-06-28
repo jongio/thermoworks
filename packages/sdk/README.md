@@ -4,9 +4,9 @@
 
 Node.js SDK for [ThermoWorks Cloud](https://cloud.thermoworks.com/) — programmatic access to temperature data from ThermoWorks connected devices (Smoke, Signals, RFX, etc).
 
-![ThermoWorks statusline in GitHub Copilot CLI](../../docs/images/statusline.png)
+![ThermoWorks statusline in GitHub Copilot CLI](https://raw.githubusercontent.com/jongio/thermoworks/main/docs/images/statusline.png)
 
-![ThermoWorks statusline with per-channel display](../../docs/images/statusline-channels.png)
+![ThermoWorks statusline with per-channel display](https://raw.githubusercontent.com/jongio/thermoworks/main/docs/images/statusline-channels.png)
 
 ## Install
 

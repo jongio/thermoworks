@@ -2,7 +2,7 @@
 
 Display real-time temperatures from your ThermoWorks connected devices (Smoke, Signals, Node, etc.) directly in the VS Code status bar and side panel.
 
-![ThermoWorks panel in VS Code](../../docs/images/vscode-panel-demo.png)
+![ThermoWorks panel in VS Code](https://raw.githubusercontent.com/jongio/thermoworks/main/docs/images/vscode-panel-demo.png)
 
 ## Features
 
@@ -129,7 +129,7 @@ The extension compares each device's current firmware version against the latest
 
 Firmware info is cached for 1 hour (releases are infrequent).
 
-![Firmware update alert](../../docs/images/vscode-firmware-update.png)
+![Firmware update alert](https://raw.githubusercontent.com/jongio/thermoworks/main/docs/images/vscode-firmware-update.png)
 
 ## Events Panel
 
@@ -157,9 +157,9 @@ When a device channel's alarm triggers, the status bar changes appearance:
 - **High alarm** — Red background (error styling) + blinking text
 - **Low alarm** — Blue text + blinking text
 
-![VS Code high alarm](../../docs/images/vscode-alarm-high.png)
+![VS Code high alarm](https://raw.githubusercontent.com/jongio/thermoworks/main/docs/images/vscode-alarm-high.png)
 
-![VS Code low alarm](../../docs/images/vscode-alarm-low.png)
+![VS Code low alarm](https://raw.githubusercontent.com/jongio/thermoworks/main/docs/images/vscode-alarm-low.png)
 
 Alarms are detected automatically from the `alarmHigh.alarming` and `alarmLow.alarming` fields on each channel. The highest severity alarm across all displayed channels determines the style (high takes priority over low).
 

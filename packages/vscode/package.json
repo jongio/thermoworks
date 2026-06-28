@@ -2,7 +2,7 @@
   "name": "thermoworks",
   "private": true,
   "displayName": "ThermoWorks",
-  "description": "Display real-time ThermoWorks device temperatures in the VS Code status bar",
+  "description": "Monitor live ThermoWorks Cloud temperatures, alarms, charts, and events for your Smoke, Signals, Node, and RFX devices — right in the VS Code status bar and a full device panel.",
   "version": "0.5.1",
   "publisher": "jongio",
   "author": "Jon Gallant",
@@ -12,18 +12,36 @@
     "url": "https://github.com/jongio/thermoworks",
     "directory": "packages/vscode"
   },
+  "homepage": "https://github.com/jongio/thermoworks/tree/main/packages/vscode#readme",
+  "bugs": {
+    "url": "https://github.com/jongio/thermoworks/issues"
+  },
+  "qna": "https://github.com/jongio/thermoworks/issues",
   "engines": {
     "vscode": "^1.125.0"
   },
   "categories": [
+    "Visualization",
     "Other"
   ],
   "keywords": [
     "thermoworks",
     "temperature",
     "thermometer",
+    "bbq",
+    "smoker",
+    "grill",
+    "cooking",
+    "meat",
+    "smoke",
+    "signals",
+    "node",
+    "rfx",
     "iot",
-    "status bar"
+    "alarm",
+    "status bar",
+    "mcp",
+    "copilot"
   ],
   "extensionKind": [
     "ui"

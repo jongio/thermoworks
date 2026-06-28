@@ -3,7 +3,7 @@
   "private": true,
   "displayName": "ThermoWorks",
   "description": "Display real-time ThermoWorks device temperatures in the VS Code status bar",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "jongio",
   "author": "Jon Gallant",
   "license": "MIT",
@@ -466,7 +466,11 @@
         },
         "thermoworks.units": {
           "type": "string",
-          "enum": ["auto", "F", "C"],
+          "enum": [
+            "auto",
+            "F",
+            "C"
+          ],
           "default": "auto",
           "description": "Temperature display units: 'auto' uses the device's native units, 'F' converts to Fahrenheit, 'C' converts to Celsius"
         }
@@ -486,7 +490,9 @@
               "image": "images/icon.png",
               "altText": "ThermoWorks logo"
             },
-            "completionEvents": ["onCommand:thermoworks.signIn"]
+            "completionEvents": [
+              "onCommand:thermoworks.signIn"
+            ]
           },
           {
             "id": "thermoworks.walkthrough.devices",
@@ -496,7 +502,9 @@
               "image": "images/icon.png",
               "altText": "ThermoWorks devices panel"
             },
-            "completionEvents": ["onView:thermoworksPanel"]
+            "completionEvents": [
+              "onView:thermoworksPanel"
+            ]
           },
           {
             "id": "thermoworks.walkthrough.alarm",
@@ -506,7 +514,9 @@
               "image": "images/icon.png",
               "altText": "Configure alarm thresholds"
             },
-            "completionEvents": ["onCommand:thermoworks.configureAlarm"]
+            "completionEvents": [
+              "onCommand:thermoworks.configureAlarm"
+            ]
           },
           {
             "id": "thermoworks.walkthrough.chart",
@@ -516,7 +526,9 @@
               "image": "images/icon.png",
               "altText": "Live temperature chart"
             },
-            "completionEvents": ["onCommand:thermoworks.showTemperatureChart"]
+            "completionEvents": [
+              "onCommand:thermoworks.showTemperatureChart"
+            ]
           }
         ]
       }

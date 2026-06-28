@@ -3,7 +3,7 @@
   "private": true,
   "displayName": "ThermoWorks",
   "description": "Display real-time ThermoWorks device temperatures in the VS Code status bar",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "publisher": "jongio",
   "author": "Jon Gallant",
   "license": "MIT",

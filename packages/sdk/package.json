@@ -1,6 +1,6 @@
 {
 	"name": "thermoworks-sdk",
-	"version": "0.5.0",
+	"version": "0.5.1",
 	"description": "Node.js client for ThermoWorks Cloud - access temperature data from ThermoWorks connected devices",
 	"type": "module",
 	"exports": {

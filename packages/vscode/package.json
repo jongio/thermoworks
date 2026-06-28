@@ -1,7 +1,7 @@
 {
   "name": "thermoworks",
   "private": true,
-  "displayName": "ThermoWorks — Live Temperatures & Alarms",
+  "displayName": "ThermoWorks",
   "description": "Monitor live ThermoWorks Cloud temperatures, alarms, charts, and events for your Smoke, Signals, Node, and RFX devices — right in the VS Code status bar and a full device panel.",
   "version": "0.5.1",
   "publisher": "jongio",

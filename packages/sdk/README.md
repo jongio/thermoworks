@@ -78,6 +78,8 @@ client.close();
 | `password` | `string` | Yes | ThermoWorks Cloud password |
 | `apiKey` | `string` | No | Override the default Firebase API key |
 | `appId` | `string` | No | Override the default Firebase app ID |
+| `retry` | `RetryConfig` | No | Automatic retry with exponential backoff for transient failures (429, 503, network errors) |
+| `tokenCachePath` | `string \| boolean` | No | Persist auth tokens across sessions. `true` caches to `~/.thermoworks/.token-cache.json`, a string sets a custom path; omit or `false` to disable |
 
 ### Methods
 
@@ -98,7 +100,7 @@ client.close();
 | `getArchive(serial, archiveId)` | `Promise<Archive>` | Get a single archive session |
 | `getCalibration(serial)` | `Promise<CalibrationRecord[]>` | Get calibration records for a device |
 | `getFirmwareInfo(deviceType)` | `Promise<FirmwareInfo>` | Get latest firmware info for a device type |
-| `getTemperatureGuide()` | `Promise<TemperatureGuide>` | Get the USDA temperature guide |
+| `getTemperatureGuide()` | `Promise<TemperatureGuide>` | Get the cooking temperature guide |
 | `getHistory(serial)` | `Promise<DeviceHistory>` | Retrieve full historical temperature time-series data |
 | `search(query, options)` | `Promise<SearchResult>` | Search across devices and data |
 | `startSession(serial, label?)` | `Promise<ActionResult>` | Start a monitoring session on a device |
@@ -118,9 +120,14 @@ client.close();
 | `shareDevice(serial)` | `Promise<ShareResult>` | Share a device's live state via a public link |
 | `shareArchive(serial, archiveId)` | `Promise<ShareResult>` | Share an archive via a public link |
 | `getDeviceGroups()` | `Promise<DeviceGroup[]>` | Get device groups for the authenticated user |
+| `createDeviceGroup(name, devices)` | `Promise<DeviceGroup>` | Create a device group from a list of serials |
+| `addDeviceToGroup(groupId, serial)` | `Promise<void>` | Add a device to an existing group |
+| `removeDeviceFromGroup(groupId, serial)` | `Promise<void>` | Remove a device from a group |
+| `deleteDeviceGroup(groupId)` | `Promise<void>` | Delete a device group |
 | `getFanState(serial)` | `Promise<FanSettings \| null>` | Get fan/blower controller state (null if no fan) |
 | `setFanTarget(serial, targetTemp)` | `Promise<ActionResult>` | Set the fan controller target temperature |
 | `setFanEnabled(serial, enabled)` | `Promise<ActionResult>` | Enable or disable the fan controller |
+| `subscribe(serial, callback, options?)` | `Subscription` | Poll a device and invoke `callback` on each channel change; returns a handle with `unsubscribe()` |
 | `close()` | `void` | Release the underlying authenticated session |
 
 ### Filtering Devices

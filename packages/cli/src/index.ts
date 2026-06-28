@@ -57,11 +57,10 @@ Commands:
   data-usage       Show account data storage usage
     --by-device    Show per-device breakdown
 
-  devices          List connected devices
+  devices          List connected devices and channel readings
   device rename <SERIAL> --name <TEXT>        Rename a device
   device reset-minmax <SERIAL> --channel <N>  Reset min/max readings for a channel
   mcp start        Start MCP server for AI assistants
-  devices          List connected devices and channel readings
   watch            Continuously monitor temperatures (live refresh)
     --device SN    Watch a specific device by serial number
     --interval N   Refresh interval in seconds (default: 10)

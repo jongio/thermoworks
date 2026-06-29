@@ -3,6 +3,7 @@ import { type Device, type DeviceChannel, ThermoworksCloud } from "thermoworks-s
 import { getCredentials } from "../credentials.js";
 import type { OutputOptions } from "../output.js";
 import { formatChannelLine } from "./devices.js";
+import { formatChannelTrend } from "./sparkline.js";
 
 /** Parsed arguments for the watch command. */
 export interface WatchArgs {
@@ -67,7 +68,9 @@ export function formatWatchFrame(
 
 			const activeChannels = channels.filter((ch) => ch.enabled !== false && ch.value != null);
 			for (const [i, ch] of activeChannels.entries()) {
-				lines.push(formatChannelLine(ch, i));
+				const trend = formatChannelTrend(ch);
+				const channelLine = formatChannelLine(ch, i);
+				lines.push(trend ? `${channelLine}  ${trend}` : channelLine);
 			}
 		}
 	}

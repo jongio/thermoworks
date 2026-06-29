@@ -554,9 +554,9 @@ npx thermoworks history <SERIAL> [--limit N] [--format table|csv|json] [--output
 
 ```bash
 npx thermoworks history ABC123
-# Timestamp                  Value  Units
-# 2026-06-01T08:00:00.000Z  225    F
-# 2026-06-01T08:01:00.000Z  226    F
+# Timestamp                  Value  Units  Trend
+# 2026-06-01T08:00:00.000Z  225    F      ▁
+# 2026-06-01T08:01:00.000Z  226    F      ▁█
 
 npx thermoworks history ABC123 --limit 100 --format csv
 # timestamp,value,units
@@ -584,6 +584,7 @@ npx thermoworks history ABC123 --limit 50 --format csv --output brisket.csv
 - Requires valid credentials from environment variables or the OS keychain.
 - Readings are a flat list of `{ timestamp, value, units }` from the BigQuery time-series API.
 - `--limit N` takes the N most recent readings from the end of the chronological list.
+- Table output includes a compact sparkline per row so trend shape is visible in the terminal.
 - When the output format is `table` and no readings exist, prints `No history available for <SERIAL>.`
 - When writing to a file, a summary line is printed to stderr (not stdout) so piping works correctly.
 
@@ -1046,6 +1047,7 @@ npx thermoworks watch --device ABC123 --interval 5
 - Requires valid credentials from environment variables or the OS keychain.
 - Clears the screen before each refresh and displays a timestamp header.
 - Shows device label (or serial), type, status, and all enabled channels with current readings.
+- Shows a compact sparkline beside channels when recent samples are available.
 - Exits immediately with an error if `--device` is specified and no matching device is found.
 - Press `Ctrl+C` to exit (handled by the global SIGINT handler).
 - The `--interval` must be a positive number >= 1; values below 1 produce an error.

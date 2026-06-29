@@ -5,6 +5,7 @@ import { ThermoworksCloud } from "thermoworks-sdk";
 
 import { getCredentials } from "../credentials.js";
 import type { OutputOptions } from "../output.js";
+import { formatHistoryTrend } from "./sparkline.js";
 
 type HistoryFormat = "table" | "csv" | "json";
 
@@ -84,23 +85,25 @@ export function formatTable(readings: DeviceHistory["readings"]): string {
 
 	const header = { timestamp: "Timestamp", value: "Value", units: "Units" };
 
-	const rows = readings.map((r) => ({
+	const rows = readings.map((r, index) => ({
 		timestamp: r.timestamp,
 		value: String(r.value),
 		units: r.units,
+		trend: formatHistoryTrend(readings, index),
 	}));
 
 	const tsWidth = Math.max(header.timestamp.length, ...rows.map((r) => r.timestamp.length));
 	const valWidth = Math.max(header.value.length, ...rows.map((r) => r.value.length));
 	const unitWidth = Math.max(header.units.length, ...rows.map((r) => r.units.length));
+	const trendWidth = Math.max("Trend".length, ...rows.map((r) => r.trend.length));
 
 	const lines: string[] = [];
 	lines.push(
-		`${header.timestamp.padEnd(tsWidth)}  ${header.value.padEnd(valWidth)}  ${header.units.padEnd(unitWidth)}`,
+		`${header.timestamp.padEnd(tsWidth)}  ${header.value.padEnd(valWidth)}  ${header.units.padEnd(unitWidth)}  ${"Trend".padEnd(trendWidth)}`,
 	);
 	for (const row of rows) {
 		lines.push(
-			`${row.timestamp.padEnd(tsWidth)}  ${row.value.padEnd(valWidth)}  ${row.units.padEnd(unitWidth)}`,
+			`${row.timestamp.padEnd(tsWidth)}  ${row.value.padEnd(valWidth)}  ${row.units.padEnd(unitWidth)}  ${row.trend.padEnd(trendWidth)}`,
 		);
 	}
 

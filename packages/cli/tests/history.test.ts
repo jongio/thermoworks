@@ -190,8 +190,10 @@ describe("formatTable", () => {
 		expect(lines[0]).toContain("Timestamp");
 		expect(lines[0]).toContain("Value");
 		expect(lines[0]).toContain("Units");
+		expect(lines[0]).toContain("Trend");
 		expect(lines[1]).toContain("225");
 		expect(lines[2]).toContain("230");
+		expect(lines[2]).toContain("█");
 		expect(table.endsWith("\n")).toBe(true);
 	});
 

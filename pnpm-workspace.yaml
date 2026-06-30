@@ -9,8 +9,8 @@ allowBuilds:
   keytar: true
 minimumReleaseAgeExclude:
   - '@types/node@26.0.1'
-  - '@tanstack/react-virtual@3.14.4'
-  - '@tanstack/virtual-core@3.17.2'
+  - '@tanstack/react-virtual@3.14.4 || 3.14.5'
+  - '@tanstack/virtual-core@3.17.2 || 3.17.3'
   - lucide-react@1.22.0
   - '@tailwindcss/node@4.3.2'
   - '@tailwindcss/oxide-android-arm64@4.3.2'
@@ -30,6 +30,8 @@ minimumReleaseAgeExclude:
   - react-router-dom@7.18.1
   - react-router@7.18.1
   - tailwindcss@4.3.2
+  - recharts@3.9.1
+  - vite@8.1.1
 overrides:
   form-data: ^4.0.6
   hono: ^4.12.27

@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import type { AlarmSetOptions } from "thermoworks-sdk";
-import { ThermoworksCloud } from "thermoworks-sdk";
+import type { AlarmSetOptions, Device, DeviceChannel } from "thermoworks-sdk";
+import { getChannelAlarmState, ThermoworksCloud } from "thermoworks-sdk";
 import { z } from "zod";
 
 let cachedCreds: { email: string; password: string } | null = null;
@@ -50,6 +50,54 @@ async function handleTool<T>(fn: (client: ThermoworksCloud) => Promise<T>): Prom
 	const client = getClient();
 	const result = await fn(client);
 	return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+}
+
+function summarizeChannel(channel: DeviceChannel) {
+	return {
+		number: channel.number,
+		label: channel.label,
+		type: channel.type,
+		value: channel.value,
+		units: channel.units,
+		status: channel.status,
+		alarmState: getChannelAlarmState(channel),
+		alarmHigh: channel.alarmHigh,
+		alarmLow: channel.alarmLow,
+		minimum: channel.minimum,
+		maximum: channel.maximum,
+		rateOfChange: channel.rateOfChange,
+		rateOfChangeUnit: channel.rateOfChangeUnit,
+		lastSeen: channel.lastSeen,
+	};
+}
+
+function summarizeDevice(device: Device, channels: DeviceChannel[]) {
+	const activeChannels = channels.filter(
+		(channel) => channel.enabled !== false && channel.value != null,
+	);
+	const summarizedChannels = activeChannels.map(summarizeChannel);
+	return {
+		serial: device.serial,
+		label: device.label || device.serial,
+		type: device.type,
+		status: device.status,
+		battery: device.battery,
+		batteryState: device.batteryState,
+		wifiStrength: device.wifiStrength,
+		lastSeen: device.lastSeen,
+		firmware: device.firmware,
+		session: {
+			active: device.sessionStart != null,
+			label: device.sessionLabel,
+			start: device.sessionStart,
+		},
+		channels: summarizedChannels,
+		alarmState: summarizedChannels.some((channel) => channel.alarmState === "high")
+			? "high"
+			: summarizedChannels.some((channel) => channel.alarmState === "low")
+				? "low"
+				: "none",
+	};
 }
 
 export function createServer(): McpServer {
@@ -108,6 +156,47 @@ export function createServer(): McpServer {
 				};
 			}
 			return { content: [{ type: "text", text: JSON.stringify(avg, null, 2) }] };
+		},
+	);
+
+	server.registerTool(
+		"get_live_cook_snapshot",
+		{
+			description:
+				"Get a single live snapshot for current cooks, including devices, channel readings, alarm state, battery, firmware, and active session info",
+			inputSchema: z.object({
+				serial: z.string().optional().describe("Optional device serial number to snapshot"),
+			}),
+		},
+		async ({ serial }) => {
+			const client = getClient();
+			const devices = serial ? [await client.getDevice(serial)] : await client.getDevices();
+			const snapshots = await Promise.all(
+				devices.map(async (device) => {
+					const channels = await client.getAllDeviceChannels(device.serial);
+					return summarizeDevice(device, channels);
+				}),
+			);
+			const channels = snapshots.flatMap((snapshot) => snapshot.channels);
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{
+								generatedAt: new Date().toISOString(),
+								deviceCount: snapshots.length,
+								channelCount: channels.length,
+								alarmingChannelCount: channels.filter((channel) => channel.alarmState !== "none")
+									.length,
+								devices: snapshots,
+							},
+							null,
+							2,
+						),
+					},
+				],
+			};
 		},
 	);
 

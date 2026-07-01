@@ -50,6 +50,11 @@ vi.mock("thermoworks-sdk", () => {
 		mockStartSession,
 		mockEndSession,
 		mockGetFirmwareInfo,
+		getChannelAlarmState: (channel: any) => {
+			if (channel.alarmHigh?.alarming) return "high";
+			if (channel.alarmLow?.alarming) return "low";
+			return "none";
+		},
 	};
 });
 
@@ -202,6 +207,122 @@ describe("MCP Server", () => {
 				const result = await handler({ serial: "ABC123" }, {});
 
 				expect(result.content[0].text).toBe("No temperature readings available for this device");
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("get_live_cook_snapshot tool", () => {
+		it("returns a snapshot for all devices", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{
+						serial: "ABC123",
+						label: "Smoker",
+						type: "signals",
+						status: "online",
+						battery: 85,
+						batteryState: "good",
+						wifiStrength: -55,
+						lastSeen: new Date("2026-06-01T12:00:00Z"),
+						firmware: "1.2.3",
+						sessionStart: new Date("2026-06-01T10:00:00Z"),
+						sessionLabel: "Brisket",
+					},
+				]);
+				(mockGetAllDeviceChannels as any).mockResolvedValueOnce([
+					{
+						value: 225,
+						units: "F",
+						label: "Pit",
+						number: "1",
+						type: "temperature",
+						status: "normal",
+						enabled: true,
+						alarmHigh: null,
+						alarmLow: null,
+						minimum: { value: 220, units: "F", date: new Date("2026-06-01T10:30:00Z") },
+						maximum: { value: 235, units: "F", date: new Date("2026-06-01T11:30:00Z") },
+						rateOfChange: 1.2,
+						rateOfChangeUnit: "F/min",
+						lastSeen: new Date("2026-06-01T12:00:00Z"),
+					},
+					{
+						value: 203,
+						units: "F",
+						label: "Meat",
+						number: "2",
+						type: "temperature",
+						status: "high",
+						enabled: true,
+						alarmHigh: {
+							enabled: true,
+							alarming: true,
+							muted: null,
+							value: 200,
+							units: "F",
+							lastNotified: null,
+						},
+						alarmLow: null,
+						minimum: null,
+						maximum: null,
+						rateOfChange: null,
+						rateOfChangeUnit: null,
+						lastSeen: null,
+					},
+					{ value: null, units: "F", label: "Disabled", number: "3", enabled: false },
+				]);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_live_cook_snapshot");
+				const result = await handler({}, {});
+
+				expect(mockGetDevices).toHaveBeenCalled();
+				expect(mockGetAllDeviceChannels).toHaveBeenCalledWith("ABC123");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.deviceCount).toBe(1);
+				expect(parsed.channelCount).toBe(2);
+				expect(parsed.alarmingChannelCount).toBe(1);
+				expect(parsed.devices[0].serial).toBe("ABC123");
+				expect(parsed.devices[0].session.active).toBe(true);
+				expect(parsed.devices[0].alarmState).toBe("high");
+				expect(parsed.devices[0].channels[0].minimum.value).toBe(220);
+				expect(parsed.devices[0].channels[1].alarmState).toBe("high");
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns a snapshot for one device when serial is provided", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockClear();
+				(mockGetDevice as any).mockResolvedValueOnce({
+					serial: "DEF456",
+					label: null,
+					type: "rfx",
+					status: "online",
+					battery: null,
+					batteryState: null,
+					wifiStrength: null,
+					lastSeen: null,
+					firmware: null,
+					sessionStart: null,
+					sessionLabel: null,
+				});
+				(mockGetAllDeviceChannels as any).mockResolvedValueOnce([]);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_live_cook_snapshot");
+				const result = await handler({ serial: "DEF456" }, {});
+
+				expect(mockGetDevice).toHaveBeenCalledWith("DEF456");
+				expect(mockGetDevices).not.toHaveBeenCalled();
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.devices[0].label).toBe("DEF456");
+				expect(parsed.devices[0].session.active).toBe(false);
 			} finally {
 				teardownEnv();
 			}

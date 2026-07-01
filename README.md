@@ -9,7 +9,63 @@
 
 > **Disclaimer:** This project is not affiliated with, endorsed by, or connected to [ThermoWorks](https://www.thermoworks.com/) in any way. It is an unofficial, community-built tool created by ThermoWorks customers for personal use.
 
-See live temperatures from your ThermoWorks Cloud devices in the terminal, GitHub Copilot CLI statusline, VS Code status bar, or a full device panel — with color-coded alarm alerts and firmware update notifications.
+See live temperatures from your ThermoWorks Cloud devices in the GitHub Copilot app canvas, terminal, GitHub Copilot CLI statusline, VS Code status bar, or a full device panel — with color-coded alarm alerts and firmware update notifications.
+
+---
+
+## 🆕 ThermoWorks Canvas for the GitHub Copilot app
+
+Monitor your live cooks **inside the GitHub Copilot app** — an animated, fire-vibe
+canvas with real-time probe temps, interactive temperature graphs, target
+tracking, time‑to‑done estimates, high/low alarms, and an AI **pit master** you
+can chat with. Pick any of your devices/sessions to watch, or explore the
+built‑in cook simulator with zero setup.
+
+![ThermoWorks canvas — live cook dashboard with two probes and a multi-line graph](docs/images/canvas-brisket.png)
+
+### Install in the GitHub Copilot app
+
+In the GitHub Copilot app, just tell it:
+
+```text
+install thermoworks canvas jongio/thermoworks
+```
+
+Then open it and say **"watch my cook"** (or pick a device). It opens in **demo
+mode** out of the box — sign in from the canvas to switch to your live devices.
+No terminal required.
+
+> Built with the [`create-canvas-app`](https://github.com/jongio/skills/tree/main/skills/create-canvas-app) skill
+> from [jongio/skills](https://github.com/jongio/skills). See the
+> [canvas README](.github/extensions/thermoworks/README.md) for details.
+
+**Highlights**
+
+- 🔥 Animated fire dashboard — flickering flames, rising embers, alarm pulse.
+- 📈 Interactive SVG graph — per‑channel target lines, the 148–168°F stall band, hover crosshair + tooltip.
+- 🍖 Live gauges — rate of change, progress bars, time‑to‑done ETAs, "READY" celebration.
+- 🤖 [Ask the Pit Master](#-ask-the-pit-master) — an AI BBQ expert grounded in your live temps.
+- 🔌 In‑canvas sign‑in — connect to ThermoWorks Cloud without a console; pick any device/session, or watch them all.
+- 🎬 Demo mode — a realistic cook simulator that works with zero credentials.
+
+![Interactive temperature history graph with target lines, stall band, and a hover tooltip](docs/images/canvas-graph.png)
+
+### 🤖 Ask the Pit Master
+
+The canvas ships with **Smokey**, an AI pit master you can chat with right next to
+your cook — the part nothing else here does. Every answer is **grounded in your
+live cook data**: it reads the actual pit and probe temps, rate of change, target
+gaps, and time‑to‑done estimates on screen, so the advice is specific to _this_
+cook — diagnosing the stall, when to wrap, doneness, food safety, and timing.
+
+![Ask the Pit Master — an AI BBQ expert chat grounded in your live cook temperatures](docs/images/canvas-chat.png)
+
+- **Grounded, not generic.** Smokey is handed a live snapshot of your cook, so it
+  cites your real numbers ("your flat at 160°F, climbing +0.2°F/min, ~3.5h out").
+- **No API keys.** It uses the GitHub Copilot app's own model — nothing to
+  configure, no separate account.
+- **Shared with the agent.** The same chat is driveable by you (one‑tap
+  suggestion chips or free text) and by the Copilot agent, over the same state.
 
 ---
 
@@ -148,6 +204,7 @@ In VS Code: Command Palette → **ThermoWorks: Demo (Simulate Alarm)** — popul
 
 | Package | Description |
 |---------|-------------|
+| [`thermoworks` canvas](.github/extensions/thermoworks) | **🆕** GitHub Copilot app canvas — live cook dashboard, interactive graphs, AI pit master, in-canvas sign-in |
 | [`thermoworks`](https://www.npmjs.com/package/thermoworks) | CLI for authentication, Copilot statusline setup, device listing, MCP server, and demo mode |
 | [`thermoworks-sdk`](https://www.npmjs.com/package/thermoworks-sdk) | Node.js SDK for programmatic access to ThermoWorks Cloud |
 | [`thermoworks-mcp`](https://www.npmjs.com/package/thermoworks-mcp) | MCP server exposing device data to AI assistants (GitHub Copilot, Claude, ChatGPT) |
@@ -156,6 +213,7 @@ In VS Code: Command Palette → **ThermoWorks: Demo (Simulate Alarm)** — popul
 
 ## Documentation
 
+- [ThermoWorks Canvas](.github/extensions/thermoworks/README.md) - GitHub Copilot app canvas (install + features)
 - [CLI Reference](docs/cli-reference.md) - all commands, flags, and options
 - [SDK Examples](docs/sdk-examples.md) - real-world usage cookbook
 - [API Reference](docs/api-reference.md) - ThermoWorks Cloud Firestore REST API

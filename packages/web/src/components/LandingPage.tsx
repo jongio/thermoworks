@@ -4,6 +4,7 @@ import {
 	Bot,
 	Code,
 	ExternalLink,
+	Flame,
 	FlaskConical,
 	Globe,
 	Lock,
@@ -26,7 +27,18 @@ const products: {
 	command: string | null;
 	link: string;
 	linkLabel: string;
+	badge?: string;
 }[] = [
+	{
+		icon: Flame,
+		title: "Copilot App Canvas",
+		description:
+			"Monitor live cooks inside the GitHub Copilot app — fire dashboard, interactive graphs, and an AI pit master grounded in your temps. See the highlight above.",
+		command: "install thermoworks canvas jongio/thermoworks",
+		link: "https://github.com/jongio/thermoworks/tree/main/.github/extensions/thermoworks",
+		linkLabel: "Canvas on GitHub",
+		badge: "New",
+	},
 	{
 		icon: Code,
 		title: "VS Code Extension",
@@ -111,17 +123,21 @@ const features: { icon: LucideIcon; title: string; description: string }[] = [
 ];
 
 export function LandingPage({ onSignIn }: LandingPageProps) {
+	const base = import.meta.env.BASE_URL;
 	return (
 		<div className="min-h-screen">
 			{/* Hero */}
 			<section className="border-b border-border px-4 py-20 text-center">
 				<h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-					<span className="mr-2">🔥</span>
+					<span className="mr-2" aria-hidden="true">
+						🔥
+					</span>
 					ThermoWorks Tools
 				</h1>
 				<p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-					See live temperatures from your ThermoWorks Cloud devices in the terminal, VS Code, or a
-					real-time web dashboard - with color-coded alarm alerts and firmware update notifications.
+					See live temperatures from your ThermoWorks Cloud devices in the GitHub Copilot app, the
+					terminal, VS Code, or a real-time web dashboard - with color-coded alarm alerts and
+					firmware update notifications.
 				</p>
 				<div className="mt-8 flex flex-wrap items-center justify-center gap-3">
 					<button
@@ -153,6 +169,119 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
 				</div>
 			</section>
 
+			{/* Featured: Copilot App Canvas */}
+			<section className="border-b border-border bg-gradient-to-b from-primary/5 to-transparent px-4 py-16">
+				<div className="mx-auto grid max-w-5xl items-center gap-10 lg:grid-cols-2">
+					<div>
+						<span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">
+							<Flame className="h-3.5 w-3.5" />
+							New · GitHub Copilot app
+						</span>
+						<h2 className="mt-4 text-3xl font-bold tracking-tight">ThermoWorks Canvas</h2>
+						<p className="mt-3 text-muted-foreground">
+							Monitor your live cooks right inside the GitHub Copilot app. An animated fire-vibe
+							dashboard with real-time probe temps, interactive temperature graphs, time-to-done
+							estimates, high/low alarms, and an AI <strong>pit master</strong> you can chat with.
+							Pick any of your devices/sessions to watch — or explore the built-in cook simulator
+							with zero setup.
+						</p>
+						<p className="mt-4 text-sm font-medium">Install in the Copilot app — just say:</p>
+						<code className="mt-2 block rounded-md border border-border bg-card px-3 py-2 text-sm font-mono text-primary">
+							install thermoworks canvas jongio/thermoworks
+						</code>
+						<div className="mt-5 flex flex-wrap gap-3">
+							<a
+								href="https://github.com/jongio/thermoworks/tree/main/.github/extensions/thermoworks"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+							>
+								Canvas on GitHub
+								<ExternalLink className="h-3 w-3" />
+							</a>
+							<a
+								href="https://github.com/jongio/skills/tree/main/skills/create-canvas-app"
+								target="_blank"
+								rel="noopener noreferrer"
+								className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+							>
+								Built with create-canvas-app
+								<ExternalLink className="h-3 w-3" />
+							</a>
+						</div>
+					</div>
+					<div className="grid gap-4">
+						<img
+							src={`${base}images/canvas-brisket.png`}
+							alt="ThermoWorks canvas live cook dashboard with two probes, fire-vibe header, gauges, and a multi-line temperature graph"
+							className="rounded-lg border border-border shadow-lg"
+							width={1025}
+							height={1173}
+							loading="lazy"
+						/>
+						<img
+							src={`${base}images/canvas-graph.png`}
+							alt="Interactive temperature history graph with target lines, stall band, and a hover tooltip"
+							className="rounded-lg border border-border"
+							width={1019}
+							height={461}
+							loading="lazy"
+						/>
+					</div>
+				</div>
+			</section>
+
+			{/* Highlight: Ask the Pit Master */}
+			<section className="border-b border-border px-4 py-16">
+				<div className="mx-auto grid max-w-5xl items-center gap-10 lg:grid-cols-2">
+					<img
+						src={`${base}images/canvas-chat.png`}
+						alt="Ask the Pit Master — an AI BBQ expert chat grounded in your live cook temperatures"
+						className="order-2 rounded-lg border border-border shadow-lg lg:order-1"
+						width={1022}
+						height={560}
+						loading="lazy"
+					/>
+					<div className="order-1 lg:order-2">
+						<span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">
+							<Bot className="h-3.5 w-3.5" />
+							Novel
+						</span>
+						<h2 className="mt-4 text-3xl font-bold tracking-tight">Ask the Pit Master</h2>
+						<p className="mt-3 text-muted-foreground">
+							The canvas ships with <strong>Smokey</strong>, an AI pit master you can chat with
+							right next to your cook. Every answer is{" "}
+							<strong>grounded in your live cook data</strong> — the real pit and probe temps, rate
+							of change, target gaps, and time-to-done estimates on screen — so the advice is
+							specific to <em>this</em> cook.
+						</p>
+						<ul className="mt-5 space-y-3 text-sm">
+							<li className="flex gap-3">
+								<BarChart3 className="h-5 w-5 shrink-0 text-primary" />
+								<span>
+									<strong>Grounded, not generic.</strong> Smokey cites your real numbers — the
+									stall, when to wrap, doneness, food safety, timing.
+								</span>
+							</li>
+							<li className="flex gap-3">
+								<Lock className="h-5 w-5 shrink-0 text-primary" />
+								<span>
+									<strong>No API keys.</strong> Uses the GitHub Copilot app's own model — nothing to
+									configure, no separate account.
+								</span>
+							</li>
+							<li className="flex gap-3">
+								<Bot className="h-5 w-5 shrink-0 text-primary" />
+								<span>
+									<strong>Shared with the agent.</strong> The same chat is driven by you and by the
+									Copilot agent, over the same live state.
+								</span>
+							</li>
+						</ul>
+					</div>
+				</div>
+			</section>
+
 			{/* Products */}
 			<section className="border-b border-border px-4 py-16">
 				<div className="mx-auto max-w-5xl">
@@ -160,7 +289,14 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
 					<div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 						{products.map((product) => (
 							<div key={product.title} className="rounded-lg border border-border bg-card p-5">
-								<product.icon className="h-6 w-6 text-primary" />
+								<div className="flex items-center justify-between">
+									<product.icon className="h-6 w-6 text-primary" />
+									{product.badge && (
+										<span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
+											{product.badge}
+										</span>
+									)}
+								</div>
 								<h3 className="mt-2 font-semibold">{product.title}</h3>
 								<p className="mt-1 text-sm text-muted-foreground">{product.description}</p>
 								{product.command && (

@@ -8,10 +8,10 @@ allowBuilds:
   esbuild: true
   keytar: true
 minimumReleaseAgeExclude:
-  - '@types/node@26.0.1'
+  - '@types/node@26.0.1 || 26.1.0'
   - '@tanstack/react-virtual@3.14.4 || 3.14.5'
   - '@tanstack/virtual-core@3.17.2 || 3.17.3'
-  - lucide-react@1.22.0
+  - lucide-react@1.22.0 || 1.23.0
   - '@tailwindcss/node@4.3.2'
   - '@tailwindcss/oxide-android-arm64@4.3.2'
   - '@tailwindcss/oxide-darwin-arm64@4.3.2'
@@ -32,6 +32,15 @@ minimumReleaseAgeExclude:
   - tailwindcss@4.3.2
   - recharts@3.9.1
   - vite@8.1.2
+  - '@biomejs/biome@2.5.2'
+  - '@biomejs/cli-darwin-arm64@2.5.2'
+  - '@biomejs/cli-darwin-x64@2.5.2'
+  - '@biomejs/cli-linux-arm64-musl@2.5.2'
+  - '@biomejs/cli-linux-arm64@2.5.2'
+  - '@biomejs/cli-linux-x64-musl@2.5.2'
+  - '@biomejs/cli-linux-x64@2.5.2'
+  - '@biomejs/cli-win32-arm64@2.5.2'
+  - '@biomejs/cli-win32-x64@2.5.2'
 overrides:
   form-data: ^4.0.6
   hono: ^4.12.27

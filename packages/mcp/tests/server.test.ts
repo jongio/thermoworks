@@ -10,6 +10,7 @@ vi.mock("thermoworks-sdk", () => {
 	const mockGetEvents = vi.fn();
 	const mockGetArchives = vi.fn();
 	const mockGetArchive = vi.fn();
+	const mockGetCalibration = vi.fn();
 	const mockGetTemperatureGuide = vi.fn();
 	const mockSetAlarm = vi.fn();
 	const mockGetDeviceChannel = vi.fn();
@@ -26,6 +27,7 @@ vi.mock("thermoworks-sdk", () => {
 		getEvents = mockGetEvents;
 		getArchives = mockGetArchives;
 		getArchive = mockGetArchive;
+		getCalibration = mockGetCalibration;
 		getTemperatureGuide = mockGetTemperatureGuide;
 		setAlarm = mockSetAlarm;
 		getDeviceChannel = mockGetDeviceChannel;
@@ -44,6 +46,7 @@ vi.mock("thermoworks-sdk", () => {
 		mockGetEvents,
 		mockGetArchives,
 		mockGetArchive,
+		mockGetCalibration,
 		mockGetTemperatureGuide,
 		mockSetAlarm,
 		mockGetDeviceChannel,
@@ -64,6 +67,7 @@ import {
 	mockGetArchive,
 	mockGetArchives,
 	mockGetAverageTemperature,
+	mockGetCalibration,
 	mockGetDevice,
 	mockGetDeviceChannel,
 	mockGetDevices,
@@ -380,6 +384,59 @@ describe("MCP Server", () => {
 				const parsed = JSON.parse(result.content[0].text);
 				expect(parsed).toHaveLength(1);
 				expect(parsed[0].label).toBe("Cook Session 1");
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("get_calibration tool", () => {
+		it("returns calibration records for a device", async () => {
+			setupEnv();
+			try {
+				const records = [
+					{
+						calibrationId: "CAL-001",
+						deviceId: "ABC123",
+						result: "Pass",
+						lowPointAdjustments: [
+							{ channel: 1, value: 32.1, referenceValue: 32.0, deviation: 0.1, result: "Pass" },
+						],
+						highPointReference: [
+							{ channel: 1, value: 212.0, referenceValue: 212.0, deviation: 0, result: "Pass" },
+						],
+					},
+				];
+				(mockGetCalibration as any).mockResolvedValueOnce(records);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_calibration");
+				const result = await handler({ serial: "ABC123" }, {});
+
+				expect(mockGetCalibration).toHaveBeenCalledWith("ABC123");
+				expect(result.content[0].type).toBe("text");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed).toHaveLength(1);
+				expect(parsed[0].calibrationId).toBe("CAL-001");
+				expect(parsed[0].result).toBe("Pass");
+				expect(parsed[0].lowPointAdjustments).toHaveLength(1);
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns an empty array when there are no calibration records", async () => {
+			setupEnv();
+			try {
+				(mockGetCalibration as any).mockResolvedValueOnce([]);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_calibration");
+				const result = await handler({ serial: "XYZ999" }, {});
+
+				expect(mockGetCalibration).toHaveBeenCalledWith("XYZ999");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed).toEqual([]);
 			} finally {
 				teardownEnv();
 			}

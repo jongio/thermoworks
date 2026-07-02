@@ -289,6 +289,30 @@ npx thermoworks data-usage --by-device --json
 Options:
 - `--by-device` — Show per-device breakdown (device id + formatted size), sorted by size descending
 
+### `thermoworks notifications`
+
+Show account notification settings, and enable or disable individual alert channels.
+
+```bash
+npx thermoworks notifications
+# Notification settings
+#   Notifications enabled  on
+#   Continuous alerts      off
+#   Email alerts           on
+#   SMS alerts             off
+#   Device (app) alerts    on
+
+npx thermoworks notifications --enable sms
+npx thermoworks notifications --disable email
+npx thermoworks notifications --json
+```
+
+Options:
+- `--enable FIELD` — Turn a setting on
+- `--disable FIELD` — Turn a setting off
+
+Fields: `all` (master toggle), `continuous`, `email`, `sms`, `device`.
+
 ### `thermoworks fan <serial>`
 
 Show, configure, and toggle the Billows fan/blower controller on Signals devices.

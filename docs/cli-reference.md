@@ -657,6 +657,52 @@ npx thermoworks data-usage --by-device --json
 - Prints `No device data usage.` when no devices have data (with `--by-device`).
 - Zero bytes total is displayed as `0 B`.
 
+## `thermoworks notifications`
+
+Show account notification settings, and optionally toggle an individual alert channel.
+
+**Usage**
+
+```bash
+npx thermoworks notifications [--enable FIELD | --disable FIELD]
+```
+
+**Options**
+
+- `--enable FIELD` - Turn a setting on, then show the refreshed settings.
+- `--disable FIELD` - Turn a setting off, then show the refreshed settings.
+- `--json` - Output the `NotificationSettings` object as JSON.
+
+`FIELD` is one of:
+
+- `all` - Master toggle (`enabled`).
+- `continuous` - Continuous alerts (`continuousAlerts`).
+- `email` - Email alerts (`emailNotification`).
+- `sms` - SMS alerts (`smsNotification`).
+- `device` - Device/app alerts (`deviceNotification`).
+
+**Examples**
+
+```bash
+npx thermoworks notifications
+# Notification settings
+#   Notifications enabled  on
+#   Continuous alerts      off
+#   Email alerts           on
+#   SMS alerts             off
+#   Device (app) alerts    on
+
+npx thermoworks notifications --enable sms
+npx thermoworks notifications --disable email
+npx thermoworks notifications --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Only one `--enable` or `--disable` may be given per invocation.
+- The current settings are always printed after any change is applied.
+
 ## `thermoworks fan <SERIAL>`
 
 Show the current fan/blower controller state for a Signals device.
@@ -1063,7 +1109,7 @@ npx thermoworks watch --device ABC123 --interval 5
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `data-usage`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `data-usage`, `notifications`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

@@ -244,6 +244,24 @@ export function createServer(): McpServer {
 	);
 
 	server.registerTool(
+		"get_data_usage",
+		{
+			description:
+				"Get ThermoWorks Cloud data storage usage for the account. Returns the account total by default, or a per-device breakdown when by_device is true",
+			inputSchema: z.object({
+				by_device: z
+					.boolean()
+					.optional()
+					.describe("Return a per-device breakdown instead of the account total (default false)"),
+			}),
+		},
+		({ by_device }) =>
+			by_device
+				? handleTool((client) => client.getDataUsageByDevice())
+				: handleTool((client) => client.getDataUsage()),
+	);
+
+	server.registerTool(
 		"get_temperature_guide",
 		{
 			description:

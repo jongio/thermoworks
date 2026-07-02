@@ -10,6 +10,8 @@ vi.mock("thermoworks-sdk", () => {
 	const mockGetEvents = vi.fn();
 	const mockGetArchives = vi.fn();
 	const mockGetArchive = vi.fn();
+	const mockGetDataUsage = vi.fn();
+	const mockGetDataUsageByDevice = vi.fn();
 	const mockGetTemperatureGuide = vi.fn();
 	const mockSetAlarm = vi.fn();
 	const mockGetDeviceChannel = vi.fn();
@@ -26,6 +28,8 @@ vi.mock("thermoworks-sdk", () => {
 		getEvents = mockGetEvents;
 		getArchives = mockGetArchives;
 		getArchive = mockGetArchive;
+		getDataUsage = mockGetDataUsage;
+		getDataUsageByDevice = mockGetDataUsageByDevice;
 		getTemperatureGuide = mockGetTemperatureGuide;
 		setAlarm = mockSetAlarm;
 		getDeviceChannel = mockGetDeviceChannel;
@@ -44,6 +48,8 @@ vi.mock("thermoworks-sdk", () => {
 		mockGetEvents,
 		mockGetArchives,
 		mockGetArchive,
+		mockGetDataUsage,
+		mockGetDataUsageByDevice,
 		mockGetTemperatureGuide,
 		mockSetAlarm,
 		mockGetDeviceChannel,
@@ -64,6 +70,8 @@ import {
 	mockGetArchive,
 	mockGetArchives,
 	mockGetAverageTemperature,
+	mockGetDataUsage,
+	mockGetDataUsageByDevice,
 	mockGetDevice,
 	mockGetDeviceChannel,
 	mockGetDevices,
@@ -380,6 +388,54 @@ describe("MCP Server", () => {
 				const parsed = JSON.parse(result.content[0].text);
 				expect(parsed).toHaveLength(1);
 				expect(parsed[0].label).toBe("Cook Session 1");
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("get_data_usage tool", () => {
+		it("returns the account total by default", async () => {
+			setupEnv();
+			try {
+				(mockGetDataUsage as any).mockClear();
+				(mockGetDataUsageByDevice as any).mockClear();
+				const usage = { totalBytes: 13000000, formattedSize: "12.4 MB" };
+				(mockGetDataUsage as any).mockResolvedValueOnce(usage);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_data_usage");
+				const result = await handler({}, {});
+
+				expect(mockGetDataUsage).toHaveBeenCalledTimes(1);
+				expect(mockGetDataUsageByDevice).not.toHaveBeenCalled();
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.formattedSize).toBe("12.4 MB");
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns a per-device breakdown when by_device is true", async () => {
+			setupEnv();
+			try {
+				(mockGetDataUsage as any).mockClear();
+				(mockGetDataUsageByDevice as any).mockClear();
+				const perDevice = [
+					{ deviceId: "DEV-A", bytes: 1024, formattedSize: "1.0 KB" },
+					{ deviceId: "DEV-B", bytes: 10000, formattedSize: "9.8 KB" },
+				];
+				(mockGetDataUsageByDevice as any).mockResolvedValueOnce(perDevice);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_data_usage");
+				const result = await handler({ by_device: true }, {});
+
+				expect(mockGetDataUsageByDevice).toHaveBeenCalledTimes(1);
+				expect(mockGetDataUsage).not.toHaveBeenCalled();
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed).toHaveLength(2);
+				expect(parsed[0].deviceId).toBe("DEV-A");
 			} finally {
 				teardownEnv();
 			}

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { stdout } from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { account } from "./commands/account.js";
 import { alarmClear, alarmSet } from "./commands/alarm.js";
 import { archives, parseArchivesArgs } from "./commands/archives.js";
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
@@ -56,6 +57,8 @@ Commands:
 
   data-usage       Show account data storage usage
     --by-device    Show per-device breakdown
+
+  account          Show account details and billing plan
 
   devices          List connected devices and channel readings
   device rename <SERIAL> --name <TEXT>        Rename a device
@@ -193,6 +196,10 @@ async function main(): Promise<void> {
 
 		case "data-usage":
 			await dataUsage(args.slice(1), options);
+			break;
+
+		case "account":
+			await account(options);
 			break;
 
 		case "device":

@@ -260,6 +260,20 @@ npx thermoworks archives M100009168
 npx thermoworks archives M100009168 --id <archive-id> --limit 10
 ```
 
+### `thermoworks stats <serial>`
+
+Summarize a device's archived cook sessions: session count, total, average, and median cook time, longest and shortest cooks, total readings, and the overall date range. Archives without a recorded start and end are counted but left out of the duration figures.
+
+```bash
+npx thermoworks stats M100009168
+npx thermoworks stats M100009168 --limit 50
+npx thermoworks stats M100009168 --json
+```
+
+Options:
+- `--limit N` — Summarize only the N most recent archives
+- `--json` — Emit the stats as JSON (durations in seconds, dates as ISO strings)
+
 ### `thermoworks firmware`
 
 Show firmware versions and available updates for all devices.

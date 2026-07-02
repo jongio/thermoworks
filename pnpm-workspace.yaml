@@ -41,6 +41,9 @@ minimumReleaseAgeExclude:
   - '@biomejs/cli-linux-x64@2.5.2'
   - '@biomejs/cli-win32-arm64@2.5.2'
   - '@biomejs/cli-win32-x64@2.5.2'
+  - '@microsoft/vally-cli@0.7.0'
+  - '@microsoft/vally-server@0.7.0'
+  - '@microsoft/vally@0.7.0'
 overrides:
   form-data: ^4.0.6
   hono: ^4.12.27

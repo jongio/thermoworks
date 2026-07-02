@@ -27,6 +27,7 @@ thermoworks mcp start
 | `get_events` | Get device events (alarms, status changes) |
 | `get_archives` | Get historical session archives |
 | `get_archive_detail` | Get full detail for a specific session archive, including channel readings and duration |
+| `get_temperature_history` | Get long-term time-series temperature readings for a device (for trend and time-to-done analysis) |
 | `get_temperature_guide` | Get cooking temperature reference |
 | `set_alarm` | Set or clear high/low alarm thresholds on a device channel |
 | `start_session` | Start a new monitoring session on a device |

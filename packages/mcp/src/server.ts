@@ -386,6 +386,41 @@ export function createServer(): McpServer {
 	);
 
 	server.registerTool(
+		"get_temperature_history",
+		{
+			description:
+				"Get historical time-series temperature readings for a ThermoWorks device from long-term storage. Useful for analyzing cook trends, rate of temperature rise, and estimating time to a target temperature.",
+			inputSchema: z.object({
+				serial: z.string().min(1).describe("The device serial number"),
+				limit: z
+					.number()
+					.int()
+					.min(1)
+					.max(5000)
+					.optional()
+					.describe("Return only the N most recent readings (default: all)"),
+			}),
+		},
+		async ({ serial, limit }) => {
+			const client = getClient();
+			const history = await client.getHistory(serial);
+			const readings = limit ? history.readings.slice(-limit) : history.readings;
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{ deviceId: history.deviceId, readingCount: readings.length, readings },
+							null,
+							2,
+						),
+					},
+				],
+			};
+		},
+	);
+
+	server.registerTool(
 		"get_archive_detail",
 		{
 			description:

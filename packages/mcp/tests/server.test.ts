@@ -16,6 +16,9 @@ vi.mock("thermoworks-sdk", () => {
 	const mockStartSession = vi.fn();
 	const mockEndSession = vi.fn();
 	const mockGetFirmwareInfo = vi.fn();
+	const mockGetFanState = vi.fn();
+	const mockSetFanTarget = vi.fn();
+	const mockSetFanEnabled = vi.fn();
 
 	class MockThermoworksCloud {
 		close = mockClose;
@@ -32,6 +35,9 @@ vi.mock("thermoworks-sdk", () => {
 		startSession = mockStartSession;
 		endSession = mockEndSession;
 		getFirmwareInfo = mockGetFirmwareInfo;
+		getFanState = mockGetFanState;
+		setFanTarget = mockSetFanTarget;
+		setFanEnabled = mockSetFanEnabled;
 	}
 
 	return {
@@ -50,6 +56,9 @@ vi.mock("thermoworks-sdk", () => {
 		mockStartSession,
 		mockEndSession,
 		mockGetFirmwareInfo,
+		mockGetFanState,
+		mockSetFanTarget,
+		mockSetFanEnabled,
 		getChannelAlarmState: (channel: any) => {
 			if (channel.alarmHigh?.alarming) return "high";
 			if (channel.alarmLow?.alarming) return "low";
@@ -68,9 +77,12 @@ import {
 	mockGetDeviceChannel,
 	mockGetDevices,
 	mockGetEvents,
+	mockGetFanState,
 	mockGetFirmwareInfo,
 	mockGetTemperatureGuide,
 	mockSetAlarm,
+	mockSetFanEnabled,
+	mockSetFanTarget,
 	mockStartSession,
 } from "thermoworks-sdk";
 
@@ -736,6 +748,127 @@ describe("MCP Server", () => {
 				const parsed = JSON.parse(result.content[0].text);
 				expect(parsed.success).toBe(false);
 				expect(parsed.error).toBe("No active session");
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("get_fan_state tool", () => {
+		it("returns the fan state when a controller is present", async () => {
+			setupEnv();
+			try {
+				const fanState = {
+					connected: true,
+					connection: true,
+					setTemp: 225,
+					fanChannel: "1",
+					state: 40,
+				};
+				(mockGetFanState as any).mockResolvedValueOnce(fanState);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_fan_state");
+				const result = await handler({ serial: "ABC123" }, {});
+
+				expect(mockGetFanState).toHaveBeenCalledWith("ABC123");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.connected).toBe(true);
+				expect(parsed.setTemp).toBe(225);
+				expect(parsed.fanChannel).toBe("1");
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns a message when no fan controller is present", async () => {
+			setupEnv();
+			try {
+				(mockGetFanState as any).mockResolvedValueOnce(null);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_fan_state");
+				const result = await handler({ serial: "ABC123" }, {});
+
+				expect(mockGetFanState).toHaveBeenCalledWith("ABC123");
+				expect(result.content[0].text).toBe("No fan controller found for device ABC123");
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("set_fan_target tool", () => {
+		it("sets the target temperature", async () => {
+			setupEnv();
+			try {
+				const actionResult = { success: true, data: null, error: null };
+				(mockSetFanTarget as any).mockResolvedValueOnce(actionResult);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "set_fan_target");
+				const result = await handler({ serial: "ABC123", target_temp: 250 }, {});
+
+				expect(mockSetFanTarget).toHaveBeenCalledWith("ABC123", 250);
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.success).toBe(true);
+				expect(parsed.error).toBeNull();
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns error result on failure", async () => {
+			setupEnv();
+			try {
+				const actionResult = { success: false, data: null, error: "No fan controller" };
+				(mockSetFanTarget as any).mockResolvedValueOnce(actionResult);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "set_fan_target");
+				const result = await handler({ serial: "ABC123", target_temp: 250 }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.success).toBe(false);
+				expect(parsed.error).toBe("No fan controller");
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("set_fan_enabled tool", () => {
+		it("enables the fan controller", async () => {
+			setupEnv();
+			try {
+				const actionResult = { success: true, data: null, error: null };
+				(mockSetFanEnabled as any).mockResolvedValueOnce(actionResult);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "set_fan_enabled");
+				const result = await handler({ serial: "ABC123", enabled: true }, {});
+
+				expect(mockSetFanEnabled).toHaveBeenCalledWith("ABC123", true);
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.success).toBe(true);
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("disables the fan controller", async () => {
+			setupEnv();
+			try {
+				const actionResult = { success: true, data: null, error: null };
+				(mockSetFanEnabled as any).mockResolvedValueOnce(actionResult);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "set_fan_enabled");
+				const result = await handler({ serial: "ABC123", enabled: false }, {});
+
+				expect(mockSetFanEnabled).toHaveBeenCalledWith("ABC123", false);
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.success).toBe(true);
 			} finally {
 				teardownEnv();
 			}

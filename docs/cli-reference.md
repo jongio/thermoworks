@@ -1018,13 +1018,14 @@ Continuously monitor device temperatures with a live-refreshing display. Clears 
 **Usage**
 
 ```bash
-npx thermoworks watch [--device SERIAL] [--interval N]
+npx thermoworks watch [--device SERIAL] [--interval N] [--json]
 ```
 
 **Options**
 
 - `--device SERIAL` - Watch a specific device by serial number. Without this flag, all devices are shown.
 - `--interval N` - Refresh interval in seconds. Must be >= 1. Defaults to `10`.
+- `--json` - Emit one newline-delimited JSON (NDJSON) object per refresh instead of the live display. Each frame has an ISO `timestamp` and a `devices` array; every device carries `serial`, `label`, `type`, `status`, `battery`, and a `channels` array with `number`, `label`, `value`, `units`, and `alarm` (`high`, `low`, or `normal`). The screen is not cleared, so output can be piped or appended to a file.
 
 **Examples**
 
@@ -1040,12 +1041,15 @@ npx thermoworks watch
 #     Internal  38°F
 
 npx thermoworks watch --device ABC123 --interval 5
+
+npx thermoworks watch --json --interval 5 | jq .
+# {"timestamp":"2025-06-07T19:30:00.000Z","devices":[{"serial":"ABC123","label":"Smoker","type":"signals","status":"online","battery":87,"channels":[{"number":"1","label":"Pit","value":225,"units":"F","alarm":"normal"}]}]}
 ```
 
 **Notes**
 
 - Requires valid credentials from environment variables or the OS keychain.
-- Clears the screen before each refresh and displays a timestamp header.
+- Clears the screen before each refresh and displays a timestamp header (human-readable mode only; `--json` does not clear the screen).
 - Shows device label (or serial), type, status, and all enabled channels with current readings.
 - Shows a compact sparkline beside channels when recent samples are available.
 - Exits immediately with an error if `--device` is specified and no matching device is found.

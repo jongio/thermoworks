@@ -2,6 +2,7 @@ import type { Device, DeviceChannel } from "thermoworks-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+	buildWatchJsonFrame,
 	type DeviceWithChannels,
 	formatTimestamp,
 	formatWatchFrame,
@@ -326,5 +327,102 @@ describe("formatWatchFrame", () => {
 		expect(frame).toContain("Ch1 Meat: 170°F");
 		expect(frame).toContain("trend");
 		expect(frame).toContain("█");
+	});
+});
+
+// =============================================================================
+// buildWatchJsonFrame
+// =============================================================================
+
+describe("buildWatchJsonFrame", () => {
+	const fixedDate = new Date("2025-06-07T12:00:00Z");
+
+	it("includes an ISO timestamp", () => {
+		const frame = buildWatchJsonFrame([], fixedDate);
+		expect(frame.timestamp).toBe("2025-06-07T12:00:00.000Z");
+		expect(frame.devices).toEqual([]);
+	});
+
+	it("serializes device identity and channels", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({
+					serial: "S1",
+					label: "Smoker",
+					type: "signals",
+					status: "online",
+					battery: 87,
+				}),
+				channels: [makeChannel({ value: 225, units: "F", label: "Pit", number: "1" })],
+			},
+		];
+		const frame = buildWatchJsonFrame(devices, fixedDate);
+		expect(frame.devices[0]).toMatchObject({
+			serial: "S1",
+			label: "Smoker",
+			type: "signals",
+			status: "online",
+			battery: 87,
+		});
+		expect(frame.devices[0]?.channels[0]).toEqual({
+			number: "1",
+			label: "Pit",
+			value: 225,
+			units: "F",
+			alarm: "none",
+		});
+	});
+
+	it("reports alarm state per channel", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1", label: "Smoker" }),
+				channels: [
+					makeChannel({
+						value: 275,
+						units: "F",
+						label: "Pit",
+						number: "1",
+						alarmHigh: {
+							enabled: true,
+							alarming: true,
+							muted: null,
+							value: 250,
+							units: "F",
+							lastNotified: null,
+						},
+					}),
+				],
+			},
+		];
+		const frame = buildWatchJsonFrame(devices, fixedDate);
+		expect(frame.devices[0]?.channels[0]?.alarm).toBe("high");
+	});
+
+	it("omits disabled channels", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1", label: "Smoker" }),
+				channels: [
+					makeChannel({ value: 225, units: "F", label: "On", number: "1", enabled: true }),
+					makeChannel({ value: 0, units: "F", label: "Off", number: "2", enabled: false }),
+				],
+			},
+		];
+		const frame = buildWatchJsonFrame(devices, fixedDate);
+		expect(frame.devices[0]?.channels).toHaveLength(1);
+		expect(frame.devices[0]?.channels[0]?.label).toBe("On");
+	});
+
+	it("produces a single-line JSON string when stringified", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1", label: "Smoker" }),
+				channels: [makeChannel({ value: 225, units: "F", label: "Pit", number: "1" })],
+			},
+		];
+		const line = JSON.stringify(buildWatchJsonFrame(devices, fixedDate));
+		expect(line).not.toContain("\n");
+		expect(JSON.parse(line).devices[0].serial).toBe("S1");
 	});
 });

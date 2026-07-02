@@ -230,11 +230,13 @@ Continuously monitor temperatures with live refresh.
 ```bash
 npx thermoworks watch
 npx thermoworks watch --device M100009168 --interval 5
+npx thermoworks watch --json | jq .
 ```
 
 Options:
 - `--device SN` — Watch a specific device by serial number
 - `--interval N` — Refresh interval in seconds (default: 10)
+- `--json` — Emit one NDJSON object per refresh (timestamp plus devices and channels with alarm state) instead of the live display, for piping into other tools
 
 ### `thermoworks events`
 

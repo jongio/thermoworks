@@ -1052,6 +1052,63 @@ npx thermoworks watch --device ABC123 --interval 5
 - Press `Ctrl+C` to exit (handled by the global SIGINT handler).
 - The `--interval` must be a positive number >= 1; values below 1 produce an error.
 
+## `thermoworks metrics`
+
+Serve live device temperatures as [Prometheus](https://prometheus.io/) metrics. Starts a small HTTP server that polls your devices on an interval and exposes the latest snapshot at `/metrics` in the Prometheus text exposition format (version 0.0.4).
+
+**Usage**
+
+```bash
+npx thermoworks metrics [--host HOST] [--port N] [--device SERIAL] [--interval N]
+```
+
+**Options**
+
+- `--host HOST` - Bind address. Defaults to `127.0.0.1`. Use `0.0.0.0` to listen on all interfaces.
+- `--port N` - Listen port. Must be an integer between 1 and 65535. Defaults to `9464`.
+- `--device SERIAL` - Export a specific device by serial number. Without this flag, all devices are exported.
+- `--interval N` - Poll interval in seconds. Must be >= 1. Defaults to `10`.
+
+**Exposed metrics**
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `thermoworks_channel_temperature` | gauge | `serial`, `device`, `channel`, `label`, `unit` | Current channel reading. |
+| `thermoworks_channel_minimum` | gauge | `serial`, `device`, `channel`, `label`, `unit` | Session minimum reading. |
+| `thermoworks_channel_maximum` | gauge | `serial`, `device`, `channel`, `label`, `unit` | Session maximum reading. |
+| `thermoworks_channel_alarm_high` | gauge | `serial`, `device`, `channel`, `label`, `unit` | High alarm state (1 alarming, 0 clear). Present only when the high alarm is enabled. |
+| `thermoworks_channel_alarm_low` | gauge | `serial`, `device`, `channel`, `label`, `unit` | Low alarm state (1 alarming, 0 clear). Present only when the low alarm is enabled. |
+| `thermoworks_device_battery_percent` | gauge | `serial`, `device` | Device battery level. |
+| `thermoworks_up` | gauge | (none) | 1 when the last poll succeeded, 0 otherwise. |
+| `thermoworks_scrape_errors_total` | counter | (none) | Count of failed polls since start. |
+
+**Examples**
+
+```bash
+npx thermoworks metrics
+# ThermoWorks metrics exporter listening on http://127.0.0.1:9464/metrics
+# Polling every 10s (Ctrl+C to exit)
+
+npx thermoworks metrics --host 0.0.0.0 --port 9464 --interval 15
+npx thermoworks metrics --device ABC123
+```
+
+Example Prometheus scrape config:
+
+```yaml
+scrape_configs:
+  - job_name: thermoworks
+    static_configs:
+      - targets: ["localhost:9464"]
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Polls in the background on the configured interval and serves the most recent snapshot, so scrapes never block on the ThermoWorks Cloud API.
+- Disabled channels and channels with no current reading are omitted.
+- Press `Ctrl+C` to exit (handled by the global SIGINT handler).
+
 ## Global Options
 
 ```text

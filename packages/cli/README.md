@@ -236,7 +236,40 @@ Options:
 - `--device SN` — Watch a specific device by serial number
 - `--interval N` — Refresh interval in seconds (default: 10)
 
-### `thermoworks events`
+### `thermoworks metrics`
+
+Serve live temperatures as [Prometheus](https://prometheus.io/) metrics. Starts a small HTTP server that polls your devices on an interval and exposes the latest readings at `/metrics` in the Prometheus text exposition format.
+
+```bash
+npx thermoworks metrics
+npx thermoworks metrics --host 0.0.0.0 --port 9464 --interval 15
+npx thermoworks metrics --device M100009168
+```
+
+Options:
+- `--host HOST` — Bind address (default: `127.0.0.1`)
+- `--port N` — Listen port (default: `9464`)
+- `--device SN` — Export a specific device by serial number
+- `--interval N` — Poll interval in seconds (default: 10)
+
+Exposed metrics:
+- `thermoworks_channel_temperature` — current channel reading, labeled by `serial`, `device`, `channel`, `label`, and `unit`
+- `thermoworks_channel_minimum` / `thermoworks_channel_maximum` — session min/max per channel
+- `thermoworks_channel_alarm_high` / `thermoworks_channel_alarm_low` — alarm state (1 alarming, 0 clear), present only when the alarm is enabled
+- `thermoworks_device_battery_percent` — device battery level
+- `thermoworks_up` — 1 when the last poll succeeded, 0 otherwise
+- `thermoworks_scrape_errors_total` — count of failed polls since start
+
+Example Prometheus scrape config:
+
+```yaml
+scrape_configs:
+  - job_name: thermoworks
+    static_configs:
+      - targets: ["localhost:9464"]
+```
+
+
 
 Show device event history (alarms, status changes).
 

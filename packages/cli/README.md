@@ -399,6 +399,23 @@ npx thermoworks guide
 npx thermoworks guide beef
 ```
 
+### `thermoworks journal <add|list|show|rm>`
+
+Keep a local logbook of finished cooks: what the cut was, its weight, how it turned out, and notes for next time. Entries are stored in `~/.thermoworks/journal.json`. No credentials required.
+
+```bash
+npx thermoworks journal add --title "Sunday brisket" --meat brisket --weight 12 --rating 4 --notes "Wrapped at 165"
+npx thermoworks journal list
+npx thermoworks journal show 9029it
+npx thermoworks journal rm 9029it
+```
+
+Options:
+- `add` flags: `--title` (required), `--meat`, `--weight` (pounds), `--rating` (1 to 5), `--notes`, `--device SN`, `--archive ID`.
+- `--json` — On `list` and `show`, output entries as JSON.
+
+Each entry gets a short id and a created timestamp. A missing or corrupt journal file is ignored rather than crashing.
+
 ### `thermoworks mcp start`
 
 Start the MCP (Model Context Protocol) server for AI assistants. Runs over stdio.

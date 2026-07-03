@@ -399,6 +399,21 @@ npx thermoworks guide
 npx thermoworks guide beef
 ```
 
+### `thermoworks plan --ready <time> --item <spec>`
+
+Work out when to start each item so everything finishes at the same serve time. Back-calculates a start time from the target time, cook duration, and rest. No credentials required.
+
+```bash
+npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --item ribs
+npx thermoworks plan --ready 18:00 --item "pork butt=8" --item "chicken=5h" --json
+npx thermoworks plan --list-meats
+```
+
+Options:
+- `--ready TIME` — Target serve time. Accepts a time of day (`"6:00 PM"`, `6pm`, `18:00`) or a full date-time. Time-of-day values roll to tomorrow if already past.
+- `--item SPEC` — Add an item. Repeatable. Forms: `NAME` (fixed-time cut), `NAME=WEIGHT` (pounds), or `NAME=Nh` (explicit cook hours).
+- `--list-meats` — Show the built-in meat profiles (cook time, rest, pit temperature).
+
 ### `thermoworks mcp start`
 
 Start the MCP (Model Context Protocol) server for AI assistants. Runs over stdio.

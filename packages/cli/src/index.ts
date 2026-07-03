@@ -26,6 +26,7 @@ import { firmware } from "./commands/firmware.js";
 import { guide } from "./commands/guide.js";
 import { history } from "./commands/history.js";
 import { mcpStart } from "./commands/mcp.js";
+import { plan } from "./commands/plan.js";
 import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
 import { watch } from "./commands/watch.js";
@@ -93,6 +94,11 @@ Commands:
     --output PATH  Write to file (default: stdout)
 
   guide [category] Show temperature guide (safe cooking temps)
+
+  plan             Back-calculate cook start times for a target ready time
+    --ready TIME   When everything should be ready (e.g. "6:00 PM")
+    --item SPEC    Add an item: NAME, NAME=WEIGHT (lb), or NAME=Nh (hours)
+    --list-meats   Show built-in meat profiles
 
   demo <mode>      Show demo output (modes: high, low, normal)
 
@@ -256,6 +262,10 @@ async function main(): Promise<void> {
 
 		case "guide":
 			await guide(args[1], options);
+			break;
+
+		case "plan":
+			await plan(args.slice(1), options);
 			break;
 
 		case "calibration":

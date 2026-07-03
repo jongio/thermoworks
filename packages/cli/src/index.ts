@@ -34,6 +34,7 @@ import { mcpStart } from "./commands/mcp.js";
 import { metrics } from "./commands/metrics.js";
 import { notifications } from "./commands/notifications.js";
 import { plan } from "./commands/plan.js";
+import { replay } from "./commands/replay.js";
 import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
@@ -151,6 +152,12 @@ Commands:
   config list               Show all preferences
   config unset <key>        Remove a preference
   config path               Show the preferences file path
+
+  replay <SERIAL>  Play back a past cook as a live stream
+    --archive ID   Replay a saved archive instead of recent history
+    --channel N    Archive channel to replay (default: first with readings)
+    --speed N      Time compression, e.g. 60 = a minute per second (default: 60)
+    --loop         Restart from the beginning when the replay ends
 
   demo <mode>      Show demo output (modes: high, low, normal)
 
@@ -351,6 +358,10 @@ async function main(): Promise<void> {
 
 		case "plan":
 			await plan(args.slice(1), options);
+			break;
+
+		case "replay":
+			await replay(args.slice(1), options);
 			break;
 
 		case "calibration":

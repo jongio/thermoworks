@@ -327,6 +327,9 @@ scrape_configs:
 ```
 
 
+When `--device` or `--interval` are omitted, `watch` falls back to the `device` and `watchInterval` defaults set with `thermoworks config` (see below).
+
+### `thermoworks events`
 
 Show device event history (alarms, status changes).
 
@@ -633,6 +636,34 @@ Options:
 - `--ready TIME` — Target serve time. Accepts a time of day (`"6:00 PM"`, `6pm`, `18:00`) or a full date-time. Time-of-day values roll to tomorrow if already past.
 - `--item SPEC` — Add an item. Repeatable. Forms: `NAME` (fixed-time cut), `NAME=WEIGHT` (pounds), or `NAME=Nh` (explicit cook hours).
 - `--list-meats` — Show the built-in meat profiles (cook time, rest, pit temperature).
+
+### `thermoworks config`
+
+Store local default preferences so common options do not have to be passed on every command. Preferences are saved to `~/.thermoworks/preferences.json`, separate from the statusline config.
+
+```bash
+npx thermoworks config set unit C
+npx thermoworks config set device M100009168
+npx thermoworks config set watchInterval 20
+npx thermoworks config get unit
+npx thermoworks config list
+npx thermoworks config unset device
+npx thermoworks config path
+```
+
+Subcommands:
+- `set <key> <value>` — Set a preference (validated on write)
+- `get <key>` — Show a single preference value
+- `list` — Show all preferences
+- `unset <key>` — Remove a preference
+- `path` — Print the preferences file path
+
+Keys:
+- `unit` — Default temperature unit, `F` or `C`
+- `device` — Default device serial
+- `watchInterval` — Default `watch` refresh interval in seconds (>= 1)
+
+The `watch` command reads `device` and `watchInterval` when the matching flags are not passed. Unknown keys and invalid values are rejected with a non-zero exit code.
 
 ### `thermoworks mcp start`
 

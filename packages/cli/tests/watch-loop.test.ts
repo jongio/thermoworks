@@ -25,6 +25,10 @@ function registerModuleMocks() {
 	vi.doMock("../src/credentials.js", () => ({
 		getCredentials: mockGetCredentials,
 	}));
+
+	vi.doMock("../src/preferences.js", () => ({
+		loadPreferences: vi.fn(() => Promise.resolve({})),
+	}));
 }
 
 async function importWatchModule() {

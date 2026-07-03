@@ -146,6 +146,21 @@ describe("parseWatchArgs", () => {
 		expect(result.device).toBe("X");
 		expect(result.interval).toBe(10);
 	});
+
+	it("uses default device and interval when flags are omitted", () => {
+		const result = parseWatchArgs([], { device: "PREF1", interval: 25 });
+		expect(result.device).toBe("PREF1");
+		expect(result.interval).toBe(25);
+	});
+
+	it("lets flags override defaults", () => {
+		const result = parseWatchArgs(["--device", "FLAG1", "--interval", "5"], {
+			device: "PREF1",
+			interval: 25,
+		});
+		expect(result.device).toBe("FLAG1");
+		expect(result.interval).toBe(5);
+	});
 });
 
 // =============================================================================

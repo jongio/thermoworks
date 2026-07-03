@@ -390,6 +390,22 @@ Options:
 - `--format FMT` — Output format: `table`, `csv`, or `json` (default: `table`)
 - `--output PATH` — Write to file (default: stdout)
 
+### `thermoworks graph <serial>`
+
+Draw a temperature chart in the terminal from a device's recent history or a saved archive. Useful for seeing the shape of a whole cook without exporting to another tool.
+
+```bash
+npx thermoworks graph M100009168
+npx thermoworks graph M100009168 --width 80 --height 16
+npx thermoworks graph M100009168 --archive abc123 --channel 1
+```
+
+Options:
+- `--archive ID` — Chart a saved archive instead of recent history.
+- `--channel N` — Which archive channel to chart (default: first channel with readings).
+- `--width N` — Chart width in columns (default: 60, minimum 10).
+- `--height N` — Chart height in rows (default: 12, minimum 3).
+
 ### `thermoworks guide [category]`
 
 Show the temperature guide (safe cooking temperatures).

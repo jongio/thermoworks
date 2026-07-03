@@ -23,6 +23,7 @@ import { events, parseEventsArgs } from "./commands/events.js";
 import { exportData } from "./commands/export.js";
 import { fan } from "./commands/fan.js";
 import { firmware } from "./commands/firmware.js";
+import { graph } from "./commands/graph.js";
 import { guide } from "./commands/guide.js";
 import { history } from "./commands/history.js";
 import { mcpStart } from "./commands/mcp.js";
@@ -91,6 +92,12 @@ Commands:
     --limit N      Show the N most recent readings
     --format FMT   Output format: table, csv, or json (default: table)
     --output PATH  Write to file (default: stdout)
+
+  graph <SERIAL>   Draw a temperature chart in the terminal
+    --archive ID   Chart a saved archive instead of recent history
+    --channel N    Archive channel to chart (default: first with readings)
+    --width N      Chart width in columns (default: 60)
+    --height N     Chart height in rows (default: 12)
 
   guide [category] Show temperature guide (safe cooking temps)
 
@@ -248,6 +255,10 @@ async function main(): Promise<void> {
 
 		case "history":
 			await history(args.slice(1), options);
+			break;
+
+		case "graph":
+			await graph(args.slice(1), options);
 			break;
 
 		case "fan":

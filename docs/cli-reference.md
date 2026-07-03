@@ -588,6 +588,47 @@ npx thermoworks history ABC123 --limit 50 --format csv --output brisket.csv
 - When the output format is `table` and no readings exist, prints `No history available for <SERIAL>.`
 - When writing to a file, a summary line is printed to stderr (not stdout) so piping works correctly.
 
+## `thermoworks graph`
+
+Draw a temperature chart directly in the terminal. The `history` table and the one-line sparklines are useful, but neither shows the shape of a whole cook at a glance. `graph` renders a multi-row line chart from a device's recent history or a specific archive.
+
+**Usage**
+
+```bash
+npx thermoworks graph <SERIAL> [--archive ID] [--channel N] [--width N] [--height N]
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--archive ID` - Chart a saved archive instead of recent history.
+- `--channel N` - Which archive channel to chart. Defaults to the first channel that has readings.
+- `--width N` - Chart width in columns. Defaults to 60, minimum 10.
+- `--height N` - Chart height in rows. Defaults to 12, minimum 3.
+
+**Examples**
+
+```bash
+npx thermoworks graph ABC123
+# ABC123 - recent history (°F)
+# 2026-06-01, 8:00 AM  to  2026-06-01, 2:00 PM
+#
+# 225 ┤                                     *********
+# ...
+#  70 ┤*****
+#     └────────────────────────────────────────────
+
+npx thermoworks graph ABC123 --archive a1b2c3 --channel 1 --width 80 --height 16
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- The Y axis labels are interpolated between the series minimum and maximum. The X axis spans the reading time range, shown above the chart.
+- Long series are down-sampled to the chart width by averaging contiguous buckets.
+- Empty, single-reading, and flat series are handled without dividing by zero.
+- Prints `No readings to chart for <SERIAL>.` when there is nothing to plot.
+
 ## `thermoworks firmware`
 
 Show firmware versions for all devices and indicate whether updates are available.

@@ -256,6 +256,24 @@ export function createServer(): McpServer {
 	);
 
 	server.registerTool(
+		"get_data_usage",
+		{
+			description:
+				"Get ThermoWorks Cloud data storage usage for the account. Returns the account total by default, or a per-device breakdown when by_device is true",
+			inputSchema: z.object({
+				by_device: z
+					.boolean()
+					.optional()
+					.describe("Return a per-device breakdown instead of the account total (default false)"),
+			}),
+		},
+		({ by_device }) =>
+			by_device
+				? handleTool((client) => client.getDataUsageByDevice())
+				: handleTool((client) => client.getDataUsage()),
+	);
+
+	server.registerTool(
 		"get_temperature_guide",
 		{
 			description:
@@ -321,6 +339,56 @@ export function createServer(): McpServer {
 				],
 			};
 		},
+	);
+
+	server.registerTool(
+		"get_fan_state",
+		{
+			description:
+				"Get the fan controller state for a ThermoWorks device (connection status, target temperature, channel, and current level). Returns null when the device has no fan controller.",
+			inputSchema: z.object({
+				serial: z.string().min(1).describe("The device serial number"),
+			}),
+		},
+		async ({ serial }) => {
+			const client = getClient();
+			const state = await client.getFanState(serial);
+			if (state === null) {
+				return {
+					content: [{ type: "text", text: `No fan controller found for device ${serial}` }],
+				};
+			}
+			return { content: [{ type: "text", text: JSON.stringify(state, null, 2) }] };
+		},
+	);
+
+	server.registerTool(
+		"set_fan_target",
+		{
+			description:
+				"Set the fan controller target temperature for a ThermoWorks device. The controller drives the fan to hold this temperature.",
+			inputSchema: z.object({
+				serial: z.string().min(1).describe("The device serial number"),
+				target_temp: z
+					.number()
+					.finite()
+					.describe("Target temperature to hold, in the device's configured units"),
+			}),
+		},
+		({ serial, target_temp }) => handleTool((client) => client.setFanTarget(serial, target_temp)),
+	);
+
+	server.registerTool(
+		"set_fan_enabled",
+		{
+			description:
+				"Enable or disable the fan controller connection for a ThermoWorks device. Set enabled=true to turn the controller on, false to turn it off.",
+			inputSchema: z.object({
+				serial: z.string().min(1).describe("The device serial number"),
+				enabled: z.boolean().describe("True to enable the fan controller, false to disable it"),
+			}),
+		},
+		({ serial, enabled }) => handleTool((client) => client.setFanEnabled(serial, enabled)),
 	);
 
 	server.registerTool(

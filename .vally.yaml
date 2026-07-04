@@ -13,18 +13,23 @@ paths:
 environments:
   thermoworks-workspace:
     skills:
-      - ".github/skills/thermoworks/SKILL.md"
+      - "../../.github/skills/thermoworks"
     files:
-      - src: packages/sdk/src
-      - src: packages/cli/src
+      - src: ../../packages/sdk/src
+        dest: packages/sdk/src
+      - src: ../../packages/cli/src
+        dest: packages/cli/src
 
   thermoworks-dev-workspace:
     skills:
-      - ".github/skills/thermoworks-dev/SKILL.md"
+      - "../../.github/skills/thermoworks-dev"
     files:
-      - src: packages/sdk/src
-      - src: packages/cli/src
-      - src: packages/vscode/src
+      - src: ../../packages/sdk/src
+        dest: packages/sdk/src
+      - src: ../../packages/cli/src
+        dest: packages/cli/src
+      - src: ../../packages/vscode/src
+        dest: packages/vscode/src
 
 suites:
   smoke:

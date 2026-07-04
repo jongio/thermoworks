@@ -700,6 +700,44 @@ npx thermoworks data-usage --by-device --json
 - Prints `No device data usage.` when no devices have data (with `--by-device`).
 - Zero bytes total is displayed as `0 B`.
 
+## `thermoworks account`
+
+Show account metadata and the current billing plan.
+
+**Usage**
+
+```bash
+npx thermoworks account
+```
+
+**Options**
+
+- `--json` - Output as JSON: `{ "account": Account, "billingPlan": BillingPlan | null }`.
+
+**Examples**
+
+```bash
+npx thermoworks account
+# Account
+#   Name:       Jane's Kitchen
+#   Account ID: acct-abc123
+#   Type:       standard
+#   Created:    March 15, 2024
+#
+# Billing plan
+#   Plan:       Cloud Basic
+#   Price:      Free
+#   Devices:    3
+
+npx thermoworks account --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Optional account fields (name, type, created date) display as `N/A` when not set.
+- Prints `No billing plan on file.` when the account has no billing plan.
+
 ## `thermoworks fan <SERIAL>`
 
 Show the current fan/blower controller state for a Signals device.
@@ -1167,7 +1205,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `account`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

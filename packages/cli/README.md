@@ -338,6 +338,28 @@ npx thermoworks data-usage --by-device --json
 Options:
 - `--by-device` — Show per-device breakdown (device id + formatted size), sorted by size descending
 
+### `thermoworks account`
+
+Show account details and the current billing plan.
+
+```bash
+npx thermoworks account
+# Account
+#   Name:       Jane's Kitchen
+#   Account ID: acct-abc123
+#   Type:       standard
+#   Created:    March 15, 2024
+#
+# Billing plan
+#   Plan:       Cloud Basic
+#   Price:      Free
+#   Devices:    3
+
+npx thermoworks account --json
+```
+
+Prints `No billing plan on file.` when the account has no plan.
+
 ### `thermoworks fan <serial>`
 
 Show, configure, and toggle the Billows fan/blower controller on Signals devices.

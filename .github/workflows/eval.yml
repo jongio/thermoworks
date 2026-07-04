@@ -26,8 +26,20 @@ jobs:
   eval:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    # Only run in the canonical repo so forks that copy this workflow can't
+    # trigger it. Combined with the token guard below, external actors can never
+    # make this job run with the Copilot secret in scope.
+    if: github.repository == 'jongio/thermoworks'
+    # Scope the Copilot token to a protected environment (set branch restrictions
+    # / required reviewers in repo settings > Environments > copilot-eval).
+    environment: copilot-eval
     permissions:
       contents: read
+    env:
+      # Vally's copilot-sdk executor reads GITHUB_COPILOT_API_TOKEN || GITHUB_TOKEN.
+      # This must be a token from an account with an active Copilot subscription;
+      # the default Actions GITHUB_TOKEN has no Copilot model access.
+      GITHUB_COPILOT_API_TOKEN: ${{ secrets.COPILOT_CLI_TOKEN }}
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -42,18 +54,19 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Skip cleanly when no Copilot token is configured, so scheduled runs stay
+      # green until the secret is provisioned (and never fail for external forks).
       - name: Run eval suite
+        if: ${{ env.GITHUB_COPILOT_API_TOKEN != '' }}
         run: |
           ARGS="--suite ${{ inputs.suite || 'smoke' }} --verbose"
           if [ -n "${{ inputs.model }}" ]; then
             ARGS="$ARGS --model ${{ inputs.model }}"
           fi
           npx vally eval $ARGS
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload eval results
-        if: always()
+        if: ${{ always() && env.GITHUB_COPILOT_API_TOKEN != '' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: eval-results-${{ github.run_id }}

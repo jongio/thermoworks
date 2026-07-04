@@ -5,17 +5,19 @@ description: >-
 
 type: capability
 
-executor: copilot-sdk
-model: gpt-4o
-runs: 2
-timeout: 120
+defaults:
+  executor: copilot-sdk
+  model: auto
+  runs: 2
+  timeout: "120s"
 
 environment: thermoworks-workspace
 
 scoring:
   weights:
-    output-contains: 1.0
-    completed: 1.0
+    output-contains: 0.5
+    output-matches: 0.3
+    completed: 0.2
   threshold: 0.7
 
 stimuli:

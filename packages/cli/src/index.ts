@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { stdout } from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { account } from "./commands/account.js";
 import { alarmClear, alarmSet } from "./commands/alarm.js";
 import { archives, parseArchivesArgs } from "./commands/archives.js";
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
@@ -27,8 +28,12 @@ import { guide } from "./commands/guide.js";
 import { history } from "./commands/history.js";
 import { journal } from "./commands/journal.js";
 import { mcpStart } from "./commands/mcp.js";
+import { metrics } from "./commands/metrics.js";
+import { notifications } from "./commands/notifications.js";
+import { plan } from "./commands/plan.js";
 import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
+import { parseStatsArgs, stats } from "./commands/stats.js";
 import { watch } from "./commands/watch.js";
 import { parseGlobalFlags } from "./output.js";
 
@@ -58,6 +63,12 @@ Commands:
   data-usage       Show account data storage usage
     --by-device    Show per-device breakdown
 
+  notifications    Show account notification settings
+    --enable FIELD   Enable a setting (all, continuous, email, sms, device)
+    --disable FIELD  Disable a setting (all, continuous, email, sms, device)
+
+  account          Show account details and billing plan
+
   devices          List connected devices and channel readings
   device rename <SERIAL> --name <TEXT>        Rename a device
   device reset-minmax <SERIAL> --channel <N>  Reset min/max readings for a channel
@@ -65,8 +76,15 @@ Commands:
   watch            Continuously monitor temperatures (live refresh)
     --device SN    Watch a specific device by serial number
     --interval N   Refresh interval in seconds (default: 10)
+
+  metrics          Serve live temperatures as Prometheus metrics on /metrics
+    --host HOST    Bind address (default: 127.0.0.1)
+    --port N       Listen port (default: 9464)
+    --device SN    Export a specific device by serial number
+    --interval N   Poll interval in seconds (default: 10)
   events           Show device event history (alarms, status changes)
   archives <serial>  List archived sessions for a device
+  stats <serial>   Show cross-session cook analytics for a device
 
   firmware         Show firmware versions and available updates
 
@@ -99,6 +117,11 @@ Commands:
   journal list     List logbook entries (newest first)
   journal show <id>  Show one logbook entry
   journal rm <id>  Remove a logbook entry
+
+  plan             Back-calculate cook start times for a target ready time
+    --ready TIME   When everything should be ready (e.g. "6:00 PM")
+    --item SPEC    Add an item: NAME, NAME=WEIGHT (lb), or NAME=Nh (hours)
+    --list-meats   Show built-in meat profiles
 
   demo <mode>      Show demo output (modes: high, low, normal)
 
@@ -201,6 +224,14 @@ async function main(): Promise<void> {
 			await dataUsage(args.slice(1), options);
 			break;
 
+		case "notifications":
+			await notifications(args.slice(1), options);
+			break;
+
+		case "account":
+			await account(options);
+			break;
+
 		case "device":
 			await device(args.slice(1), options);
 			break;
@@ -218,6 +249,10 @@ async function main(): Promise<void> {
 			await watch(args.slice(1), options);
 			break;
 
+		case "metrics":
+			await metrics(args.slice(1), options);
+			break;
+
 		case "events": {
 			const eventArgs = parseEventsArgs(args.slice(1));
 			await events(eventArgs, options);
@@ -231,6 +266,16 @@ async function main(): Promise<void> {
 				process.exit(1);
 			}
 			await archives(archivesArgs, options);
+			break;
+		}
+
+		case "stats": {
+			const statsArgs = parseStatsArgs(args);
+			if (!statsArgs) {
+				console.error("Usage: thermoworks stats <serial> [--limit N] [--json]");
+				process.exit(1);
+			}
+			await stats(statsArgs, options);
 			break;
 		}
 
@@ -266,6 +311,10 @@ async function main(): Promise<void> {
 
 		case "journal":
 			await journal(args.slice(1), options);
+			break;
+
+		case "plan":
+			await plan(args.slice(1), options);
 			break;
 
 		case "calibration":

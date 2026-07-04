@@ -21,6 +21,14 @@ export {
 } from "./credentials.js";
 export { formatTimeAgo } from "./format.js";
 export type {
+	CookPlan,
+	CookPlanItem,
+	CookPlanItemInput,
+	MeatProfile,
+	PlanCookOptions,
+} from "./plan.js";
+export { getMeatProfiles, planCook, resolveMeatProfile } from "./plan.js";
+export type {
 	ChannelUpdate,
 	ChannelUpdateCallback,
 	ErrorCallback,

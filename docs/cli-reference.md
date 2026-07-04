@@ -409,6 +409,57 @@ npx thermoworks alarm clear ABC123 --channel 1
 - Disables both high and low alarms on the specified channel.
 - After clearing, the command reads back and displays the confirmed alarm state.
 
+## `thermoworks alarm list`
+
+List configured (armed) alarm thresholds across your devices. Read-only, so it never
+changes any settings. Useful for auditing what alarms are set before starting a cook.
+
+**Usage**
+
+```bash
+npx thermoworks alarm list [SERIAL]
+```
+
+**Arguments**
+
+- `SERIAL` - (Optional) Limit the audit to one device. When omitted, every device on the
+  account is scanned.
+
+**Options**
+
+- `--json` - Output the armed alarms as a JSON array.
+
+**Examples**
+
+```bash
+npx thermoworks alarm list
+# Signals (ABC123)
+#   Brisket: high=203°F
+#   Ambient: high=275°F  low=225°F
+# Smoke X4 (DEF456)
+#   Probe 1: low=34°F
+
+npx thermoworks alarm list ABC123
+
+npx thermoworks alarm list --json
+```
+
+**Output**
+
+- Only channels with a high or low alarm armed are listed. Devices with no armed alarms
+  are skipped.
+- Human output groups armed channels under a bold device header (`label (serial)`), one
+  channel per line with `high=` and/or `low=` thresholds.
+- With `--json`, prints an array of
+  `{ serial, deviceLabel, channel, channelLabel, alarmHigh, alarmLow }`. Disarmed sides
+  are `null`.
+- When nothing is armed, prints `No armed alarms on any device.` (or `No armed alarms on
+  <SERIAL>.` when scoped) in human mode, or `[]` with `--json`.
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+
 ## `thermoworks archives`
 
 List or inspect archived cooking sessions for a device.
@@ -1551,7 +1602,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `plan`, `history`, `backup`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `plan`, `history`, `backup`, `search`, `alarm set`, `alarm clear`, `alarm list`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

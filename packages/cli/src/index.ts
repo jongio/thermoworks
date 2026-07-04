@@ -4,7 +4,7 @@ import { stdout } from "node:process";
 import { fileURLToPath } from "node:url";
 
 import { account } from "./commands/account.js";
-import { alarmClear, alarmSet } from "./commands/alarm.js";
+import { alarmClear, alarmList, alarmSet } from "./commands/alarm.js";
 import { archives, parseArchivesArgs } from "./commands/archives.js";
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import { backup } from "./commands/backup.js";
@@ -56,6 +56,7 @@ Commands:
 
   alarm set        Set alarm thresholds on a device channel
   alarm clear      Clear alarm thresholds on a device channel
+  alarm list       List configured alarm thresholds (all devices or one SERIAL)
 
   calibration <SERIAL>  Show NIST-traceable calibration data for a device
 
@@ -189,11 +190,14 @@ async function main(): Promise<void> {
 				case "clear":
 					await alarmClear(args.slice(2), options);
 					break;
+				case "list":
+					await alarmList(args.slice(2), options);
+					break;
 				default:
 					console.error(
 						subcommand
 							? `Unknown alarm command: ${subcommand}`
-							: "Usage: thermoworks alarm <set|clear>",
+							: "Usage: thermoworks alarm <set|clear|list>",
 					);
 					process.exit(1);
 			}

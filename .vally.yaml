@@ -1,16 +1,14 @@
 # Vally configuration for ThermoWorks agent skills evaluation.
 # See https://aka.ms/vally for documentation.
 
-skills:
-  - ".github/skills/"
-
-evals:
-  - "evals/"
-
-results: "results/"
-
-evalFilenames:
-  - "eval.yaml"
+paths:
+  skills:
+    - ".github/skills/"
+  evals:
+    - "evals/"
+  results: "vally-results/"
+  evalFilenames:
+    - "eval.yaml"
 
 environments:
   thermoworks-workspace:

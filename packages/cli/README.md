@@ -230,13 +230,48 @@ Continuously monitor temperatures with live refresh.
 ```bash
 npx thermoworks watch
 npx thermoworks watch --device M100009168 --interval 5
+npx thermoworks watch --json | jq .
 ```
 
 Options:
 - `--device SN` — Watch a specific device by serial number
 - `--interval N` — Refresh interval in seconds (default: 10)
+- `--json` — Emit one NDJSON object per refresh (timestamp plus devices and channels with alarm state) instead of the live display, for piping into other tools
 
-### `thermoworks events`
+### `thermoworks metrics`
+
+Serve live temperatures as [Prometheus](https://prometheus.io/) metrics. Starts a small HTTP server that polls your devices on an interval and exposes the latest readings at `/metrics` in the Prometheus text exposition format.
+
+```bash
+npx thermoworks metrics
+npx thermoworks metrics --host 0.0.0.0 --port 9464 --interval 15
+npx thermoworks metrics --device M100009168
+```
+
+Options:
+- `--host HOST` — Bind address (default: `127.0.0.1`)
+- `--port N` — Listen port (default: `9464`)
+- `--device SN` — Export a specific device by serial number
+- `--interval N` — Poll interval in seconds (default: 10)
+
+Exposed metrics:
+- `thermoworks_channel_temperature` — current channel reading, labeled by `serial`, `device`, `channel`, `label`, and `unit`
+- `thermoworks_channel_minimum` / `thermoworks_channel_maximum` — session min/max per channel
+- `thermoworks_channel_alarm_high` / `thermoworks_channel_alarm_low` — alarm state (1 alarming, 0 clear), present only when the alarm is enabled
+- `thermoworks_device_battery_percent` — device battery level
+- `thermoworks_up` — 1 when the last poll succeeded, 0 otherwise
+- `thermoworks_scrape_errors_total` — count of failed polls since start
+
+Example Prometheus scrape config:
+
+```yaml
+scrape_configs:
+  - job_name: thermoworks
+    static_configs:
+      - targets: ["localhost:9464"]
+```
+
+
 
 Show device event history (alarms, status changes).
 
@@ -259,6 +294,20 @@ List archived sessions for a device.
 npx thermoworks archives M100009168
 npx thermoworks archives M100009168 --id <archive-id> --limit 10
 ```
+
+### `thermoworks stats <serial>`
+
+Summarize a device's archived cook sessions: session count, total, average, and median cook time, longest and shortest cooks, total readings, and the overall date range. Archives without a recorded start and end are counted but left out of the duration figures.
+
+```bash
+npx thermoworks stats M100009168
+npx thermoworks stats M100009168 --limit 50
+npx thermoworks stats M100009168 --json
+```
+
+Options:
+- `--limit N` — Summarize only the N most recent archives
+- `--json` — Emit the stats as JSON (durations in seconds, dates as ISO strings)
 
 ### `thermoworks firmware`
 
@@ -288,6 +337,52 @@ npx thermoworks data-usage --by-device --json
 
 Options:
 - `--by-device` — Show per-device breakdown (device id + formatted size), sorted by size descending
+
+### `thermoworks notifications`
+
+Show account notification settings, and enable or disable individual alert channels.
+
+```bash
+npx thermoworks notifications
+# Notification settings
+#   Notifications enabled  on
+#   Continuous alerts      off
+#   Email alerts           on
+#   SMS alerts             off
+#   Device (app) alerts    on
+
+npx thermoworks notifications --enable sms
+npx thermoworks notifications --disable email
+npx thermoworks notifications --json
+```
+
+Options:
+- `--enable FIELD` — Turn a setting on
+- `--disable FIELD` — Turn a setting off
+
+Fields: `all` (master toggle), `continuous`, `email`, `sms`, `device`.
+
+### `thermoworks account`
+
+Show account details and the current billing plan.
+
+```bash
+npx thermoworks account
+# Account
+#   Name:       Jane's Kitchen
+#   Account ID: acct-abc123
+#   Type:       standard
+#   Created:    March 15, 2024
+#
+# Billing plan
+#   Plan:       Cloud Basic
+#   Price:      Free
+#   Devices:    3
+
+npx thermoworks account --json
+```
+
+Prints `No billing plan on file.` when the account has no plan.
 
 ### `thermoworks fan <serial>`
 

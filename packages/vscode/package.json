@@ -573,7 +573,7 @@
     "esbuild": "^0.28.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "recharts": "^3.9.1",
+    "recharts": "^3.9.2",
     "thermoworks-sdk": "workspace:^",
     "typescript": "^6.0.3",
     "vite": "^8.1.3",

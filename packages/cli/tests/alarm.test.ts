@@ -1,4 +1,4 @@
-import type { Alarm, DeviceChannel } from "thermoworks-sdk";
+import type { Alarm, Device, DeviceChannel } from "thermoworks-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // --- Module mocks ---
@@ -7,11 +7,17 @@ vi.mock("thermoworks-sdk", async (importOriginal) => {
 	const actual = await importOriginal<typeof import("thermoworks-sdk")>();
 	const mockSetAlarm = vi.fn();
 	const mockGetDeviceChannel = vi.fn();
+	const mockGetDevices = vi.fn();
+	const mockGetDevice = vi.fn();
+	const mockGetAllDeviceChannels = vi.fn();
 	const mockClose = vi.fn();
 
 	class MockThermoworksCloud {
 		setAlarm = mockSetAlarm;
 		getDeviceChannel = mockGetDeviceChannel;
+		getDevices = mockGetDevices;
+		getDevice = mockGetDevice;
+		getAllDeviceChannels = mockGetAllDeviceChannels;
 		close = mockClose;
 	}
 
@@ -30,6 +36,9 @@ const mockGetCredentials = vi.mocked(getCredentials);
 const mockClient = new ThermoworksCloud({ email: "", password: "" });
 const mockSetAlarm = vi.mocked(mockClient.setAlarm);
 const mockGetDeviceChannel = vi.mocked(mockClient.getDeviceChannel);
+const mockGetDevices = vi.mocked(mockClient.getDevices);
+const mockGetDevice = vi.mocked(mockClient.getDevice);
+const mockGetAllDeviceChannels = vi.mocked(mockClient.getAllDeviceChannels);
 
 // --- Helpers ---
 
@@ -51,7 +60,7 @@ function makeChannel(overrides: Partial<DeviceChannel> = {}): DeviceChannel {
 		label: overrides.label ?? null,
 		status: null,
 		type: null,
-		number: null,
+		number: overrides.number ?? null,
 		enabled: null,
 		color: null,
 		lastSeen: null,
@@ -66,6 +75,15 @@ function makeChannel(overrides: Partial<DeviceChannel> = {}): DeviceChannel {
 		minimum: null,
 		maximum: null,
 	};
+}
+
+function makeDevice(overrides: Partial<Device> & { serial: string }): Device {
+	return {
+		serial: overrides.serial,
+		label: overrides.label ?? null,
+		type: overrides.type ?? null,
+		status: overrides.status ?? null,
+	} as Device;
 }
 
 // --- Test setup ---
@@ -371,5 +389,150 @@ describe("alarmClear", () => {
 			high: { value: 0, enabled: false },
 			low: { value: 0, enabled: false },
 		});
+	});
+});
+
+// =============================================================================
+// alarm list
+// =============================================================================
+
+describe("alarmList", () => {
+	it("lists armed alarms across all devices grouped by device", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetDevices.mockResolvedValue([
+			makeDevice({ serial: "DEV1", label: "Smoker" }),
+			makeDevice({ serial: "DEV2", label: null }),
+		]);
+		mockGetAllDeviceChannels.mockImplementation(async (serial: string) => {
+			if (serial === "DEV1") {
+				return [
+					makeChannel({
+						number: "1",
+						label: "Brisket",
+						alarmHigh: makeAlarm({ enabled: true, value: 203, units: "F" }),
+						alarmLow: null,
+					}),
+					makeChannel({ number: "2", label: "Ambient", alarmHigh: null, alarmLow: null }),
+				];
+			}
+			return [
+				makeChannel({
+					number: "1",
+					label: "Fridge",
+					alarmHigh: null,
+					alarmLow: makeAlarm({ enabled: true, value: 34, units: "F" }),
+				}),
+			];
+		});
+
+		const { alarmList } = await import("../src/commands/alarm.js");
+		await alarmList([], { json: false });
+
+		const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+		expect(output).toContain("Smoker (DEV1)");
+		expect(output).toContain("Brisket: high=203\u00B0F");
+		expect(output).toContain("DEV2");
+		expect(output).toContain("Fridge: low=34\u00B0F");
+		// Channel with no armed alarm is omitted.
+		expect(output).not.toContain("Ambient");
+	});
+
+	it("scopes to a single device when a serial is given", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetDevice.mockResolvedValue(makeDevice({ serial: "DEV1", label: "Smoker" }));
+		mockGetAllDeviceChannels.mockResolvedValue([
+			makeChannel({
+				number: "1",
+				label: "Brisket",
+				alarmHigh: makeAlarm({ enabled: true, value: 203, units: "F" }),
+				alarmLow: makeAlarm({ enabled: true, value: 150, units: "F" }),
+			}),
+		]);
+
+		const { alarmList } = await import("../src/commands/alarm.js");
+		await alarmList(["DEV1"], { json: false });
+
+		expect(mockGetDevice).toHaveBeenCalledWith("DEV1");
+		expect(mockGetDevices).not.toHaveBeenCalled();
+		const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+		expect(output).toContain("Brisket: high=203\u00B0F  low=150\u00B0F");
+	});
+
+	it("outputs JSON when --json flag is set", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetDevices.mockResolvedValue([makeDevice({ serial: "DEV1", label: "Smoker" })]);
+		mockGetAllDeviceChannels.mockResolvedValue([
+			makeChannel({
+				number: "1",
+				label: "Brisket",
+				alarmHigh: makeAlarm({ enabled: true, value: 203, units: "F" }),
+				alarmLow: null,
+			}),
+		]);
+
+		const { alarmList } = await import("../src/commands/alarm.js");
+		await alarmList(["--json"], { json: true });
+
+		expect(logSpy).toHaveBeenCalledTimes(1);
+		const output = JSON.parse(logSpy.mock.calls[0][0] as string);
+		expect(Array.isArray(output)).toBe(true);
+		expect(output).toHaveLength(1);
+		expect(output[0].serial).toBe("DEV1");
+		expect(output[0].deviceLabel).toBe("Smoker");
+		expect(output[0].channel).toBe(1);
+		expect(output[0].channelLabel).toBe("Brisket");
+		expect(output[0].alarmHigh.value).toBe(203);
+		expect(output[0].alarmLow).toBeNull();
+	});
+
+	it("shows a message when no armed alarms exist across all devices", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetDevices.mockResolvedValue([makeDevice({ serial: "DEV1", label: "Smoker" })]);
+		mockGetAllDeviceChannels.mockResolvedValue([
+			makeChannel({ number: "1", label: "Brisket", alarmHigh: null, alarmLow: null }),
+		]);
+
+		const { alarmList } = await import("../src/commands/alarm.js");
+		await alarmList([], { json: false });
+
+		const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+		expect(output).toContain("No armed alarms on any device");
+	});
+
+	it("shows a device-scoped message when the given device has no armed alarms", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetDevice.mockResolvedValue(makeDevice({ serial: "DEV1", label: "Smoker" }));
+		mockGetAllDeviceChannels.mockResolvedValue([
+			makeChannel({ number: "1", label: "Brisket", alarmHigh: null, alarmLow: null }),
+		]);
+
+		const { alarmList } = await import("../src/commands/alarm.js");
+		await alarmList(["DEV1"], { json: false });
+
+		const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+		expect(output).toContain("No armed alarms on DEV1");
+	});
+
+	it("outputs an empty JSON array when no armed alarms exist", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetDevices.mockResolvedValue([makeDevice({ serial: "DEV1", label: "Smoker" })]);
+		mockGetAllDeviceChannels.mockResolvedValue([
+			makeChannel({ number: "1", label: "Brisket", alarmHigh: null, alarmLow: null }),
+		]);
+
+		const { alarmList } = await import("../src/commands/alarm.js");
+		await alarmList(["--json"], { json: true });
+
+		expect(logSpy).toHaveBeenCalledTimes(1);
+		const output = JSON.parse(logSpy.mock.calls[0][0] as string);
+		expect(output).toEqual([]);
+	});
+
+	it("exits when not logged in", async () => {
+		mockGetCredentials.mockResolvedValue(null);
+
+		const { alarmList } = await import("../src/commands/alarm.js");
+		await expect(alarmList([], { json: false })).rejects.toThrow("process.exit");
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Not logged in"));
 	});
 });

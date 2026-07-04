@@ -159,6 +159,22 @@ Clear alarm thresholds on a device channel.
 npx thermoworks alarm clear <serial> --channel <1-9>
 ```
 
+### `thermoworks alarm list`
+
+List configured (armed) alarm thresholds. Without a serial it scans every device on
+the account; pass a serial to scope to one device. Read-only, so it never changes any
+settings. Handy for auditing what alarms are set before a cook.
+
+```bash
+npx thermoworks alarm list           # all devices
+npx thermoworks alarm list <serial>  # one device
+npx thermoworks alarm list --json    # machine-readable
+```
+
+Only channels with a high or low alarm armed are shown. With `--json`, prints an array
+of `{ serial, deviceLabel, channel, channelLabel, alarmHigh, alarmLow }`.
+
+
 ### `thermoworks calibration <serial>`
 
 Show NIST-traceable calibration data for a device.

@@ -1,4 +1,4 @@
-import type { ActionResult } from "thermoworks-sdk";
+import type { ActionResult, Device } from "thermoworks-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // --- Module mocks ---
@@ -8,12 +8,16 @@ vi.mock("thermoworks-sdk", async (importOriginal) => {
 	const mockStartSession = vi.fn();
 	const mockEndSession = vi.fn();
 	const mockClearSession = vi.fn();
+	const mockGetDevices = vi.fn();
+	const mockGetDevice = vi.fn();
 	const mockClose = vi.fn();
 
 	class MockThermoworksCloud {
 		startSession = mockStartSession;
 		endSession = mockEndSession;
 		clearSession = mockClearSession;
+		getDevices = mockGetDevices;
+		getDevice = mockGetDevice;
 		close = mockClose;
 	}
 
@@ -39,6 +43,8 @@ const mockClient = new ThermoworksCloud({ email: "", password: "" });
 const mockStartSession = vi.mocked(mockClient.startSession);
 const mockEndSession = vi.mocked(mockClient.endSession);
 const mockClearSession = vi.mocked(mockClient.clearSession);
+const mockGetDevices = vi.mocked(mockClient.getDevices);
+const mockGetDevice = vi.mocked(mockClient.getDevice);
 
 // --- Helpers ---
 
@@ -48,6 +54,15 @@ function ok(data: unknown = null): ActionResult {
 
 function fail(error: string): ActionResult {
 	return { success: false, data: null, error };
+}
+
+function makeDevice(overrides: Partial<Device> & { serial: string }): Device {
+	return {
+		serial: overrides.serial,
+		label: overrides.label ?? null,
+		sessionStart: overrides.sessionStart ?? null,
+		sessionLabel: overrides.sessionLabel ?? null,
+	} as Device;
 }
 
 // --- Test setup ---
@@ -354,6 +369,115 @@ describe("session (router)", () => {
 		await expect(session(["unknown", "SER123"], { json: false })).rejects.toThrow("process.exit");
 
 		expect(errorSpy).toHaveBeenCalledWith("Unknown session command: unknown");
+		exitSpy.mockRestore();
+	});
+
+	it("routes 'status' to sessionStatus without requiring a serial", async () => {
+		mockGetDevices.mockResolvedValue([]);
+
+		const { session } = await import("../src/commands/session.js");
+		await session(["status"], { json: false });
+
+		expect(mockGetDevices).toHaveBeenCalledTimes(1);
+		expect(logSpy).toHaveBeenCalledWith("No active sessions.");
+	});
+});
+
+// =============================================================================
+// session status
+// =============================================================================
+
+describe("sessionStatus", () => {
+	it("lists devices that have an active session", async () => {
+		const start = new Date(Date.now() - 2 * 60 * 60 * 1000); // 2 hours ago
+		mockGetDevices.mockResolvedValue([
+			makeDevice({ serial: "DEV1", label: "Smoker", sessionStart: start, sessionLabel: "Brisket" }),
+			makeDevice({ serial: "DEV2", label: "Idle", sessionStart: null }),
+		]);
+
+		const { sessionStatus } = await import("../src/commands/session.js");
+		await sessionStatus(undefined, { json: false });
+
+		const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+		expect(output).toContain("Smoker (DEV1)");
+		expect(output).toContain('"Brisket"');
+		expect(output).toContain("started");
+		// Device with no session is omitted.
+		expect(output).not.toContain("Idle");
+	});
+
+	it("scopes to a single device when a serial is given", async () => {
+		const start = new Date(Date.now() - 30 * 60 * 1000);
+		mockGetDevice.mockResolvedValue(
+			makeDevice({ serial: "DEV1", label: "Smoker", sessionStart: start, sessionLabel: null }),
+		);
+
+		const { sessionStatus } = await import("../src/commands/session.js");
+		await sessionStatus("DEV1", { json: false });
+
+		expect(mockGetDevice).toHaveBeenCalledWith("DEV1");
+		expect(mockGetDevices).not.toHaveBeenCalled();
+		const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+		expect(output).toContain("Smoker (DEV1)");
+	});
+
+	it("outputs JSON with elapsed seconds when --json is set", async () => {
+		const start = new Date(Date.now() - 60 * 1000); // ~60s ago
+		mockGetDevices.mockResolvedValue([
+			makeDevice({ serial: "DEV1", label: "Smoker", sessionStart: start, sessionLabel: "Brisket" }),
+		]);
+
+		const { sessionStatus } = await import("../src/commands/session.js");
+		await sessionStatus(undefined, { json: true });
+
+		expect(logSpy).toHaveBeenCalledTimes(1);
+		const output = JSON.parse(logSpy.mock.calls[0][0] as string);
+		expect(output).toHaveLength(1);
+		expect(output[0].serial).toBe("DEV1");
+		expect(output[0].deviceLabel).toBe("Smoker");
+		expect(output[0].sessionLabel).toBe("Brisket");
+		expect(output[0].sessionStart).toBe(start.toISOString());
+		expect(output[0].elapsedSeconds).toBeGreaterThanOrEqual(59);
+	});
+
+	it("prints 'No active sessions.' when nothing is running", async () => {
+		mockGetDevices.mockResolvedValue([makeDevice({ serial: "DEV1", sessionStart: null })]);
+
+		const { sessionStatus } = await import("../src/commands/session.js");
+		await sessionStatus(undefined, { json: false });
+
+		expect(logSpy).toHaveBeenCalledWith("No active sessions.");
+	});
+
+	it("prints a device-scoped message when the given device has no session", async () => {
+		mockGetDevice.mockResolvedValue(makeDevice({ serial: "DEV1", sessionStart: null }));
+
+		const { sessionStatus } = await import("../src/commands/session.js");
+		await sessionStatus("DEV1", { json: false });
+
+		expect(logSpy).toHaveBeenCalledWith("No active session on DEV1.");
+	});
+
+	it("outputs an empty JSON array when nothing is running", async () => {
+		mockGetDevices.mockResolvedValue([makeDevice({ serial: "DEV1", sessionStart: null })]);
+
+		const { sessionStatus } = await import("../src/commands/session.js");
+		await sessionStatus(undefined, { json: true });
+
+		const output = JSON.parse(logSpy.mock.calls[0][0] as string);
+		expect(output).toEqual([]);
+	});
+
+	it("exits when not logged in", async () => {
+		mockGetCredentials.mockResolvedValue(null);
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+			throw new Error("process.exit");
+		});
+
+		const { sessionStatus } = await import("../src/commands/session.js");
+		await expect(sessionStatus(undefined, { json: false })).rejects.toThrow("process.exit");
+
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Not logged in"));
 		exitSpy.mockRestore();
 	});
 });

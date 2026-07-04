@@ -1358,6 +1358,42 @@ npx thermoworks session clear ABC123 --yes
 - When `--json` is active, the confirmation prompt is skipped.
 - Exits with an error if clearing fails.
 
+## `thermoworks session status [SERIAL]`
+
+Show which devices currently have an active monitoring session, with the session label and how long it has been running. Read-only: it never starts, ends, or clears a session.
+
+**Usage**
+
+```bash
+npx thermoworks session status [SERIAL]
+```
+
+**Arguments**
+
+- `SERIAL` - (Optional) Limit the check to one device. When omitted, every device on the account is scanned.
+
+**Options**
+
+- `--json` - Output the active sessions as a JSON array.
+
+**Examples**
+
+```bash
+npx thermoworks session status
+# Smoker (ABC123) "Brisket cook"  started 2 hours ago
+
+npx thermoworks session status ABC123
+
+npx thermoworks session status --json
+# [{"serial":"ABC123","deviceLabel":"Smoker","sessionLabel":"Brisket cook","sessionStart":"2026-01-01T12:00:00.000Z","elapsedSeconds":7200}]
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Derived from the `sessionStart` and `sessionLabel` fields on each device.
+- Devices with no active session are skipped. When nothing is running, prints `No active sessions.` (or `No active session on <SERIAL>.` when scoped), or `[]` with `--json`.
+
 ## `thermoworks watch`
 
 Continuously monitor device temperatures with a live-refreshing display. Clears the terminal and redraws on each refresh cycle.
@@ -1471,7 +1507,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `plan`, `history`, `backup`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `plan`, `history`, `backup`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

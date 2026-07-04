@@ -477,6 +477,23 @@ npx thermoworks session end <serial>
 npx thermoworks session clear <serial> --yes
 ```
 
+### `thermoworks session status [serial]`
+
+Show which devices currently have an active monitoring session, with the session label
+and how long it has been running. Read-only. Without a serial it scans every device; pass
+a serial to scope to one.
+
+```bash
+npx thermoworks session status           # all devices
+npx thermoworks session status <serial>  # one device
+npx thermoworks session status --json    # machine-readable
+```
+
+With `--json`, prints an array of
+`{ serial, deviceLabel, sessionLabel, sessionStart, elapsedSeconds }`. Prints
+`No active sessions.` (or the scoped variant) when nothing is running.
+
+
 ### `thermoworks export <serial>`
 
 Export archive readings to CSV or JSON.

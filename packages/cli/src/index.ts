@@ -106,6 +106,7 @@ Commands:
 
   session start    Start a monitoring session (--label TEXT)
   session end      End an active monitoring session
+  session status   Show devices with an active session (all or one SERIAL)
   session clear    Clear session data (--yes to skip confirmation)
 
   export SERIAL    Export archive readings to CSV or JSON

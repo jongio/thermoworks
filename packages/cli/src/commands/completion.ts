@@ -124,7 +124,7 @@ export function fishCompletion(): string {
 	const lines: string[] = [
 		"# fish completion for thermoworks",
 		"# Install: thermoworks completion fish > ~/.config/fish/completions/thermoworks.fish",
-		'function __thermoworks_no_subcommand',
+		"function __thermoworks_no_subcommand",
 		"    set -l cmd (commandline -opc)",
 		"    test (count $cmd) -eq 1",
 		"end",
@@ -208,7 +208,10 @@ export function isSupportedShell(value: string): value is Shell {
  * Print a shell completion script for the given shell to stdout.
  * Exits non-zero when the shell is missing or unsupported.
  */
-export async function completion(shell: string | undefined, _options: OutputOptions): Promise<void> {
+export async function completion(
+	shell: string | undefined,
+	_options: OutputOptions,
+): Promise<void> {
 	if (!shell) {
 		console.error(`Usage: thermoworks completion <${SUPPORTED_SHELLS.join("|")}>`);
 		process.exit(1);
@@ -216,9 +219,7 @@ export async function completion(shell: string | undefined, _options: OutputOpti
 	}
 
 	if (!isSupportedShell(shell)) {
-		console.error(
-			`Unsupported shell: ${shell}. Supported shells: ${SUPPORTED_SHELLS.join(", ")}.`,
-		);
+		console.error(`Unsupported shell: ${shell}. Supported shells: ${SUPPORTED_SHELLS.join(", ")}.`);
 		process.exit(1);
 		return;
 	}

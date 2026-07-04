@@ -983,6 +983,48 @@ npx thermoworks guide --json
 - Prints `No categories matching "<filter>".` when the filter has no matches.
 - Prints `No temperature guide categories found.` when the guide data is empty.
 
+## `thermoworks plan --ready <time> --item <spec>`
+
+Work out when to start each item so everything finishes at the same serve time. The planner back-calculates a start time for each item from the target serve time, its cook duration, and its rest. Items are sorted so the earliest start is listed first. No credentials or network access required.
+
+**Usage**
+
+```bash
+npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --item ribs
+npx thermoworks plan --list-meats
+```
+
+**Options**
+
+- `--ready TIME` - Target serve time. Accepts a time of day (`"6:00 PM"`, `6pm`, `18:00`) or a full date-time string. Time-of-day values resolve to today, rolling to tomorrow if the time has already passed. Required unless `--list-meats` is given.
+- `--item SPEC` - Add an item to the plan. Repeatable. Three forms:
+  - `NAME` - a fixed-time cut (for example `ribs`), using the built-in profile duration.
+  - `NAME=WEIGHT` - a weight-based cut in pounds (for example `brisket=12`), using the profile's hours-per-pound.
+  - `NAME=Nh` - explicit cook hours (for example `chicken=5h`), for anything not covered by a profile.
+- `--list-meats` - List the built-in meat profiles (cook time, rest, pit temperature) and exit.
+- `--json` - Output the plan (or profile list) as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --item ribs
+# Cook plan - everything ready at 6:00 PM
+#
+#   Start    Item     Cook   Rest  Pull off
+#   3:30 AM  brisket  15h    1h    5:00 PM
+#   12:30 PM ribs     5h 30m -     6:00 PM
+
+npx thermoworks plan --ready 18:00 --item "pork butt=8" --json
+
+npx thermoworks plan --list-meats
+```
+
+**Notes**
+
+- Weight-based items use the profile's hours-per-pound; fixed-time items ignore any weight.
+- Rest time comes from the meat profile and is added after the cook when computing the start time.
+- Unknown meat names with no explicit `=Nh` value are reported as an error listing the recognized profiles.
+
 ## `thermoworks device rename <SERIAL> --name <TEXT>`
 
 Rename a device label.
@@ -1251,7 +1293,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `plan`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

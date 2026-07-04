@@ -244,6 +244,18 @@ export function createServer(): McpServer {
 	);
 
 	server.registerTool(
+		"get_calibration",
+		{
+			description:
+				"Get NIST-traceable calibration records for a ThermoWorks device, including per-channel low and high point adjustments, deviations, and pass/fail results",
+			inputSchema: z.object({
+				serial: z.string().describe("The device serial number"),
+			}),
+		},
+		({ serial }) => handleTool((client) => client.getCalibration(serial)),
+	);
+
+	server.registerTool(
 		"get_data_usage",
 		{
 			description:

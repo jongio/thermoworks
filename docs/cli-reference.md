@@ -274,7 +274,7 @@ npx thermoworks mcp start
 - The server runs over stdio — it is designed to be launched by an MCP client, not used interactively.
 - Credentials are resolved from environment variables (`THERMOWORKS_EMAIL` + `THERMOWORKS_PASSWORD`) first, then from the OS keychain.
 - If no credentials are available, the server exits with an error.
-- Exposes 12 tools: `get_devices`, `get_device`, `get_device_channels`, `get_average_temperature`, `get_events`, `get_archives`, `get_temperature_guide`, `set_alarm`, `start_session`, `end_session`, `get_firmware_status`, `get_archive_detail`.
+- Exposes 16 tools: `get_devices`, `get_device`, `get_device_channels`, `get_average_temperature`, `get_live_cook_snapshot`, `get_events`, `get_archives`, `get_archive_detail`, `get_temperature_guide`, `set_alarm`, `get_fan_state`, `set_fan_target`, `set_fan_enabled`, `start_session`, `end_session`, `get_firmware_status`.
 - Errors from the ThermoWorks SDK are sanitized before being returned to the client.
 - Add to your MCP client config (e.g., `~/.copilot/settings.json`):
 
@@ -405,6 +405,49 @@ npx thermoworks archives ABC123 --limit 5 --json
 - Requires valid credentials from environment variables or the OS keychain.
 - Without `--id`: lists archives showing label, start time, duration, and reading count.
 - With `--id`: shows detailed view including per-channel min/max/last values.
+- Prints `No archives found.` when the device has no archived sessions.
+
+## `thermoworks stats`
+
+Summarize a device's archived cook sessions into aggregate metrics.
+
+**Usage**
+
+```bash
+npx thermoworks stats <SERIAL> [--limit N] [--json]
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--limit N` - Summarize only the N most recent archives.
+- `--json` - Output as JSON. Durations are reported in seconds and dates as ISO strings.
+
+**Examples**
+
+```bash
+npx thermoworks stats ABC123
+# Cook statistics for ABC123
+#
+#   Archived sessions:   3
+#   Sessions with times: 2
+#   Total cook time:     22h 15m
+#   Average cook time:   11h 7m
+#   Median cook time:    11h 7m
+#   Total readings:      1335
+#   Longest cook:        12h 30m  (Weekend Brisket)
+#   Shortest cook:       9h 45m  (Pork Shoulder)
+#   First session start: 5/28/2026, 7:15:00 AM
+#   Last session end:    6/1/2026, 8:30:00 PM
+
+npx thermoworks stats ABC123 --limit 50 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Archives without a recorded start and end are counted in the session total but left out of the duration figures.
+- The median averages the two middle values when the duration count is even.
 - Prints `No archives found.` when the device has no archived sessions.
 
 ## `thermoworks calibration`
@@ -702,6 +745,44 @@ npx thermoworks notifications --json
 - Requires valid credentials from environment variables or the OS keychain.
 - Only one `--enable` or `--disable` may be given per invocation.
 - The current settings are always printed after any change is applied.
+
+## `thermoworks account`
+
+Show account metadata and the current billing plan.
+
+**Usage**
+
+```bash
+npx thermoworks account
+```
+
+**Options**
+
+- `--json` - Output as JSON: `{ "account": Account, "billingPlan": BillingPlan | null }`.
+
+**Examples**
+
+```bash
+npx thermoworks account
+# Account
+#   Name:       Jane's Kitchen
+#   Account ID: acct-abc123
+#   Type:       standard
+#   Created:    March 15, 2024
+#
+# Billing plan
+#   Plan:       Cloud Basic
+#   Price:      Free
+#   Devices:    3
+
+npx thermoworks account --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Optional account fields (name, type, created date) display as `N/A` when not set.
+- Prints `No billing plan on file.` when the account has no billing plan.
 
 ## `thermoworks fan <SERIAL>`
 
@@ -1064,13 +1145,14 @@ Continuously monitor device temperatures with a live-refreshing display. Clears 
 **Usage**
 
 ```bash
-npx thermoworks watch [--device SERIAL] [--interval N]
+npx thermoworks watch [--device SERIAL] [--interval N] [--json]
 ```
 
 **Options**
 
 - `--device SERIAL` - Watch a specific device by serial number. Without this flag, all devices are shown.
 - `--interval N` - Refresh interval in seconds. Must be >= 1. Defaults to `10`.
+- `--json` - Emit one newline-delimited JSON (NDJSON) object per refresh instead of the live display. Each frame has an ISO `timestamp` and a `devices` array; every device carries `serial`, `label`, `type`, `status`, `battery`, and a `channels` array with `number`, `label`, `value`, `units`, and `alarm` (`high`, `low`, or `normal`). The screen is not cleared, so output can be piped or appended to a file.
 
 **Examples**
 
@@ -1086,17 +1168,77 @@ npx thermoworks watch
 #     Internal  38°F
 
 npx thermoworks watch --device ABC123 --interval 5
+
+npx thermoworks watch --json --interval 5 | jq .
+# {"timestamp":"2025-06-07T19:30:00.000Z","devices":[{"serial":"ABC123","label":"Smoker","type":"signals","status":"online","battery":87,"channels":[{"number":"1","label":"Pit","value":225,"units":"F","alarm":"normal"}]}]}
 ```
 
 **Notes**
 
 - Requires valid credentials from environment variables or the OS keychain.
-- Clears the screen before each refresh and displays a timestamp header.
+- Clears the screen before each refresh and displays a timestamp header (human-readable mode only; `--json` does not clear the screen).
 - Shows device label (or serial), type, status, and all enabled channels with current readings.
 - Shows a compact sparkline beside channels when recent samples are available.
 - Exits immediately with an error if `--device` is specified and no matching device is found.
 - Press `Ctrl+C` to exit (handled by the global SIGINT handler).
 - The `--interval` must be a positive number >= 1; values below 1 produce an error.
+
+## `thermoworks metrics`
+
+Serve live device temperatures as [Prometheus](https://prometheus.io/) metrics. Starts a small HTTP server that polls your devices on an interval and exposes the latest snapshot at `/metrics` in the Prometheus text exposition format (version 0.0.4).
+
+**Usage**
+
+```bash
+npx thermoworks metrics [--host HOST] [--port N] [--device SERIAL] [--interval N]
+```
+
+**Options**
+
+- `--host HOST` - Bind address. Defaults to `127.0.0.1`. Use `0.0.0.0` to listen on all interfaces.
+- `--port N` - Listen port. Must be an integer between 1 and 65535. Defaults to `9464`.
+- `--device SERIAL` - Export a specific device by serial number. Without this flag, all devices are exported.
+- `--interval N` - Poll interval in seconds. Must be >= 1. Defaults to `10`.
+
+**Exposed metrics**
+
+| Metric | Type | Labels | Description |
+| --- | --- | --- | --- |
+| `thermoworks_channel_temperature` | gauge | `serial`, `device`, `channel`, `label`, `unit` | Current channel reading. |
+| `thermoworks_channel_minimum` | gauge | `serial`, `device`, `channel`, `label`, `unit` | Session minimum reading. |
+| `thermoworks_channel_maximum` | gauge | `serial`, `device`, `channel`, `label`, `unit` | Session maximum reading. |
+| `thermoworks_channel_alarm_high` | gauge | `serial`, `device`, `channel`, `label`, `unit` | High alarm state (1 alarming, 0 clear). Present only when the high alarm is enabled. |
+| `thermoworks_channel_alarm_low` | gauge | `serial`, `device`, `channel`, `label`, `unit` | Low alarm state (1 alarming, 0 clear). Present only when the low alarm is enabled. |
+| `thermoworks_device_battery_percent` | gauge | `serial`, `device` | Device battery level. |
+| `thermoworks_up` | gauge | (none) | 1 when the last poll succeeded, 0 otherwise. |
+| `thermoworks_scrape_errors_total` | counter | (none) | Count of failed polls since start. |
+
+**Examples**
+
+```bash
+npx thermoworks metrics
+# ThermoWorks metrics exporter listening on http://127.0.0.1:9464/metrics
+# Polling every 10s (Ctrl+C to exit)
+
+npx thermoworks metrics --host 0.0.0.0 --port 9464 --interval 15
+npx thermoworks metrics --device ABC123
+```
+
+Example Prometheus scrape config:
+
+```yaml
+scrape_configs:
+  - job_name: thermoworks
+    static_configs:
+      - targets: ["localhost:9464"]
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Polls in the background on the configured interval and serves the most recent snapshot, so scrapes never block on the ThermoWorks Cloud API.
+- Disabled channels and channels with no current reading are omitted.
+- Press `Ctrl+C` to exit (handled by the global SIGINT handler).
 
 ## Global Options
 
@@ -1109,7 +1251,7 @@ npx thermoworks watch --device ABC123 --interval 5
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `data-usage`, `notifications`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

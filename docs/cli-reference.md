@@ -407,6 +407,49 @@ npx thermoworks archives ABC123 --limit 5 --json
 - With `--id`: shows detailed view including per-channel min/max/last values.
 - Prints `No archives found.` when the device has no archived sessions.
 
+## `thermoworks stats`
+
+Summarize a device's archived cook sessions into aggregate metrics.
+
+**Usage**
+
+```bash
+npx thermoworks stats <SERIAL> [--limit N] [--json]
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--limit N` - Summarize only the N most recent archives.
+- `--json` - Output as JSON. Durations are reported in seconds and dates as ISO strings.
+
+**Examples**
+
+```bash
+npx thermoworks stats ABC123
+# Cook statistics for ABC123
+#
+#   Archived sessions:   3
+#   Sessions with times: 2
+#   Total cook time:     22h 15m
+#   Average cook time:   11h 7m
+#   Median cook time:    11h 7m
+#   Total readings:      1335
+#   Longest cook:        12h 30m  (Weekend Brisket)
+#   Shortest cook:       9h 45m  (Pork Shoulder)
+#   First session start: 5/28/2026, 7:15:00 AM
+#   Last session end:    6/1/2026, 8:30:00 PM
+
+npx thermoworks stats ABC123 --limit 50 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Archives without a recorded start and end are counted in the session total but left out of the duration figures.
+- The median averages the two middle values when the duration count is even.
+- Prints `No archives found.` when the device has no archived sessions.
+
 ## `thermoworks calibration`
 
 Show NIST-traceable calibration data for a device, including low-point adjustments and high-point reference measurements.
@@ -1063,7 +1106,7 @@ npx thermoworks watch --device ABC123 --interval 5
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `firmware`, `data-usage`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `fan`, `calibration`, `guide`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

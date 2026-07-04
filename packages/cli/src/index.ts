@@ -28,6 +28,7 @@ import { history } from "./commands/history.js";
 import { mcpStart } from "./commands/mcp.js";
 import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
+import { parseStatsArgs, stats } from "./commands/stats.js";
 import { watch } from "./commands/watch.js";
 import { parseGlobalFlags } from "./output.js";
 
@@ -66,6 +67,7 @@ Commands:
     --interval N   Refresh interval in seconds (default: 10)
   events           Show device event history (alarms, status changes)
   archives <serial>  List archived sessions for a device
+  stats <serial>   Show cross-session cook analytics for a device
 
   firmware         Show firmware versions and available updates
 
@@ -225,6 +227,16 @@ async function main(): Promise<void> {
 				process.exit(1);
 			}
 			await archives(archivesArgs, options);
+			break;
+		}
+
+		case "stats": {
+			const statsArgs = parseStatsArgs(args);
+			if (!statsArgs) {
+				console.error("Usage: thermoworks stats <serial> [--limit N] [--json]");
+				process.exit(1);
+			}
+			await stats(statsArgs, options);
 			break;
 		}
 

@@ -665,6 +665,23 @@ Keys:
 
 The `watch` command reads `device` and `watchInterval` when the matching flags are not passed. Unknown keys and invalid values are rejected with a non-zero exit code.
 
+### `thermoworks replay <serial>`
+
+Play back a past cook as if it were streaming live. Reads recent history (or a saved archive) and prints each reading in order, waiting between readings based on the original time gaps. Useful for reviewing how a cook progressed, demoing, or testing dashboards without a live device.
+
+```bash
+npx thermoworks replay M100009168
+npx thermoworks replay M100009168 --archive abc123 --channel 2
+npx thermoworks replay M100009168 --speed 120
+npx thermoworks replay M100009168 --loop
+```
+
+Options:
+- `--archive ID` — Replay a saved archive instead of recent history
+- `--channel N` — Archive channel number to replay (default: first channel with readings)
+- `--speed N` — Time compression factor. `60` plays a minute of cook per second (default: `60`)
+- `--loop` — Restart from the beginning when the replay ends (Ctrl+C to stop)
+
 ### `thermoworks mcp start`
 
 Start the MCP (Model Context Protocol) server for AI assistants. Runs over stdio.

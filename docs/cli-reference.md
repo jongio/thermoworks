@@ -1298,6 +1298,47 @@ thermoworks completion powershell | Out-String | Invoke-Expression
 - Completion offers the top-level commands and the subcommands for `auth`, `alarm`, `fan`, `session`, `copilot`, and `mcp`.
 - A missing or unsupported shell prints usage and exits with code 1.
 
+## `thermoworks replay <SERIAL>`
+
+Play back a past cook as if it were streaming live. Reads recent history (or a saved archive) and prints each reading in chronological order, waiting between readings based on the original time gaps scaled by `--speed`. Distinct from `demo` (synthetic data) and `watch` (live device data): `replay` replays real readings you have already recorded.
+
+**Usage**
+
+```bash
+npx thermoworks replay <SERIAL> [--archive ID] [--channel N] [--speed N] [--loop]
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--archive ID` - Replay a saved archive instead of recent history.
+- `--channel N` - Archive channel number to replay. Defaults to the first channel that has readings.
+- `--speed N` - Time compression factor. `60` plays a minute of cook per second. Must be a positive number. Defaults to `60`.
+- `--loop` - Restart from the beginning when the replay ends. Stop with Ctrl+C.
+
+**Examples**
+
+```bash
+npx thermoworks replay ABC123
+# Replaying recent history for ABC123 at 60x
+# [ 1/180]  08:00:00  225°F
+# [ 2/180]  08:01:00  226°F
+# ...
+# Replay complete.
+
+npx thermoworks replay ABC123 --archive brisket-2026 --channel 2
+npx thermoworks replay ABC123 --speed 120
+npx thermoworks replay ABC123 --loop
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Frame timing comes from the gaps between the original timestamps, divided by `--speed`. The first reading prints immediately.
+- Without `--archive`, replays the recent history time-series. With `--archive`, replays one channel of a saved archive.
+- Prints `No readings to replay for <SERIAL>.` when the source has no usable readings.
+- Readings with non-finite values or invalid timestamps are skipped.
+
 ## `thermoworks device rename <SERIAL> --name <TEXT>`
 
 Rename a device label.

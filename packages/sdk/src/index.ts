@@ -28,6 +28,13 @@ export type {
 	PlanCookOptions,
 } from "./plan.js";
 export { getMeatProfiles, planCook, resolveMeatProfile } from "./plan.js";
+export type { ReplayFrame, ReplayOptions, ReplayReading } from "./replay.js";
+export {
+	archiveReadingToReplay,
+	buildReplaySequence,
+	historyReadingToReplay,
+	nextReplayIndex,
+} from "./replay.js";
 export type {
 	ChannelUpdate,
 	ChannelUpdateCallback,

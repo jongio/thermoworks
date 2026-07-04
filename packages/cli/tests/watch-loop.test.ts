@@ -229,4 +229,29 @@ describe("watch", () => {
 		expect(mockGetAllDeviceChannels).not.toHaveBeenCalled();
 		expect(exitSpy).not.toHaveBeenCalled();
 	});
+
+	it("emits an NDJSON frame per refresh in --json mode without clearing the screen", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "pit@example.com", password: "secret" });
+		mockGetDevices
+			.mockResolvedValueOnce([makeDevice({ serial: "ABC123", label: "Smoker", type: "signals" })])
+			.mockImplementationOnce(() => new Promise<Device[]>(() => {}));
+		mockGetAllDeviceChannels.mockResolvedValue([
+			makeChannel({ value: 225, units: "F", label: "Ambient", number: "1", enabled: true }),
+		]);
+
+		const { watch } = await importWatchModule();
+		const watchPromise = watch(["--interval", "1"], { json: true });
+
+		await flushMicrotasks();
+
+		expect(clearSpy).not.toHaveBeenCalled();
+		expect(logSpy).toHaveBeenCalledTimes(1);
+		const line = logSpy.mock.calls[0]?.[0] as string;
+		expect(line).not.toContain("\n");
+		const parsed = JSON.parse(line);
+		expect(parsed.devices[0].serial).toBe("ABC123");
+		expect(parsed.devices[0].channels[0]).toMatchObject({ label: "Ambient", value: 225 });
+		expect(typeof parsed.timestamp).toBe("string");
+		void watchPromise;
+	});
 });

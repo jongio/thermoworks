@@ -30,14 +30,12 @@ suites:
   smoke:
     description: "Quick validation of both skills"
     filter:
-      tags:
-        tier: ["smoke"]
+      tier: ["smoke"]
 
   full:
     description: "Full evaluation of all stimuli"
     filter:
-      tags:
-        tier: ["smoke", "integration"]
+      tier: ["smoke", "integration"]
 
   integration:
     description: "Integration skill evaluation only"

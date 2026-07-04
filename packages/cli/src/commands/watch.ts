@@ -1,4 +1,10 @@
-import { type Device, type DeviceChannel, ThermoworksCloud } from "thermoworks-sdk";
+import {
+	type AlarmState,
+	type Device,
+	type DeviceChannel,
+	getChannelAlarmState,
+	ThermoworksCloud,
+} from "thermoworks-sdk";
 
 import { getCredentials } from "../credentials.js";
 import type { OutputOptions } from "../output.js";
@@ -78,6 +84,57 @@ export function formatWatchFrame(
 	return lines.join("\n");
 }
 
+/** A single channel reading in a watch JSON frame. */
+export interface WatchJsonChannel {
+	number: string | null;
+	label: string | null;
+	value: number | null;
+	units: string | null;
+	alarm: AlarmState;
+}
+
+/** A single device in a watch JSON frame. */
+export interface WatchJsonDevice {
+	serial: string;
+	label: string | null;
+	type: string | null;
+	status: string | null;
+	battery: number | null;
+	channels: WatchJsonChannel[];
+}
+
+/** A full watch JSON frame emitted once per refresh in `--json` mode. */
+export interface WatchJsonFrame {
+	timestamp: string;
+	devices: WatchJsonDevice[];
+}
+
+/** Build a single NDJSON watch frame object (one line per refresh). */
+export function buildWatchJsonFrame(
+	devices: DeviceWithChannels[],
+	timestamp: Date,
+): WatchJsonFrame {
+	return {
+		timestamp: timestamp.toISOString(),
+		devices: devices.map(({ device, channels }) => ({
+			serial: device.serial,
+			label: device.label,
+			type: device.type,
+			status: device.status,
+			battery: device.battery,
+			channels: channels
+				.filter((ch) => ch.enabled !== false)
+				.map((ch) => ({
+					number: ch.number,
+					label: ch.label,
+					value: ch.value,
+					units: ch.units,
+					alarm: getChannelAlarmState(ch),
+				})),
+		})),
+	};
+}
+
 /** Sleep for the given number of seconds. Returns a cancellable handle. */
 function sleep(seconds: number): { promise: Promise<void>; cancel: () => void } {
 	let timer: ReturnType<typeof setTimeout>;
@@ -92,7 +149,7 @@ function sleep(seconds: number): { promise: Promise<void>; cancel: () => void } 
  * Run the watch loop: continuously fetch device temperatures and display them.
  * Exits on SIGINT (handled by the global handler in index.ts).
  */
-export async function watch(args: string[], _options: OutputOptions): Promise<void> {
+export async function watch(args: string[], options: OutputOptions): Promise<void> {
 	const { device: deviceFilter, interval } = parseWatchArgs(args);
 
 	const creds = await getCredentials();
@@ -115,7 +172,7 @@ export async function watch(args: string[], _options: OutputOptions): Promise<vo
 			if (deviceFilter) {
 				deviceList = deviceList.filter((d) => d.serial === deviceFilter);
 				if (deviceList.length === 0) {
-					console.clear();
+					if (!options.json) console.clear();
 					console.error(`No device found with serial: ${deviceFilter}`);
 					process.exit(1);
 				}
@@ -128,8 +185,12 @@ export async function watch(args: string[], _options: OutputOptions): Promise<vo
 				}),
 			);
 
-			console.clear();
-			console.log(formatWatchFrame(devicesWithChannels, new Date(), interval));
+			if (options.json) {
+				console.log(JSON.stringify(buildWatchJsonFrame(devicesWithChannels, new Date())));
+			} else {
+				console.clear();
+				console.log(formatWatchFrame(devicesWithChannels, new Date(), interval));
+			}
 		} catch (err) {
 			console.error(`Error fetching data: ${err instanceof Error ? err.message : String(err)}`);
 		}

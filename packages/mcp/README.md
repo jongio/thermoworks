@@ -27,6 +27,7 @@ thermoworks mcp start
 | `get_events` | Get device events (alarms, status changes) |
 | `get_archives` | Get historical session archives |
 | `get_archive_detail` | Get full detail for a specific session archive, including channel readings and duration |
+| `get_data_usage` | Get account data storage usage (account total, or per-device with by_device) |
 | `get_temperature_guide` | Get cooking temperature reference |
 | `set_alarm` | Set or clear high/low alarm thresholds on a device channel |
 | `get_fan_state` | Get the fan controller state for a device (connection, target temp, channel, level) |

@@ -26,6 +26,7 @@ import { firmware } from "./commands/firmware.js";
 import { graph } from "./commands/graph.js";
 import { guide } from "./commands/guide.js";
 import { history } from "./commands/history.js";
+import { journal } from "./commands/journal.js";
 import { mcpStart } from "./commands/mcp.js";
 import { metrics } from "./commands/metrics.js";
 import { notifications } from "./commands/notifications.js";
@@ -122,6 +123,11 @@ Commands:
     --height N     Chart height in rows (default: 12)
 
   guide [category] Show temperature guide (safe cooking temps)
+
+  journal add      Log a finished cook to a local logbook
+  journal list     List logbook entries (newest first)
+  journal show <id>  Show one logbook entry
+  journal rm <id>  Remove a logbook entry
 
   plan             Back-calculate cook start times for a target ready time
     --ready TIME   When everything should be ready (e.g. "6:00 PM")
@@ -312,6 +318,10 @@ async function main(): Promise<void> {
 
 		case "guide":
 			await guide(args[1], options);
+			break;
+
+		case "journal":
+			await journal(args.slice(1), options);
 			break;
 
 		case "plan":

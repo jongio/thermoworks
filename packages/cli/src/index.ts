@@ -27,8 +27,10 @@ import { firmware } from "./commands/firmware.js";
 import { guide } from "./commands/guide.js";
 import { history } from "./commands/history.js";
 import { mcpStart } from "./commands/mcp.js";
+import { metrics } from "./commands/metrics.js";
 import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
+import { parseStatsArgs, stats } from "./commands/stats.js";
 import { watch } from "./commands/watch.js";
 import { parseGlobalFlags } from "./output.js";
 
@@ -67,8 +69,15 @@ Commands:
   watch            Continuously monitor temperatures (live refresh)
     --device SN    Watch a specific device by serial number
     --interval N   Refresh interval in seconds (default: 10)
+
+  metrics          Serve live temperatures as Prometheus metrics on /metrics
+    --host HOST    Bind address (default: 127.0.0.1)
+    --port N       Listen port (default: 9464)
+    --device SN    Export a specific device by serial number
+    --interval N   Poll interval in seconds (default: 10)
   events           Show device event history (alarms, status changes)
   archives <serial>  List archived sessions for a device
+  stats <serial>   Show cross-session cook analytics for a device
 
   firmware         Show firmware versions and available updates
 
@@ -219,6 +228,10 @@ async function main(): Promise<void> {
 			await watch(args.slice(1), options);
 			break;
 
+		case "metrics":
+			await metrics(args.slice(1), options);
+			break;
+
 		case "events": {
 			const eventArgs = parseEventsArgs(args.slice(1));
 			await events(eventArgs, options);
@@ -232,6 +245,16 @@ async function main(): Promise<void> {
 				process.exit(1);
 			}
 			await archives(archivesArgs, options);
+			break;
+		}
+
+		case "stats": {
+			const statsArgs = parseStatsArgs(args);
+			if (!statsArgs) {
+				console.error("Usage: thermoworks stats <serial> [--limit N] [--json]");
+				process.exit(1);
+			}
+			await stats(statsArgs, options);
 			break;
 		}
 

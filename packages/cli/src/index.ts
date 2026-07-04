@@ -10,6 +10,7 @@ import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import { backup } from "./commands/backup.js";
 import { calibration } from "./commands/calibration.js";
 import { completion } from "./commands/completion.js";
+import { config } from "./commands/config.js";
 import {
 	copilotRemove,
 	copilotSetup,
@@ -144,6 +145,12 @@ Commands:
     --list-meats   Show built-in meat profiles
 
   completion <SHELL>  Print a shell completion script (bash, zsh, fish, powershell)
+
+  config set <key> <value>  Set a default preference (unit, device, watchInterval)
+  config get <key>          Show a preference value
+  config list               Show all preferences
+  config unset <key>        Remove a preference
+  config path               Show the preferences file path
 
   demo <mode>      Show demo output (modes: high, low, normal)
 
@@ -356,6 +363,10 @@ async function main(): Promise<void> {
 
 		case "temp":
 			await temp(args.slice(1), options);
+			break;
+
+		case "config":
+			await config(args.slice(1), options);
 			break;
 
 		case "demo": {

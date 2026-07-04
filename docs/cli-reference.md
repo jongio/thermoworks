@@ -1533,6 +1533,66 @@ npx thermoworks watch --json --interval 5 | jq .
 - Exits immediately with an error if `--device` is specified and no matching device is found.
 - Press `Ctrl+C` to exit (handled by the global SIGINT handler).
 - The `--interval` must be a positive number >= 1; values below 1 produce an error.
+- When `--device` or `--interval` are omitted, falls back to the `device` and `watchInterval` defaults saved with `thermoworks config`.
+
+## `thermoworks config`
+
+Store local default preferences so common options do not have to be passed on every command. Preferences are saved to `~/.thermoworks/preferences.json` with owner-only permissions, separate from the statusline config in `config.json`.
+
+**Usage**
+
+```bash
+npx thermoworks config set <key> <value>
+npx thermoworks config get <key>
+npx thermoworks config list
+npx thermoworks config unset <key>
+npx thermoworks config path
+```
+
+**Subcommands**
+
+- `set <key> <value>` - Set a preference. The value is validated before it is written.
+- `get <key>` - Print a single preference value, or `(not set)` when missing.
+- `list` - Print every known key and its value.
+- `unset <key>` - Remove a preference.
+- `path` - Print the absolute path to the preferences file.
+
+**Keys**
+
+- `unit` - Default temperature unit. Accepts `F` or `C` (case-insensitive, stored upper-case).
+- `device` - Default device serial.
+- `watchInterval` - Default `watch` refresh interval in seconds. Must be a number >= 1.
+
+**Examples**
+
+```bash
+npx thermoworks config set unit C
+# Set unit = C
+
+npx thermoworks config set watchInterval 20
+npx thermoworks config list
+# unit = C
+# device = (not set)
+# watchInterval = 20
+
+npx thermoworks config get unit
+# C
+
+npx thermoworks config unset unit
+# Unset unit
+
+npx thermoworks config path
+# /home/user/.thermoworks/preferences.json
+```
+
+**Notes**
+
+- No credentials required. This command only reads and writes a local file.
+- Unknown keys are rejected: `Unknown key "<key>". Known keys: unit, device, watchInterval` with a non-zero exit code.
+- Invalid values are rejected with a message describing the constraint and a non-zero exit code.
+- The `watch` command reads the `device` and `watchInterval` defaults when the matching flags are not passed.
+- A corrupt or invalid preferences file is ignored with a warning, and defaults are used.
+- Supports `--json` on `get` and `list` for scripting.
 
 ## `thermoworks metrics`
 
@@ -1602,7 +1662,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `plan`, `history`, `backup`, `search`, `alarm set`, `alarm clear`, `alarm list`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

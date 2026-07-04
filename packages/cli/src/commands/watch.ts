@@ -8,6 +8,7 @@ import {
 
 import { getCredentials } from "../credentials.js";
 import type { OutputOptions } from "../output.js";
+import { loadPreferences } from "../preferences.js";
 import { formatChannelLine } from "./devices.js";
 import { formatChannelTrend } from "./sparkline.js";
 
@@ -17,10 +18,16 @@ export interface WatchArgs {
 	interval: number;
 }
 
+/** Defaults applied when the matching flag is not passed. */
+export interface WatchDefaults {
+	device?: string;
+	interval?: number;
+}
+
 /** Parse watch command arguments from remaining argv tokens. */
-export function parseWatchArgs(args: string[]): WatchArgs {
-	let device: string | undefined;
-	let interval = 10;
+export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): WatchArgs {
+	let device = defaults.device;
+	let interval = defaults.interval ?? 10;
 
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
@@ -150,7 +157,11 @@ function sleep(seconds: number): { promise: Promise<void>; cancel: () => void } 
  * Exits on SIGINT (handled by the global handler in index.ts).
  */
 export async function watch(args: string[], options: OutputOptions): Promise<void> {
-	const { device: deviceFilter, interval } = parseWatchArgs(args);
+	const prefs = await loadPreferences();
+	const { device: deviceFilter, interval } = parseWatchArgs(args, {
+		device: prefs.device,
+		interval: prefs.watchInterval,
+	});
 
 	const creds = await getCredentials();
 	if (!creds) {

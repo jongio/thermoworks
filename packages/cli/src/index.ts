@@ -28,6 +28,7 @@ import { guide } from "./commands/guide.js";
 import { history } from "./commands/history.js";
 import { mcpStart } from "./commands/mcp.js";
 import { metrics } from "./commands/metrics.js";
+import { notifications } from "./commands/notifications.js";
 import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
@@ -59,6 +60,10 @@ Commands:
 
   data-usage       Show account data storage usage
     --by-device    Show per-device breakdown
+
+  notifications    Show account notification settings
+    --enable FIELD   Enable a setting (all, continuous, email, sms, device)
+    --disable FIELD  Disable a setting (all, continuous, email, sms, device)
 
   account          Show account details and billing plan
 
@@ -205,6 +210,10 @@ async function main(): Promise<void> {
 
 		case "data-usage":
 			await dataUsage(args.slice(1), options);
+			break;
+
+		case "notifications":
+			await notifications(args.slice(1), options);
 			break;
 
 		case "account":

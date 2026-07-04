@@ -244,6 +244,24 @@ Filter options:
 Filters combine (all must match) and work with `--json` and `--no-channels`. Type,
 status, label, and serial values are matched exactly.
 
+### `thermoworks temp <serial>`
+
+Print a single temperature value to stdout, for shell scripts and automation. Without
+`--channel` it prints the device average temperature; with `--channel N` it prints that
+channel's current reading. Human output is a bare number so you can capture or pipe it
+directly.
+
+```bash
+npx thermoworks temp M100009168                # average, e.g. 203.5
+npx thermoworks temp M100009168 --channel 2    # one channel
+npx thermoworks temp M100009168 --json         # { serial, channel, value, units }
+
+# use it in a shell conditional
+if (( $(npx thermoworks temp M100009168) > 200 )); then echo "pull it"; fi
+```
+
+Exits non-zero if no reading is available.
+
 ### `thermoworks watch`
 
 Continuously monitor temperatures with live refresh.

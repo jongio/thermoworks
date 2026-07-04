@@ -36,6 +36,7 @@ import { plan } from "./commands/plan.js";
 import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
+import { temp } from "./commands/temp.js";
 import { watch } from "./commands/watch.js";
 import { parseGlobalFlags } from "./output.js";
 
@@ -72,11 +73,10 @@ Commands:
   account          Show account details and billing plan
 
   devices          List connected devices and channel readings
-    --type T       Filter by device type (comma-separated for match-any)
-    --status S     Filter by status (e.g. online, offline)
-    --label L      Filter by exact device label
-    --serial SN    Filter by serial number
     --active-within N  Only devices seen within N minutes
+
+  temp <SERIAL>    Print a single temperature value for scripting
+    --channel N    Read a specific channel (1-9) instead of the average
   device rename <SERIAL> --name <TEXT>        Rename a device
   device reset-minmax <SERIAL> --channel <N>  Reset min/max readings for a channel
   mcp start        Start MCP server for AI assistants
@@ -348,6 +348,10 @@ async function main(): Promise<void> {
 
 		case "completion":
 			await completion(args[1], options);
+			break;
+
+		case "temp":
+			await temp(args.slice(1), options);
 			break;
 
 		case "demo": {

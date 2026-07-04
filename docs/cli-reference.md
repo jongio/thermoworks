@@ -225,6 +225,50 @@ npx thermoworks devices --active-within 30 --json
 - Filters combine (all must match). Type, status, label, and serial values are matched exactly.
 
 
+## `thermoworks temp <SERIAL>`
+
+Print a single temperature value to stdout for shell scripts and automation. Without
+`--channel` it prints the device average temperature; with `--channel N` it prints that
+channel's current reading.
+
+**Usage**
+
+```bash
+npx thermoworks temp <SERIAL> [--channel <1-9>] [--json]
+```
+
+**Arguments**
+
+- `SERIAL` - (Required) Device serial number.
+
+**Options**
+
+- `--channel <1-9>` - Read a specific channel instead of the device average.
+- `--json` - Output `{ serial, channel, value, units }` as JSON. `channel` is `null` when averaging.
+
+**Examples**
+
+```bash
+npx thermoworks temp M100009168
+# 203.5
+
+npx thermoworks temp M100009168 --channel 2
+# 165
+
+npx thermoworks temp M100009168 --json
+# {"serial":"M100009168","channel":null,"value":203.5,"units":"F"}
+
+# use it in a shell conditional
+if (( $(npx thermoworks temp M100009168) > 200 )); then echo "pull it"; fi
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Human output is a bare number so it can be piped or captured directly.
+- The average (no `--channel`) excludes humidity channels and channels with no reading.
+- Exits non-zero with a message on stderr when no reading is available.
+
 ## `thermoworks demo <high|low|normal>`
 
 Output demo temperature data with alarm styling. No credentials or device configuration required.
@@ -1507,7 +1551,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `plan`, `history`, `backup`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `plan`, `history`, `backup`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

@@ -587,6 +587,26 @@ npx thermoworks demo low     # blue text
 npx thermoworks demo normal  # no color
 ```
 
+### `thermoworks completion <bash|zsh|fish|powershell>`
+
+Print a tab-completion script for your shell. No credentials required.
+
+```bash
+# bash
+thermoworks completion bash > /etc/bash_completion.d/thermoworks
+
+# zsh
+thermoworks completion zsh > "${fpath[1]}/_thermoworks"
+
+# fish
+thermoworks completion fish > ~/.config/fish/completions/thermoworks.fish
+
+# PowerShell (add to your $PROFILE)
+thermoworks completion powershell | Out-String | Invoke-Expression
+```
+
+Completion covers the top-level commands and the subcommands for `auth`, `alarm`, `fan`, `session`, `copilot`, and `mcp`.
+
 ### Global options
 
 | Flag | Description |

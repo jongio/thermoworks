@@ -1124,6 +1124,42 @@ npx thermoworks plan --list-meats
 - Rest time comes from the meat profile and is added after the cook when computing the start time.
 - Unknown meat names with no explicit `=Nh` value are reported as an error listing the recognized profiles.
 
+## `thermoworks completion <bash|zsh|fish|powershell>`
+
+Print a tab-completion script for your shell to stdout.
+
+**Usage**
+
+```bash
+npx thermoworks completion <bash|zsh|fish|powershell>
+```
+
+**Options**
+
+- `<shell>` - Required. One of `bash`, `zsh`, `fish`, or `powershell`.
+
+**Examples**
+
+```bash
+# bash
+thermoworks completion bash > /etc/bash_completion.d/thermoworks
+
+# zsh (place on your fpath)
+thermoworks completion zsh > "${fpath[1]}/_thermoworks"
+
+# fish
+thermoworks completion fish > ~/.config/fish/completions/thermoworks.fish
+
+# PowerShell (add to your $PROFILE)
+thermoworks completion powershell | Out-String | Invoke-Expression
+```
+
+**Notes**
+
+- No credentials required; the script is generated from the CLI command list.
+- Completion offers the top-level commands and the subcommands for `auth`, `alarm`, `fan`, `session`, `copilot`, and `mcp`.
+- A missing or unsupported shell prints usage and exits with code 1.
+
 ## `thermoworks device rename <SERIAL> --name <TEXT>`
 
 Rename a device label.

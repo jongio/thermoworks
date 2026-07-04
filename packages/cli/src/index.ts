@@ -8,6 +8,7 @@ import { alarmClear, alarmSet } from "./commands/alarm.js";
 import { archives, parseArchivesArgs } from "./commands/archives.js";
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import { calibration } from "./commands/calibration.js";
+import { completion } from "./commands/completion.js";
 import {
 	copilotRemove,
 	copilotSetup,
@@ -133,6 +134,8 @@ Commands:
     --ready TIME   When everything should be ready (e.g. "6:00 PM")
     --item SPEC    Add an item: NAME, NAME=WEIGHT (lb), or NAME=Nh (hours)
     --list-meats   Show built-in meat profiles
+
+  completion <SHELL>  Print a shell completion script (bash, zsh, fish, powershell)
 
   demo <mode>      Show demo output (modes: high, low, normal)
 
@@ -330,6 +333,10 @@ async function main(): Promise<void> {
 
 		case "calibration":
 			await calibration(args[1], options);
+			break;
+
+		case "completion":
+			await completion(args[1], options);
 			break;
 
 		case "demo": {

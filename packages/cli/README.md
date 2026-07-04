@@ -491,6 +491,26 @@ Options:
 - `--format FMT` — Output format: `csv` or `json` (default: `json`)
 - `--output PATH` — Write to file (default: stdout)
 
+### `thermoworks backup [serial]`
+
+Bulk-export archived sessions to a directory, one file per archive. Without a serial it
+backs up every device on the account; pass a serial to scope to one. Reuses the same
+flattening as `export`, so each file has the same shape.
+
+```bash
+npx thermoworks backup                              # all devices -> ./thermoworks-backup
+npx thermoworks backup M100009168 --output ./cooks  # one device, custom dir
+npx thermoworks backup --format csv --limit 50      # up to 50 archives each, as CSV
+```
+
+Options:
+- `--output DIR` — Directory to write files into (default: `thermoworks-backup`)
+- `--format FMT` — Output format: `csv` or `json` (default: `json`)
+- `--limit N` — Max archives to export per device (default: 20)
+
+Files are named `<serial>-<archiveId>.<ext>`. With `--json`, prints a manifest array of
+`{ serial, archiveId, label, file, readings }` instead of the per-file listing.
+
 ### `thermoworks history <serial>`
 
 Export historical time-series readings from BigQuery for post-cook analysis or data pipelines. Unlike `export` (which reads from a single archive session), `history` retrieves the full BigQuery time-series for a device.

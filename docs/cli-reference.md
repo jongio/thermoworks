@@ -587,6 +587,49 @@ npx thermoworks export ABC123 --archive arch-001 --format csv --output brisket.c
 - When writing to a file, a summary line is printed to stderr (not stdout) so piping works correctly.
 - Exits with an error if no archives are found for the device.
 
+## `thermoworks backup [SERIAL]`
+
+Bulk-export archived sessions to a directory, writing one file per archive. Reuses the same reading-flattening as `export`, so each file has the same shape.
+
+**Usage**
+
+```bash
+npx thermoworks backup [SERIAL] [--output DIR] [--format csv|json] [--limit N]
+```
+
+**Arguments**
+
+- `SERIAL` - (Optional) Limit the backup to one device. When omitted, every device on the account is backed up.
+
+**Options**
+
+- `--output DIR` or `-o DIR` - Directory to write files into. Created if it does not exist. Defaults to `thermoworks-backup`.
+- `--format csv|json` - Output format for each file. Defaults to `json`.
+- `--limit N` - Maximum number of archives to export per device. Defaults to 20.
+- `--json` - Print a JSON manifest of what was backed up instead of the per-file listing.
+
+**Examples**
+
+```bash
+npx thermoworks backup
+# thermoworks-backup/ABC123-arch-001.json  (750 readings)
+# thermoworks-backup/ABC123-arch-002.json  (612 readings)
+# Backed up 2 archive(s), 1362 readings total, to thermoworks-backup
+
+npx thermoworks backup ABC123 --output ./cooks --format csv --limit 50
+
+npx thermoworks backup --json
+# [{"serial":"ABC123","archiveId":"arch-001","label":"Brisket","file":"thermoworks-backup/ABC123-arch-001.json","readings":750}]
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Files are named `<serial>-<archiveId>.<ext>` with unsafe characters replaced.
+- Archive list entries usually include their readings; when one does not, the full archive is fetched before writing.
+- The per-file listing is written to stdout and the final tally to stderr so piping works correctly.
+- With `--json`, the manifest is the only stdout output.
+
 ## `thermoworks history`
 
 Export historical time-series readings from BigQuery for post-cook analysis or data pipelines. Unlike `export` (which reads from a single archive session), `history` retrieves the full BigQuery time-series for a device.
@@ -1428,7 +1471,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `plan`, `history`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `plan`, `history`, `backup`, `search`, `alarm set`, `alarm clear`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

@@ -7,6 +7,7 @@ import { account } from "./commands/account.js";
 import { alarmClear, alarmSet } from "./commands/alarm.js";
 import { archives, parseArchivesArgs } from "./commands/archives.js";
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
+import { backup } from "./commands/backup.js";
 import { calibration } from "./commands/calibration.js";
 import { completion } from "./commands/completion.js";
 import {
@@ -111,6 +112,11 @@ Commands:
     --archive ID   Export a specific archive (default: latest)
     --format FMT   Output format: csv or json (default: json)
     --output PATH  Write to file (default: stdout)
+
+  backup [SERIAL]  Bulk-export archived sessions to a directory
+    --output DIR   Directory to write files (default: thermoworks-backup)
+    --format FMT   Output format: csv or json (default: json)
+    --limit N      Max archives to export per device (default: 20)
 
   history <SERIAL> Export historical time-series readings (BigQuery)
     --limit N      Show the N most recent readings
@@ -305,6 +311,10 @@ async function main(): Promise<void> {
 
 		case "export":
 			await exportData(args);
+			break;
+
+		case "backup":
+			await backup(args, options);
 			break;
 
 		case "history":

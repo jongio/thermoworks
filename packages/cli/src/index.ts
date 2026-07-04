@@ -17,8 +17,7 @@ import {
 } from "./commands/copilot.js";
 import { dataUsage } from "./commands/data-usage.js";
 import { device } from "./commands/device.js";
-import type { DevicesOptions } from "./commands/devices.js";
-import { devices } from "./commands/devices.js";
+import { devices, parseDevicesArgs } from "./commands/devices.js";
 import { events, parseEventsArgs } from "./commands/events.js";
 import { exportData } from "./commands/export.js";
 import { fan } from "./commands/fan.js";
@@ -58,6 +57,11 @@ Commands:
     --by-device    Show per-device breakdown
 
   devices          List connected devices and channel readings
+    --type T       Filter by device type (comma-separated for match-any)
+    --status S     Filter by status (e.g. online, offline)
+    --label L      Filter by exact device label
+    --serial SN    Filter by serial number
+    --active-within N  Only devices seen within N minutes
   device rename <SERIAL> --name <TEXT>        Rename a device
   device reset-minmax <SERIAL> --channel <N>  Reset min/max readings for a channel
   mcp start        Start MCP server for AI assistants
@@ -200,11 +204,7 @@ async function main(): Promise<void> {
 			break;
 
 		case "devices": {
-			const devicesOpts: DevicesOptions = {
-				...options,
-				channels: !args.includes("--no-channels"),
-			};
-			await devices(devicesOpts);
+			await devices(parseDevicesArgs(args.slice(1), options));
 			break;
 		}
 

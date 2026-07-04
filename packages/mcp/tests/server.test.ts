@@ -19,6 +19,7 @@ vi.mock("thermoworks-sdk", () => {
 	const mockStartSession = vi.fn();
 	const mockEndSession = vi.fn();
 	const mockGetFirmwareInfo = vi.fn();
+	const mockGetHistory = vi.fn();
 	const mockGetFanState = vi.fn();
 	const mockSetFanTarget = vi.fn();
 	const mockSetFanEnabled = vi.fn();
@@ -41,6 +42,7 @@ vi.mock("thermoworks-sdk", () => {
 		startSession = mockStartSession;
 		endSession = mockEndSession;
 		getFirmwareInfo = mockGetFirmwareInfo;
+		getHistory = mockGetHistory;
 		getFanState = mockGetFanState;
 		setFanTarget = mockSetFanTarget;
 		setFanEnabled = mockSetFanEnabled;
@@ -65,6 +67,7 @@ vi.mock("thermoworks-sdk", () => {
 		mockStartSession,
 		mockEndSession,
 		mockGetFirmwareInfo,
+		mockGetHistory,
 		mockGetFanState,
 		mockSetFanTarget,
 		mockSetFanEnabled,
@@ -91,6 +94,7 @@ import {
 	mockGetEvents,
 	mockGetFanState,
 	mockGetFirmwareInfo,
+	mockGetHistory,
 	mockGetTemperatureGuide,
 	mockSetAlarm,
 	mockSetFanEnabled,
@@ -1090,6 +1094,62 @@ describe("MCP Server", () => {
 				expect(parsed[0].label).toBe("SMOKE1");
 				expect(parsed[0].updateAvailable).toBe(false);
 				expect(parsed.find((d: any) => d.serial === "RFX1")).toBeUndefined();
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("get_temperature_history tool", () => {
+		it("returns the full reading series", async () => {
+			setupEnv();
+			try {
+				(mockGetHistory as any).mockResolvedValueOnce({
+					deviceId: "ABC123",
+					readings: [
+						{ value: 150, timestamp: "2026-07-01T10:00:00Z", units: "F" },
+						{ value: 155, timestamp: "2026-07-01T10:05:00Z", units: "F" },
+						{ value: 160, timestamp: "2026-07-01T10:10:00Z", units: "F" },
+					],
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_temperature_history");
+				const result = await handler({ serial: "ABC123" }, {});
+
+				expect(mockGetHistory).toHaveBeenCalledWith("ABC123");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.deviceId).toBe("ABC123");
+				expect(parsed.readingCount).toBe(3);
+				expect(parsed.readings).toHaveLength(3);
+				expect(parsed.readings[0].value).toBe(150);
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns only the most recent N readings when limit is set", async () => {
+			setupEnv();
+			try {
+				(mockGetHistory as any).mockResolvedValueOnce({
+					deviceId: "ABC123",
+					readings: [
+						{ value: 150, timestamp: "2026-07-01T10:00:00Z", units: "F" },
+						{ value: 155, timestamp: "2026-07-01T10:05:00Z", units: "F" },
+						{ value: 160, timestamp: "2026-07-01T10:10:00Z", units: "F" },
+					],
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_temperature_history");
+				const result = await handler({ serial: "ABC123", limit: 2 }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.readingCount).toBe(2);
+				expect(parsed.readings).toHaveLength(2);
+				// Most recent two, in chronological order
+				expect(parsed.readings[0].value).toBe(155);
+				expect(parsed.readings[1].value).toBe(160);
 			} finally {
 				teardownEnv();
 			}

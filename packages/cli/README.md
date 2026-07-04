@@ -223,6 +223,27 @@ Found 2 devices:
   Signals  (signals)  [offline]  last seen 12m ago
 ```
 
+Filter the list from the command line:
+
+```bash
+npx thermoworks devices --status online
+npx thermoworks devices --type signals
+npx thermoworks devices --type node,smoke        # match any (comma-separated)
+npx thermoworks devices --label "Smoker"
+npx thermoworks devices --serial ABC123
+npx thermoworks devices --active-within 30        # seen in the last 30 minutes
+```
+
+Filter options:
+- `--type T` — device type (e.g. `node`, `smoke`, `signals`). Comma-separated for match-any.
+- `--status S` — status (e.g. `online`, `offline`). Comma-separated for match-any.
+- `--label L` — exact device label. Comma-separated for match-any.
+- `--serial SN` — serial number. Comma-separated for match-any.
+- `--active-within N` — only devices seen within N minutes.
+
+Filters combine (all must match) and work with `--json` and `--no-channels`. Type,
+status, label, and serial values are matched exactly.
+
 ### `thermoworks watch`
 
 Continuously monitor temperatures with live refresh.

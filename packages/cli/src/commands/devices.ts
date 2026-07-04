@@ -1,6 +1,7 @@
 import {
 	type AlarmState,
 	type DeviceChannel,
+	type DeviceFilter,
 	formatTimeAgo,
 	getChannelAlarmState,
 	ThermoworksCloud,
@@ -13,6 +14,63 @@ import { type OutputOptions, outputJson } from "../output.js";
 export interface DevicesOptions extends OutputOptions {
 	/** Show channel readings per device (default: true). */
 	channels?: boolean;
+	/** Optional filter applied to the device list. */
+	filter?: DeviceFilter;
+}
+
+/** Parse a named flag value from args (e.g., "--type" "node" → "node"). */
+function getFlagValue(args: string[], flag: string): string | undefined {
+	const idx = args.indexOf(flag);
+	if (idx === -1 || idx + 1 >= args.length) return undefined;
+	return args[idx + 1];
+}
+
+/** Split a comma-separated flag value into a match-any list, or return the single value. */
+function parseListValue(raw: string): string | string[] {
+	if (!raw.includes(",")) return raw;
+	const items = raw
+		.split(",")
+		.map((s) => s.trim())
+		.filter(Boolean);
+	return items.length === 1 ? (items[0] as string) : items;
+}
+
+/**
+ * Build the devices command options (channels + filter) from raw CLI args.
+ *
+ * Filter flags map directly onto the SDK `DeviceFilter`. Comma-separated values
+ * (e.g. `--type node,smoke`) are treated as match-any.
+ */
+export function parseDevicesArgs(args: string[], base: OutputOptions): DevicesOptions {
+	const options: DevicesOptions = {
+		...base,
+		channels: !args.includes("--no-channels"),
+	};
+
+	const filter: DeviceFilter = {};
+	const type = getFlagValue(args, "--type");
+	if (type) filter.type = parseListValue(type);
+	const status = getFlagValue(args, "--status");
+	if (status) filter.status = parseListValue(status);
+	const label = getFlagValue(args, "--label");
+	if (label) filter.label = parseListValue(label);
+	const serial = getFlagValue(args, "--serial");
+	if (serial) filter.serial = parseListValue(serial);
+
+	const activeWithin = getFlagValue(args, "--active-within");
+	if (activeWithin !== undefined) {
+		const minutes = Number(activeWithin);
+		if (!Number.isFinite(minutes) || minutes <= 0) {
+			console.error(
+				`Invalid --active-within: ${activeWithin}. Must be a positive number of minutes.`,
+			);
+			process.exit(1);
+		}
+		filter.activeWithinMinutes = minutes;
+	}
+
+	if (Object.keys(filter).length > 0) options.filter = filter;
+	return options;
 }
 
 const ANSI_RED = "\x1b[31m";
@@ -55,7 +113,7 @@ export async function devices(options: DevicesOptions = { json: false }): Promis
 	const client = new ThermoworksCloud({ email: creds.email, password: creds.password });
 
 	try {
-		const deviceList = await client.getDevices();
+		const deviceList = await client.getDevices(options.filter);
 
 		// Fetch channels for all devices in parallel when needed
 		const displayChannels = showChannels && !options.json;
@@ -98,7 +156,7 @@ export async function devices(options: DevicesOptions = { json: false }): Promis
 		}
 
 		if (deviceList.length === 0) {
-			console.log("No devices found.");
+			console.log(options.filter ? "No devices match the filter." : "No devices found.");
 			return;
 		}
 

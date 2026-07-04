@@ -195,24 +195,35 @@ List all connected devices visible in your ThermoWorks Cloud account.
 **Usage**
 
 ```bash
-npx thermoworks devices
+npx thermoworks devices [--type T] [--status S] [--label L] [--serial SN] [--active-within N]
 ```
 
 **Options**
 
-None.
+- `--type <T>` - Filter by device type (e.g. `node`, `smoke`, `signals`). Comma-separated for match-any.
+- `--status <S>` - Filter by status (e.g. `online`, `offline`). Comma-separated for match-any.
+- `--label <L>` - Filter by exact device label. Comma-separated for match-any.
+- `--serial <SN>` - Filter by serial number. Comma-separated for match-any.
+- `--active-within <N>` - Only include devices seen within N minutes.
+- `--no-channels` - Hide channel readings.
+- `--json` - Output as JSON.
 
 **Examples**
 
 ```bash
 npx thermoworks devices
+npx thermoworks devices --status online
+npx thermoworks devices --type node,smoke
+npx thermoworks devices --active-within 30 --json
 ```
 
 **Notes**
 
 - Requires valid credentials from environment variables or the OS keychain.
-- Prints `No devices found.` when the account has no devices.
+- Prints `No devices found.` when the account has no devices, or `No devices match the filter.` when a filter excludes everything.
 - Otherwise prints one line per device with the label or serial number, and includes any available type, status, battery percentage, and `last seen` age.
+- Filters combine (all must match). Type, status, label, and serial values are matched exactly.
+
 
 ## `thermoworks demo <high|low|normal>`
 

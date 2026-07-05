@@ -286,12 +286,15 @@ Continuously monitor temperatures with live refresh.
 npx thermoworks watch
 npx thermoworks watch --device M100009168 --interval 5
 npx thermoworks watch --json | jq .
+npx thermoworks watch --device M100009168 --record cook.csv
 ```
 
 Options:
 - `--device SN` — Watch a specific device by serial number
 - `--interval N` — Refresh interval in seconds (default: 10)
 - `--json` — Emit one NDJSON object per refresh (timestamp plus devices and channels with alarm state) instead of the live display, for piping into other tools
+- `--record FILE` — Append each refresh to `FILE` while the display keeps running, building a time-series log of the cook
+- `--record-format csv|json` — Record file format (default `csv`). CSV writes one row per channel with a header; JSON writes one NDJSON frame per refresh
 
 ### `thermoworks metrics`
 
@@ -752,3 +755,4 @@ For detailed option docs, see the [full CLI reference](../../docs/cli-reference.
 ## License
 
 MIT
+

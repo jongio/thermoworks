@@ -1537,7 +1537,7 @@ Continuously monitor device temperatures with a live-refreshing display. Clears 
 **Usage**
 
 ```bash
-npx thermoworks watch [--device SERIAL] [--interval N] [--json]
+npx thermoworks watch [--device SERIAL] [--interval N] [--json] [--record FILE] [--record-format csv|json]
 ```
 
 **Options**
@@ -1545,6 +1545,8 @@ npx thermoworks watch [--device SERIAL] [--interval N] [--json]
 - `--device SERIAL` - Watch a specific device by serial number. Without this flag, all devices are shown.
 - `--interval N` - Refresh interval in seconds. Must be >= 1. Defaults to `10`.
 - `--json` - Emit one newline-delimited JSON (NDJSON) object per refresh instead of the live display. Each frame has an ISO `timestamp` and a `devices` array; every device carries `serial`, `label`, `type`, `status`, `battery`, and a `channels` array with `number`, `label`, `value`, `units`, and `alarm` (`high`, `low`, or `normal`). The screen is not cleared, so output can be piped or appended to a file.
+- `--record FILE` - Append each refresh to `FILE` as a running log while the live display (or `--json` stream) continues. Recording is independent of the on-screen format.
+- `--record-format csv|json` - Format for the record file. Defaults to `csv`. `csv` writes one row per channel (`timestamp,serial,channel,value,units,alarm`) with a header on a fresh file. `json` writes one NDJSON frame per refresh. CSV fields are guarded against spreadsheet formula injection.
 
 **Examples**
 
@@ -1563,6 +1565,11 @@ npx thermoworks watch --device ABC123 --interval 5
 
 npx thermoworks watch --json --interval 5 | jq .
 # {"timestamp":"2025-06-07T19:30:00.000Z","devices":[{"serial":"ABC123","label":"Smoker","type":"signals","status":"online","battery":87,"channels":[{"number":"1","label":"Pit","value":225,"units":"F","alarm":"normal"}]}]}
+
+npx thermoworks watch --device ABC123 --interval 30 --record cook.csv
+# Live display continues while each refresh is appended to cook.csv:
+# timestamp,serial,channel,value,units,alarm
+# 2025-06-07T19:30:00.000Z,ABC123,Pit,225,F,normal
 ```
 
 **Notes**
@@ -1575,6 +1582,7 @@ npx thermoworks watch --json --interval 5 | jq .
 - Press `Ctrl+C` to exit (handled by the global SIGINT handler).
 - The `--interval` must be a positive number >= 1; values below 1 produce an error.
 - When `--device` or `--interval` are omitted, falls back to the `device` and `watchInterval` defaults saved with `thermoworks config`.
+- `--record` appends across refreshes, so pointing at an existing CSV log continues it without repeating the header. Delete the file first to start fresh.
 
 ## `thermoworks config`
 
@@ -1775,3 +1783,4 @@ npx thermoworks --version
 **Notes**
 
 - Reads the version from the CLI package's `package.json`.
+

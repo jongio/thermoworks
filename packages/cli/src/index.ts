@@ -61,6 +61,7 @@ Commands:
   alarm list       List configured alarm thresholds (all devices or one SERIAL)
 
   calibration <SERIAL>  Show NIST-traceable calibration data for a device
+    --interval-months N  Recalibration interval for the due-date check (default: 12)
 
   copilot setup    Configure Copilot CLI statusline (wizard)
   copilot status   Show configured temperature reading
@@ -365,7 +366,7 @@ async function main(): Promise<void> {
 			break;
 
 		case "calibration":
-			await calibration(args[1], options);
+			await calibration(args[1], options, args);
 			break;
 
 		case "completion":

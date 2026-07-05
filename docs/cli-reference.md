@@ -563,13 +563,14 @@ Show NIST-traceable calibration data for a device, including low-point adjustmen
 **Usage**
 
 ```bash
-npx thermoworks calibration <SERIAL>
+npx thermoworks calibration <SERIAL> [--interval-months N]
 ```
 
 **Options**
 
 - `<SERIAL>` - (Required) Device serial number.
-- `--json` - Output as JSON.
+- `--interval-months N` - Months between recommended recalibrations, used for the due-date check (default: 12).
+- `--json` - Output as JSON. Each record gains a `recalibration` block with `status` (`current`, `due-soon`, `overdue`, or `unknown`), `calibratedAt`, `dueAt`, and `daysRemaining`.
 
 **Examples**
 
@@ -577,6 +578,8 @@ npx thermoworks calibration <SERIAL>
 npx thermoworks calibration ABC123
 # Calibration: CAL-2026-001
 #   Date:        January 15, 2026
+#   Next due:    January 15, 2027
+#   Status:      current
 #   Technician:  J. Smith
 #   Reference:   NIST-traceable reference thermometer
 #   Accuracy:    ±0.05°F
@@ -595,6 +598,7 @@ npx thermoworks calibration ABC123
 - Displays calibration records with date, technician, manager, reference instrument, and stated accuracy.
 - Measurement points are displayed in a table showing channel, measured value, reference value, deviation, trim adjustment, and pass/fail result.
 - Results are color-coded: green for PASS, red for FAIL.
+- The `Status` line flags recalibration timing: green `current`, yellow `due soon` within 30 days of the due date, red `overdue` past it, and `unknown` when the device reports no calibration date.
 - Prints `No calibration records found for <serial>.` when no records exist.
 
 ## `thermoworks events`
@@ -1775,3 +1779,4 @@ npx thermoworks --version
 **Notes**
 
 - Reads the version from the CLI package's `package.json`.
+

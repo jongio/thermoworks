@@ -22,6 +22,7 @@ import {
 import { dataUsage } from "./commands/data-usage.js";
 import { device } from "./commands/device.js";
 import { devices, parseDevicesArgs } from "./commands/devices.js";
+import { doneness } from "./commands/doneness.js";
 import { events, parseEventsArgs } from "./commands/events.js";
 import { exportData } from "./commands/export.js";
 import { fan } from "./commands/fan.js";
@@ -134,6 +135,8 @@ Commands:
     --height N     Chart height in rows (default: 12)
 
   guide [category] Show temperature guide (safe cooking temps)
+
+  doneness [meat]  Show recommended internal pull temperatures for common cuts
 
   journal add      Log a finished cook to a local logbook
   journal list     List logbook entries (newest first)
@@ -350,6 +353,10 @@ async function main(): Promise<void> {
 
 		case "guide":
 			await guide(args[1], options);
+			break;
+
+		case "doneness":
+			await doneness(args[1], options);
 			break;
 
 		case "journal":

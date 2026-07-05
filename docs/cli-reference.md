@@ -1173,6 +1173,49 @@ npx thermoworks guide --json
 - Prints `No categories matching "<filter>".` when the filter has no matches.
 - Prints `No temperature guide categories found.` when the guide data is empty.
 
+## `thermoworks doneness`
+
+Show recommended internal pull temperatures for common cuts. This reads the built-in meat profiles, so it needs no network access or login. Use it to look up the target internal temp to pull a cut at, which is the number the cloud safe-temp guide does not give you per cut.
+
+**Usage**
+
+```bash
+npx thermoworks doneness [meat]
+```
+
+**Options**
+
+- `[meat]` - (Optional) A meat name or alias (for example `brisket`, `pulled pork`). Prints details for that one cut.
+- `--json` - Output as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks doneness
+# Doneness guide (internal pull temperatures):
+#   Meat            Pull at  Pit    Rest  Doneness
+#   Brisket         203°F    250°F  60m   Probe-tender, around 203°F in the flat
+#   Pork Butt       203°F    250°F  45m   Pull-apart tender, 200-205°F
+#   Pork Ribs       By feel  250°F  15m   Bend test; bones start to pull, around 200-203°F
+
+npx thermoworks doneness brisket
+# Brisket
+#   Pull at:   203°F
+#   Pit temp:  250°F
+#   Rest:      60m
+#   Cook time: 1.25 h/lb
+#   Doneness:  Probe-tender, around 203°F in the flat
+
+npx thermoworks doneness --json
+```
+
+**Notes**
+
+- No credentials or network access required.
+- Cuts judged by feel (such as ribs) show `By feel` for the pull temperature, with a doneness note.
+- Meat names accept the same aliases as `plan` (for example `pulled pork` resolves to `Pork Butt`).
+- Prints an error and exits non-zero for an unknown meat.
+
 ## `thermoworks journal <add|list|show|rm>`
 
 Keep a local logbook of finished cooks. Cloud archives store the raw session readings, but not the notes you actually want to keep: the cut, its weight, how it turned out, and what to change next time. The journal is a local file at `~/.thermoworks/journal.json`. No credentials or network access required.

@@ -605,7 +605,7 @@ npx thermoworks guide
 npx thermoworks guide beef
 ```
 
-### `thermoworks journal <add|list|show|rm>`
+### `thermoworks journal <add|list|show|import|rm>`
 
 Keep a local logbook of finished cooks: what the cut was, its weight, how it turned out, and notes for next time. Entries are stored in `~/.thermoworks/journal.json`. No credentials required.
 
@@ -613,14 +613,16 @@ Keep a local logbook of finished cooks: what the cut was, its weight, how it tur
 npx thermoworks journal add --title "Sunday brisket" --meat brisket --weight 12 --rating 4 --notes "Wrapped at 165"
 npx thermoworks journal list
 npx thermoworks journal show 9029it
+npx thermoworks journal import SMOKE123 --limit 10 --dry-run
 npx thermoworks journal rm 9029it
 ```
 
 Options:
 - `add` flags: `--title` (required), `--meat`, `--weight` (pounds), `--rating` (1 to 5), `--notes`, `--device SN`, `--archive ID`.
-- `--json` — On `list` and `show`, output entries as JSON.
+- `import` flags: `[SERIAL]` (defaults to the configured device), `--limit N` (default 20), `--dry-run`, `--json`. Requires credentials.
+- `--json` — On `list`, `show`, and `import`, output entries as JSON.
 
-Each entry gets a short id and a created timestamp. A missing or corrupt journal file is ignored rather than crashing.
+Each entry gets a short id and a created timestamp. A missing or corrupt journal file is ignored rather than crashing. `import` pulls finished cooks from a device's cloud archives and deduplicates on the archive id, so re-running only adds new cooks.
 
 ### `thermoworks plan --ready <time> --item <spec>`
 
@@ -752,3 +754,5 @@ For detailed option docs, see the [full CLI reference](../../docs/cli-reference.
 ## License
 
 MIT
+
+

@@ -16,6 +16,7 @@ import { formatChannelTrend } from "./sparkline.js";
 export interface WatchArgs {
 	device?: string;
 	interval: number;
+	bell: boolean;
 }
 
 /** Defaults applied when the matching flag is not passed. */
@@ -28,6 +29,7 @@ export interface WatchDefaults {
 export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): WatchArgs {
 	let device = defaults.device;
 	let interval = defaults.interval ?? 10;
+	let bell = false;
 
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
@@ -40,10 +42,12 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 				process.exit(1);
 			}
 			interval = parsed;
+		} else if (arg === "--bell") {
+			bell = true;
 		}
 	}
 
-	return { device, interval };
+	return { device, interval, bell };
 }
 
 /** Format a Date to a time string for display in the watch header. */
@@ -142,6 +146,13 @@ export function buildWatchJsonFrame(
 	};
 }
 
+/** True when any enabled channel in the frame is in an alarm state (low or high). */
+export function watchFrameHasAlarm(devices: DeviceWithChannels[]): boolean {
+	return devices.some(({ channels }) =>
+		channels.some((ch) => ch.enabled !== false && getChannelAlarmState(ch) !== "none"),
+	);
+}
+
 /** Sleep for the given number of seconds. Returns a cancellable handle. */
 function sleep(seconds: number): { promise: Promise<void>; cancel: () => void } {
 	let timer: ReturnType<typeof setTimeout>;
@@ -158,7 +169,11 @@ function sleep(seconds: number): { promise: Promise<void>; cancel: () => void } 
  */
 export async function watch(args: string[], options: OutputOptions): Promise<void> {
 	const prefs = await loadPreferences();
-	const { device: deviceFilter, interval } = parseWatchArgs(args, {
+	const {
+		device: deviceFilter,
+		interval,
+		bell,
+	} = parseWatchArgs(args, {
 		device: prefs.device,
 		interval: prefs.watchInterval,
 	});
@@ -201,6 +216,11 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 			} else {
 				console.clear();
 				console.log(formatWatchFrame(devicesWithChannels, new Date(), interval));
+			}
+
+			// Ring the terminal bell once per refresh while any channel is alarming.
+			if (bell && watchFrameHasAlarm(devicesWithChannels)) {
+				process.stdout.write("\x07");
 			}
 		} catch (err) {
 			console.error(`Error fetching data: ${err instanceof Error ? err.message : String(err)}`);

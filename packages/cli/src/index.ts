@@ -86,6 +86,7 @@ Commands:
   watch            Continuously monitor temperatures (live refresh)
     --device SN    Watch a specific device by serial number
     --interval N   Refresh interval in seconds (default: 10)
+    --bell         Ring the terminal bell while any channel is alarming
 
   metrics          Serve live temperatures as Prometheus metrics on /metrics
     --host HOST    Bind address (default: 127.0.0.1)

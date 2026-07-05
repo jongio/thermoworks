@@ -1537,13 +1537,14 @@ Continuously monitor device temperatures with a live-refreshing display. Clears 
 **Usage**
 
 ```bash
-npx thermoworks watch [--device SERIAL] [--interval N] [--json]
+npx thermoworks watch [--device SERIAL] [--interval N] [--bell] [--json]
 ```
 
 **Options**
 
 - `--device SERIAL` - Watch a specific device by serial number. Without this flag, all devices are shown.
 - `--interval N` - Refresh interval in seconds. Must be >= 1. Defaults to `10`.
+- `--bell` - Ring the terminal bell (writes the `\x07` BEL character) once per refresh while any enabled channel is in an alarm state. Off by default.
 - `--json` - Emit one newline-delimited JSON (NDJSON) object per refresh instead of the live display. Each frame has an ISO `timestamp` and a `devices` array; every device carries `serial`, `label`, `type`, `status`, `battery`, and a `channels` array with `number`, `label`, `value`, `units`, and `alarm` (`high`, `low`, or `normal`). The screen is not cleared, so output can be piped or appended to a file.
 
 **Examples**
@@ -1574,6 +1575,7 @@ npx thermoworks watch --json --interval 5 | jq .
 - Exits immediately with an error if `--device` is specified and no matching device is found.
 - Press `Ctrl+C` to exit (handled by the global SIGINT handler).
 - The `--interval` must be a positive number >= 1; values below 1 produce an error.
+- With `--bell`, the terminal bell rings once per refresh while any channel is alarming. Many terminals turn this into an audible beep or a visual flash. Works in both the live display and `--json` mode.
 - When `--device` or `--interval` are omitted, falls back to the `device` and `watchInterval` defaults saved with `thermoworks config`.
 
 ## `thermoworks config`

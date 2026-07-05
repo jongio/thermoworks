@@ -11,6 +11,7 @@ import { backup } from "./commands/backup.js";
 import { calibration } from "./commands/calibration.js";
 import { completion } from "./commands/completion.js";
 import { config } from "./commands/config.js";
+import { convert } from "./commands/convert.js";
 import {
 	copilotRemove,
 	copilotSetup,
@@ -134,6 +135,11 @@ Commands:
     --height N     Chart height in rows (default: 12)
 
   guide [category] Show temperature guide (safe cooking temps)
+
+  convert VALUE    Convert between Celsius and Fahrenheit
+    225f           Convert 225°F to Celsius
+    107c           Convert 107°C to Fahrenheit
+    225 --to c     Convert a bare number to the given unit
 
   journal add      Log a finished cook to a local logbook
   journal list     List logbook entries (newest first)
@@ -282,6 +288,10 @@ async function main(): Promise<void> {
 
 		case "watch":
 			await watch(args.slice(1), options);
+			break;
+
+		case "convert":
+			convert(args.slice(1), options);
 			break;
 
 		case "metrics":

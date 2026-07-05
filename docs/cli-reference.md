@@ -1173,6 +1173,44 @@ npx thermoworks guide --json
 - Prints `No categories matching "<filter>".` when the filter has no matches.
 - Prints `No temperature guide categories found.` when the guide data is empty.
 
+## `thermoworks convert`
+
+Convert a temperature between Celsius and Fahrenheit. Offline, no login. Uses the same conversion the SDK uses, rounded to one decimal place.
+
+**Usage**
+
+```bash
+npx thermoworks convert <VALUE>[c|f] [--to c|f]
+```
+
+**Options**
+
+- `<VALUE>` - The temperature to convert. A suffix sets the source unit: `225f` is Fahrenheit, `107c` is Celsius, and the result is the other unit. A bare number needs `--to`.
+- `--to c|f` - Target unit for a bare number (the source is taken as the opposite unit). Ignored when the value has a suffix.
+- `--json` - Output `{ input, value, unit }` as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks convert 225f
+# 107.2°C
+
+npx thermoworks convert 107c
+# 224.6°F
+
+npx thermoworks convert 225 --to c
+# 107.2°C
+
+npx thermoworks convert 107c --json
+# { "input": 107, "value": 224.6, "unit": "F" }
+```
+
+**Notes**
+
+- No credentials or network access required.
+- A suffix (`c`/`f`) takes precedence over `--to`.
+- Prints a usage message and exits non-zero when the value cannot be parsed or a bare number is given without a valid `--to`.
+
 ## `thermoworks journal <add|list|show|rm>`
 
 Keep a local logbook of finished cooks. Cloud archives store the raw session readings, but not the notes you actually want to keep: the cut, its weight, how it turned out, and what to change next time. The journal is a local file at `~/.thermoworks/journal.json`. No credentials or network access required.

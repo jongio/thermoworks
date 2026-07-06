@@ -4,6 +4,7 @@ import type { Archive } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 
 import { getCredentials } from "../credentials.js";
+import { maybeRedact } from "../output.js";
 
 /** A flattened reading row for export output. */
 export interface ExportRow {
@@ -144,7 +145,7 @@ export async function exportData(args: string[]): Promise<void> {
 			archive = archives[0]!;
 		}
 
-		const rows = flattenArchive(archive);
+		const rows = maybeRedact(flattenArchive(archive));
 		const content = options.format === "csv" ? formatCsv(rows) : formatJson(rows);
 
 		if (options.output) {

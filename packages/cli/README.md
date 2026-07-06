@@ -177,10 +177,11 @@ of `{ serial, deviceLabel, channel, channelLabel, alarmHigh, alarmLow }`.
 
 ### `thermoworks calibration <serial>`
 
-Show NIST-traceable calibration data for a device.
+Show NIST-traceable calibration data for a device, plus a recalibration due-date check based on a configurable interval (default 12 months).
 
 ```bash
 npx thermoworks calibration M100009168
+npx thermoworks calibration M100009168 --interval-months 6
 ```
 
 ### `thermoworks copilot setup [--dev]`
@@ -285,12 +286,14 @@ Continuously monitor temperatures with live refresh.
 ```bash
 npx thermoworks watch
 npx thermoworks watch --device M100009168 --interval 5
+npx thermoworks watch --bell
 npx thermoworks watch --json | jq .
 ```
 
 Options:
 - `--device SN` — Watch a specific device by serial number
 - `--interval N` — Refresh interval in seconds (default: 10)
+- `--bell` — Ring the terminal bell each refresh while any channel is alarming (off by default)
 - `--json` — Emit one NDJSON object per refresh (timestamp plus devices and channels with alarm state) instead of the live display, for piping into other tools
 
 ### `thermoworks metrics`
@@ -605,6 +608,16 @@ npx thermoworks guide
 npx thermoworks guide beef
 ```
 
+### `thermoworks doneness [meat]`
+
+Show recommended internal pull temperatures for common cuts. Reads the built-in meat profiles, so it needs no network access or login.
+
+```bash
+npx thermoworks doneness
+npx thermoworks doneness brisket
+npx thermoworks doneness --json
+```
+
 ### `thermoworks open [target]`
 
 Open a ThermoWorks site in your browser. Prints the URL first, so it also works over SSH.
@@ -642,6 +655,7 @@ Work out when to start each item so everything finishes at the same serve time. 
 ```bash
 npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --item ribs
 npx thermoworks plan --ready 18:00 --item "pork butt=8" --item "chicken=5h" --json
+npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --ics cook.ics
 npx thermoworks plan --list-meats
 ```
 
@@ -649,6 +663,7 @@ Options:
 - `--ready TIME` — Target serve time. Accepts a time of day (`"6:00 PM"`, `6pm`, `18:00`) or a full date-time. Time-of-day values roll to tomorrow if already past.
 - `--item SPEC` — Add an item. Repeatable. Forms: `NAME` (fixed-time cut), `NAME=WEIGHT` (pounds), or `NAME=Nh` (explicit cook hours).
 - `--list-meats` — Show the built-in meat profiles (cook time, rest, pit temperature).
+- `--ics [PATH]` — Export the plan as an iCalendar (`.ics`) file for import into any calendar app. Writes to `PATH`, or stdout when no path is given. Each item becomes a timed event with a 15-minute start reminder, plus a serve event at the ready time.
 
 ### `thermoworks config`
 
@@ -750,8 +765,18 @@ Completion covers the top-level commands and the subcommands for `auth`, `alarm`
 
 For detailed option docs, see the [full CLI reference](../../docs/cli-reference.md).
 
-## Requirements
+## Global flags
 
+These work with any command:
+
+- `--json` — machine-readable JSON output where supported.
+- `--redact` — mask account and device identifiers in JSON and file output before you share it. Serials become `SERIAL_1`, account and user IDs become `ACCOUNT_1` and `USER_1`, email is masked, and share tokens and public links are dropped. Temperatures and timestamps are left as-is.
+
+```bash
+npx thermoworks devices --json --redact
+```
+
+## Requirements
 - Node.js `>= 18`
 - A [ThermoWorks Cloud](https://cloud.thermoworks.com/) account with one or more connected devices
 - [GitHub Copilot CLI](https://githubnext.com/projects/copilot-cli) if you want statusline integration
@@ -765,3 +790,4 @@ For detailed option docs, see the [full CLI reference](../../docs/cli-reference.
 ## License
 
 MIT
+

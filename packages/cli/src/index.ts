@@ -22,6 +22,7 @@ import {
 import { dataUsage } from "./commands/data-usage.js";
 import { device } from "./commands/device.js";
 import { devices, parseDevicesArgs } from "./commands/devices.js";
+import { doneness } from "./commands/doneness.js";
 import { events, parseEventsArgs } from "./commands/events.js";
 import { exportData } from "./commands/export.js";
 import { fan } from "./commands/fan.js";
@@ -41,7 +42,7 @@ import { session } from "./commands/session.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
 import { temp } from "./commands/temp.js";
 import { watch } from "./commands/watch.js";
-import { parseGlobalFlags } from "./output.js";
+import { parseGlobalFlags, setRedaction } from "./output.js";
 
 // Clean exit on Ctrl+C
 process.on("SIGINT", () => {
@@ -62,6 +63,7 @@ Commands:
   alarm list       List configured alarm thresholds (all devices or one SERIAL)
 
   calibration <SERIAL>  Show NIST-traceable calibration data for a device
+    --interval-months N  Recalibration interval for the due-date check (default: 12)
 
   copilot setup    Configure Copilot CLI statusline (wizard)
   copilot status   Show configured temperature reading
@@ -87,6 +89,7 @@ Commands:
   watch            Continuously monitor temperatures (live refresh)
     --device SN    Watch a specific device by serial number
     --interval N   Refresh interval in seconds (default: 10)
+    --bell         Ring the terminal bell while any channel is alarming
 
   metrics          Serve live temperatures as Prometheus metrics on /metrics
     --host HOST    Bind address (default: 127.0.0.1)
@@ -136,6 +139,8 @@ Commands:
 
   guide [category] Show temperature guide (safe cooking temps)
 
+  doneness [meat]  Show recommended internal pull temperatures for common cuts
+
   open [target]    Open a ThermoWorks site in your browser
     cloud          ThermoWorks Cloud web app (default)
     web            This project's web dashboard
@@ -168,6 +173,7 @@ Commands:
 
 Options:
   --json           Output machine-readable JSON (for scripting)
+  --redact         Mask serials, account and user IDs, email, and tokens in output
   --no-channels    Hide channel readings in devices output
   --help, -h       Show this help message
   --version, -v    Show version`);
@@ -176,6 +182,7 @@ Options:
 async function main(): Promise<void> {
 	const rawArgs = process.argv.slice(2);
 	const { options, remaining: args } = parseGlobalFlags(rawArgs);
+	setRedaction(options.redact ?? false);
 	const command = args[0];
 	const subcommand = args[1];
 
@@ -361,6 +368,10 @@ async function main(): Promise<void> {
 			await guide(args[1], options);
 			break;
 
+		case "doneness":
+			await doneness(args[1], options);
+			break;
+
 		case "journal":
 			await journal(args.slice(1), options);
 			break;
@@ -374,7 +385,7 @@ async function main(): Promise<void> {
 			break;
 
 		case "calibration":
-			await calibration(args[1], options);
+			await calibration(args[1], options, args);
 			break;
 
 		case "completion":

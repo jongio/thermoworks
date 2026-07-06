@@ -8,6 +8,7 @@ import { AccountSwitcher } from "./AccountSwitcher.tsx";
 import { ConnectionStatus } from "./ConnectionStatus.tsx";
 import { NotificationToggle } from "./NotificationToggle.tsx";
 import { ThemeToggle } from "./ThemeToggle.tsx";
+import { WakeLockToggle } from "./WakeLockToggle.tsx";
 
 const STORAGE_KEY = "thermoworks-sidebar-collapsed";
 
@@ -123,6 +124,7 @@ export function Sidebar({
 				>
 					<ThemeToggle />
 					<NotificationToggle />
+					<WakeLockToggle />
 					<button
 						type="button"
 						onClick={onLogout}

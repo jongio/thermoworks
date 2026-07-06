@@ -563,14 +563,13 @@ Show NIST-traceable calibration data for a device, including low-point adjustmen
 **Usage**
 
 ```bash
-npx thermoworks calibration <SERIAL> [--interval-months N]
+npx thermoworks calibration <SERIAL>
 ```
 
 **Options**
 
 - `<SERIAL>` - (Required) Device serial number.
-- `--interval-months N` - Months between recommended recalibrations, used for the due-date check (default: 12).
-- `--json` - Output as JSON. Each record gains a `recalibration` block with `status` (`current`, `due-soon`, `overdue`, or `unknown`), `calibratedAt`, `dueAt`, and `daysRemaining`.
+- `--json` - Output as JSON.
 
 **Examples**
 
@@ -578,8 +577,6 @@ npx thermoworks calibration <SERIAL> [--interval-months N]
 npx thermoworks calibration ABC123
 # Calibration: CAL-2026-001
 #   Date:        January 15, 2026
-#   Next due:    January 15, 2027
-#   Status:      current
 #   Technician:  J. Smith
 #   Reference:   NIST-traceable reference thermometer
 #   Accuracy:    ±0.05°F
@@ -598,7 +595,6 @@ npx thermoworks calibration ABC123
 - Displays calibration records with date, technician, manager, reference instrument, and stated accuracy.
 - Measurement points are displayed in a table showing channel, measured value, reference value, deviation, trim adjustment, and pass/fail result.
 - Results are color-coded: green for PASS, red for FAIL.
-- The `Status` line flags recalibration timing: green `current`, yellow `due soon` within 30 days of the due date, red `overdue` past it, and `unknown` when the device reports no calibration date.
 - Prints `No calibration records found for <serial>.` when no records exist.
 
 ## `thermoworks events`
@@ -1292,7 +1288,7 @@ npx thermoworks convert 107c --json
 - A suffix (`c`/`f`) takes precedence over `--to`.
 - Prints a usage message and exits non-zero when the value cannot be parsed or a bare number is given without a valid `--to`.
 
-## `thermoworks journal <add|list|show|rm>`
+## `thermoworks journal <add|list|show|import|rm>`
 
 Keep a local logbook of finished cooks. Cloud archives store the raw session readings, but not the notes you actually want to keep: the cut, its weight, how it turned out, and what to change next time. The journal is a local file at `~/.thermoworks/journal.json`. No credentials or network access required.
 
@@ -1302,6 +1298,7 @@ Keep a local logbook of finished cooks. Cloud archives store the raw session rea
 npx thermoworks journal add --title "Sunday brisket" [options]
 npx thermoworks journal list [--json]
 npx thermoworks journal show <id> [--json]
+npx thermoworks journal import [SERIAL] [--limit N] [--dry-run] [--json]
 npx thermoworks journal rm <id>
 ```
 
@@ -1319,6 +1316,12 @@ npx thermoworks journal rm <id>
 `list` / `show`:
 - `--json` - Output entries as JSON instead of formatted text.
 
+`import`:
+- `[SERIAL]` - Device to import cooks from. Falls back to the configured default device (`config set device`) when omitted.
+- `--limit N` - Maximum number of recent archives to consider (default 20).
+- `--dry-run` - Show what would be imported without writing anything.
+- `--json` - Output the imported (or candidate) entries as JSON. Requires credentials and network access.
+
 **Examples**
 
 ```bash
@@ -1329,6 +1332,14 @@ npx thermoworks journal list
 #   9029it  Jul 3, 2026, 10:35 AM  Sunday brisket  brisket  ****.
 
 npx thermoworks journal show 9029it
+
+npx thermoworks journal import SMOKE123 --limit 10 --dry-run
+# Would import 3 cook(s) from SMOKE123:
+#   abc  Cook on Jul 1, 2026, 8:00 AM
+#   def  Sunday brisket
+#   ghi  Cook on Jun 24, 2026, 9:30 AM
+# Skipped 7 already in the journal.
+
 npx thermoworks journal rm 9029it
 ```
 
@@ -1338,6 +1349,8 @@ npx thermoworks journal rm 9029it
 - `list` shows entries newest first.
 - A missing journal file lists nothing; a corrupt file is reported and treated as empty rather than crashing.
 - The file is created with owner-only permissions (directory `0700`, file `0600`).
+- `import` pulls finished cooks from a device's cloud archives, seeding the title from the archive label (or its date) and preserving the cook date as the entry timestamp. It requires credentials and network access.
+- `import` is idempotent: entries are deduplicated on the linked archive id, so re-running only adds cooks that are not already logged.
 
 ## `thermoworks plan --ready <time> --item <spec>`
 
@@ -1347,7 +1360,6 @@ Work out when to start each item so everything finishes at the same serve time. 
 
 ```bash
 npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --item ribs
-npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --ics cook.ics
 npx thermoworks plan --list-meats
 ```
 
@@ -1360,7 +1372,6 @@ npx thermoworks plan --list-meats
   - `NAME=Nh` - explicit cook hours (for example `chicken=5h`), for anything not covered by a profile.
 - `--list-meats` - List the built-in meat profiles (cook time, rest, pit temperature) and exit.
 - `--json` - Output the plan (or profile list) as JSON.
-- `--ics [PATH]` - Export the plan as an iCalendar (`.ics`) file you can import into any calendar app. Writes to `PATH` when given, otherwise prints the calendar to stdout. Each item becomes a timed event from put-on to pull-off with a 15-minute reminder before the start, plus a serve event at the ready time.
 
 **Examples**
 
@@ -1374,9 +1385,6 @@ npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --item ribs
 
 npx thermoworks plan --ready 18:00 --item "pork butt=8" --json
 
-npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --ics cook.ics
-# Wrote cook plan calendar to cook.ics
-
 npx thermoworks plan --list-meats
 ```
 
@@ -1385,7 +1393,6 @@ npx thermoworks plan --list-meats
 - Weight-based items use the profile's hours-per-pound; fixed-time items ignore any weight.
 - Rest time comes from the meat profile and is added after the cook when computing the start time.
 - Unknown meat names with no explicit `=Nh` value are reported as an error listing the recognized profiles.
-- `--ics` output uses UTC timestamps and CRLF line endings per RFC 5545, so it imports cleanly into Apple Calendar, Google Calendar, and Outlook.
 
 ## `thermoworks completion <bash|zsh|fish|powershell>`
 
@@ -1662,14 +1669,13 @@ Continuously monitor device temperatures with a live-refreshing display. Clears 
 **Usage**
 
 ```bash
-npx thermoworks watch [--device SERIAL] [--interval N] [--bell] [--json]
+npx thermoworks watch [--device SERIAL] [--interval N] [--json]
 ```
 
 **Options**
 
 - `--device SERIAL` - Watch a specific device by serial number. Without this flag, all devices are shown.
 - `--interval N` - Refresh interval in seconds. Must be >= 1. Defaults to `10`.
-- `--bell` - Ring the terminal bell (writes the `\x07` BEL character) once per refresh while any enabled channel is in an alarm state. Off by default.
 - `--json` - Emit one newline-delimited JSON (NDJSON) object per refresh instead of the live display. Each frame has an ISO `timestamp` and a `devices` array; every device carries `serial`, `label`, `type`, `status`, `battery`, and a `channels` array with `number`, `label`, `value`, `units`, and `alarm` (`high`, `low`, or `normal`). The screen is not cleared, so output can be piped or appended to a file.
 
 **Examples**
@@ -1700,7 +1706,6 @@ npx thermoworks watch --json --interval 5 | jq .
 - Exits immediately with an error if `--device` is specified and no matching device is found.
 - Press `Ctrl+C` to exit (handled by the global SIGINT handler).
 - The `--interval` must be a positive number >= 1; values below 1 produce an error.
-- With `--bell`, the terminal bell rings once per refresh while any channel is alarming. Many terminals turn this into an audible beep or a visual flash. Works in both the live display and `--json` mode.
 - When `--device` or `--interval` are omitted, falls back to the `device` and `watchInterval` defaults saved with `thermoworks config`.
 
 ## `thermoworks config`
@@ -1823,7 +1828,6 @@ scrape_configs:
 
 ```text
 --json           Output machine-readable JSON (for scripting)
---redact         Mask serials, account/user IDs, email, and tokens
 --no-channels    Hide channel readings in devices output
 --help, -h       Show help
 --version, -v    Show version
@@ -1831,7 +1835,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 
@@ -1839,18 +1843,6 @@ When active, commands write a single JSON value (object or array) to stdout with
 npx thermoworks devices --json | jq '.[].serial'
 npx thermoworks events --json --limit 5
 npx thermoworks firmware --json
-```
-
-### `--redact`
-
-Mask account and device identifiers before anything is written, so output is safe to share. When set, device serials become `SERIAL_1`, `SERIAL_2`, and so on; account and user IDs become `ACCOUNT_1` and `USER_1`; email addresses are masked; and share tokens and public links are removed. The same serial maps to the same placeholder for one run, so relationships in the data stay readable. Temperature values and timestamps are never changed.
-
-Redaction applies to every command that emits JSON (through `--json`) and to `export` and `backup` file output. Plain table output is unchanged.
-
-```bash
-npx thermoworks devices --json --redact
-npx thermoworks account --json --redact
-npx thermoworks backup --format json --redact
 ```
 
 ### `--no-channels`
@@ -1915,4 +1907,3 @@ npx thermoworks --version
 **Notes**
 
 - Reads the version from the CLI package's `package.json`.
-

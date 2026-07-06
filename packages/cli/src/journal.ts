@@ -85,6 +85,36 @@ export async function addEntry(input: NewJournalEntry): Promise<JournalEntry> {
 	return entry;
 }
 
+/** An entry to import that may carry its own timestamp (for example a cook date). */
+export type ImportableEntry = NewJournalEntry & { createdAt?: string };
+
+/**
+ * Add several entries in one write. Each entry gets a stable short id; the
+ * created timestamp is taken from the input when present, otherwise the
+ * current time. Nothing is written when the input list is empty.
+ */
+export async function addEntries(inputs: ImportableEntry[]): Promise<JournalEntry[]> {
+	const entries = await loadJournal();
+	const existing = new Set(entries.map((e) => e.id));
+	const added: JournalEntry[] = [];
+	for (const input of inputs) {
+		const { createdAt, ...rest } = input;
+		const id = generateId(existing);
+		existing.add(id);
+		const entry: JournalEntry = {
+			id,
+			createdAt: createdAt ?? new Date().toISOString(),
+			...rest,
+		};
+		entries.push(entry);
+		added.push(entry);
+	}
+	if (added.length > 0) {
+		await saveJournal(entries);
+	}
+	return added;
+}
+
 /** Look up a single entry by id. */
 export async function getEntry(id: string): Promise<JournalEntry | undefined> {
 	const entries = await loadJournal();

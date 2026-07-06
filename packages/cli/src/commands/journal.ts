@@ -1,12 +1,18 @@
+import type { Archive } from "thermoworks-sdk";
+import { ThermoworksCloud } from "thermoworks-sdk";
+import { getCredentials } from "../credentials.js";
 import {
+	addEntries,
 	addEntry,
 	getEntry,
+	type ImportableEntry,
 	type JournalEntry,
 	loadJournal,
 	type NewJournalEntry,
 	removeEntry,
 } from "../journal.js";
 import { type OutputOptions, outputJson } from "../output.js";
+import { loadPreferences } from "../preferences.js";
 
 /** Parse an `add` spec into a new entry. Returns an error message on failure. */
 export function parseAddArgs(args: string[]): NewJournalEntry | { error: string } {
@@ -128,12 +134,63 @@ export function formatEntry(entry: JournalEntry): string {
 	return `${lines.join("\n")}\n`;
 }
 
-const USAGE = `Usage: thermoworks journal <add|list|show|rm> [options]
+/** Parsed options for the journal import subcommand. */
+export interface JournalImportOptions {
+	serial?: string;
+	limit: number;
+	dryRun: boolean;
+}
+
+/** Parse args after `journal import`. Returns an error message on failure. */
+export function parseImportArgs(args: string[]): JournalImportOptions | { error: string } {
+	let serial: string | undefined;
+	let limit = 20;
+	let dryRun = false;
+
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if (arg === undefined) continue;
+		if (arg === "--limit") {
+			const value = args[++i];
+			if (value === undefined) return { error: "--limit requires a value" };
+			const parsed = Number.parseInt(value, 10);
+			if (!Number.isInteger(parsed) || parsed <= 0) {
+				return { error: `--limit must be a positive integer, got "${value}"` };
+			}
+			limit = parsed;
+		} else if (arg === "--dry-run") {
+			dryRun = true;
+		} else if (arg.startsWith("--")) {
+			return { error: `Unknown option: ${arg}` };
+		} else if (serial === undefined) {
+			serial = arg;
+		} else {
+			return { error: `Unexpected argument: ${arg}` };
+		}
+	}
+
+	return { serial, limit, dryRun };
+}
+
+/** Build a journal entry from an archive, carrying the cook date when known. */
+export function buildImportEntry(archive: Archive, serial: string): ImportableEntry {
+	const cookDate = archive.start ?? archive.createdOn ?? null;
+	const label = archive.label?.trim();
+	const title =
+		label || (cookDate ? `Cook on ${formatDate(cookDate.toISOString())}` : `Cook ${archive.id}`);
+	const entry: ImportableEntry = { title, device: serial, archive: archive.id };
+	if (cookDate) entry.createdAt = cookDate.toISOString();
+	const notes = archive.notes?.trim();
+	if (notes) entry.notes = notes;
+	return entry;
+}
+const USAGE = `Usage: thermoworks journal <add|list|show|import|rm> [options]
 
   journal add --title "Sunday brisket" [--meat brisket] [--weight 12]
               [--rating 4] [--notes "..."] [--device SN] [--archive ID]
   journal list [--json]
   journal show <id> [--json]
+  journal import [SERIAL] [--limit N] [--dry-run] [--json]
   journal rm <id>`;
 
 /** Route `thermoworks journal <subcommand>` to the right handler. */
@@ -182,6 +239,10 @@ export async function journal(args: string[], options: OutputOptions): Promise<v
 			process.stdout.write(formatEntry(entry));
 			break;
 		}
+		case "import": {
+			await journalImport(args.slice(1), options);
+			break;
+		}
 		case "rm": {
 			const id = args[1];
 			if (!id) {
@@ -201,4 +262,73 @@ export async function journal(args: string[], options: OutputOptions): Promise<v
 			console.log(USAGE);
 			if (subcommand) process.exit(1);
 	}
+}
+
+/** Import finished cooks from a device's archives into the journal. */
+export async function journalImport(args: string[], options: OutputOptions): Promise<void> {
+	const parsed = parseImportArgs(args);
+	if ("error" in parsed) {
+		console.error(parsed.error);
+		process.exit(1);
+	}
+
+	const prefs = await loadPreferences();
+	const serial = parsed.serial ?? prefs.device;
+	if (!serial) {
+		console.error(
+			"No device given. Pass a serial (thermoworks journal import SERIAL) or set a default with: thermoworks config set device SN",
+		);
+		process.exit(1);
+	}
+
+	const creds = await getCredentials();
+	if (!creds) {
+		console.error("Not logged in. Run: thermoworks auth login");
+		process.exit(1);
+	}
+
+	const client = new ThermoworksCloud({ email: creds.email, password: creds.password });
+	let archives: Archive[];
+	try {
+		archives = await client.getArchives(serial, { limit: parsed.limit });
+	} finally {
+		client.close();
+	}
+
+	const existing = await loadJournal();
+	const importedArchives = new Set(
+		existing.map((e) => e.archive).filter((id): id is string => typeof id === "string"),
+	);
+
+	const candidates = archives.filter((a) => !importedArchives.has(a.id));
+	const skipped = archives.length - candidates.length;
+	const toImport = candidates.map((a) => buildImportEntry(a, serial));
+
+	if (parsed.dryRun) {
+		if (options.json) {
+			outputJson(toImport);
+			return;
+		}
+		if (toImport.length === 0) {
+			console.log(
+				`Nothing new to import from ${serial}. Skipped ${skipped} already in the journal.`,
+			);
+			return;
+		}
+		console.log(`Would import ${toImport.length} cook(s) from ${serial}:`);
+		for (const entry of toImport) {
+			console.log(`  ${entry.archive}  ${entry.title}`);
+		}
+		if (skipped > 0) console.log(`Skipped ${skipped} already in the journal.`);
+		return;
+	}
+
+	const added = await addEntries(toImport);
+	if (options.json) {
+		outputJson(added);
+		return;
+	}
+	console.log(
+		`Imported ${added.length} cook(s) from ${serial}. Skipped ${skipped} already in the journal.`,
+	);
 }

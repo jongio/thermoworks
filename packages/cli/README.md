@@ -177,10 +177,11 @@ of `{ serial, deviceLabel, channel, channelLabel, alarmHigh, alarmLow }`.
 
 ### `thermoworks calibration <serial>`
 
-Show NIST-traceable calibration data for a device.
+Show NIST-traceable calibration data for a device, plus a recalibration due-date check based on a configurable interval (default 12 months).
 
 ```bash
 npx thermoworks calibration M100009168
+npx thermoworks calibration M100009168 --interval-months 6
 ```
 
 ### `thermoworks copilot setup [--dev]`

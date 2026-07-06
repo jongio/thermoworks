@@ -22,6 +22,7 @@ export interface WatchArgs {
 	interval: number;
 	record?: string;
 	recordFormat: WatchRecordFormat;
+	bell: boolean;
 }
 
 /** Defaults applied when the matching flag is not passed. */
@@ -36,6 +37,7 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 	let interval = defaults.interval ?? 10;
 	let record: string | undefined;
 	let recordFormat: WatchRecordFormat = "csv";
+	let bell = false;
 
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
@@ -57,10 +59,12 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 				process.exit(1);
 			}
 			recordFormat = value;
+		} else if (arg === "--bell") {
+			bell = true;
 		}
 	}
 
-	return { device, interval, record, recordFormat };
+	return { device, interval, record, recordFormat, bell };
 }
 
 /** Format a Date to a time string for display in the watch header. */
@@ -216,6 +220,13 @@ export function buildRecordChunk(
 	return lines.length > 0 ? `${lines.join("\n")}\n` : "";
 }
 
+/** True when any enabled channel in the frame is in an alarm state (low or high). */
+export function watchFrameHasAlarm(devices: DeviceWithChannels[]): boolean {
+	return devices.some(({ channels }) =>
+		channels.some((ch) => ch.enabled !== false && getChannelAlarmState(ch) !== "none"),
+	);
+}
+
 /** Sleep for the given number of seconds. Returns a cancellable handle. */
 function sleep(seconds: number): { promise: Promise<void>; cancel: () => void } {
 	let timer: ReturnType<typeof setTimeout>;
@@ -237,6 +248,7 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 		interval,
 		record,
 		recordFormat,
+		bell,
 	} = parseWatchArgs(args, {
 		device: prefs.device,
 		interval: prefs.watchInterval,
@@ -304,6 +316,11 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 			} else {
 				console.clear();
 				console.log(formatWatchFrame(devicesWithChannels, now, interval));
+			}
+
+			// Ring the terminal bell once per refresh while any channel is alarming.
+			if (bell && watchFrameHasAlarm(devicesWithChannels)) {
+				process.stdout.write("\x07");
 			}
 		} catch (err) {
 			console.error(`Error fetching data: ${err instanceof Error ? err.message : String(err)}`);

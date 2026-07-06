@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs";
 import { type CookPlan, type CookPlanItemInput, getMeatProfiles, planCook } from "thermoworks-sdk";
 
 import { type OutputOptions, outputJson } from "../output.js";
@@ -6,6 +7,8 @@ import { type OutputOptions, outputJson } from "../output.js";
 export interface PlanOptions {
 	readyAt: Date;
 	items: CookPlanItemInput[];
+	/** ICS export target: a file path, or true for stdout, when requested. */
+	ics?: string | true;
 }
 
 /**
@@ -83,6 +86,7 @@ export function parsePlanArgs(args: string[]): PlanOptions | { listMeats: true }
 
 	let ready: string | undefined;
 	const itemSpecs: string[] = [];
+	let ics: string | true | undefined;
 
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
@@ -100,6 +104,14 @@ export function parsePlanArgs(args: string[]): PlanOptions | { listMeats: true }
 				process.exit(1);
 			}
 			itemSpecs.push(spec);
+		} else if (arg === "--ics") {
+			const next = args[i + 1];
+			if (next !== undefined && !next.startsWith("--")) {
+				ics = next;
+				i++;
+			} else {
+				ics = true;
+			}
 		} else if (arg.startsWith("--")) {
 			console.error(`Unknown option: ${arg}`);
 			process.exit(1);
@@ -131,7 +143,7 @@ export function parsePlanArgs(args: string[]): PlanOptions | { listMeats: true }
 		items.push(parsed);
 	}
 
-	return { readyAt, items };
+	return { readyAt, items, ics };
 }
 
 function formatClock(date: Date): string {
@@ -176,6 +188,108 @@ export function formatPlan(plan: CookPlan): string {
 	return `${lines.join("\n")}\n`;
 }
 
+/** Escape a text value for an ICS property per RFC 5545 section 3.3.11. */
+export function escapeIcsText(value: string): string {
+	return value
+		.replace(/\\/g, "\\\\")
+		.replace(/;/g, "\\;")
+		.replace(/,/g, "\\,")
+		.replace(/\r\n|\n|\r/g, "\\n");
+}
+
+/** Format a Date as an RFC 5545 UTC timestamp: YYYYMMDDTHHMMSSZ. */
+export function formatIcsTimestamp(date: Date): string {
+	const pad = (n: number) => String(n).padStart(2, "0");
+	return (
+		`${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}` +
+		`T${pad(date.getUTCHours())}${pad(date.getUTCMinutes())}${pad(date.getUTCSeconds())}Z`
+	);
+}
+
+/**
+ * Fold a content line to 75 octets per RFC 5545 section 3.1. Continuation
+ * lines begin with a single space. Folding is done on octet boundaries using
+ * the UTF-8 byte length so multi-byte characters are never split.
+ */
+export function foldIcsLine(line: string): string {
+	const bytes = Buffer.from(line, "utf8");
+	if (bytes.length <= 75) return line;
+
+	const chunks: string[] = [];
+	let start = 0;
+	let limit = 75;
+	while (start < bytes.length) {
+		let end = Math.min(start + limit, bytes.length);
+		// Do not split a multi-byte UTF-8 sequence: back up off continuation bytes.
+		while (end < bytes.length && (bytes[end] ?? 0) >= 0x80 && (bytes[end] ?? 0) < 0xc0) {
+			end--;
+		}
+		chunks.push(bytes.subarray(start, end).toString("utf8"));
+		start = end;
+		// Continuation lines carry a leading space, leaving 74 octets of content.
+		limit = 74;
+	}
+	return chunks.join("\r\n ");
+}
+
+/**
+ * Render a cook plan as an RFC 5545 iCalendar document. Produces one timed
+ * event per item (from put-on to pull-off) with a reminder before the start,
+ * plus a serve event at the shared ready time. Uses CRLF line endings and UTC
+ * timestamps so the file imports cleanly into any calendar application.
+ */
+export function formatIcs(plan: CookPlan, now: Date = new Date()): string {
+	const stamp = formatIcsTimestamp(now);
+	const lines: string[] = [
+		"BEGIN:VCALENDAR",
+		"VERSION:2.0",
+		"PRODID:-//ThermoWorks CLI//Cook Plan//EN",
+		"CALSCALE:GREGORIAN",
+		"METHOD:PUBLISH",
+	];
+
+	plan.items.forEach((item, index) => {
+		const uid = `${item.startAt.getTime()}-${index}@thermoworks-cli`;
+		const restNote =
+			item.restMinutes > 0 ? ` Rest ${formatDuration(item.restMinutes)} before serving.` : "";
+		const description = `Put ${item.label} on at ${formatClock(item.startAt)} and pull off at ${formatClock(item.removeAt)}.${restNote}`;
+		lines.push(
+			"BEGIN:VEVENT",
+			foldIcsLine(`UID:${uid}`),
+			`DTSTAMP:${stamp}`,
+			`DTSTART:${formatIcsTimestamp(item.startAt)}`,
+			`DTEND:${formatIcsTimestamp(item.removeAt)}`,
+			foldIcsLine(`SUMMARY:Cook ${escapeIcsText(item.label)}`),
+			foldIcsLine(`DESCRIPTION:${escapeIcsText(description)}`),
+			"BEGIN:VALARM",
+			"TRIGGER:-PT15M",
+			"ACTION:DISPLAY",
+			foldIcsLine(`DESCRIPTION:Time to put ${escapeIcsText(item.label)} on`),
+			"END:VALARM",
+			"END:VEVENT",
+		);
+	});
+
+	const serveEnd = new Date(plan.readyAt.getTime() + 15 * 60_000);
+	lines.push(
+		"BEGIN:VEVENT",
+		foldIcsLine(`UID:${plan.readyAt.getTime()}-serve@thermoworks-cli`),
+		`DTSTAMP:${stamp}`,
+		`DTSTART:${formatIcsTimestamp(plan.readyAt)}`,
+		`DTEND:${formatIcsTimestamp(serveEnd)}`,
+		"SUMMARY:Serve: everything ready",
+		"BEGIN:VALARM",
+		"TRIGGER:PT0S",
+		"ACTION:DISPLAY",
+		"DESCRIPTION:Everything is ready to serve",
+		"END:VALARM",
+		"END:VEVENT",
+		"END:VCALENDAR",
+	);
+
+	return `${lines.join("\r\n")}\r\n`;
+}
+
 /** Format the built-in meat profiles as a table. */
 export function formatMeatList(): string {
 	const profiles = getMeatProfiles();
@@ -200,7 +314,7 @@ export function formatMeatList(): string {
 }
 
 const USAGE =
-	'Usage: thermoworks plan --ready "6:00 PM" --item "brisket=12" [--item ribs] [--json]\n' +
+	'Usage: thermoworks plan --ready "6:00 PM" --item "brisket=12" [--item ribs] [--json] [--ics [path]]\n' +
 	"       thermoworks plan --list-meats\n" +
 	"\n" +
 	"Item forms: NAME (fixed-time cut), NAME=WEIGHT (pounds), NAME=Nh (explicit hours).";
@@ -232,6 +346,24 @@ export async function plan(
 	} catch (err) {
 		console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
 		process.exit(1);
+	}
+
+	if (parsed.ics !== undefined) {
+		const ics = formatIcs(result);
+		if (parsed.ics === true) {
+			process.stdout.write(ics);
+			return;
+		}
+		try {
+			writeFileSync(parsed.ics, ics, "utf8");
+		} catch (err) {
+			console.error(
+				`Could not write ICS file: ${err instanceof Error ? err.message : String(err)}`,
+			);
+			process.exit(1);
+		}
+		console.log(`Wrote cook plan calendar to ${parsed.ics}`);
+		return;
 	}
 
 	if (options.json) {

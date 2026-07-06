@@ -1173,7 +1173,122 @@ npx thermoworks guide --json
 - Prints `No categories matching "<filter>".` when the filter has no matches.
 - Prints `No temperature guide categories found.` when the guide data is empty.
 
-## `thermoworks journal <add|list|show|rm>`
+## `thermoworks doneness`
+
+Show recommended internal pull temperatures for common cuts. This reads the built-in meat profiles, so it needs no network access or login. Use it to look up the target internal temp to pull a cut at, which is the number the cloud safe-temp guide does not give you per cut.
+
+**Usage**
+
+```bash
+npx thermoworks doneness [meat]
+```
+
+**Options**
+
+- `[meat]` - (Optional) A meat name or alias (for example `brisket`, `pulled pork`). Prints details for that one cut.
+- `--json` - Output as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks doneness
+# Doneness guide (internal pull temperatures):
+#   Meat            Pull at  Pit    Rest  Doneness
+#   Brisket         203°F    250°F  60m   Probe-tender, around 203°F in the flat
+#   Pork Butt       203°F    250°F  45m   Pull-apart tender, 200-205°F
+#   Pork Ribs       By feel  250°F  15m   Bend test; bones start to pull, around 200-203°F
+
+npx thermoworks doneness brisket
+# Brisket
+#   Pull at:   203°F
+#   Pit temp:  250°F
+#   Rest:      60m
+#   Cook time: 1.25 h/lb
+#   Doneness:  Probe-tender, around 203°F in the flat
+
+npx thermoworks doneness --json
+```
+
+**Notes**
+
+- No credentials or network access required.
+- Cuts judged by feel (such as ribs) show `By feel` for the pull temperature, with a doneness note.
+- Meat names accept the same aliases as `plan` (for example `pulled pork` resolves to `Pork Butt`).
+- Prints an error and exits non-zero for an unknown meat.
+
+## `thermoworks open`
+
+Open a ThermoWorks site in your default browser. The URL is always printed first, so the command is still useful over SSH or when no browser is available.
+
+**Usage**
+
+```bash
+npx thermoworks open [target]
+```
+
+**Options**
+
+- `[target]` - (Optional) Which site to open. `cloud` (default) opens the ThermoWorks Cloud web app. `web` opens this project's web dashboard.
+- `--json` - Output the resolved target as JSON (`{ target, name, url }`) instead of the status line.
+
+**Examples**
+
+```bash
+npx thermoworks open
+# Opening ThermoWorks Cloud: https://cloud.thermoworks.com
+
+npx thermoworks open web
+# Opening ThermoWorks web dashboard: https://jongio.github.io/thermoworks/
+
+npx thermoworks open --json
+# { "target": "cloud", "name": "ThermoWorks Cloud", "url": "https://cloud.thermoworks.com" }
+```
+
+**Notes**
+
+- No credentials or network access required.
+- Uses `cmd /c start` on Windows, `open` on macOS, and `xdg-open` on Linux.
+- Prints `Unknown target: <name>. Known targets: cloud, web` and exits non-zero for an unknown target.
+
+## `thermoworks convert`
+
+Convert a temperature between Celsius and Fahrenheit. Offline, no login. Uses the same conversion the SDK uses, rounded to one decimal place.
+
+**Usage**
+
+```bash
+npx thermoworks convert <VALUE>[c|f] [--to c|f]
+```
+
+**Options**
+
+- `<VALUE>` - The temperature to convert. A suffix sets the source unit: `225f` is Fahrenheit, `107c` is Celsius, and the result is the other unit. A bare number needs `--to`.
+- `--to c|f` - Target unit for a bare number (the source is taken as the opposite unit). Ignored when the value has a suffix.
+- `--json` - Output `{ input, value, unit }` as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks convert 225f
+# 107.2°C
+
+npx thermoworks convert 107c
+# 224.6°F
+
+npx thermoworks convert 225 --to c
+# 107.2°C
+
+npx thermoworks convert 107c --json
+# { "input": 107, "value": 224.6, "unit": "F" }
+```
+
+**Notes**
+
+- No credentials or network access required.
+- A suffix (`c`/`f`) takes precedence over `--to`.
+- Prints a usage message and exits non-zero when the value cannot be parsed or a bare number is given without a valid `--to`.
+
+## `thermoworks journal <add|list|show|import|rm>`
 
 Keep a local logbook of finished cooks. Cloud archives store the raw session readings, but not the notes you actually want to keep: the cut, its weight, how it turned out, and what to change next time. The journal is a local file at `~/.thermoworks/journal.json`. No credentials or network access required.
 
@@ -1183,6 +1298,7 @@ Keep a local logbook of finished cooks. Cloud archives store the raw session rea
 npx thermoworks journal add --title "Sunday brisket" [options]
 npx thermoworks journal list [--json]
 npx thermoworks journal show <id> [--json]
+npx thermoworks journal import [SERIAL] [--limit N] [--dry-run] [--json]
 npx thermoworks journal rm <id>
 ```
 
@@ -1200,6 +1316,12 @@ npx thermoworks journal rm <id>
 `list` / `show`:
 - `--json` - Output entries as JSON instead of formatted text.
 
+`import`:
+- `[SERIAL]` - Device to import cooks from. Falls back to the configured default device (`config set device`) when omitted.
+- `--limit N` - Maximum number of recent archives to consider (default 20).
+- `--dry-run` - Show what would be imported without writing anything.
+- `--json` - Output the imported (or candidate) entries as JSON. Requires credentials and network access.
+
 **Examples**
 
 ```bash
@@ -1210,6 +1332,14 @@ npx thermoworks journal list
 #   9029it  Jul 3, 2026, 10:35 AM  Sunday brisket  brisket  ****.
 
 npx thermoworks journal show 9029it
+
+npx thermoworks journal import SMOKE123 --limit 10 --dry-run
+# Would import 3 cook(s) from SMOKE123:
+#   abc  Cook on Jul 1, 2026, 8:00 AM
+#   def  Sunday brisket
+#   ghi  Cook on Jun 24, 2026, 9:30 AM
+# Skipped 7 already in the journal.
+
 npx thermoworks journal rm 9029it
 ```
 
@@ -1219,6 +1349,8 @@ npx thermoworks journal rm 9029it
 - `list` shows entries newest first.
 - A missing journal file lists nothing; a corrupt file is reported and treated as empty rather than crashing.
 - The file is created with owner-only permissions (directory `0700`, file `0600`).
+- `import` pulls finished cooks from a device's cloud archives, seeding the title from the archive label (or its date) and preserving the cook date as the entry timestamp. It requires credentials and network access.
+- `import` is idempotent: entries are deduplicated on the linked archive id, so re-running only adds cooks that are not already logged.
 
 ## `thermoworks plan --ready <time> --item <spec>`
 
@@ -1711,7 +1843,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

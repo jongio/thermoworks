@@ -618,6 +618,19 @@ npx thermoworks doneness brisket
 npx thermoworks doneness --json
 ```
 
+### `thermoworks open [target]`
+
+Open a ThermoWorks site in your browser. Prints the URL first, so it also works over SSH.
+
+```bash
+npx thermoworks open        # ThermoWorks Cloud web app (default)
+npx thermoworks open web    # This project's web dashboard
+```
+
+Options:
+- `[target]` — `cloud` (default) or `web`
+- `--json` — Print the resolved `{ target, name, url }` instead of the status line
+
 ### `thermoworks journal <add|list|show|rm>`
 
 Keep a local logbook of finished cooks: what the cut was, its weight, how it turned out, and notes for next time. Entries are stored in `~/.thermoworks/journal.json`. No credentials required.

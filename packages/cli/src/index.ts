@@ -34,6 +34,7 @@ import { journal } from "./commands/journal.js";
 import { mcpStart } from "./commands/mcp.js";
 import { metrics } from "./commands/metrics.js";
 import { notifications } from "./commands/notifications.js";
+import { open } from "./commands/open.js";
 import { plan } from "./commands/plan.js";
 import { replay } from "./commands/replay.js";
 import { search } from "./commands/search.js";
@@ -139,6 +140,10 @@ Commands:
   guide [category] Show temperature guide (safe cooking temps)
 
   doneness [meat]  Show recommended internal pull temperatures for common cuts
+
+  open [target]    Open a ThermoWorks site in your browser
+    cloud          ThermoWorks Cloud web app (default)
+    web            This project's web dashboard
 
   journal add      Log a finished cook to a local logbook
   journal list     List logbook entries (newest first)
@@ -289,6 +294,10 @@ async function main(): Promise<void> {
 
 		case "watch":
 			await watch(args.slice(1), options);
+			break;
+
+		case "open":
+			open(args[1], options);
 			break;
 
 		case "metrics":

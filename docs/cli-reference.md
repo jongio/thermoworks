@@ -1220,6 +1220,40 @@ npx thermoworks doneness --json
 - Meat names accept the same aliases as `plan` (for example `pulled pork` resolves to `Pork Butt`).
 - Prints an error and exits non-zero for an unknown meat.
 
+## `thermoworks open`
+
+Open a ThermoWorks site in your default browser. The URL is always printed first, so the command is still useful over SSH or when no browser is available.
+
+**Usage**
+
+```bash
+npx thermoworks open [target]
+```
+
+**Options**
+
+- `[target]` - (Optional) Which site to open. `cloud` (default) opens the ThermoWorks Cloud web app. `web` opens this project's web dashboard.
+- `--json` - Output the resolved target as JSON (`{ target, name, url }`) instead of the status line.
+
+**Examples**
+
+```bash
+npx thermoworks open
+# Opening ThermoWorks Cloud: https://cloud.thermoworks.com
+
+npx thermoworks open web
+# Opening ThermoWorks web dashboard: https://jongio.github.io/thermoworks/
+
+npx thermoworks open --json
+# { "target": "cloud", "name": "ThermoWorks Cloud", "url": "https://cloud.thermoworks.com" }
+```
+
+**Notes**
+
+- No credentials or network access required.
+- Uses `cmd /c start` on Windows, `open` on macOS, and `xdg-open` on Linux.
+- Prints `Unknown target: <name>. Known targets: cloud, web` and exits non-zero for an unknown target.
+
 ## `thermoworks journal <add|list|show|rm>`
 
 Keep a local logbook of finished cooks. Cloud archives store the raw session readings, but not the notes you actually want to keep: the cut, its weight, how it turned out, and what to change next time. The journal is a local file at `~/.thermoworks/journal.json`. No credentials or network access required.

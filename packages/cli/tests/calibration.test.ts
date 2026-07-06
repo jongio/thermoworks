@@ -270,7 +270,9 @@ describe("calibration", () => {
 		const { calibration } = await import("../src/commands/calibration.js");
 		await expect(calibration(undefined)).rejects.toThrow("process.exit");
 
-		expect(errorSpy).toHaveBeenCalledWith("Usage: thermoworks calibration <SERIAL>");
+		expect(errorSpy).toHaveBeenCalledWith(
+			"Usage: thermoworks calibration <SERIAL> [--interval-months N]",
+		);
 		exitSpy.mockRestore();
 	});
 

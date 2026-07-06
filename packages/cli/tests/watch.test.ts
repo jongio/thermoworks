@@ -7,6 +7,7 @@ import {
 	formatTimestamp,
 	formatWatchFrame,
 	parseWatchArgs,
+	watchFrameHasAlarm,
 } from "../src/commands/watch.js";
 
 // --- Helpers (same factories as devices-channels.test.ts) ---
@@ -101,7 +102,7 @@ describe("parseWatchArgs", () => {
 
 	it("returns defaults when no args provided", () => {
 		const result = parseWatchArgs([]);
-		expect(result).toEqual({ device: undefined, interval: 10 });
+		expect(result).toEqual({ device: undefined, interval: 10, bell: false });
 	});
 
 	it("parses --device flag", () => {
@@ -160,6 +161,93 @@ describe("parseWatchArgs", () => {
 		});
 		expect(result.device).toBe("FLAG1");
 		expect(result.interval).toBe(5);
+	});
+
+	it("defaults bell to off", () => {
+		const result = parseWatchArgs([]);
+		expect(result.bell).toBe(false);
+	});
+
+	it("parses --bell flag", () => {
+		const result = parseWatchArgs(["--bell"]);
+		expect(result.bell).toBe(true);
+	});
+
+	it("parses --bell alongside other flags", () => {
+		const result = parseWatchArgs(["--device", "S1", "--bell", "--interval", "5"]);
+		expect(result.device).toBe("S1");
+		expect(result.interval).toBe(5);
+		expect(result.bell).toBe(true);
+	});
+});
+
+// =============================================================================
+// watchFrameHasAlarm
+// =============================================================================
+
+describe("watchFrameHasAlarm", () => {
+	const alarmingChannel = () =>
+		makeChannel({
+			value: 275,
+			units: "F",
+			label: "Pit",
+			number: "1",
+			alarmHigh: {
+				enabled: true,
+				alarming: true,
+				muted: null,
+				value: 250,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+
+	it("returns false when there are no devices", () => {
+		expect(watchFrameHasAlarm([])).toBe(false);
+	});
+
+	it("returns false when no channel is alarming", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1", label: "Smoker" }),
+				channels: [makeChannel({ value: 200, units: "F", label: "Pit", number: "1" })],
+			},
+		];
+		expect(watchFrameHasAlarm(devices)).toBe(false);
+	});
+
+	it("returns true when a channel is alarming", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1", label: "Smoker" }),
+				channels: [alarmingChannel()],
+			},
+		];
+		expect(watchFrameHasAlarm(devices)).toBe(true);
+	});
+
+	it("ignores a disabled channel that would otherwise alarm", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1", label: "Smoker" }),
+				channels: [{ ...alarmingChannel(), enabled: false }],
+			},
+		];
+		expect(watchFrameHasAlarm(devices)).toBe(false);
+	});
+
+	it("detects an alarm on any device in the frame", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "D1", label: "Grill" }),
+				channels: [makeChannel({ value: 200, units: "F", label: "Pit", number: "1" })],
+			},
+			{
+				device: makeDevice({ serial: "D2", label: "Smoker" }),
+				channels: [alarmingChannel()],
+			},
+		];
+		expect(watchFrameHasAlarm(devices)).toBe(true);
 	});
 });
 

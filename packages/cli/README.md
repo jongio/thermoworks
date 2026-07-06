@@ -631,6 +631,21 @@ Options:
 - `[target]` — `cloud` (default) or `web`
 - `--json` — Print the resolved `{ target, name, url }` instead of the status line
 
+### `thermoworks convert <value>`
+
+Convert a temperature between Celsius and Fahrenheit. Offline, no login.
+
+```bash
+npx thermoworks convert 225f      # 107.2°C
+npx thermoworks convert 107c      # 224.6°F
+npx thermoworks convert 225 --to c
+```
+
+Options:
+- `<value>` — Suffix with `c` or `f` to set the source unit, or pass a bare number with `--to`
+- `--to c|f` — Target unit for a bare number (ignored when the value has a suffix)
+- `--json` — Print `{ input, value, unit }`
+
 ### `thermoworks journal <add|list|show|rm>`
 
 Keep a local logbook of finished cooks: what the cut was, its weight, how it turned out, and notes for next time. Entries are stored in `~/.thermoworks/journal.json`. No credentials required.

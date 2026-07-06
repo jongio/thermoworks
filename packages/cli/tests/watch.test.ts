@@ -2,11 +2,15 @@ import type { Device, DeviceChannel } from "thermoworks-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+	buildRecordChunk,
+	buildRecordCsvRows,
 	buildWatchJsonFrame,
 	type DeviceWithChannels,
 	formatTimestamp,
 	formatWatchFrame,
 	parseWatchArgs,
+	RECORD_CSV_HEADER,
+	type WatchJsonFrame,
 	watchFrameHasAlarm,
 } from "../src/commands/watch.js";
 
@@ -102,7 +106,13 @@ describe("parseWatchArgs", () => {
 
 	it("returns defaults when no args provided", () => {
 		const result = parseWatchArgs([]);
-		expect(result).toEqual({ device: undefined, interval: 10, bell: false });
+		expect(result).toEqual({
+			device: undefined,
+			interval: 10,
+			record: undefined,
+			recordFormat: "csv",
+			bell: false,
+		});
 	});
 
 	it("parses --device flag", () => {
@@ -527,5 +537,108 @@ describe("buildWatchJsonFrame", () => {
 		const line = JSON.stringify(buildWatchJsonFrame(devices, fixedDate));
 		expect(line).not.toContain("\n");
 		expect(JSON.parse(line).devices[0].serial).toBe("S1");
+	});
+});
+
+// =============================================================================
+// parseWatchArgs recording flags
+// =============================================================================
+
+describe("parseWatchArgs recording", () => {
+	let exitSpy: ReturnType<typeof vi.spyOn>;
+	let errorSpy: ReturnType<typeof vi.spyOn>;
+
+	beforeEach(() => {
+		exitSpy = vi.spyOn(process, "exit").mockImplementation(() => undefined as never);
+		errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+	});
+
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
+	it("defaults record to undefined and format to csv", () => {
+		const result = parseWatchArgs([]);
+		expect(result.record).toBeUndefined();
+		expect(result.recordFormat).toBe("csv");
+	});
+
+	it("parses --record path", () => {
+		const result = parseWatchArgs(["--record", "cook.csv"]);
+		expect(result.record).toBe("cook.csv");
+		expect(result.recordFormat).toBe("csv");
+	});
+
+	it("parses --record-format json", () => {
+		const result = parseWatchArgs(["--record", "cook.ndjson", "--record-format", "json"]);
+		expect(result.record).toBe("cook.ndjson");
+		expect(result.recordFormat).toBe("json");
+	});
+
+	it("exits on an invalid record format", () => {
+		parseWatchArgs(["--record", "x", "--record-format", "xml"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith("Error: --record-format must be 'csv' or 'json'");
+	});
+});
+
+// =============================================================================
+// recording chunk builders
+// =============================================================================
+
+describe("watch recording chunk", () => {
+	function makeFrame(): WatchJsonFrame {
+		return {
+			timestamp: "2026-01-15T18:30:00.000Z",
+			devices: [
+				{
+					serial: "SMOKE1",
+					label: "My Smoke",
+					type: "smoke",
+					status: "online",
+					battery: 80,
+					channels: [
+						{ number: "1", label: "Brisket", value: 165, units: "F", alarm: "normal" },
+						{ number: "2", label: "Pit", value: 250, units: "F", alarm: "high" },
+					],
+				},
+			],
+		};
+	}
+
+	it("builds one CSV row per channel", () => {
+		const rows = buildRecordCsvRows(makeFrame());
+		expect(rows).toHaveLength(2);
+		expect(rows[0]).toBe("2026-01-15T18:30:00.000Z,SMOKE1,Brisket,165,F,normal");
+		expect(rows[1]).toBe("2026-01-15T18:30:00.000Z,SMOKE1,Pit,250,F,high");
+	});
+
+	it("prepends the header only when requested", () => {
+		const withHeader = buildRecordChunk(makeFrame(), "csv", true);
+		expect(withHeader.startsWith(`${RECORD_CSV_HEADER}\n`)).toBe(true);
+		const withoutHeader = buildRecordChunk(makeFrame(), "csv", false);
+		expect(withoutHeader.startsWith(RECORD_CSV_HEADER)).toBe(false);
+		expect(withoutHeader.endsWith("\n")).toBe(true);
+	});
+
+	it("emits a single NDJSON line for the json format", () => {
+		const chunk = buildRecordChunk(makeFrame(), "json", true);
+		expect(chunk.endsWith("\n")).toBe(true);
+		const parsed = JSON.parse(chunk.trimEnd());
+		expect(parsed.devices[0].channels[1].value).toBe(250);
+	});
+
+	it("guards against CSV formula injection in labels", () => {
+		const frame = makeFrame();
+		frame.devices[0]!.channels[0]!.label = "=SUM(A1:A2)";
+		const rows = buildRecordCsvRows(frame);
+		expect(rows[0]).toContain("'=SUM(A1:A2)");
+	});
+
+	it("leaves an empty value field for a null reading", () => {
+		const frame = makeFrame();
+		frame.devices[0]!.channels[0]!.value = null;
+		const rows = buildRecordCsvRows(frame);
+		expect(rows[0]).toBe("2026-01-15T18:30:00.000Z,SMOKE1,Brisket,,F,normal");
 	});
 });

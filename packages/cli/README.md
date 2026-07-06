@@ -642,6 +642,7 @@ Work out when to start each item so everything finishes at the same serve time. 
 ```bash
 npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --item ribs
 npx thermoworks plan --ready 18:00 --item "pork butt=8" --item "chicken=5h" --json
+npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --ics cook.ics
 npx thermoworks plan --list-meats
 ```
 
@@ -649,6 +650,7 @@ Options:
 - `--ready TIME` — Target serve time. Accepts a time of day (`"6:00 PM"`, `6pm`, `18:00`) or a full date-time. Time-of-day values roll to tomorrow if already past.
 - `--item SPEC` — Add an item. Repeatable. Forms: `NAME` (fixed-time cut), `NAME=WEIGHT` (pounds), or `NAME=Nh` (explicit cook hours).
 - `--list-meats` — Show the built-in meat profiles (cook time, rest, pit temperature).
+- `--ics [PATH]` — Export the plan as an iCalendar (`.ics`) file for import into any calendar app. Writes to `PATH`, or stdout when no path is given. Each item becomes a timed event with a 15-minute start reminder, plus a serve event at the ready time.
 
 ### `thermoworks config`
 

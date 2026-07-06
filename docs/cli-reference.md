@@ -1275,6 +1275,7 @@ Work out when to start each item so everything finishes at the same serve time. 
 
 ```bash
 npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --item ribs
+npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --ics cook.ics
 npx thermoworks plan --list-meats
 ```
 
@@ -1287,6 +1288,7 @@ npx thermoworks plan --list-meats
   - `NAME=Nh` - explicit cook hours (for example `chicken=5h`), for anything not covered by a profile.
 - `--list-meats` - List the built-in meat profiles (cook time, rest, pit temperature) and exit.
 - `--json` - Output the plan (or profile list) as JSON.
+- `--ics [PATH]` - Export the plan as an iCalendar (`.ics`) file you can import into any calendar app. Writes to `PATH` when given, otherwise prints the calendar to stdout. Each item becomes a timed event from put-on to pull-off with a 15-minute reminder before the start, plus a serve event at the ready time.
 
 **Examples**
 
@@ -1300,6 +1302,9 @@ npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --item ribs
 
 npx thermoworks plan --ready 18:00 --item "pork butt=8" --json
 
+npx thermoworks plan --ready "6:00 PM" --item "brisket=12" --ics cook.ics
+# Wrote cook plan calendar to cook.ics
+
 npx thermoworks plan --list-meats
 ```
 
@@ -1308,6 +1313,7 @@ npx thermoworks plan --list-meats
 - Weight-based items use the profile's hours-per-pound; fixed-time items ignore any weight.
 - Rest time comes from the meat profile and is added after the cook when computing the start time.
 - Unknown meat names with no explicit `=Nh` value are reported as an error listing the recognized profiles.
+- `--ics` output uses UTC timestamps and CRLF line endings per RFC 5545, so it imports cleanly into Apple Calendar, Google Calendar, and Outlook.
 
 ## `thermoworks completion <bash|zsh|fish|powershell>`
 
@@ -1837,3 +1843,4 @@ npx thermoworks --version
 **Notes**
 
 - Reads the version from the CLI package's `package.json`.
+

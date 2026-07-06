@@ -605,6 +605,16 @@ npx thermoworks guide
 npx thermoworks guide beef
 ```
 
+### `thermoworks doneness [meat]`
+
+Show recommended internal pull temperatures for common cuts. Reads the built-in meat profiles, so it needs no network access or login.
+
+```bash
+npx thermoworks doneness
+npx thermoworks doneness brisket
+npx thermoworks doneness --json
+```
+
 ### `thermoworks journal <add|list|show|rm>`
 
 Keep a local logbook of finished cooks: what the cut was, its weight, how it turned out, and notes for next time. Entries are stored in `~/.thermoworks/journal.json`. No credentials required.

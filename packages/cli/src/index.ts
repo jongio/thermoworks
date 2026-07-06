@@ -22,6 +22,7 @@ import {
 import { dataUsage } from "./commands/data-usage.js";
 import { device } from "./commands/device.js";
 import { devices, parseDevicesArgs } from "./commands/devices.js";
+import { doneness } from "./commands/doneness.js";
 import { events, parseEventsArgs } from "./commands/events.js";
 import { exportData } from "./commands/export.js";
 import { fan } from "./commands/fan.js";
@@ -40,7 +41,7 @@ import { session } from "./commands/session.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
 import { temp } from "./commands/temp.js";
 import { watch } from "./commands/watch.js";
-import { parseGlobalFlags } from "./output.js";
+import { parseGlobalFlags, setRedaction } from "./output.js";
 
 // Clean exit on Ctrl+C
 process.on("SIGINT", () => {
@@ -136,6 +137,8 @@ Commands:
 
   guide [category] Show temperature guide (safe cooking temps)
 
+  doneness [meat]  Show recommended internal pull temperatures for common cuts
+
   journal add      Log a finished cook to a local logbook
   journal list     List logbook entries (newest first)
   journal show <id>  Show one logbook entry
@@ -164,6 +167,7 @@ Commands:
 
 Options:
   --json           Output machine-readable JSON (for scripting)
+  --redact         Mask serials, account and user IDs, email, and tokens in output
   --no-channels    Hide channel readings in devices output
   --help, -h       Show this help message
   --version, -v    Show version`);
@@ -172,6 +176,7 @@ Options:
 async function main(): Promise<void> {
 	const rawArgs = process.argv.slice(2);
 	const { options, remaining: args } = parseGlobalFlags(rawArgs);
+	setRedaction(options.redact ?? false);
 	const command = args[0];
 	const subcommand = args[1];
 
@@ -351,6 +356,10 @@ async function main(): Promise<void> {
 
 		case "guide":
 			await guide(args[1], options);
+			break;
+
+		case "doneness":
+			await doneness(args[1], options);
 			break;
 
 		case "journal":

@@ -16,6 +16,13 @@ export interface MeatProfile {
 	readonly restMinutes: number;
 	/** Reference smoker/pit temperature in Fahrenheit. */
 	readonly pitTempF: number;
+	/**
+	 * Recommended internal temperature in Fahrenheit to pull the cut at, or
+	 * null for cuts judged by feel (for example ribs by the bend test).
+	 */
+	readonly targetTempF: number | null;
+	/** Short note describing how to tell the cut is done. */
+	readonly doneness: string;
 }
 
 /** Input describing one item to plan. */
@@ -60,16 +67,96 @@ export interface PlanCookOptions {
 }
 
 const PROFILES: MeatProfile[] = [
-	{ name: "Brisket", hoursPerPound: 1.25, fixedHours: null, restMinutes: 60, pitTempF: 250 },
-	{ name: "Pork Butt", hoursPerPound: 1.5, fixedHours: null, restMinutes: 45, pitTempF: 250 },
-	{ name: "Pork Ribs", hoursPerPound: null, fixedHours: 5.5, restMinutes: 15, pitTempF: 250 },
-	{ name: "Baby Back Ribs", hoursPerPound: null, fixedHours: 5, restMinutes: 15, pitTempF: 250 },
-	{ name: "Whole Chicken", hoursPerPound: null, fixedHours: 3.5, restMinutes: 15, pitTempF: 275 },
-	{ name: "Chicken Wings", hoursPerPound: null, fixedHours: 1.5, restMinutes: 5, pitTempF: 375 },
-	{ name: "Turkey", hoursPerPound: 0.5, fixedHours: null, restMinutes: 30, pitTempF: 275 },
-	{ name: "Tri-Tip", hoursPerPound: null, fixedHours: 1.5, restMinutes: 15, pitTempF: 250 },
-	{ name: "Salmon", hoursPerPound: null, fixedHours: 1, restMinutes: 5, pitTempF: 225 },
-	{ name: "Beef Short Ribs", hoursPerPound: 1.5, fixedHours: null, restMinutes: 30, pitTempF: 250 },
+	{
+		name: "Brisket",
+		hoursPerPound: 1.25,
+		fixedHours: null,
+		restMinutes: 60,
+		pitTempF: 250,
+		targetTempF: 203,
+		doneness: "Probe-tender, around 203\u00B0F in the flat",
+	},
+	{
+		name: "Pork Butt",
+		hoursPerPound: 1.5,
+		fixedHours: null,
+		restMinutes: 45,
+		pitTempF: 250,
+		targetTempF: 203,
+		doneness: "Pull-apart tender, 200-205\u00B0F",
+	},
+	{
+		name: "Pork Ribs",
+		hoursPerPound: null,
+		fixedHours: 5.5,
+		restMinutes: 15,
+		pitTempF: 250,
+		targetTempF: null,
+		doneness: "Bend test; bones start to pull, around 200-203\u00B0F",
+	},
+	{
+		name: "Baby Back Ribs",
+		hoursPerPound: null,
+		fixedHours: 5,
+		restMinutes: 15,
+		pitTempF: 250,
+		targetTempF: null,
+		doneness: "Bend test; tender at around 200-203\u00B0F",
+	},
+	{
+		name: "Whole Chicken",
+		hoursPerPound: null,
+		fixedHours: 3.5,
+		restMinutes: 15,
+		pitTempF: 275,
+		targetTempF: 165,
+		doneness: "165\u00B0F in the breast, 175\u00B0F in the thigh",
+	},
+	{
+		name: "Chicken Wings",
+		hoursPerPound: null,
+		fixedHours: 1.5,
+		restMinutes: 5,
+		pitTempF: 375,
+		targetTempF: 175,
+		doneness: "175\u00B0F for rendered, crisp skin",
+	},
+	{
+		name: "Turkey",
+		hoursPerPound: 0.5,
+		fixedHours: null,
+		restMinutes: 30,
+		pitTempF: 275,
+		targetTempF: 165,
+		doneness: "165\u00B0F in the breast, 175\u00B0F in the thigh",
+	},
+	{
+		name: "Tri-Tip",
+		hoursPerPound: null,
+		fixedHours: 1.5,
+		restMinutes: 15,
+		pitTempF: 250,
+		targetTempF: 130,
+		doneness: "130-135\u00B0F for medium-rare, then rest",
+	},
+	{
+		name: "Salmon",
+		hoursPerPound: null,
+		fixedHours: 1,
+		restMinutes: 5,
+		pitTempF: 225,
+		targetTempF: 125,
+		doneness: "125-130\u00B0F for moist, flaky fillets",
+	},
+	{
+		name: "Beef Short Ribs",
+		hoursPerPound: 1.5,
+		fixedHours: null,
+		restMinutes: 30,
+		pitTempF: 250,
+		targetTempF: 203,
+		doneness: "Probe-tender, around 203\u00B0F",
+	},
 ];
 
 /** Aliases mapping user input to a canonical profile name. */

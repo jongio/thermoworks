@@ -606,6 +606,16 @@ npx thermoworks guide
 npx thermoworks guide beef
 ```
 
+### `thermoworks doneness [meat]`
+
+Show recommended internal pull temperatures for common cuts. Reads the built-in meat profiles, so it needs no network access or login.
+
+```bash
+npx thermoworks doneness
+npx thermoworks doneness brisket
+npx thermoworks doneness --json
+```
+
 ### `thermoworks journal <add|list|show|rm>`
 
 Keep a local logbook of finished cooks: what the cut was, its weight, how it turned out, and notes for next time. Entries are stored in `~/.thermoworks/journal.json`. No credentials required.
@@ -738,8 +748,18 @@ Completion covers the top-level commands and the subcommands for `auth`, `alarm`
 
 For detailed option docs, see the [full CLI reference](../../docs/cli-reference.md).
 
-## Requirements
+## Global flags
 
+These work with any command:
+
+- `--json` — machine-readable JSON output where supported.
+- `--redact` — mask account and device identifiers in JSON and file output before you share it. Serials become `SERIAL_1`, account and user IDs become `ACCOUNT_1` and `USER_1`, email is masked, and share tokens and public links are dropped. Temperatures and timestamps are left as-is.
+
+```bash
+npx thermoworks devices --json --redact
+```
+
+## Requirements
 - Node.js `>= 18`
 - A [ThermoWorks Cloud](https://cloud.thermoworks.com/) account with one or more connected devices
 - [GitHub Copilot CLI](https://githubnext.com/projects/copilot-cli) if you want statusline integration

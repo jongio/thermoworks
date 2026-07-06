@@ -41,7 +41,7 @@ import { session } from "./commands/session.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
 import { temp } from "./commands/temp.js";
 import { watch } from "./commands/watch.js";
-import { parseGlobalFlags } from "./output.js";
+import { parseGlobalFlags, setRedaction } from "./output.js";
 
 // Clean exit on Ctrl+C
 process.on("SIGINT", () => {
@@ -166,6 +166,7 @@ Commands:
 
 Options:
   --json           Output machine-readable JSON (for scripting)
+  --redact         Mask serials, account and user IDs, email, and tokens in output
   --no-channels    Hide channel readings in devices output
   --help, -h       Show this help message
   --version, -v    Show version`);
@@ -174,6 +175,7 @@ Options:
 async function main(): Promise<void> {
 	const rawArgs = process.argv.slice(2);
 	const { options, remaining: args } = parseGlobalFlags(rawArgs);
+	setRedaction(options.redact ?? false);
 	const command = args[0];
 	const subcommand = args[1];
 

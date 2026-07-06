@@ -1739,6 +1739,7 @@ scrape_configs:
 
 ```text
 --json           Output machine-readable JSON (for scripting)
+--redact         Mask serials, account/user IDs, email, and tokens
 --no-channels    Hide channel readings in devices output
 --help, -h       Show help
 --version, -v    Show version
@@ -1754,6 +1755,18 @@ When active, commands write a single JSON value (object or array) to stdout with
 npx thermoworks devices --json | jq '.[].serial'
 npx thermoworks events --json --limit 5
 npx thermoworks firmware --json
+```
+
+### `--redact`
+
+Mask account and device identifiers before anything is written, so output is safe to share. When set, device serials become `SERIAL_1`, `SERIAL_2`, and so on; account and user IDs become `ACCOUNT_1` and `USER_1`; email addresses are masked; and share tokens and public links are removed. The same serial maps to the same placeholder for one run, so relationships in the data stay readable. Temperature values and timestamps are never changed.
+
+Redaction applies to every command that emits JSON (through `--json`) and to `export` and `backup` file output. Plain table output is unchanged.
+
+```bash
+npx thermoworks devices --json --redact
+npx thermoworks account --json --redact
+npx thermoworks backup --format json --redact
 ```
 
 ### `--no-channels`
@@ -1818,3 +1831,5 @@ npx thermoworks --version
 **Notes**
 
 - Reads the version from the CLI package's `package.json`.
+
+

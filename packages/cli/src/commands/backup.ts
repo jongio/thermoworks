@@ -5,7 +5,7 @@ import type { Archive } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 
 import { getCredentials } from "../credentials.js";
-import { type OutputOptions, outputJson } from "../output.js";
+import { maybeRedact, type OutputOptions, outputJson } from "../output.js";
 import { flattenArchive, formatCsv, formatJson } from "./export.js";
 
 const DEFAULT_OUTPUT_DIR = "thermoworks-backup";
@@ -131,7 +131,7 @@ export async function backup(args: string[], options: OutputOptions): Promise<vo
 					full = await client.getArchive(serial, listed.id);
 				}
 
-				const rows = flattenArchive(full);
+				const rows = maybeRedact(flattenArchive(full));
 				const content = opts.format === "csv" ? formatCsv(rows) : formatJson(rows);
 				const file = join(opts.output, `${sanitize(serial)}-${sanitize(listed.id)}.${ext}`);
 				await writeFile(file, content, "utf8");

@@ -23,6 +23,7 @@ import {
 import { dataUsage } from "./commands/data-usage.js";
 import { device } from "./commands/device.js";
 import { devices, parseDevicesArgs } from "./commands/devices.js";
+import { doctor } from "./commands/doctor.js";
 import { doneness } from "./commands/doneness.js";
 import { events, parseEventsArgs } from "./commands/events.js";
 import { exportData } from "./commands/export.js";
@@ -168,6 +169,9 @@ Commands:
   config list               Show all preferences
   config unset <key>        Remove a preference
   config path               Show the preferences file path
+
+  doctor           Diagnose auth, network, and API issues
+    --json         Output results as JSON
 
   replay <SERIAL>  Play back a past cook as a live stream
     --archive ID   Replay a saved archive instead of recent history
@@ -408,6 +412,10 @@ async function main(): Promise<void> {
 
 		case "config":
 			await config(args.slice(1), options);
+			break;
+
+		case "doctor":
+			await doctor(options);
 			break;
 
 		case "demo": {

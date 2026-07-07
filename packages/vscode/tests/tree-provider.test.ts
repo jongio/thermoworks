@@ -143,6 +143,8 @@ vi.mock("thermoworks-sdk", () => ({
 	},
 	getChannelAlarmState: () => null,
 	formatTimeAgo: (_date: Date) => "just now",
+	assessDeviceHealth: (_device: unknown, _channels: unknown) => ({ overall: "good", issues: [] }),
+	isChannelStale: () => false,
 }));
 
 const { mockDeviceStreamSetDevices, mockDeviceStreamDispose, deviceStreamInstances } = vi.hoisted(

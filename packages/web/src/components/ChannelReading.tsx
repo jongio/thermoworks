@@ -6,6 +6,15 @@ import { type AlarmState, getChannelAlarmState, type ThermoworksWebClient } from
 import { cn } from "../lib/utils.ts";
 import { AlarmConfig } from "./AlarmConfig.tsx";
 
+/** 5 minutes in milliseconds. */
+const STALE_THRESHOLD_MS = 5 * 60 * 1000;
+
+/** Check whether a channel reading is stale (older than 5 minutes). */
+function isChannelStale(channel: DeviceChannel): boolean {
+	if (!channel.lastSeen) return false;
+	return Date.now() - channel.lastSeen.getTime() >= STALE_THRESHOLD_MS;
+}
+
 interface ChannelReadingProps {
 	channel: DeviceChannel;
 	client?: ThermoworksWebClient;
@@ -40,6 +49,7 @@ export function ChannelReading({ channel, client, serial, onAlarmSaved }: Channe
 	const alarmState = getChannelAlarmState(channel);
 	const label = channel.label ?? `Ch ${channel.number ?? "?"}`;
 	const hasReading = channel.value != null && channel.units != null;
+	const stale = isChannelStale(channel);
 	const [showAlarmConfig, setShowAlarmConfig] = useState(false);
 
 	const canConfigureAlarm = client != null && serial != null && channel.number != null;
@@ -55,11 +65,26 @@ export function ChannelReading({ channel, client, serial, onAlarmSaved }: Channe
 				<span className="text-sm text-muted-foreground truncate mr-2">{label}</span>
 				<div className="flex items-center gap-2">
 					{hasReading ? (
-						<span className={cn("text-lg tabular-nums font-mono", alarmColorClass(alarmState))}>
+						<span
+							className={cn(
+								"text-lg tabular-nums font-mono",
+								alarmColorClass(alarmState),
+								stale && "opacity-50",
+							)}
+						>
 							{formatTemp(channel.value, channel.units)}
 						</span>
 					) : (
 						<span className="text-sm text-muted-foreground">--</span>
+					)}
+					{stale && (
+						<span
+							role="status"
+							className="rounded bg-amber-100 px-1 py-0.5 text-[10px] font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+							aria-label="Stale reading"
+						>
+							stale
+						</span>
 					)}
 					{canConfigureAlarm && (
 						<button

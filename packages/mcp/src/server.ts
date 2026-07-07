@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { AlarmSetOptions, Device, DeviceChannel } from "thermoworks-sdk";
-import { getChannelAlarmState, ThermoworksCloud } from "thermoworks-sdk";
+import { getChannelAlarmState, predictDoneTime, ThermoworksCloud } from "thermoworks-sdk";
 import { z } from "zod";
 
 let cachedCreds: { email: string; password: string } | null = null;
@@ -621,6 +621,106 @@ export function createServer(): McpServer {
 					: null;
 			return {
 				content: [{ type: "text", text: JSON.stringify({ ...archive, durationSeconds }, null, 2) }],
+			};
+		},
+	);
+
+	server.registerTool(
+		"get_eta",
+		{
+			description:
+				"Predict when a probe channel will reach its target temperature based on the current rate of change. Uses the high alarm value as the target. Returns estimated minutes, confidence level, and a formatted time.",
+			inputSchema: z.object({
+				serial: z.string().min(1).describe("The device serial number"),
+				channel: z.number().int().min(1).max(9).describe("Channel number (1-9)"),
+			}),
+		},
+		async ({ serial, channel }) => {
+			const client = getClient();
+			const ch = await client.getDeviceChannel(serial, channel);
+
+			const current = ch.value;
+			const rate = ch.rateOfChange;
+			const target = ch.alarmHigh?.enabled ? ch.alarmHigh.value : null;
+
+			if (current == null) {
+				return {
+					content: [{ type: "text", text: `Channel ${channel} has no current reading` }],
+				};
+			}
+
+			if (target == null) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Channel ${channel} has no high alarm target set. Set a high alarm to enable ETA predictions.`,
+						},
+					],
+				};
+			}
+
+			if (rate == null || rate <= 0) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Channel ${channel} is not actively rising (rate: ${rate ?? "unknown"}). Cannot estimate done time.`,
+						},
+					],
+				};
+			}
+
+			const prediction = predictDoneTime(current, target, rate);
+
+			if (prediction.estimatedMinutes == null) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Unable to estimate done time for channel ${channel}. Temperature may be stalling.`,
+						},
+					],
+				};
+			}
+
+			const minutes = prediction.estimatedMinutes;
+			let formatted: string;
+			if (minutes === 0) {
+				formatted = "Already at target!";
+			} else if (minutes < 60) {
+				formatted = `~${minutes} minutes remaining`;
+			} else {
+				const hrs = Math.floor(minutes / 60);
+				const rem = minutes % 60;
+				formatted = rem > 0 ? `~${hrs}h ${rem}min remaining` : `~${hrs}h remaining`;
+			}
+
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{
+								serial,
+								channel,
+								current,
+								target,
+								rateOfChange: rate,
+								units: ch.units,
+								prediction: {
+									estimatedMinutes: prediction.estimatedMinutes,
+									estimatedTime: prediction.estimatedTime,
+									confidence: prediction.confidence,
+									method: prediction.method,
+								},
+								formatted,
+							},
+							null,
+							2,
+						),
+					},
+				],
 			};
 		},
 	);

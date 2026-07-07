@@ -6,6 +6,7 @@ import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { ChannelReading } from "./ChannelReading.tsx";
 import { DeviceHealthBadge } from "./DeviceHealthBadge.tsx";
+import { EtaBadge } from "./EtaBadge.tsx";
 import { FirmwareStatus } from "./FirmwareStatus.tsx";
 import { SessionControls } from "./SessionControls.tsx";
 import { ShareButton } from "./ShareButton.tsx";
@@ -117,7 +118,10 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 					{enabledChannels.map((channel, idx) => (
 						<div key={channel.number ?? idx}>
 							<ChannelReading channel={channel} />
-							<StallBadge channel={channel} />
+							<div className="flex items-center gap-1.5 mt-0.5">
+								<StallBadge channel={channel} />
+								<EtaBadge channel={channel} />
+							</div>
 						</div>
 					))}
 				</div>

@@ -1669,13 +1669,15 @@ Continuously monitor device temperatures with a live-refreshing display. Clears 
 **Usage**
 
 ```bash
-npx thermoworks watch [--device SERIAL] [--interval N] [--json] [--record FILE] [--record-format csv|json]
+npx thermoworks watch [--device SERIAL] [--interval N] [--alert-before N] [--bell] [--json] [--record FILE] [--record-format csv|json]
 ```
 
 **Options**
 
 - `--device SERIAL` - Watch a specific device by serial number. Without this flag, all devices are shown.
 - `--interval N` - Refresh interval in seconds. Must be >= 1. Defaults to `10`.
+- `--alert-before N` - Show a pre-alert next to any channel that is within `N` degrees of its enabled high alarm but has not reached it yet. `N` is in the channel's own units and must be positive. Use it to get a heads-up before a probe hits the alarm, for example to start wrapping or checking the fire. The indicator disappears once the channel actually alarms.
+- `--bell` - Ring the terminal bell once per refresh while any channel is in an alarm state. When `--alert-before` is also set, the bell rings while any channel is approaching its alarm too.
 - `--json` - Emit one newline-delimited JSON (NDJSON) object per refresh instead of the live display. Each frame has an ISO `timestamp` and a `devices` array; every device carries `serial`, `label`, `type`, `status`, `battery`, and a `channels` array with `number`, `label`, `value`, `units`, and `alarm` (`high`, `low`, or `normal`). The screen is not cleared, so output can be piped or appended to a file.
 - `--record FILE` - Append each refresh to `FILE` as a running log while the live display (or `--json` stream) continues. Recording is independent of the on-screen format.
 - `--record-format csv|json` - Format for the record file. Defaults to `csv`. `csv` writes one row per channel (`timestamp,serial,channel,value,units,alarm`) with a header on a fresh file. `json` writes one NDJSON frame per refresh. CSV fields are guarded against spreadsheet formula injection.
@@ -1694,6 +1696,10 @@ npx thermoworks watch
 #     Internal  38°F
 
 npx thermoworks watch --device ABC123 --interval 5
+
+npx thermoworks watch --alert-before 5 --bell
+#   Smoker  (Signals)  [online]
+#     Meat      160°F  🔔 5° to alarm
 
 npx thermoworks watch --json --interval 5 | jq .
 # {"timestamp":"2025-06-07T19:30:00.000Z","devices":[{"serial":"ABC123","label":"Smoker","type":"signals","status":"online","battery":87,"channels":[{"number":"1","label":"Pit","value":225,"units":"F","alarm":"normal"}]}]}

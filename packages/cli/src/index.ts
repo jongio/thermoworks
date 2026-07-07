@@ -91,6 +91,7 @@ Commands:
   watch            Continuously monitor temperatures (live refresh)
     --device SN    Watch a specific device by serial number
     --interval N   Refresh interval in seconds (default: 10)
+    --alert-before N  Warn when a channel is within N degrees of its high alarm
     --bell         Ring the terminal bell while any channel is alarming
 
   metrics          Serve live temperatures as Prometheus metrics on /metrics

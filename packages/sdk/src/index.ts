@@ -29,6 +29,8 @@ export type {
 	PlanCookOptions,
 } from "./plan.js";
 export { getMeatProfiles, planCook, resolveMeatProfile } from "./plan.js";
+export type { PredictionOptions, PredictionResult } from "./prediction.js";
+export { predictDoneTime } from "./prediction.js";
 export type { ReplayFrame, ReplayOptions, ReplayReading } from "./replay.js";
 export {
 	archiveReadingToReplay,

@@ -6,6 +6,7 @@ import {
 	detectRapidChange,
 	detectStall,
 	getChannelAlarmState,
+	predictDoneTime,
 	type TemperatureReading,
 	ThermoworksCloud,
 } from "thermoworks-sdk";
@@ -145,6 +146,26 @@ export function formatRapidChangeIndicator(readings: TemperatureReading[]): stri
 	return "";
 }
 
+/** Format the ETA indicator when a channel has a positive rate and a high alarm target. */
+export function formatEtaIndicator(channel: DeviceChannel): string {
+	const rate = channel.rateOfChange;
+	const target = channel.alarmHigh?.enabled ? channel.alarmHigh.value : null;
+	const current = channel.value;
+
+	if (rate == null || rate <= 0 || target == null || current == null) return "";
+
+	const prediction = predictDoneTime(current, target, rate);
+	if (prediction.estimatedMinutes == null || prediction.estimatedMinutes === 0) return "";
+
+	const minutes = prediction.estimatedMinutes;
+	if (minutes >= 60) {
+		const hrs = Math.floor(minutes / 60);
+		const rem = minutes % 60;
+		return rem > 0 ? `  \u23F1 ~${hrs}h${rem}min` : `  \u23F1 ~${hrs}h`;
+	}
+	return `  \u23F1 ~${minutes}min`;
+}
+
 /** ANSI escape codes for colored stall alert text. */
 const ANSI_YELLOW = "\x1b[33m";
 const ANSI_RESET = "\x1b[0m";
@@ -197,6 +218,12 @@ export function formatWatchFrame(
 							line += stallAlert ? colorStallAlert(suffix) : suffix;
 						}
 					}
+				}
+
+				// Append ETA when the channel has a positive rate and a target.
+				const etaSuffix = formatEtaIndicator(ch);
+				if (etaSuffix) {
+					line += etaSuffix;
 				}
 
 				lines.push(line);

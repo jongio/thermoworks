@@ -4,6 +4,7 @@ import { Link, useOutletContext, useParams } from "react-router-dom";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { ChannelReading } from "../components/ChannelReading.tsx";
 import { DeviceSettings } from "../components/DeviceSettings.tsx";
+import { EtaBadge } from "../components/EtaBadge.tsx";
 import { FanController } from "../components/FanController.tsx";
 import { HistoryViewer } from "../components/HistoryViewer.tsx";
 import { InlineEdit } from "../components/InlineEdit.tsx";
@@ -179,13 +180,15 @@ export function DeviceDetail() {
 				{enabledChannels.length > 0 ? (
 					<div className="grid gap-3 sm:grid-cols-2">
 						{enabledChannels.map((channel, idx) => (
-							<ChannelReading
-								key={channel.number ?? idx}
-								channel={channel}
-								client={client}
-								serial={serial}
-								onAlarmSaved={refresh}
-							/>
+							<div key={channel.number ?? idx} className="space-y-1.5">
+								<ChannelReading
+									channel={channel}
+									client={client}
+									serial={serial}
+									onAlarmSaved={refresh}
+								/>
+								<EtaBadge channel={channel} size="lg" />
+							</div>
 						))}
 					</div>
 				) : (

@@ -76,6 +76,31 @@ vi.mock("thermoworks-sdk", () => {
 			if (channel.alarmLow?.alarming) return "low";
 			return "none";
 		},
+		predictDoneTime: (current: number, target: number, rateOfChange: number, options?: any) => {
+			if (current >= target) {
+				return {
+					estimatedMinutes: 0,
+					estimatedTime: new Date().toISOString(),
+					confidence: "high",
+					method: options?.method ?? "linear",
+				};
+			}
+			if (rateOfChange <= 0) {
+				return {
+					estimatedMinutes: null,
+					estimatedTime: null,
+					confidence: "low",
+					method: options?.method ?? "linear",
+				};
+			}
+			const minutes = Math.round((target - current) / rateOfChange);
+			return {
+				estimatedMinutes: minutes,
+				estimatedTime: new Date(Date.now() + minutes * 60 * 1000).toISOString(),
+				confidence: "medium",
+				method: options?.method ?? "linear",
+			};
+		},
 	};
 });
 
@@ -1457,6 +1482,177 @@ describe("MCP Server", () => {
 			} finally {
 				process.env = originalEnv;
 				resetClient();
+			}
+		});
+	});
+
+	describe("get_eta tool", () => {
+		it("returns prediction when channel has rate and target", async () => {
+			setupEnv();
+			try {
+				(mockGetDeviceChannel as any).mockResolvedValueOnce({
+					value: 180,
+					units: "F",
+					number: "1",
+					label: "Pit",
+					enabled: true,
+					rateOfChange: 1.5,
+					rateOfChangeUnit: "/min",
+					alarmHigh: {
+						enabled: true,
+						alarming: false,
+						muted: null,
+						value: 225,
+						units: "F",
+						lastNotified: null,
+					},
+					alarmLow: null,
+					status: "online",
+					type: "temperature",
+					color: null,
+					lastSeen: null,
+					lastTelemetrySaved: null,
+					lastEventId: null,
+					showAvgTemp: null,
+					estimatedAlarmStatus: null,
+					minimum: null,
+					maximum: null,
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_eta");
+				const result = await handler({ serial: "SMOKE1", channel: 1 }, {});
+
+				expect(result.content[0].type).toBe("text");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.serial).toBe("SMOKE1");
+				expect(parsed.channel).toBe(1);
+				expect(parsed.current).toBe(180);
+				expect(parsed.target).toBe(225);
+				expect(parsed.prediction.estimatedMinutes).toBe(30);
+				expect(parsed.prediction.confidence).toBe("medium");
+				expect(parsed.formatted).toContain("30 minutes");
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns message when no current reading", async () => {
+			setupEnv();
+			try {
+				(mockGetDeviceChannel as any).mockResolvedValueOnce({
+					value: null,
+					units: "F",
+					number: "1",
+					enabled: true,
+					rateOfChange: 1.5,
+					rateOfChangeUnit: "/min",
+					alarmHigh: {
+						enabled: true,
+						alarming: false,
+						muted: null,
+						value: 225,
+						units: "F",
+						lastNotified: null,
+					},
+					alarmLow: null,
+					label: null,
+					status: null,
+					type: null,
+					color: null,
+					lastSeen: null,
+					lastTelemetrySaved: null,
+					lastEventId: null,
+					showAvgTemp: null,
+					estimatedAlarmStatus: null,
+					minimum: null,
+					maximum: null,
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_eta");
+				const result = await handler({ serial: "SMOKE1", channel: 1 }, {});
+
+				expect(result.content[0].text).toContain("no current reading");
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns message when no high alarm target", async () => {
+			setupEnv();
+			try {
+				(mockGetDeviceChannel as any).mockResolvedValueOnce({
+					value: 180,
+					units: "F",
+					number: "1",
+					enabled: true,
+					rateOfChange: 1.5,
+					rateOfChangeUnit: "/min",
+					alarmHigh: null,
+					alarmLow: null,
+					label: null,
+					status: null,
+					type: null,
+					color: null,
+					lastSeen: null,
+					lastTelemetrySaved: null,
+					lastEventId: null,
+					showAvgTemp: null,
+					estimatedAlarmStatus: null,
+					minimum: null,
+					maximum: null,
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_eta");
+				const result = await handler({ serial: "SMOKE1", channel: 1 }, {});
+
+				expect(result.content[0].text).toContain("no high alarm target");
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns message when rate is not positive", async () => {
+			setupEnv();
+			try {
+				(mockGetDeviceChannel as any).mockResolvedValueOnce({
+					value: 180,
+					units: "F",
+					number: "1",
+					enabled: true,
+					rateOfChange: -0.5,
+					rateOfChangeUnit: "/min",
+					alarmHigh: {
+						enabled: true,
+						alarming: false,
+						muted: null,
+						value: 225,
+						units: "F",
+						lastNotified: null,
+					},
+					alarmLow: null,
+					label: null,
+					status: null,
+					type: null,
+					color: null,
+					lastSeen: null,
+					lastTelemetrySaved: null,
+					lastEventId: null,
+					showAvgTemp: null,
+					estimatedAlarmStatus: null,
+					minimum: null,
+					maximum: null,
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_eta");
+				const result = await handler({ serial: "SMOKE1", channel: 1 }, {});
+
+				expect(result.content[0].text).toContain("not actively rising");
+			} finally {
+				teardownEnv();
 			}
 		});
 	});

@@ -9,6 +9,7 @@ import {
 	channelHistoryKey,
 	colorStallAlert,
 	type DeviceWithChannels,
+	formatEtaIndicator,
 	formatRapidChangeIndicator,
 	formatStallIndicator,
 	formatTimestamp,
@@ -84,8 +85,8 @@ function makeChannel(overrides: Partial<DeviceChannel> = {}): DeviceChannel {
 		lastEventId: null,
 		showAvgTemp: null,
 		estimatedAlarmStatus: null,
-		rateOfChange: null,
-		rateOfChangeUnit: null,
+		rateOfChange: overrides.rateOfChange ?? null,
+		rateOfChangeUnit: overrides.rateOfChangeUnit ?? null,
 		alarmHigh: overrides.alarmHigh ?? null,
 		alarmLow: overrides.alarmLow ?? null,
 		minimum: null,
@@ -864,5 +865,176 @@ describe("formatWatchFrame with stall indicators", () => {
 		const result = formatWatchFrame(devices, new Date(), 10);
 		expect(result).not.toContain("STALL");
 		expect(result).not.toContain("\uD83D\uDD25");
+	});
+});
+
+// =============================================================================
+// formatEtaIndicator
+// =============================================================================
+
+describe("formatEtaIndicator", () => {
+	it("returns ETA string when channel has positive rate and high alarm target", () => {
+		// 45 degrees remaining at 1.5 deg/min = 30 min
+		const ch = makeChannel({
+			value: 180,
+			units: "F",
+			number: "1",
+			rateOfChange: 1.5,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		const result = formatEtaIndicator(ch);
+		expect(result).toContain("~30min");
+		expect(result).toContain("\u23F1");
+	});
+
+	it("returns hours format for longer estimates", () => {
+		// 200 degrees at 2 deg/min = 100 min = 1h40min
+		const ch = makeChannel({
+			value: 25,
+			units: "F",
+			number: "1",
+			rateOfChange: 2,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		const result = formatEtaIndicator(ch);
+		expect(result).toContain("~1h40min");
+	});
+
+	it("returns exact hours format when no remaining minutes", () => {
+		// 120 degrees at 2 deg/min = 60 min = 1h
+		const ch = makeChannel({
+			value: 105,
+			units: "F",
+			number: "1",
+			rateOfChange: 2,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		const result = formatEtaIndicator(ch);
+		expect(result).toContain("~1h");
+		expect(result).not.toContain("min");
+	});
+
+	it("returns empty string when rate is null", () => {
+		const ch = makeChannel({ value: 180, units: "F", rateOfChange: null });
+		expect(formatEtaIndicator(ch)).toBe("");
+	});
+
+	it("returns empty string when rate is zero", () => {
+		const ch = makeChannel({
+			value: 180,
+			units: "F",
+			rateOfChange: 0,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		expect(formatEtaIndicator(ch)).toBe("");
+	});
+
+	it("returns empty string when rate is negative", () => {
+		const ch = makeChannel({
+			value: 180,
+			units: "F",
+			rateOfChange: -0.5,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		expect(formatEtaIndicator(ch)).toBe("");
+	});
+
+	it("returns empty string when no high alarm is set", () => {
+		const ch = makeChannel({ value: 180, units: "F", rateOfChange: 1.5, alarmHigh: null });
+		expect(formatEtaIndicator(ch)).toBe("");
+	});
+
+	it("returns empty string when high alarm is disabled", () => {
+		const ch = makeChannel({
+			value: 180,
+			units: "F",
+			rateOfChange: 1.5,
+			alarmHigh: {
+				enabled: false,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		expect(formatEtaIndicator(ch)).toBe("");
+	});
+
+	it("returns empty string when current value is null", () => {
+		const ch = makeChannel({
+			value: null,
+			units: "F",
+			rateOfChange: 1.5,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		expect(formatEtaIndicator(ch)).toBe("");
+	});
+
+	it("includes ETA in formatWatchFrame output", () => {
+		const device = makeDevice({ serial: "SMOKE1", label: "Smoker" });
+		const ch = makeChannel({
+			value: 180,
+			units: "F",
+			number: "1",
+			label: "Pit",
+			enabled: true,
+			rateOfChange: 1.5,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		const devices: DeviceWithChannels[] = [{ device, channels: [ch] }];
+
+		const result = formatWatchFrame(devices, new Date(), 10);
+		expect(result).toContain("\u23F1");
+		expect(result).toContain("~30min");
 	});
 });

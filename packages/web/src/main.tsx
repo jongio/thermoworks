@@ -23,6 +23,9 @@ const Settings = lazy(() => import("./pages/Settings.tsx").then((m) => ({ defaul
 const ExportSchedules = lazy(() =>
 	import("./pages/ExportSchedules.tsx").then((m) => ({ default: m.ExportSchedules })),
 );
+const PitDisplay = lazy(() =>
+	import("./pages/PitDisplay.tsx").then((m) => ({ default: m.PitDisplay })),
+);
 const SharedArchiveView = lazy(() =>
 	import("./pages/SharedArchiveView.tsx").then((m) => ({ default: m.SharedArchiveView })),
 );
@@ -71,6 +74,14 @@ createRoot(root).render(
 		<ErrorBoundary>
 			<HashRouter>
 				<Routes>
+					<Route
+						path="/pit"
+						element={
+							<RouteGuard>
+								<PitDisplay />
+							</RouteGuard>
+						}
+					/>
 					<Route
 						path="/share/device/:serial"
 						element={

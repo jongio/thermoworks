@@ -621,6 +621,22 @@ npx thermoworks doneness brisket
 npx thermoworks doneness --json
 ```
 
+### `thermoworks safe <serial>`
+
+Show food-safety pasteurization progress for a probe. Reads the current channel temperature and, using USDA time-at-temperature data (7.0-log10 Salmonella for poultry, 6.5-log10 for beef and pork), reports whether the food is safe now or how long it must hold at this temperature. Pulling poultry or pork at a lower temperature is safe when the core holds long enough, and this tells you when that point is reached. Estimates only, not a replacement for official food-safety guidance.
+
+```bash
+npx thermoworks safe ABC123 --channel 1
+npx thermoworks safe ABC123 --channel 1 --protein poultry --held 4
+npx thermoworks safe ABC123 --json
+```
+
+Options:
+- `--channel N` — Read a specific channel (1-9) instead of the device average
+- `--protein P` — Table to use: `poultry` (default), `beef`, or `pork`
+- `--held N` — Minutes the core has already held at or above the current temperature
+- `--json` — Print the full assessment as JSON
+
 ### `thermoworks open [target]`
 
 Open a ThermoWorks site in your browser. Prints the URL first, so it also works over SSH.

@@ -39,6 +39,7 @@ import { notifications } from "./commands/notifications.js";
 import { open } from "./commands/open.js";
 import { plan } from "./commands/plan.js";
 import { replay } from "./commands/replay.js";
+import { safe } from "./commands/safe.js";
 import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
@@ -142,6 +143,11 @@ Commands:
   guide [category] Show temperature guide (safe cooking temps)
 
   doneness [meat]  Show recommended internal pull temperatures for common cuts
+
+  safe <SERIAL>    Show food-safety pasteurization progress for a probe
+    --channel N    Read a specific channel (1-9) instead of the average
+    --protein P    Table to use: poultry, beef, or pork (default: poultry)
+    --held N       Minutes already held at or above the current temperature
 
   open [target]    Open a ThermoWorks site in your browser
     cloud          ThermoWorks Cloud web app (default)
@@ -384,6 +390,10 @@ async function main(): Promise<void> {
 
 		case "doneness":
 			await doneness(args[1], options);
+			break;
+
+		case "safe":
+			await safe(args.slice(1), options);
 			break;
 
 		case "journal":

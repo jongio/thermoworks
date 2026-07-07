@@ -3,7 +3,10 @@ import {
 	type AlarmState,
 	type Device,
 	type DeviceChannel,
+	detectRapidChange,
+	detectStall,
 	getChannelAlarmState,
+	type TemperatureReading,
 	ThermoworksCloud,
 } from "thermoworks-sdk";
 
@@ -23,6 +26,7 @@ export interface WatchArgs {
 	record?: string;
 	recordFormat: WatchRecordFormat;
 	bell: boolean;
+	stallAlert: boolean;
 }
 
 /** Defaults applied when the matching flag is not passed. */
@@ -38,6 +42,7 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 	let record: string | undefined;
 	let recordFormat: WatchRecordFormat = "csv";
 	let bell = false;
+	let stallAlert = false;
 
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
@@ -61,10 +66,12 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 			recordFormat = value;
 		} else if (arg === "--bell") {
 			bell = true;
+		} else if (arg === "--stall-alert") {
+			stallAlert = true;
 		}
 	}
 
-	return { device, interval, record, recordFormat, bell };
+	return { device, interval, record, recordFormat, bell, stallAlert };
 }
 
 /** Format a Date to a time string for display in the watch header. */
@@ -78,11 +85,83 @@ export interface DeviceWithChannels {
 	channels: DeviceChannel[];
 }
 
+/**
+ * Per-channel reading history, keyed by `${serial}:${channelNumber}`.
+ * Used to feed stall/rapid-change detection across watch refreshes.
+ */
+export type ChannelHistory = Map<string, TemperatureReading[]>;
+
+/** Maximum readings retained per channel (covers ~2 hours at 10s intervals). */
+const MAX_HISTORY_LENGTH = 720;
+
+/** Build a channel history key from device serial and channel number. */
+export function channelHistoryKey(serial: string, channelNumber: string | null): string {
+	return `${serial}:${channelNumber ?? "0"}`;
+}
+
+/**
+ * Record the current channel values into the history map.
+ * Trims entries beyond MAX_HISTORY_LENGTH to avoid unbounded growth.
+ */
+export function recordChannelReadings(
+	history: ChannelHistory,
+	devices: DeviceWithChannels[],
+	timestamp: Date,
+): void {
+	for (const { device, channels } of devices) {
+		for (const ch of channels) {
+			if (ch.enabled === false || ch.value == null || ch.units == null) continue;
+			const key = channelHistoryKey(device.serial, ch.number);
+			let readings = history.get(key);
+			if (!readings) {
+				readings = [];
+				history.set(key, readings);
+			}
+			readings.push({ value: ch.value, timestamp, units: ch.units });
+			if (readings.length > MAX_HISTORY_LENGTH) {
+				readings.splice(0, readings.length - MAX_HISTORY_LENGTH);
+			}
+		}
+	}
+}
+
+/** Format the stall indicator suffix for a channel line. */
+export function formatStallIndicator(readings: TemperatureReading[]): string {
+	const stall = detectStall(readings);
+	if (stall.isStalling) {
+		return `  \u23F8 STALL (${stall.stallDuration}min)`;
+	}
+	return "";
+}
+
+/** Format the rapid change indicator suffix for a channel line. */
+export function formatRapidChangeIndicator(readings: TemperatureReading[]): string {
+	const rapid = detectRapidChange(readings);
+	if (rapid.isRapid) {
+		const sign = rapid.rate > 0 ? "+" : "";
+		const icon = rapid.rate > 0 ? "\uD83D\uDD25" : "\u2744\uFE0F";
+		return `  ${icon} ${sign}${rapid.rate}\u00B0/5min`;
+	}
+	return "";
+}
+
+/** ANSI escape codes for colored stall alert text. */
+const ANSI_YELLOW = "\x1b[33m";
+const ANSI_RESET = "\x1b[0m";
+
+/** Wrap text in ANSI yellow for stall alert visibility. */
+export function colorStallAlert(text: string): string {
+	if (!text) return text;
+	return `${ANSI_YELLOW}${text}${ANSI_RESET}`;
+}
+
 /** Render a single watch frame as a string (without clearing the screen). */
 export function formatWatchFrame(
 	devices: DeviceWithChannels[],
 	timestamp: Date,
 	interval: number,
+	history?: ChannelHistory,
+	stallAlert?: boolean,
 ): string {
 	const lines: string[] = [];
 
@@ -104,7 +183,23 @@ export function formatWatchFrame(
 			for (const [i, ch] of activeChannels.entries()) {
 				const trend = formatChannelTrend(ch);
 				const channelLine = formatChannelLine(ch, i);
-				lines.push(trend ? `${channelLine}  ${trend}` : channelLine);
+				let line = trend ? `${channelLine}  ${trend}` : channelLine;
+
+				// Append stall/rapid indicators when history is available.
+				if (history) {
+					const key = channelHistoryKey(device.serial, ch.number);
+					const readings = history.get(key);
+					if (readings && readings.length >= 2) {
+						const stallSuffix = formatStallIndicator(readings);
+						const rapidSuffix = formatRapidChangeIndicator(readings);
+						const suffix = stallSuffix || rapidSuffix;
+						if (suffix) {
+							line += stallAlert ? colorStallAlert(suffix) : suffix;
+						}
+					}
+				}
+
+				lines.push(line);
 			}
 		}
 	}
@@ -249,6 +344,7 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 		record,
 		recordFormat,
 		bell,
+		stallAlert,
 	} = parseWatchArgs(args, {
 		device: prefs.device,
 		interval: prefs.watchInterval,
@@ -267,6 +363,9 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 			: false;
 
 	const client = new ThermoworksCloud({ email: creds.email, password: creds.password });
+
+	// Accumulate per-channel reading history for stall/rapid detection.
+	const history: ChannelHistory = new Map();
 
 	// Register cleanup so the client is closed on process exit (covers SIGINT via global handler)
 	process.on("exit", () => {
@@ -294,6 +393,10 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 			);
 
 			const now = new Date();
+
+			// Record readings into history for stall/rapid detection.
+			recordChannelReadings(history, devicesWithChannels, now);
+
 			const frame = buildWatchJsonFrame(devicesWithChannels, now);
 
 			if (record !== undefined) {
@@ -315,7 +418,7 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 				console.log(JSON.stringify(frame));
 			} else {
 				console.clear();
-				console.log(formatWatchFrame(devicesWithChannels, now, interval));
+				console.log(formatWatchFrame(devicesWithChannels, now, interval, history, stallAlert));
 			}
 
 			// Ring the terminal bell once per refresh while any channel is alarming.

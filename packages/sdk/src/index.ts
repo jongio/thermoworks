@@ -36,6 +36,13 @@ export {
 	nextReplayIndex,
 } from "./replay.js";
 export type {
+	RapidChangeOptions,
+	RapidChangeResult,
+	StallOptions,
+	StallResult,
+} from "./stall-detection.js";
+export { detectRapidChange, detectStall } from "./stall-detection.js";
+export type {
 	ChannelUpdate,
 	ChannelUpdateCallback,
 	ErrorCallback,

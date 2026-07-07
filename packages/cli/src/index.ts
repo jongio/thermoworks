@@ -153,8 +153,11 @@ Commands:
     225 --to c     Convert a bare number to the given unit
 
   journal add      Log a finished cook to a local logbook
+    --cost-meat N  Meat cost for the cook
+    --cost-fuel N  Fuel cost for the cook
   journal list     List logbook entries (newest first)
   journal show <id>  Show one logbook entry
+  journal cost     Summarize cook costs across the logbook
   journal rm <id>  Remove a logbook entry
 
   plan             Back-calculate cook start times for a target ready time

@@ -13,6 +13,8 @@ export interface JournalEntry {
 	meat?: string;
 	weightLb?: number;
 	rating?: number;
+	costMeat?: number;
+	costFuel?: number;
 	notes?: string;
 	device?: string;
 	archive?: string;

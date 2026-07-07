@@ -638,19 +638,19 @@ npx thermoworks events --type alarm --json
 
 ## `thermoworks export`
 
-Export archive readings to CSV or JSON format. Outputs to stdout by default, or writes to a file with `--output`.
+Export archive readings to CSV, JSON, or InfluxDB line protocol. Outputs to stdout by default, or writes to a file with `--output`.
 
 **Usage**
 
 ```bash
-npx thermoworks export <SERIAL> [--archive ID] [--format csv|json] [--output PATH]
+npx thermoworks export <SERIAL> [--archive ID] [--format csv|json|influx] [--output PATH]
 ```
 
 **Options**
 
 - `<SERIAL>` - (Required) Device serial number.
 - `--archive ID` - Export a specific archive by ID. Defaults to the latest archive.
-- `--format csv|json` - Output format. Defaults to `json`.
+- `--format csv|json|influx` - Output format. Defaults to `json`.
 - `--output PATH` - Write to a file instead of stdout.
 
 **Examples**
@@ -668,6 +668,13 @@ npx thermoworks export ABC123 --format csv
 # 2026-06-01T08:00:00.000Z,Pit,225,F
 # 2026-06-01T08:00:00.000Z,Meat,38,F
 
+npx thermoworks export ABC123 --format influx
+# thermoworks_temperature,serial=ABC123,channel=Pit,units=F value=225 1780300800000000000
+# thermoworks_temperature,serial=ABC123,channel=Meat,units=F value=38 1780300800000000000
+
+# Stream straight into InfluxDB (nanosecond precision):
+npx thermoworks export ABC123 --format influx | curl --data-binary @- "http://localhost:8086/api/v2/write?bucket=bbq&precision=ns"
+
 npx thermoworks export ABC123 --archive arch-001 --format csv --output brisket.csv
 # Exported 750 readings to brisket.csv
 ```
@@ -679,6 +686,8 @@ npx thermoworks export ABC123 --archive arch-001 --format csv --output brisket.c
 - Readings are flattened into rows with timestamp, channel label, value, and units.
 - Rows are sorted by timestamp ascending.
 - CSV fields containing commas, quotes, or newlines are properly escaped.
+- The `influx` format writes one line protocol record per reading: measurement `thermoworks_temperature`, tags `serial`, `channel`, and `units`, a float `value` field, and a nanosecond epoch timestamp. Tag values are escaped per the line protocol spec (spaces, commas, and equals signs), and readings with an unparseable timestamp are skipped. Feed it to Telegraf, the Influx write API, or a Grafana InfluxDB source.
+- `--redact` masks the `serial` tag in `influx` output, matching CSV and JSON behavior.
 - When writing to a file, a summary line is printed to stderr (not stdout) so piping works correctly.
 - Exits with an error if no archives are found for the device.
 

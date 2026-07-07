@@ -539,17 +539,20 @@ With `--json`, prints an array of
 
 ### `thermoworks export <serial>`
 
-Export archive readings to CSV or JSON.
+Export archive readings to CSV, JSON, or InfluxDB line protocol.
 
 ```bash
 npx thermoworks export M100009168
 npx thermoworks export M100009168 --archive <id> --format csv --output readings.csv
+npx thermoworks export M100009168 --format influx | curl --data-binary @- "http://localhost:8086/api/v2/write?bucket=bbq&precision=ns"
 ```
 
 Options:
 - `--archive ID` — Export a specific archive (default: latest)
-- `--format FMT` — Output format: `csv` or `json` (default: `json`)
+- `--format FMT` — Output format: `csv`, `json`, or `influx` (default: `json`)
 - `--output PATH` — Write to file (default: stdout)
+
+The `influx` format emits one InfluxDB line protocol record per reading, measurement `thermoworks_temperature`, tagged with `serial`, `channel`, and `units`, a `value` field, and a nanosecond timestamp. It pipes straight into Telegraf, the Influx write API, or a file for a Grafana InfluxDB source. Tag values are escaped per the line protocol spec, and `--redact` masks the serial tag.
 
 ### `thermoworks backup [serial]`
 

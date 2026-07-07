@@ -19,6 +19,7 @@ export {
 	resolveEnvCredentials,
 	serializeCredentials,
 } from "./credentials.js";
+export { assessDeviceHealth, isChannelStale } from "./device-health.js";
 export { formatTimeAgo } from "./format.js";
 export type {
 	CookPlan,
@@ -73,6 +74,8 @@ export type {
 	DeviceEvent,
 	DeviceFilter,
 	DeviceGroup,
+	DeviceHealth,
+	DeviceHealthIssue,
 	DeviceHistory,
 	EventFilter,
 	FanSettings,

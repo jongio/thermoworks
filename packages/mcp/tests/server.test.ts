@@ -414,6 +414,292 @@ describe("MCP Server", () => {
 		});
 	});
 
+	describe("search_archives tool", () => {
+		it("returns archives across all devices sorted by most recent", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{ serial: "ABC123", label: "Smoker" },
+					{ serial: "DEF456", label: "Grill" },
+				]);
+				(mockGetArchives as any).mockImplementation((serial: string) => {
+					if (serial === "ABC123") {
+						return Promise.resolve([
+							{
+								id: "arch-1",
+								label: "Brisket",
+								deviceLabel: "Smoker",
+								start: new Date("2024-06-10T10:00:00Z"),
+								channels: [{ number: "1" }, { number: "2" }],
+								count: 500,
+							},
+						]);
+					}
+					return Promise.resolve([
+						{
+							id: "arch-2",
+							label: "Ribs",
+							deviceLabel: "Grill",
+							start: new Date("2024-06-15T12:00:00Z"),
+							channels: [{ number: "1" }],
+							count: 300,
+						},
+					]);
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler({}, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(2);
+				expect(parsed.returned).toBe(2);
+				// Most recent first
+				expect(parsed.archives[0].archiveId).toBe("arch-2");
+				expect(parsed.archives[0].deviceSerial).toBe("DEF456");
+				expect(parsed.archives[1].archiveId).toBe("arch-1");
+				expect(parsed.archives[1].deviceSerial).toBe("ABC123");
+				expect(parsed.archives[1].channelCount).toBe(2);
+				expect(parsed.archives[1].readingCount).toBe(500);
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("filters by query text (case-insensitive)", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{ serial: "ABC123", label: "Smoker" },
+					{ serial: "DEF456", label: "Grill" },
+				]);
+				(mockGetArchives as any).mockImplementation((serial: string) => {
+					if (serial === "ABC123") {
+						return Promise.resolve([
+							{
+								id: "arch-1",
+								label: "Brisket Low and Slow",
+								deviceLabel: "Smoker",
+								start: new Date("2024-06-10T10:00:00Z"),
+								channels: [],
+								count: 100,
+							},
+						]);
+					}
+					return Promise.resolve([
+						{
+							id: "arch-2",
+							label: "Chicken Wings",
+							deviceLabel: "Grill",
+							start: new Date("2024-06-12T10:00:00Z"),
+							channels: [],
+							count: 50,
+						},
+					]);
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler({ query: "brisket" }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(1);
+				expect(parsed.archives[0].archiveId).toBe("arch-1");
+				expect(parsed.archives[0].label).toBe("Brisket Low and Slow");
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("matches query against device serial", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([{ serial: "ABC123", label: "Smoker" }]);
+				(mockGetArchives as any).mockImplementation(() =>
+					Promise.resolve([
+						{
+							id: "arch-1",
+							label: "Session",
+							deviceLabel: "Smoker",
+							start: new Date("2024-06-10T10:00:00Z"),
+							channels: [],
+							count: 10,
+						},
+					]),
+				);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler({ query: "abc123" }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(1);
+				expect(parsed.archives[0].deviceSerial).toBe("ABC123");
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("filters by date range", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([{ serial: "ABC123", label: "Smoker" }]);
+				(mockGetArchives as any).mockImplementation(() =>
+					Promise.resolve([
+						{
+							id: "arch-old",
+							label: "Old Cook",
+							deviceLabel: "Smoker",
+							start: new Date("2024-01-01T10:00:00Z"),
+							channels: [],
+							count: 100,
+						},
+						{
+							id: "arch-mid",
+							label: "Mid Cook",
+							deviceLabel: "Smoker",
+							start: new Date("2024-06-15T10:00:00Z"),
+							channels: [],
+							count: 200,
+						},
+						{
+							id: "arch-new",
+							label: "New Cook",
+							deviceLabel: "Smoker",
+							start: new Date("2024-12-01T10:00:00Z"),
+							channels: [],
+							count: 300,
+						},
+					]),
+				);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler(
+					{ date_from: "2024-06-01T00:00:00Z", date_to: "2024-07-01T00:00:00Z" },
+					{},
+				);
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(1);
+				expect(parsed.archives[0].archiveId).toBe("arch-mid");
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("respects limit parameter", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([{ serial: "ABC123", label: "Smoker" }]);
+				(mockGetArchives as any).mockImplementation(() =>
+					Promise.resolve([
+						{
+							id: "arch-1",
+							label: "Cook 1",
+							deviceLabel: "Smoker",
+							start: new Date("2024-06-01T10:00:00Z"),
+							channels: [],
+							count: 10,
+						},
+						{
+							id: "arch-2",
+							label: "Cook 2",
+							deviceLabel: "Smoker",
+							start: new Date("2024-06-02T10:00:00Z"),
+							channels: [],
+							count: 20,
+						},
+						{
+							id: "arch-3",
+							label: "Cook 3",
+							deviceLabel: "Smoker",
+							start: new Date("2024-06-03T10:00:00Z"),
+							channels: [],
+							count: 30,
+						},
+					]),
+				);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler({ limit: 2 }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(3);
+				expect(parsed.returned).toBe(2);
+				expect(parsed.archives).toHaveLength(2);
+				// Most recent first
+				expect(parsed.archives[0].archiveId).toBe("arch-3");
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("skips archives without start date when date filters are active", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([{ serial: "ABC123", label: "Smoker" }]);
+				(mockGetArchives as any).mockImplementation(() =>
+					Promise.resolve([
+						{
+							id: "arch-nodate",
+							label: "No Date",
+							deviceLabel: "Smoker",
+							start: null,
+							channels: [],
+							count: 5,
+						},
+						{
+							id: "arch-dated",
+							label: "Dated",
+							deviceLabel: "Smoker",
+							start: new Date("2024-06-15T10:00:00Z"),
+							channels: [],
+							count: 50,
+						},
+					]),
+				);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler({ date_from: "2024-06-01T00:00:00Z" }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(1);
+				expect(parsed.archives[0].archiveId).toBe("arch-dated");
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("returns empty results when no archives match", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([{ serial: "ABC123", label: "Smoker" }]);
+				(mockGetArchives as any).mockImplementation(() => Promise.resolve([]));
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler({ query: "nonexistent" }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(0);
+				expect(parsed.returned).toBe(0);
+				expect(parsed.archives).toEqual([]);
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+	});
+
 	describe("get_calibration tool", () => {
 		it("returns calibration records for a device", async () => {
 			setupEnv();

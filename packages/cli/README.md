@@ -621,6 +621,23 @@ npx thermoworks doneness brisket
 npx thermoworks doneness --json
 ```
 
+### `thermoworks carryover <serial>`
+
+Predict when to pull food off the heat so carryover cooking lands it on the target temperature after resting. Meat keeps rising after it comes off the heat, so pulling at the target overshoots. This reads the current probe temperature and reports the lower pull temperature and how far the current reading is from it.
+
+```bash
+npx thermoworks carryover ABC123 --target 203 --channel 1 --rise 10
+npx thermoworks carryover ABC123 --target 135 --size medium
+npx thermoworks carryover ABC123 --target 203 --json
+```
+
+Options:
+- `--target N` — Desired final temperature in Fahrenheit after resting (required)
+- `--channel N` — Read a specific channel (1-9) instead of the device average
+- `--rise N` — Expected carryover rise in Fahrenheit
+- `--size S` — Preset rise instead of `--rise`: `small` (3), `medium` (6, default), or `large` (10)
+- `--json` — Print the full assessment as JSON
+
 ### `thermoworks open [target]`
 
 Open a ThermoWorks site in your browser. Prints the URL first, so it also works over SSH.

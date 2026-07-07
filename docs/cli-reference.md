@@ -1216,6 +1216,49 @@ npx thermoworks doneness --json
 - Meat names accept the same aliases as `plan` (for example `pulled pork` resolves to `Pork Butt`).
 - Prints an error and exits non-zero for an unknown meat.
 
+## `thermoworks carryover`
+
+Predict when to pull food off the heat so carryover cooking lands it on the target temperature after resting. Meat keeps rising after it comes off the heat, so pulling at the target temperature overshoots. This reads the current probe temperature and reports the lower pull temperature and how far the current reading is from it.
+
+Give the desired final temperature with `--target`. Provide the expected carryover with `--rise` if you know it, or use `--size` for a preset. Small cuts (steaks, chops) hold little residual heat; large cuts (brisket, pork butt, roasts) hold a lot.
+
+**Usage**
+
+```bash
+npx thermoworks carryover <serial> --target N [--channel N] [--rise N | --size small|medium|large] [--json]
+```
+
+**Options**
+
+- `<serial>` - (Required) Device serial number.
+- `--target N` - (Required) Desired final temperature in Fahrenheit after resting.
+- `--channel N` - Read a specific channel (1-9) instead of the device average.
+- `--rise N` - Expected carryover rise in Fahrenheit.
+- `--size S` - Preset rise instead of `--rise`: `small` (3F), `medium` (6F, default), or `large` (10F).
+- `--json` - Output the full assessment as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks carryover ABC123 --target 203 --channel 1 --rise 10
+# Carryover on channel 1: current 190F, target 203F
+#   Pull at 193F to land on 203F after resting (10F carryover).
+#   3F to go before you pull.
+
+npx thermoworks carryover ABC123 --target 135 --size small
+# Carryover on device average: current 130F, target 135F
+#   Pull at 132F to land on 135F after resting (3F carryover for a small cut).
+#   2F to go before you pull.
+
+npx thermoworks carryover ABC123 --target 203 --json
+```
+
+**Notes**
+
+- Once the reading passes the pull temperature the command says to pull now, and warns if pulling would overshoot the target after resting.
+- Celsius readings are converted to Fahrenheit for the assessment.
+- The default rise is a rough heuristic. Set `--rise` from your own logs for a better estimate.
+
 ## `thermoworks open`
 
 Open a ThermoWorks site in your default browser. The URL is always printed first, so the command is still useful over SSH or when no browser is available.

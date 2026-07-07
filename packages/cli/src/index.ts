@@ -9,6 +9,7 @@ import { archives, parseArchivesArgs } from "./commands/archives.js";
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import { backup } from "./commands/backup.js";
 import { calibration } from "./commands/calibration.js";
+import { carryover } from "./commands/carryover.js";
 import { completion } from "./commands/completion.js";
 import { config } from "./commands/config.js";
 import { convert } from "./commands/convert.js";
@@ -142,6 +143,12 @@ Commands:
   guide [category] Show temperature guide (safe cooking temps)
 
   doneness [meat]  Show recommended internal pull temperatures for common cuts
+
+  carryover <SERIAL>  Predict when to pull so carryover lands on the target
+    --target F     Desired final temperature after resting (required)
+    --channel N    Read a specific channel (1-9) instead of the average
+    --rise DEG     Expected carryover rise in degrees
+    --size SIZE    Preset rise: small, medium (default), or large
 
   open [target]    Open a ThermoWorks site in your browser
     cloud          ThermoWorks Cloud web app (default)
@@ -384,6 +391,10 @@ async function main(): Promise<void> {
 
 		case "doneness":
 			await doneness(args[1], options);
+			break;
+
+		case "carryover":
+			await carryover(args.slice(1), options);
 			break;
 
 		case "journal":

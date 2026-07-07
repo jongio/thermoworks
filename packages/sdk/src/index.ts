@@ -19,6 +19,7 @@ export {
 	resolveEnvCredentials,
 	serializeCredentials,
 } from "./credentials.js";
+export { assessDeviceHealth, isChannelStale } from "./device-health.js";
 export { formatTimeAgo } from "./format.js";
 export type {
 	CookPlan,
@@ -28,6 +29,8 @@ export type {
 	PlanCookOptions,
 } from "./plan.js";
 export { getMeatProfiles, planCook, resolveMeatProfile } from "./plan.js";
+export type { PredictionOptions, PredictionResult } from "./prediction.js";
+export { predictDoneTime } from "./prediction.js";
 export type { ReplayFrame, ReplayOptions, ReplayReading } from "./replay.js";
 export {
 	archiveReadingToReplay,
@@ -35,6 +38,13 @@ export {
 	historyReadingToReplay,
 	nextReplayIndex,
 } from "./replay.js";
+export type {
+	RapidChangeOptions,
+	RapidChangeResult,
+	StallOptions,
+	StallResult,
+} from "./stall-detection.js";
+export { detectRapidChange, detectStall } from "./stall-detection.js";
 export type {
 	ChannelUpdate,
 	ChannelUpdateCallback,
@@ -66,6 +76,8 @@ export type {
 	DeviceEvent,
 	DeviceFilter,
 	DeviceGroup,
+	DeviceHealth,
+	DeviceHealthIssue,
 	DeviceHistory,
 	EventFilter,
 	FanSettings,

@@ -5,10 +5,13 @@ import { useArchiveData } from "../hooks/useArchiveData.ts";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { ChannelReading } from "./ChannelReading.tsx";
+import { DeviceHealthBadge } from "./DeviceHealthBadge.tsx";
+import { EtaBadge } from "./EtaBadge.tsx";
 import { FirmwareStatus } from "./FirmwareStatus.tsx";
 import { SessionControls } from "./SessionControls.tsx";
 import { ShareButton } from "./ShareButton.tsx";
 import { ChartSkeleton } from "./Skeleton.tsx";
+import { StallBadge } from "./StallBadge.tsx";
 
 const TemperatureChart = React.lazy(() => import("./TemperatureChart"));
 
@@ -59,13 +62,14 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 			{/* Header */}
 			<div className="flex items-start justify-between gap-2 mb-3">
 				<div className="min-w-0 flex-1">
-					<h3 className="font-semibold truncate" title={name}>
+					<h3 className="font-semibold truncate flex items-center gap-1.5" title={name}>
 						<Link
 							to={`/device/${device.serial}`}
 							className="hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
 						>
 							{name}
 						</Link>
+						<DeviceHealthBadge device={device} channels={channels} />
 					</h3>
 					<div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
 						<Thermometer className="h-3 w-3 shrink-0" />
@@ -112,7 +116,13 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 			{enabledChannels.length > 0 ? (
 				<div className="space-y-2">
 					{enabledChannels.map((channel, idx) => (
-						<ChannelReading key={channel.number ?? idx} channel={channel} />
+						<div key={channel.number ?? idx}>
+							<ChannelReading channel={channel} />
+							<div className="flex items-center gap-1.5 mt-0.5">
+								<StallBadge channel={channel} />
+								<EtaBadge channel={channel} />
+							</div>
+						</div>
 					))}
 				</div>
 			) : (

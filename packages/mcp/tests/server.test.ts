@@ -76,6 +76,31 @@ vi.mock("thermoworks-sdk", () => {
 			if (channel.alarmLow?.alarming) return "low";
 			return "none";
 		},
+		predictDoneTime: (current: number, target: number, rateOfChange: number, options?: any) => {
+			if (current >= target) {
+				return {
+					estimatedMinutes: 0,
+					estimatedTime: new Date().toISOString(),
+					confidence: "high",
+					method: options?.method ?? "linear",
+				};
+			}
+			if (rateOfChange <= 0) {
+				return {
+					estimatedMinutes: null,
+					estimatedTime: null,
+					confidence: "low",
+					method: options?.method ?? "linear",
+				};
+			}
+			const minutes = Math.round((target - current) / rateOfChange);
+			return {
+				estimatedMinutes: minutes,
+				estimatedTime: new Date(Date.now() + minutes * 60 * 1000).toISOString(),
+				confidence: "medium",
+				method: options?.method ?? "linear",
+			};
+		},
 	};
 });
 
@@ -409,6 +434,292 @@ describe("MCP Server", () => {
 				expect(parsed).toHaveLength(1);
 				expect(parsed[0].label).toBe("Cook Session 1");
 			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("search_archives tool", () => {
+		it("returns archives across all devices sorted by most recent", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{ serial: "ABC123", label: "Smoker" },
+					{ serial: "DEF456", label: "Grill" },
+				]);
+				(mockGetArchives as any).mockImplementation((serial: string) => {
+					if (serial === "ABC123") {
+						return Promise.resolve([
+							{
+								id: "arch-1",
+								label: "Brisket",
+								deviceLabel: "Smoker",
+								start: new Date("2024-06-10T10:00:00Z"),
+								channels: [{ number: "1" }, { number: "2" }],
+								count: 500,
+							},
+						]);
+					}
+					return Promise.resolve([
+						{
+							id: "arch-2",
+							label: "Ribs",
+							deviceLabel: "Grill",
+							start: new Date("2024-06-15T12:00:00Z"),
+							channels: [{ number: "1" }],
+							count: 300,
+						},
+					]);
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler({}, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(2);
+				expect(parsed.returned).toBe(2);
+				// Most recent first
+				expect(parsed.archives[0].archiveId).toBe("arch-2");
+				expect(parsed.archives[0].deviceSerial).toBe("DEF456");
+				expect(parsed.archives[1].archiveId).toBe("arch-1");
+				expect(parsed.archives[1].deviceSerial).toBe("ABC123");
+				expect(parsed.archives[1].channelCount).toBe(2);
+				expect(parsed.archives[1].readingCount).toBe(500);
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("filters by query text (case-insensitive)", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{ serial: "ABC123", label: "Smoker" },
+					{ serial: "DEF456", label: "Grill" },
+				]);
+				(mockGetArchives as any).mockImplementation((serial: string) => {
+					if (serial === "ABC123") {
+						return Promise.resolve([
+							{
+								id: "arch-1",
+								label: "Brisket Low and Slow",
+								deviceLabel: "Smoker",
+								start: new Date("2024-06-10T10:00:00Z"),
+								channels: [],
+								count: 100,
+							},
+						]);
+					}
+					return Promise.resolve([
+						{
+							id: "arch-2",
+							label: "Chicken Wings",
+							deviceLabel: "Grill",
+							start: new Date("2024-06-12T10:00:00Z"),
+							channels: [],
+							count: 50,
+						},
+					]);
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler({ query: "brisket" }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(1);
+				expect(parsed.archives[0].archiveId).toBe("arch-1");
+				expect(parsed.archives[0].label).toBe("Brisket Low and Slow");
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("matches query against device serial", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([{ serial: "ABC123", label: "Smoker" }]);
+				(mockGetArchives as any).mockImplementation(() =>
+					Promise.resolve([
+						{
+							id: "arch-1",
+							label: "Session",
+							deviceLabel: "Smoker",
+							start: new Date("2024-06-10T10:00:00Z"),
+							channels: [],
+							count: 10,
+						},
+					]),
+				);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler({ query: "abc123" }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(1);
+				expect(parsed.archives[0].deviceSerial).toBe("ABC123");
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("filters by date range", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([{ serial: "ABC123", label: "Smoker" }]);
+				(mockGetArchives as any).mockImplementation(() =>
+					Promise.resolve([
+						{
+							id: "arch-old",
+							label: "Old Cook",
+							deviceLabel: "Smoker",
+							start: new Date("2024-01-01T10:00:00Z"),
+							channels: [],
+							count: 100,
+						},
+						{
+							id: "arch-mid",
+							label: "Mid Cook",
+							deviceLabel: "Smoker",
+							start: new Date("2024-06-15T10:00:00Z"),
+							channels: [],
+							count: 200,
+						},
+						{
+							id: "arch-new",
+							label: "New Cook",
+							deviceLabel: "Smoker",
+							start: new Date("2024-12-01T10:00:00Z"),
+							channels: [],
+							count: 300,
+						},
+					]),
+				);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler(
+					{ date_from: "2024-06-01T00:00:00Z", date_to: "2024-07-01T00:00:00Z" },
+					{},
+				);
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(1);
+				expect(parsed.archives[0].archiveId).toBe("arch-mid");
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("respects limit parameter", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([{ serial: "ABC123", label: "Smoker" }]);
+				(mockGetArchives as any).mockImplementation(() =>
+					Promise.resolve([
+						{
+							id: "arch-1",
+							label: "Cook 1",
+							deviceLabel: "Smoker",
+							start: new Date("2024-06-01T10:00:00Z"),
+							channels: [],
+							count: 10,
+						},
+						{
+							id: "arch-2",
+							label: "Cook 2",
+							deviceLabel: "Smoker",
+							start: new Date("2024-06-02T10:00:00Z"),
+							channels: [],
+							count: 20,
+						},
+						{
+							id: "arch-3",
+							label: "Cook 3",
+							deviceLabel: "Smoker",
+							start: new Date("2024-06-03T10:00:00Z"),
+							channels: [],
+							count: 30,
+						},
+					]),
+				);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler({ limit: 2 }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(3);
+				expect(parsed.returned).toBe(2);
+				expect(parsed.archives).toHaveLength(2);
+				// Most recent first
+				expect(parsed.archives[0].archiveId).toBe("arch-3");
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("skips archives without start date when date filters are active", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([{ serial: "ABC123", label: "Smoker" }]);
+				(mockGetArchives as any).mockImplementation(() =>
+					Promise.resolve([
+						{
+							id: "arch-nodate",
+							label: "No Date",
+							deviceLabel: "Smoker",
+							start: null,
+							channels: [],
+							count: 5,
+						},
+						{
+							id: "arch-dated",
+							label: "Dated",
+							deviceLabel: "Smoker",
+							start: new Date("2024-06-15T10:00:00Z"),
+							channels: [],
+							count: 50,
+						},
+					]),
+				);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler({ date_from: "2024-06-01T00:00:00Z" }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(1);
+				expect(parsed.archives[0].archiveId).toBe("arch-dated");
+			} finally {
+				(mockGetArchives as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("returns empty results when no archives match", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([{ serial: "ABC123", label: "Smoker" }]);
+				(mockGetArchives as any).mockImplementation(() => Promise.resolve([]));
+
+				const server = createServer();
+				const handler = getToolHandler(server, "search_archives");
+				const result = await handler({ query: "nonexistent" }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.totalMatches).toBe(0);
+				expect(parsed.returned).toBe(0);
+				expect(parsed.archives).toEqual([]);
+			} finally {
+				(mockGetArchives as any).mockReset();
 				teardownEnv();
 			}
 		});
@@ -1171,6 +1482,177 @@ describe("MCP Server", () => {
 			} finally {
 				process.env = originalEnv;
 				resetClient();
+			}
+		});
+	});
+
+	describe("get_eta tool", () => {
+		it("returns prediction when channel has rate and target", async () => {
+			setupEnv();
+			try {
+				(mockGetDeviceChannel as any).mockResolvedValueOnce({
+					value: 180,
+					units: "F",
+					number: "1",
+					label: "Pit",
+					enabled: true,
+					rateOfChange: 1.5,
+					rateOfChangeUnit: "/min",
+					alarmHigh: {
+						enabled: true,
+						alarming: false,
+						muted: null,
+						value: 225,
+						units: "F",
+						lastNotified: null,
+					},
+					alarmLow: null,
+					status: "online",
+					type: "temperature",
+					color: null,
+					lastSeen: null,
+					lastTelemetrySaved: null,
+					lastEventId: null,
+					showAvgTemp: null,
+					estimatedAlarmStatus: null,
+					minimum: null,
+					maximum: null,
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_eta");
+				const result = await handler({ serial: "SMOKE1", channel: 1 }, {});
+
+				expect(result.content[0].type).toBe("text");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.serial).toBe("SMOKE1");
+				expect(parsed.channel).toBe(1);
+				expect(parsed.current).toBe(180);
+				expect(parsed.target).toBe(225);
+				expect(parsed.prediction.estimatedMinutes).toBe(30);
+				expect(parsed.prediction.confidence).toBe("medium");
+				expect(parsed.formatted).toContain("30 minutes");
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns message when no current reading", async () => {
+			setupEnv();
+			try {
+				(mockGetDeviceChannel as any).mockResolvedValueOnce({
+					value: null,
+					units: "F",
+					number: "1",
+					enabled: true,
+					rateOfChange: 1.5,
+					rateOfChangeUnit: "/min",
+					alarmHigh: {
+						enabled: true,
+						alarming: false,
+						muted: null,
+						value: 225,
+						units: "F",
+						lastNotified: null,
+					},
+					alarmLow: null,
+					label: null,
+					status: null,
+					type: null,
+					color: null,
+					lastSeen: null,
+					lastTelemetrySaved: null,
+					lastEventId: null,
+					showAvgTemp: null,
+					estimatedAlarmStatus: null,
+					minimum: null,
+					maximum: null,
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_eta");
+				const result = await handler({ serial: "SMOKE1", channel: 1 }, {});
+
+				expect(result.content[0].text).toContain("no current reading");
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns message when no high alarm target", async () => {
+			setupEnv();
+			try {
+				(mockGetDeviceChannel as any).mockResolvedValueOnce({
+					value: 180,
+					units: "F",
+					number: "1",
+					enabled: true,
+					rateOfChange: 1.5,
+					rateOfChangeUnit: "/min",
+					alarmHigh: null,
+					alarmLow: null,
+					label: null,
+					status: null,
+					type: null,
+					color: null,
+					lastSeen: null,
+					lastTelemetrySaved: null,
+					lastEventId: null,
+					showAvgTemp: null,
+					estimatedAlarmStatus: null,
+					minimum: null,
+					maximum: null,
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_eta");
+				const result = await handler({ serial: "SMOKE1", channel: 1 }, {});
+
+				expect(result.content[0].text).toContain("no high alarm target");
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("returns message when rate is not positive", async () => {
+			setupEnv();
+			try {
+				(mockGetDeviceChannel as any).mockResolvedValueOnce({
+					value: 180,
+					units: "F",
+					number: "1",
+					enabled: true,
+					rateOfChange: -0.5,
+					rateOfChangeUnit: "/min",
+					alarmHigh: {
+						enabled: true,
+						alarming: false,
+						muted: null,
+						value: 225,
+						units: "F",
+						lastNotified: null,
+					},
+					alarmLow: null,
+					label: null,
+					status: null,
+					type: null,
+					color: null,
+					lastSeen: null,
+					lastTelemetrySaved: null,
+					lastEventId: null,
+					showAvgTemp: null,
+					estimatedAlarmStatus: null,
+					minimum: null,
+					maximum: null,
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_eta");
+				const result = await handler({ serial: "SMOKE1", channel: 1 }, {});
+
+				expect(result.content[0].text).toContain("not actively rising");
+			} finally {
+				teardownEnv();
 			}
 		});
 	});

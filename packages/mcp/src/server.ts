@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { AlarmSetOptions, Device, DeviceChannel } from "thermoworks-sdk";
-import { getChannelAlarmState, ThermoworksCloud } from "thermoworks-sdk";
+import { getChannelAlarmState, predictDoneTime, ThermoworksCloud } from "thermoworks-sdk";
 import { z } from "zod";
 
 let cachedCreds: { email: string; password: string } | null = null;
@@ -501,6 +501,108 @@ export function createServer(): McpServer {
 	);
 
 	server.registerTool(
+		"search_archives",
+		{
+			description:
+				"Search historical session archives across all devices. Useful when you don't know which device holds a specific cook session.",
+			inputSchema: z.object({
+				query: z
+					.string()
+					.optional()
+					.describe(
+						"Text to match against archive label, device label, or device serial (case-insensitive)",
+					),
+				limit: z
+					.number()
+					.int()
+					.min(1)
+					.max(50)
+					.optional()
+					.describe("Maximum results to return (default 10, max 50)"),
+				date_from: z
+					.string()
+					.optional()
+					.describe("Filter archives starting on or after this ISO date (e.g. 2024-06-01)"),
+				date_to: z
+					.string()
+					.optional()
+					.describe("Filter archives starting on or before this ISO date (e.g. 2024-06-30)"),
+			}),
+		},
+		async ({ query, limit, date_from, date_to }) => {
+			const client = getClient();
+			const effectiveLimit = limit ?? 10;
+			const devices = await client.getDevices();
+
+			const dateFrom = date_from ? new Date(date_from) : null;
+			const dateTo = date_to ? new Date(date_to) : null;
+			const queryLower = query?.toLowerCase() ?? null;
+
+			const allResults: Array<{
+				deviceSerial: string;
+				deviceLabel: string;
+				archiveId: string;
+				label: string | null;
+				start: Date | null;
+				channelCount: number;
+				readingCount: number | null;
+			}> = [];
+
+			await Promise.all(
+				devices.map(async (device) => {
+					const archives = await client.getArchives(device.serial);
+					for (const archive of archives) {
+						if (queryLower) {
+							const fields = [archive.label, archive.deviceLabel, device.label, device.serial];
+							const matches = fields.some((f) => f?.toLowerCase().includes(queryLower));
+							if (!matches) continue;
+						}
+
+						if (dateFrom && archive.start) {
+							if (new Date(archive.start).getTime() < dateFrom.getTime()) continue;
+						}
+						if (dateTo && archive.start) {
+							if (new Date(archive.start).getTime() > dateTo.getTime()) continue;
+						}
+						// Skip archives with no start date when date filters are active
+						if ((dateFrom || dateTo) && !archive.start) continue;
+
+						allResults.push({
+							deviceSerial: device.serial,
+							deviceLabel: device.label || device.serial,
+							archiveId: archive.id,
+							label: archive.label,
+							start: archive.start,
+							channelCount: archive.channels?.length ?? 0,
+							readingCount: archive.count,
+						});
+					}
+				}),
+			);
+
+			allResults.sort((a, b) => {
+				const timeA = a.start ? new Date(a.start).getTime() : 0;
+				const timeB = b.start ? new Date(b.start).getTime() : 0;
+				return timeB - timeA;
+			});
+
+			const limited = allResults.slice(0, effectiveLimit);
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{ totalMatches: allResults.length, returned: limited.length, archives: limited },
+							null,
+							2,
+						),
+					},
+				],
+			};
+		},
+	);
+
+	server.registerTool(
 		"get_archive_detail",
 		{
 			description:
@@ -519,6 +621,106 @@ export function createServer(): McpServer {
 					: null;
 			return {
 				content: [{ type: "text", text: JSON.stringify({ ...archive, durationSeconds }, null, 2) }],
+			};
+		},
+	);
+
+	server.registerTool(
+		"get_eta",
+		{
+			description:
+				"Predict when a probe channel will reach its target temperature based on the current rate of change. Uses the high alarm value as the target. Returns estimated minutes, confidence level, and a formatted time.",
+			inputSchema: z.object({
+				serial: z.string().min(1).describe("The device serial number"),
+				channel: z.number().int().min(1).max(9).describe("Channel number (1-9)"),
+			}),
+		},
+		async ({ serial, channel }) => {
+			const client = getClient();
+			const ch = await client.getDeviceChannel(serial, channel);
+
+			const current = ch.value;
+			const rate = ch.rateOfChange;
+			const target = ch.alarmHigh?.enabled ? ch.alarmHigh.value : null;
+
+			if (current == null) {
+				return {
+					content: [{ type: "text", text: `Channel ${channel} has no current reading` }],
+				};
+			}
+
+			if (target == null) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Channel ${channel} has no high alarm target set. Set a high alarm to enable ETA predictions.`,
+						},
+					],
+				};
+			}
+
+			if (rate == null || rate <= 0) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Channel ${channel} is not actively rising (rate: ${rate ?? "unknown"}). Cannot estimate done time.`,
+						},
+					],
+				};
+			}
+
+			const prediction = predictDoneTime(current, target, rate);
+
+			if (prediction.estimatedMinutes == null) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Unable to estimate done time for channel ${channel}. Temperature may be stalling.`,
+						},
+					],
+				};
+			}
+
+			const minutes = prediction.estimatedMinutes;
+			let formatted: string;
+			if (minutes === 0) {
+				formatted = "Already at target!";
+			} else if (minutes < 60) {
+				formatted = `~${minutes} minutes remaining`;
+			} else {
+				const hrs = Math.floor(minutes / 60);
+				const rem = minutes % 60;
+				formatted = rem > 0 ? `~${hrs}h ${rem}min remaining` : `~${hrs}h remaining`;
+			}
+
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{
+								serial,
+								channel,
+								current,
+								target,
+								rateOfChange: rate,
+								units: ch.units,
+								prediction: {
+									estimatedMinutes: prediction.estimatedMinutes,
+									estimatedTime: prediction.estimatedTime,
+									confidence: prediction.confidence,
+									method: prediction.method,
+								},
+								formatted,
+							},
+							null,
+							2,
+						),
+					},
+				],
 			};
 		},
 	);

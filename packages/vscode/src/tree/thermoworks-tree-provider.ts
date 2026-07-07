@@ -497,7 +497,7 @@ export class ThermoworksTreeProvider
 						: await this.getCachedChannels(device.serial);
 					const hasAlarm = channels.some((ch) => ch.alarmHigh?.alarming || ch.alarmLow?.alarming);
 					const firmwareOutdated = await this.checkFirmwareOutdated(device);
-					return { device, hasAlarm, firmwareOutdated };
+					return { device, channels, hasAlarm, firmwareOutdated };
 				}),
 			);
 
@@ -520,8 +520,8 @@ export class ThermoworksTreeProvider
 
 			// Flat list (default)
 			return results.map(
-				({ device, hasAlarm, firmwareOutdated }) =>
-					new DeviceNode(device, hasAlarm, firmwareOutdated),
+				({ device, channels, hasAlarm, firmwareOutdated }) =>
+					new DeviceNode(device, hasAlarm, firmwareOutdated, channels),
 			);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load devices";
@@ -531,7 +531,12 @@ export class ThermoworksTreeProvider
 
 	private buildGroupedNodes(
 		devices: Device[],
-		results: Array<{ device: Device; hasAlarm: boolean; firmwareOutdated: boolean }>,
+		results: Array<{
+			device: Device;
+			channels: DeviceChannel[];
+			hasAlarm: boolean;
+			firmwareOutdated: boolean;
+		}>,
 		groups: DeviceGroup[],
 	): TreeNode[] {
 		const nodes: TreeNode[] = [];
@@ -552,8 +557,8 @@ export class ThermoworksTreeProvider
 
 		// Ungrouped devices
 		const ungrouped = results.filter((r) => !assignedSerials.has(r.device.serial));
-		for (const { device, hasAlarm, firmwareOutdated } of ungrouped) {
-			nodes.push(new DeviceNode(device, hasAlarm, firmwareOutdated));
+		for (const { device, channels, hasAlarm, firmwareOutdated } of ungrouped) {
+			nodes.push(new DeviceNode(device, hasAlarm, firmwareOutdated, channels));
 		}
 
 		return nodes;
@@ -571,7 +576,7 @@ export class ThermoworksTreeProvider
 						: await this.getCachedChannels(device.serial);
 					const hasAlarm = channels.some((ch) => ch.alarmHigh?.alarming || ch.alarmLow?.alarming);
 					const firmwareOutdated = await this.checkFirmwareOutdated(device);
-					return new DeviceNode(device, hasAlarm, firmwareOutdated);
+					return new DeviceNode(device, hasAlarm, firmwareOutdated, channels);
 				}),
 			);
 

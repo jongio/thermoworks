@@ -231,10 +231,10 @@ describe("tree-items", () => {
 			expect((node.iconPath as { id: string }).id).toBe("pulse");
 		});
 
-		it("creates offline device with circle-outline icon", () => {
+		it("creates offline device with warning health icon", () => {
 			const node = new DeviceNode(mockOfflineDevice, false);
-			expect(node.description).toBe("signals (Offline)");
-			expect((node.iconPath as { id: string }).id).toBe("circle-outline");
+			expect(node.description).toBe("signals (Offline) \u{1F7E1} Warning");
+			expect((node.iconPath as { id: string }).id).toBe("warning");
 		});
 
 		it("creates alarming device with warning icon", () => {

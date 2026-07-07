@@ -31,6 +31,7 @@ export function useKeyboardShortcuts() {
 
 	const shortcuts: Shortcut[] = useMemo(
 		() => [
+			{ key: "f", description: "Open pit display mode", action: () => navigate("/pit") },
 			{ key: "r", description: "Refresh page", action: () => window.location.reload() },
 			{
 				key: "/",

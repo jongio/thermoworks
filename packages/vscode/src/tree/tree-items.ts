@@ -1,6 +1,7 @@
 import {
 	type Archive,
 	type ArchiveChannel,
+	assessDeviceHealth,
 	type CalibrationRecord,
 	type Device,
 	type DeviceChannel,
@@ -8,6 +9,7 @@ import {
 	type FanSettings,
 	formatTimeAgo,
 	getChannelAlarmState,
+	isChannelStale,
 	type User,
 } from "thermoworks-sdk";
 import * as vscode from "vscode";
@@ -123,18 +125,26 @@ export class DeviceNode extends vscode.TreeItem {
 	readonly type = "device" as const;
 	readonly serial: string;
 
-	constructor(device: Device, hasAlarm: boolean, firmwareOutdated = false) {
+	constructor(
+		device: Device,
+		hasAlarm: boolean,
+		firmwareOutdated = false,
+		channels: DeviceChannel[] = [],
+	) {
 		const label = device.label || device.serial;
 		super(label, vscode.TreeItemCollapsibleState.Collapsed);
 		this.serial = device.serial;
 		this.id = `thermoworks-device-${device.serial}`;
 		this.contextValue = device.fan != null ? "deviceWithFan" : "device";
 
+		const health = assessDeviceHealth(device, channels);
 		const isOnline = device.status === "online";
 		const hasSession = device.sessionStart != null;
 		const statusParts: string[] = [device.type ?? "Unknown"];
 		if (!isOnline) statusParts.push("(Offline)");
 		if (firmwareOutdated) statusParts.push("\u2B06\uFE0F Update");
+		if (health.overall === "critical") statusParts.push("\u{1F534} Critical");
+		else if (health.overall === "warning") statusParts.push("\u{1F7E1} Warning");
 		if (hasSession) {
 			const sessionText = device.sessionLabel || "Recording";
 			const elapsed = formatElapsed(device.sessionStart);
@@ -142,11 +152,15 @@ export class DeviceNode extends vscode.TreeItem {
 		}
 		this.description = statusParts.join(" ");
 
-		// Icon priority: alarm > firmware outdated > session recording > thumbnail > online/offline
+		// Icon priority: alarm > health critical > firmware outdated > session recording > thumbnail > online/offline
 		if (hasAlarm) {
 			this.iconPath = new vscode.ThemeIcon("warning", new vscode.ThemeColor("charts.red"));
+		} else if (health.overall === "critical") {
+			this.iconPath = new vscode.ThemeIcon("error", new vscode.ThemeColor("charts.red"));
 		} else if (firmwareOutdated) {
 			this.iconPath = new vscode.ThemeIcon("alert", new vscode.ThemeColor("charts.orange"));
+		} else if (health.overall === "warning") {
+			this.iconPath = new vscode.ThemeIcon("warning", new vscode.ThemeColor("charts.orange"));
 		} else if (hasSession) {
 			this.iconPath = new vscode.ThemeIcon("record", new vscode.ThemeColor("charts.red"));
 		} else if (device.thumbnail) {
@@ -195,6 +209,7 @@ export class ChannelNode extends vscode.TreeItem {
 	constructor(channel: DeviceChannel, deviceSerial: string, index: number) {
 		const label = channel.label || `Channel ${index + 1}`;
 		const alarm = getChannelAlarmState(channel);
+		const stale = isChannelStale(channel);
 
 		let valueText: string;
 		if (channel.value != null && channel.units != null) {
@@ -203,6 +218,10 @@ export class ChannelNode extends vscode.TreeItem {
 			valueText = `${Math.round(converted.value)}\u00B0${converted.unit}`;
 		} else {
 			valueText = "--";
+		}
+
+		if (stale) {
+			valueText += " (stale)";
 		}
 
 		super(label, vscode.TreeItemCollapsibleState.None);

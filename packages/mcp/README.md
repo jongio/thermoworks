@@ -26,6 +26,7 @@ thermoworks mcp start
 | `get_live_cook_snapshot` | Get one JSON snapshot with devices, channels, alarms, battery, firmware, and active session info |
 | `get_events` | Get device events (alarms, status changes) |
 | `get_archives` | Get historical session archives |
+| `search_archives` | Search archives across all devices by label, date range, or text query |
 | `get_archive_detail` | Get full detail for a specific session archive, including channel readings and duration |
 | `get_temperature_history` | Get long-term time-series temperature readings for a device (for trend and time-to-done analysis) |
 | `get_calibration` | Get NIST-traceable calibration records for a device (per-channel adjustments, deviations, pass/fail) |
@@ -38,6 +39,7 @@ thermoworks mcp start
 | `start_session` | Start a new monitoring session on a device |
 | `end_session` | End the active monitoring session on a device |
 | `get_firmware_status` | Check firmware update status for all devices |
+| `get_eta` | Predict when a probe will reach its target temperature from the current rate of change |
 
 ## Authentication
 

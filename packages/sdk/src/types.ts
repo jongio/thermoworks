@@ -458,6 +458,22 @@ export interface DeviceFilter {
 	activeWithinMinutes?: number;
 }
 
+// ─── Device Health ───────────────────────────────────────────────────────────
+
+/** Overall health assessment for a device. */
+export interface DeviceHealth {
+	readonly overall: "good" | "warning" | "critical";
+	readonly issues: DeviceHealthIssue[];
+}
+
+/** A single health issue detected on a device. */
+export interface DeviceHealthIssue {
+	readonly code: "stale_reading" | "low_battery" | "offline" | "firmware_outdated";
+	readonly severity: "warning" | "critical";
+	readonly message: string;
+	readonly detail?: string;
+}
+
 /** Error thrown when authentication fails. */
 export class AuthError extends Error {
 	readonly reason: string;

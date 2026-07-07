@@ -1,15 +1,22 @@
-import type { Device, DeviceChannel } from "thermoworks-sdk";
+import type { Device, DeviceChannel, TemperatureReading } from "thermoworks-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
 	buildRecordChunk,
 	buildRecordCsvRows,
 	buildWatchJsonFrame,
+	type ChannelHistory,
+	channelHistoryKey,
+	colorStallAlert,
 	type DeviceWithChannels,
+	formatEtaIndicator,
+	formatRapidChangeIndicator,
+	formatStallIndicator,
 	formatTimestamp,
 	formatWatchFrame,
 	parseWatchArgs,
 	RECORD_CSV_HEADER,
+	recordChannelReadings,
 	type WatchJsonFrame,
 	watchFrameHasAlarm,
 } from "../src/commands/watch.js";
@@ -78,8 +85,8 @@ function makeChannel(overrides: Partial<DeviceChannel> = {}): DeviceChannel {
 		lastEventId: null,
 		showAvgTemp: null,
 		estimatedAlarmStatus: null,
-		rateOfChange: null,
-		rateOfChangeUnit: null,
+		rateOfChange: overrides.rateOfChange ?? null,
+		rateOfChangeUnit: overrides.rateOfChangeUnit ?? null,
 		alarmHigh: overrides.alarmHigh ?? null,
 		alarmLow: overrides.alarmLow ?? null,
 		minimum: null,
@@ -112,6 +119,7 @@ describe("parseWatchArgs", () => {
 			record: undefined,
 			recordFormat: "csv",
 			bell: false,
+			stallAlert: false,
 		});
 	});
 
@@ -640,5 +648,393 @@ describe("watch recording chunk", () => {
 		frame.devices[0]!.channels[0]!.value = null;
 		const rows = buildRecordCsvRows(frame);
 		expect(rows[0]).toBe("2026-01-15T18:30:00.000Z,SMOKE1,Brisket,,F,normal");
+	});
+});
+
+// =============================================================================
+// parseWatchArgs --stall-alert
+// =============================================================================
+
+describe("parseWatchArgs --stall-alert", () => {
+	it("defaults stallAlert to false", () => {
+		const result = parseWatchArgs([]);
+		expect(result.stallAlert).toBe(false);
+	});
+
+	it("parses --stall-alert flag", () => {
+		const result = parseWatchArgs(["--stall-alert"]);
+		expect(result.stallAlert).toBe(true);
+	});
+
+	it("parses --stall-alert alongside other flags", () => {
+		const result = parseWatchArgs(["--device", "S1", "--stall-alert", "--interval", "5"]);
+		expect(result.device).toBe("S1");
+		expect(result.interval).toBe(5);
+		expect(result.stallAlert).toBe(true);
+	});
+});
+
+// =============================================================================
+// channelHistoryKey + recordChannelReadings
+// =============================================================================
+
+describe("channelHistoryKey", () => {
+	it("combines serial and channel number", () => {
+		expect(channelHistoryKey("SMOKE1", "2")).toBe("SMOKE1:2");
+	});
+
+	it("uses 0 for null channel number", () => {
+		expect(channelHistoryKey("SMOKE1", null)).toBe("SMOKE1:0");
+	});
+});
+
+describe("recordChannelReadings", () => {
+	it("records channel readings into history map", () => {
+		const history: ChannelHistory = new Map();
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1" }),
+				channels: [makeChannel({ value: 155, units: "F", number: "1", enabled: true })],
+			},
+		];
+		const now = new Date("2026-07-01T12:00:00Z");
+		recordChannelReadings(history, devices, now);
+
+		const key = channelHistoryKey("S1", "1");
+		expect(history.has(key)).toBe(true);
+		expect(history.get(key)!.length).toBe(1);
+		expect(history.get(key)![0]!.value).toBe(155);
+	});
+
+	it("skips disabled channels", () => {
+		const history: ChannelHistory = new Map();
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1" }),
+				channels: [makeChannel({ value: 100, units: "F", number: "1", enabled: false })],
+			},
+		];
+		recordChannelReadings(history, devices, new Date());
+		expect(history.size).toBe(0);
+	});
+
+	it("skips channels with null value", () => {
+		const history: ChannelHistory = new Map();
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1" }),
+				channels: [makeChannel({ value: null, units: "F", number: "1", enabled: true })],
+			},
+		];
+		recordChannelReadings(history, devices, new Date());
+		expect(history.size).toBe(0);
+	});
+});
+
+// =============================================================================
+// formatStallIndicator + formatRapidChangeIndicator
+// =============================================================================
+
+describe("formatStallIndicator", () => {
+	function makeReading(value: number, minuteOffset: number): TemperatureReading {
+		const base = new Date("2026-07-01T12:00:00Z");
+		return { value, timestamp: new Date(base.getTime() + minuteOffset * 60 * 1000), units: "F" };
+	}
+
+	it("returns empty string when not stalling", () => {
+		const readings = [makeReading(150, 0), makeReading(160, 35)];
+		expect(formatStallIndicator(readings)).toBe("");
+	});
+
+	it("returns stall indicator with duration", () => {
+		const readings: TemperatureReading[] = [];
+		for (let i = 0; i <= 35; i += 5) {
+			readings.push(makeReading(155 + (i % 2 === 0 ? 0.5 : 0), i));
+		}
+		const result = formatStallIndicator(readings);
+		expect(result).toContain("\u23F8 STALL");
+		expect(result).toContain("min)");
+	});
+});
+
+describe("formatRapidChangeIndicator", () => {
+	function makeReading(value: number, minuteOffset: number): TemperatureReading {
+		const base = new Date("2026-07-01T12:00:00Z");
+		return { value, timestamp: new Date(base.getTime() + minuteOffset * 60 * 1000), units: "F" };
+	}
+
+	it("returns empty string when rate is below threshold", () => {
+		const readings = [makeReading(150, 0), makeReading(152, 5)];
+		expect(formatRapidChangeIndicator(readings)).toBe("");
+	});
+
+	it("returns rising indicator with fire emoji", () => {
+		const readings = [makeReading(150, 0), makeReading(160, 5)];
+		const result = formatRapidChangeIndicator(readings);
+		expect(result).toContain("\uD83D\uDD25");
+		expect(result).toContain("+10");
+		expect(result).toContain("/5min");
+	});
+
+	it("returns falling indicator with snowflake emoji", () => {
+		const readings = [makeReading(160, 0), makeReading(150, 5)];
+		const result = formatRapidChangeIndicator(readings);
+		expect(result).toContain("\u2744");
+		expect(result).toContain("-10");
+	});
+});
+
+// =============================================================================
+// colorStallAlert
+// =============================================================================
+
+describe("colorStallAlert", () => {
+	it("wraps text in ANSI yellow escape codes", () => {
+		const result = colorStallAlert("STALL");
+		expect(result).toBe("\x1b[33mSTALL\x1b[0m");
+	});
+
+	it("returns empty string unchanged", () => {
+		expect(colorStallAlert("")).toBe("");
+	});
+});
+
+// =============================================================================
+// formatWatchFrame with stall indicators
+// =============================================================================
+
+describe("formatWatchFrame with stall indicators", () => {
+	function makeReading(value: number, minuteOffset: number): TemperatureReading {
+		const base = new Date("2026-07-01T12:00:00Z");
+		return { value, timestamp: new Date(base.getTime() + minuteOffset * 60 * 1000), units: "F" };
+	}
+
+	it("includes stall indicator when history shows stalling", () => {
+		const device = makeDevice({ serial: "SMOKE1", label: "Smoker" });
+		const ch = makeChannel({ value: 155, units: "F", number: "1", label: "Pit", enabled: true });
+		const devices: DeviceWithChannels[] = [{ device, channels: [ch] }];
+
+		const history: ChannelHistory = new Map();
+		const key = channelHistoryKey("SMOKE1", "1");
+		const readings: TemperatureReading[] = [];
+		for (let i = 0; i <= 35; i += 5) {
+			readings.push(makeReading(155 + (i % 2 === 0 ? 0.3 : 0), i));
+		}
+		history.set(key, readings);
+
+		const result = formatWatchFrame(devices, new Date(), 10, history, false);
+		expect(result).toContain("STALL");
+	});
+
+	it("includes rapid change indicator when history shows rapid rise", () => {
+		const device = makeDevice({ serial: "SMOKE1", label: "Smoker" });
+		const ch = makeChannel({ value: 200, units: "F", number: "1", label: "Pit", enabled: true });
+		const devices: DeviceWithChannels[] = [{ device, channels: [ch] }];
+
+		const history: ChannelHistory = new Map();
+		const key = channelHistoryKey("SMOKE1", "1");
+		history.set(key, [makeReading(150, 0), makeReading(200, 5)]);
+
+		const result = formatWatchFrame(devices, new Date(), 10, history, false);
+		expect(result).toContain("\uD83D\uDD25");
+	});
+
+	it("applies ANSI color when stallAlert is true", () => {
+		const device = makeDevice({ serial: "SMOKE1", label: "Smoker" });
+		const ch = makeChannel({ value: 155, units: "F", number: "1", label: "Pit", enabled: true });
+		const devices: DeviceWithChannels[] = [{ device, channels: [ch] }];
+
+		const history: ChannelHistory = new Map();
+		const key = channelHistoryKey("SMOKE1", "1");
+		const readings: TemperatureReading[] = [];
+		for (let i = 0; i <= 35; i += 5) {
+			readings.push(makeReading(155, i));
+		}
+		history.set(key, readings);
+
+		const result = formatWatchFrame(devices, new Date(), 10, history, true);
+		expect(result).toContain("\x1b[33m");
+		expect(result).toContain("\x1b[0m");
+	});
+
+	it("shows no indicator when history is absent", () => {
+		const device = makeDevice({ serial: "SMOKE1", label: "Smoker" });
+		const ch = makeChannel({ value: 155, units: "F", number: "1", label: "Pit", enabled: true });
+		const devices: DeviceWithChannels[] = [{ device, channels: [ch] }];
+
+		const result = formatWatchFrame(devices, new Date(), 10);
+		expect(result).not.toContain("STALL");
+		expect(result).not.toContain("\uD83D\uDD25");
+	});
+});
+
+// =============================================================================
+// formatEtaIndicator
+// =============================================================================
+
+describe("formatEtaIndicator", () => {
+	it("returns ETA string when channel has positive rate and high alarm target", () => {
+		// 45 degrees remaining at 1.5 deg/min = 30 min
+		const ch = makeChannel({
+			value: 180,
+			units: "F",
+			number: "1",
+			rateOfChange: 1.5,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		const result = formatEtaIndicator(ch);
+		expect(result).toContain("~30min");
+		expect(result).toContain("\u23F1");
+	});
+
+	it("returns hours format for longer estimates", () => {
+		// 200 degrees at 2 deg/min = 100 min = 1h40min
+		const ch = makeChannel({
+			value: 25,
+			units: "F",
+			number: "1",
+			rateOfChange: 2,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		const result = formatEtaIndicator(ch);
+		expect(result).toContain("~1h40min");
+	});
+
+	it("returns exact hours format when no remaining minutes", () => {
+		// 120 degrees at 2 deg/min = 60 min = 1h
+		const ch = makeChannel({
+			value: 105,
+			units: "F",
+			number: "1",
+			rateOfChange: 2,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		const result = formatEtaIndicator(ch);
+		expect(result).toContain("~1h");
+		expect(result).not.toContain("min");
+	});
+
+	it("returns empty string when rate is null", () => {
+		const ch = makeChannel({ value: 180, units: "F", rateOfChange: null });
+		expect(formatEtaIndicator(ch)).toBe("");
+	});
+
+	it("returns empty string when rate is zero", () => {
+		const ch = makeChannel({
+			value: 180,
+			units: "F",
+			rateOfChange: 0,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		expect(formatEtaIndicator(ch)).toBe("");
+	});
+
+	it("returns empty string when rate is negative", () => {
+		const ch = makeChannel({
+			value: 180,
+			units: "F",
+			rateOfChange: -0.5,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		expect(formatEtaIndicator(ch)).toBe("");
+	});
+
+	it("returns empty string when no high alarm is set", () => {
+		const ch = makeChannel({ value: 180, units: "F", rateOfChange: 1.5, alarmHigh: null });
+		expect(formatEtaIndicator(ch)).toBe("");
+	});
+
+	it("returns empty string when high alarm is disabled", () => {
+		const ch = makeChannel({
+			value: 180,
+			units: "F",
+			rateOfChange: 1.5,
+			alarmHigh: {
+				enabled: false,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		expect(formatEtaIndicator(ch)).toBe("");
+	});
+
+	it("returns empty string when current value is null", () => {
+		const ch = makeChannel({
+			value: null,
+			units: "F",
+			rateOfChange: 1.5,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		expect(formatEtaIndicator(ch)).toBe("");
+	});
+
+	it("includes ETA in formatWatchFrame output", () => {
+		const device = makeDevice({ serial: "SMOKE1", label: "Smoker" });
+		const ch = makeChannel({
+			value: 180,
+			units: "F",
+			number: "1",
+			label: "Pit",
+			enabled: true,
+			rateOfChange: 1.5,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 225,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		const devices: DeviceWithChannels[] = [{ device, channels: [ch] }];
+
+		const result = formatWatchFrame(devices, new Date(), 10);
+		expect(result).toContain("\u23F1");
+		expect(result).toContain("~30min");
 	});
 });

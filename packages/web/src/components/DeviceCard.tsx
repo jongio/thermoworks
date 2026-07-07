@@ -9,6 +9,7 @@ import { FirmwareStatus } from "./FirmwareStatus.tsx";
 import { SessionControls } from "./SessionControls.tsx";
 import { ShareButton } from "./ShareButton.tsx";
 import { ChartSkeleton } from "./Skeleton.tsx";
+import { StallBadge } from "./StallBadge.tsx";
 
 const TemperatureChart = React.lazy(() => import("./TemperatureChart"));
 
@@ -112,7 +113,10 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 			{enabledChannels.length > 0 ? (
 				<div className="space-y-2">
 					{enabledChannels.map((channel, idx) => (
-						<ChannelReading key={channel.number ?? idx} channel={channel} />
+						<div key={channel.number ?? idx}>
+							<ChannelReading channel={channel} />
+							<StallBadge channel={channel} />
+						</div>
 					))}
 				</div>
 			) : (

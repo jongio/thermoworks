@@ -291,4 +291,136 @@ describe("DeviceCard", () => {
 		expect(screen.getByText("Active")).toBeInTheDocument();
 		expect(screen.queryByText("Disabled")).not.toBeInTheDocument();
 	});
+
+	it("shows stalling badge when rateOfChange is near zero", () => {
+		const item: DeviceWithChannels = {
+			...makeDevice(),
+			channels: [
+				{
+					value: 155,
+					units: "F",
+					label: "Pit",
+					status: "ok",
+					type: "temperature",
+					number: "1",
+					enabled: true,
+					color: null,
+					lastSeen: null,
+					lastTelemetrySaved: null,
+					lastEventId: null,
+					showAvgTemp: null,
+					estimatedAlarmStatus: null,
+					rateOfChange: 0.2,
+					rateOfChangeUnit: "/5min",
+					alarmHigh: null,
+					alarmLow: null,
+					minimum: null,
+					maximum: null,
+				},
+			],
+		};
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
+		expect(screen.getByText("Stalling")).toBeInTheDocument();
+	});
+
+	it("shows rapid rising badge when rateOfChange exceeds threshold", () => {
+		const item: DeviceWithChannels = {
+			...makeDevice(),
+			channels: [
+				{
+					value: 180,
+					units: "F",
+					label: "Pit",
+					status: "ok",
+					type: "temperature",
+					number: "1",
+					enabled: true,
+					color: null,
+					lastSeen: null,
+					lastTelemetrySaved: null,
+					lastEventId: null,
+					showAvgTemp: null,
+					estimatedAlarmStatus: null,
+					rateOfChange: 8,
+					rateOfChangeUnit: "/5min",
+					alarmHigh: null,
+					alarmLow: null,
+					minimum: null,
+					maximum: null,
+				},
+			],
+		};
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
+		expect(screen.getByRole("status", { name: /rising fast/i })).toBeInTheDocument();
+	});
+
+	it("shows rapid falling badge when rateOfChange is negative and exceeds threshold", () => {
+		const item: DeviceWithChannels = {
+			...makeDevice(),
+			channels: [
+				{
+					value: 120,
+					units: "F",
+					label: "Pit",
+					status: "ok",
+					type: "temperature",
+					number: "1",
+					enabled: true,
+					color: null,
+					lastSeen: null,
+					lastTelemetrySaved: null,
+					lastEventId: null,
+					showAvgTemp: null,
+					estimatedAlarmStatus: null,
+					rateOfChange: -6,
+					rateOfChangeUnit: "/5min",
+					alarmHigh: null,
+					alarmLow: null,
+					minimum: null,
+					maximum: null,
+				},
+			],
+		};
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
+		expect(screen.getByRole("status", { name: /falling fast/i })).toBeInTheDocument();
+	});
+
+	it("does not show stall badge when rateOfChange is null", () => {
+		const item = makeDevice(); // default has rateOfChange: null
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
+		expect(screen.queryByText("Stalling")).not.toBeInTheDocument();
+		expect(screen.queryByRole("status", { name: /rising fast/i })).not.toBeInTheDocument();
+	});
+
+	it("does not show badge when rateOfChange is between stall and rapid thresholds", () => {
+		const item: DeviceWithChannels = {
+			...makeDevice(),
+			channels: [
+				{
+					value: 160,
+					units: "F",
+					label: "Pit",
+					status: "ok",
+					type: "temperature",
+					number: "1",
+					enabled: true,
+					color: null,
+					lastSeen: null,
+					lastTelemetrySaved: null,
+					lastEventId: null,
+					showAvgTemp: null,
+					estimatedAlarmStatus: null,
+					rateOfChange: 2.5,
+					rateOfChangeUnit: "/5min",
+					alarmHigh: null,
+					alarmLow: null,
+					minimum: null,
+					maximum: null,
+				},
+			],
+		};
+		renderWithProvider(<DeviceCard item={item} client={makeMockClient()} />);
+		expect(screen.queryByText("Stalling")).not.toBeInTheDocument();
+		expect(screen.queryByRole("status", { name: /rising fast/i })).not.toBeInTheDocument();
+	});
 });

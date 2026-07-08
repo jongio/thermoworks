@@ -1,6 +1,8 @@
 export type { AlarmState } from "./alarm.js";
 export { escalateAlarm, getChannelAlarmState, getChannelsAlarmState } from "./alarm.js";
 export type { AuthSessionOptions } from "./auth.js";
+export type { CarryoverInput, CarryoverResult, CarryoverSize } from "./carryover.js";
+export { assessCarryover, carryoverRiseForSize } from "./carryover.js";
 export { ThermoworksCloud } from "./client.js";
 export type { DeviceEntry, StatuslineConfig } from "./config.js";
 export {

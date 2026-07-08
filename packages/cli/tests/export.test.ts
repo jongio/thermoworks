@@ -33,6 +33,7 @@ import {
 	exportData,
 	flattenArchive,
 	formatCsv,
+	formatInflux,
 	formatJson,
 	parseExportArgs,
 } from "../src/commands/export.js";
@@ -133,6 +134,11 @@ describe("parseExportArgs", () => {
 	it("parses --format json", () => {
 		const result = parseExportArgs(["export", "ABC123", "--format", "json"]);
 		expect(result.format).toBe("json");
+	});
+
+	it("parses --format influx", () => {
+		const result = parseExportArgs(["export", "ABC123", "--format", "influx"]);
+		expect(result.format).toBe("influx");
 	});
 
 	it("parses --output flag", () => {
@@ -361,6 +367,61 @@ describe("formatJson", () => {
 	it("produces empty array for no rows", () => {
 		const json = formatJson([]);
 		expect(JSON.parse(json)).toEqual([]);
+	});
+});
+
+// =============================================================================
+// formatInflux
+// =============================================================================
+
+describe("formatInflux", () => {
+	it("produces one line protocol record per reading", () => {
+		const rows: ExportRow[] = [
+			{ timestamp: "2026-01-15T12:00:00.000Z", channel: "Pit", value: 225, units: "F" },
+			{ timestamp: "2026-01-15T12:01:00.000Z", channel: "Meat", value: 145.5, units: "F" },
+		];
+
+		const out = formatInflux(rows, "ABC123");
+		const lines = out.trimEnd().split("\n");
+		expect(lines).toHaveLength(2);
+		expect(lines[0]).toBe(
+			"thermoworks_temperature,serial=ABC123,channel=Pit,units=F value=225 1768478400000000000",
+		);
+		expect(lines[1]).toBe(
+			"thermoworks_temperature,serial=ABC123,channel=Meat,units=F value=145.5 1768478460000000000",
+		);
+		expect(out.endsWith("\n")).toBe(true);
+	});
+
+	it("computes the timestamp in nanoseconds since the epoch", () => {
+		const rows: ExportRow[] = [
+			{ timestamp: "2026-01-15T12:00:00.000Z", channel: "Pit", value: 225, units: "F" },
+		];
+		const ns = BigInt(Date.parse("2026-01-15T12:00:00.000Z")) * 1_000_000n;
+		expect(formatInflux(rows, "S1").trimEnd().endsWith(` ${ns}`)).toBe(true);
+	});
+
+	it("escapes spaces, commas, and equals signs in tag values", () => {
+		const rows: ExportRow[] = [
+			{ timestamp: "2026-01-15T12:00:00.000Z", channel: "Pit, Left=Front", value: 225, units: "F" },
+		];
+		const out = formatInflux(rows, "SN 1");
+		expect(out).toContain("serial=SN\\ 1");
+		expect(out).toContain("channel=Pit\\,\\ Left\\=Front");
+	});
+
+	it("skips readings with an unparseable timestamp", () => {
+		const rows: ExportRow[] = [
+			{ timestamp: "not-a-date", channel: "Pit", value: 225, units: "F" },
+			{ timestamp: "2026-01-15T12:00:00.000Z", channel: "Meat", value: 145, units: "F" },
+		];
+		const out = formatInflux(rows, "S1");
+		expect(out.trimEnd().split("\n")).toHaveLength(1);
+		expect(out).toContain("channel=Meat");
+	});
+
+	it("returns an empty string for no rows", () => {
+		expect(formatInflux([], "S1")).toBe("");
 	});
 });
 

@@ -121,9 +121,9 @@ Commands:
   session status   Show devices with an active session (all or one SERIAL)
   session clear    Clear session data (--yes to skip confirmation)
 
-  export SERIAL    Export archive readings to CSV or JSON
+  export SERIAL    Export archive readings to CSV, JSON, or InfluxDB
     --archive ID   Export a specific archive (default: latest)
-    --format FMT   Output format: csv or json (default: json)
+    --format FMT   Output format: csv, json, or influx (default: json)
     --output PATH  Write to file (default: stdout)
 
   backup [SERIAL]  Bulk-export archived sessions to a directory

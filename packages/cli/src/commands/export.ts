@@ -18,25 +18,25 @@ export interface ExportRow {
 export interface ExportOptions {
 	serial: string;
 	archiveId?: string;
-	format: "csv" | "json";
+	format: "csv" | "json" | "influx";
 	output?: string;
 }
 
 /**
  * Parse export-specific CLI args from remaining argv after global flags.
- * Expected: export SERIAL [--archive ID] [--format csv|json] [--output PATH]
+ * Expected: export SERIAL [--archive ID] [--format csv|json|influx] [--output PATH]
  */
 export function parseExportArgs(args: string[]): ExportOptions {
 	// args[0] is "export", args[1] is SERIAL
 	const serial = args[1];
 	if (!serial || serial.startsWith("--")) {
 		throw new Error(
-			"Usage: thermoworks export SERIAL [--archive ID] [--format csv|json] [--output PATH]",
+			"Usage: thermoworks export SERIAL [--archive ID] [--format csv|json|influx] [--output PATH]",
 		);
 	}
 
 	let archiveId: string | undefined;
-	let format: "csv" | "json" = "json";
+	let format: "csv" | "json" | "influx" = "json";
 	let output: string | undefined;
 
 	for (let i = 2; i < args.length; i++) {
@@ -48,8 +48,8 @@ export function parseExportArgs(args: string[]): ExportOptions {
 			case "--format":
 				{
 					const val = args[++i];
-					if (val !== "csv" && val !== "json") {
-						throw new Error("--format must be 'csv' or 'json'");
+					if (val !== "csv" && val !== "json" && val !== "influx") {
+						throw new Error("--format must be 'csv', 'json', or 'influx'");
 					}
 					format = val;
 				}
@@ -118,6 +118,38 @@ export function formatJson(rows: ExportRow[]): string {
 	return `${JSON.stringify(rows, null, 2)}\n`;
 }
 
+/** Escape a measurement name for InfluxDB line protocol (commas and spaces). */
+function escapeInfluxMeasurement(value: string): string {
+	return value.replace(/[ ,]/g, "\\$&");
+}
+
+/** Escape a tag key or value for InfluxDB line protocol (commas, equals, spaces). */
+function escapeInfluxTag(value: string): string {
+	return value.replace(/[ ,=]/g, "\\$&");
+}
+
+/**
+ * Format rows as InfluxDB line protocol, ready for Telegraf, the Influx write
+ * API, or Grafana's InfluxDB data source. One line per reading:
+ *   thermoworks_temperature,serial=<s>,channel=<c>,units=<u> value=<n> <ns>
+ * Tag keys and values are escaped per the line protocol spec. The timestamp is
+ * nanoseconds since the Unix epoch, which is Influx's default write precision.
+ * Readings with an unparseable timestamp are skipped.
+ */
+export function formatInflux(rows: ExportRow[], serial: string): string {
+	const measurement = escapeInfluxMeasurement("thermoworks_temperature");
+	const serialTag = escapeInfluxTag(serial);
+	const lines: string[] = [];
+	for (const r of rows) {
+		const ms = new Date(r.timestamp).getTime();
+		if (Number.isNaN(ms)) continue;
+		const ns = BigInt(ms) * 1_000_000n;
+		const tags = `serial=${serialTag},channel=${escapeInfluxTag(r.channel)},units=${escapeInfluxTag(r.units)}`;
+		lines.push(`${measurement},${tags} value=${r.value} ${ns}`);
+	}
+	return lines.length > 0 ? `${lines.join("\n")}\n` : "";
+}
+
 /** Main export command handler. */
 export async function exportData(args: string[]): Promise<void> {
 	const options = parseExportArgs(args);
@@ -146,7 +178,15 @@ export async function exportData(args: string[]): Promise<void> {
 		}
 
 		const rows = maybeRedact(flattenArchive(archive));
-		const content = options.format === "csv" ? formatCsv(rows) : formatJson(rows);
+		let content: string;
+		if (options.format === "csv") {
+			content = formatCsv(rows);
+		} else if (options.format === "influx") {
+			const serialTag = maybeRedact({ serial: options.serial }).serial;
+			content = formatInflux(rows, serialTag);
+		} else {
+			content = formatJson(rows);
+		}
 
 		if (options.output) {
 			await writeFile(options.output, content, "utf8");

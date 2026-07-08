@@ -24,6 +24,17 @@ export {
 export { assessDeviceHealth, isChannelStale } from "./device-health.js";
 export { formatTimeAgo } from "./format.js";
 export type {
+	PasteurizationInput,
+	PasteurizationResult,
+	PasteurizationTable,
+	Protein,
+} from "./pasteurization.js";
+export {
+	assessPasteurization,
+	getPasteurizationTable,
+	requiredHoldMinutes,
+} from "./pasteurization.js";
+export type {
 	CookPlan,
 	CookPlanItem,
 	CookPlanItemInput,

@@ -1373,9 +1373,9 @@ npx thermoworks convert 107c --json
 - A suffix (`c`/`f`) takes precedence over `--to`.
 - Prints a usage message and exits non-zero when the value cannot be parsed or a bare number is given without a valid `--to`.
 
-## `thermoworks journal <add|list|show|import|rm>`
+## `thermoworks journal <add|list|show|cost|import|rm>`
 
-Keep a local logbook of finished cooks. Cloud archives store the raw session readings, but not the notes you actually want to keep: the cut, its weight, how it turned out, and what to change next time. The journal is a local file at `~/.thermoworks/journal.json`. No credentials or network access required.
+Keep a local logbook of finished cooks. Cloud archives store the raw session readings, but not the notes you actually want to keep: the cut, its weight, how it turned out, what it cost, and what to change next time. The journal is a local file at `~/.thermoworks/journal.json`. No credentials or network access required.
 
 **Usage**
 
@@ -1383,6 +1383,7 @@ Keep a local logbook of finished cooks. Cloud archives store the raw session rea
 npx thermoworks journal add --title "Sunday brisket" [options]
 npx thermoworks journal list [--json]
 npx thermoworks journal show <id> [--json]
+npx thermoworks journal cost [--json]
 npx thermoworks journal import [SERIAL] [--limit N] [--dry-run] [--json]
 npx thermoworks journal rm <id>
 ```
@@ -1394,12 +1395,16 @@ npx thermoworks journal rm <id>
 - `--meat TEXT` - Cut or protein (for example `brisket`).
 - `--weight N` - Starting weight in pounds. Must be positive.
 - `--rating N` - How it turned out, an integer from 1 to 5.
+- `--cost-meat N` - Meat cost for the cook. Must be zero or greater.
+- `--cost-fuel N` - Fuel cost (charcoal, pellets, wood, gas). Must be zero or greater.
 - `--notes TEXT` - Free-form notes.
 - `--device SERIAL` - Optional device serial the cook ran on.
 - `--archive ID` - Optional archive id to link the cloud session.
 
-`list` / `show`:
-- `--json` - Output entries as JSON instead of formatted text.
+`list` / `show` / `cost`:
+- `--json` - Output as JSON instead of formatted text.
+
+`cost` totals meat, fuel, and combined spend across the logbook and reports the average cost per pound over cooks that record both a cost and a weight.
 
 `import`:
 - `[SERIAL]` - Device to import cooks from. Falls back to the configured default device (`config set device`) when omitted.
@@ -1410,13 +1415,20 @@ npx thermoworks journal rm <id>
 **Examples**
 
 ```bash
-npx thermoworks journal add --title "Sunday brisket" --meat brisket --weight 12 --rating 4 --notes "Wrapped at 165"
+npx thermoworks journal add --title "Sunday brisket" --meat brisket --weight 12 --rating 4 --cost-meat 42 --cost-fuel 8 --notes "Wrapped at 165"
 # Added journal entry 9029it: Sunday brisket
 
 npx thermoworks journal list
 #   9029it  Jul 3, 2026, 10:35 AM  Sunday brisket  brisket  ****.
 
 npx thermoworks journal show 9029it
+
+npx thermoworks journal cost
+# Cook costs across 1 cook(s):
+#   Meat:   42.00
+#   Fuel:   8.00
+#   Total:  50.00
+#   Per lb: 4.17 (over 12 lb of costed cooks)
 
 npx thermoworks journal import SMOKE123 --limit 10 --dry-run
 # Would import 3 cook(s) from SMOKE123:
@@ -1430,6 +1442,7 @@ npx thermoworks journal rm 9029it
 
 **Notes**
 
+- Costs are currency-agnostic. Enter values in whatever currency you use; the CLI never assumes a symbol.
 - Each entry gets a stable short id and an ISO created timestamp.
 - `list` shows entries newest first.
 - A missing journal file lists nothing; a corrupt file is reported and treated as empty rather than crashing.
@@ -1934,7 +1947,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal cost`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

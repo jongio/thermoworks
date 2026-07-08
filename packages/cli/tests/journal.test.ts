@@ -232,3 +232,119 @@ describe("formatEntry", () => {
 		expect(out).not.toContain("Rating:");
 	});
 });
+
+describe("parseAddArgs cost flags", () => {
+	it("parses --cost-meat and --cost-fuel", async () => {
+		const { parseAddArgs } = await import("../src/commands/journal.js");
+		const result = parseAddArgs(["--title", "Brisket", "--cost-meat", "42.50", "--cost-fuel", "8"]);
+		expect(result).toEqual({ title: "Brisket", costMeat: 42.5, costFuel: 8 });
+	});
+
+	it("allows a zero cost", async () => {
+		const { parseAddArgs } = await import("../src/commands/journal.js");
+		expect(parseAddArgs(["--title", "x", "--cost-fuel", "0"])).toEqual({
+			title: "x",
+			costFuel: 0,
+		});
+	});
+
+	it("rejects a negative cost", async () => {
+		const { parseAddArgs } = await import("../src/commands/journal.js");
+		expect(parseAddArgs(["--title", "x", "--cost-meat", "-5"])).toHaveProperty("error");
+		expect(parseAddArgs(["--title", "x", "--cost-fuel", "nope"])).toHaveProperty("error");
+	});
+});
+
+describe("formatEntry cost lines", () => {
+	it("shows meat, fuel, total, and per-lb when priced with a weight", async () => {
+		const { formatEntry } = await import("../src/commands/journal.js");
+		const out = formatEntry(sampleEntry({ weightLb: 10, costMeat: 40, costFuel: 10 }));
+		expect(out).toContain("Meat $:  40.00");
+		expect(out).toContain("Fuel $:  10.00");
+		expect(out).toContain("Total $: 50.00");
+		expect(out).toContain("5.00/lb");
+	});
+
+	it("omits per-lb when there is no weight", async () => {
+		const { formatEntry } = await import("../src/commands/journal.js");
+		const out = formatEntry(sampleEntry({ costMeat: 40 }));
+		expect(out).toContain("Total $: 40.00");
+		expect(out).not.toContain("/lb");
+	});
+
+	it("omits cost lines entirely when there is no cost", async () => {
+		const { formatEntry } = await import("../src/commands/journal.js");
+		const out = formatEntry(sampleEntry({ weightLb: 10 }));
+		expect(out).not.toContain("Total $:");
+		expect(out).not.toContain("Meat $:");
+	});
+});
+
+describe("entryTotalCost", () => {
+	it("sums meat and fuel", async () => {
+		const { entryTotalCost } = await import("../src/commands/journal.js");
+		expect(entryTotalCost(sampleEntry({ costMeat: 30, costFuel: 6 }))).toBe(36);
+	});
+
+	it("treats a missing side as zero", async () => {
+		const { entryTotalCost } = await import("../src/commands/journal.js");
+		expect(entryTotalCost(sampleEntry({ costFuel: 6 }))).toBe(6);
+	});
+
+	it("returns null when there is no cost", async () => {
+		const { entryTotalCost } = await import("../src/commands/journal.js");
+		expect(entryTotalCost(sampleEntry())).toBeNull();
+	});
+});
+
+describe("summarizeCosts", () => {
+	it("aggregates totals and cost per lb over costed, weighted cooks", async () => {
+		const { summarizeCosts } = await import("../src/commands/journal.js");
+		const summary = summarizeCosts([
+			sampleEntry({ id: "a", weightLb: 10, costMeat: 40, costFuel: 10 }),
+			sampleEntry({ id: "b", weightLb: 5, costMeat: 20 }),
+			sampleEntry({ id: "c", rating: 5 }),
+		]);
+		expect(summary.cooks).toBe(2);
+		expect(summary.totalMeat).toBe(60);
+		expect(summary.totalFuel).toBe(10);
+		expect(summary.total).toBe(70);
+		expect(summary.weightedLb).toBe(15);
+		// (50 + 20) / 15 = 4.666...
+		expect(summary.costPerLb).toBeCloseTo(70 / 15);
+	});
+
+	it("leaves cost per lb null when no costed cook has a weight", async () => {
+		const { summarizeCosts } = await import("../src/commands/journal.js");
+		const summary = summarizeCosts([sampleEntry({ costMeat: 25 })]);
+		expect(summary.cooks).toBe(1);
+		expect(summary.total).toBe(25);
+		expect(summary.costPerLb).toBeNull();
+	});
+
+	it("returns zeros when there are no costs", async () => {
+		const { summarizeCosts } = await import("../src/commands/journal.js");
+		const summary = summarizeCosts([sampleEntry(), sampleEntry({ id: "z", rating: 3 })]);
+		expect(summary.cooks).toBe(0);
+		expect(summary.total).toBe(0);
+		expect(summary.costPerLb).toBeNull();
+	});
+});
+
+describe("formatCostSummary", () => {
+	it("shows a hint when nothing is logged", async () => {
+		const { formatCostSummary, summarizeCosts } = await import("../src/commands/journal.js");
+		const out = formatCostSummary(summarizeCosts([]));
+		expect(out).toContain("No cook costs logged yet");
+	});
+
+	it("shows totals and per-lb when costs exist", async () => {
+		const { formatCostSummary, summarizeCosts } = await import("../src/commands/journal.js");
+		const out = formatCostSummary(
+			summarizeCosts([sampleEntry({ weightLb: 10, costMeat: 40, costFuel: 10 })]),
+		);
+		expect(out).toContain("across 1 cook");
+		expect(out).toContain("Total:  50.00");
+		expect(out).toContain("Per lb: 5.00");
+	});
+});

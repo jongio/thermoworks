@@ -79,6 +79,26 @@ export function parseAddArgs(args: string[]): NewJournalEntry | { error: string 
 				input.rating = rating;
 				break;
 			}
+			case "--cost-meat": {
+				const v = readValue(arg);
+				if (typeof v !== "string") return v;
+				const cost = Number.parseFloat(v);
+				if (!Number.isFinite(cost) || cost < 0) {
+					return { error: `--cost-meat must be a non-negative number, got "${v}"` };
+				}
+				input.costMeat = cost;
+				break;
+			}
+			case "--cost-fuel": {
+				const v = readValue(arg);
+				if (typeof v !== "string") return v;
+				const cost = Number.parseFloat(v);
+				if (!Number.isFinite(cost) || cost < 0) {
+					return { error: `--cost-fuel must be a non-negative number, got "${v}"` };
+				}
+				input.costFuel = cost;
+				break;
+			}
 			default:
 				if (arg.startsWith("--")) return { error: `Unknown option: ${arg}` };
 		}
@@ -121,6 +141,17 @@ export function formatList(entries: JournalEntry[]): string {
 	return `${lines.join("\n")}\n`;
 }
 
+/** Format a money value with two decimals. Currency is left to the reader. */
+export function formatMoney(value: number): string {
+	return value.toFixed(2);
+}
+
+/** Total recorded cost for an entry, or null when it has no cost data. */
+export function entryTotalCost(entry: JournalEntry): number | null {
+	if (entry.costMeat == null && entry.costFuel == null) return null;
+	return (entry.costMeat ?? 0) + (entry.costFuel ?? 0);
+}
+
 /** Format a single entry in full. */
 export function formatEntry(entry: JournalEntry): string {
 	const lines = [`${entry.title}  (${entry.id})`, `  Logged:  ${formatDate(entry.createdAt)}`];
@@ -128,9 +159,81 @@ export function formatEntry(entry: JournalEntry): string {
 	if (entry.weightLb != null) lines.push(`  Weight:  ${entry.weightLb} lb`);
 	if (entry.rating != null)
 		lines.push(`  Rating:  ${formatStars(entry.rating)} (${entry.rating}/5)`);
+	if (entry.costMeat != null) lines.push(`  Meat $:  ${formatMoney(entry.costMeat)}`);
+	if (entry.costFuel != null) lines.push(`  Fuel $:  ${formatMoney(entry.costFuel)}`);
+	const total = entryTotalCost(entry);
+	if (total != null) {
+		const perLb =
+			entry.weightLb != null && entry.weightLb > 0
+				? `  (${formatMoney(total / entry.weightLb)}/lb)`
+				: "";
+		lines.push(`  Total $: ${formatMoney(total)}${perLb}`);
+	}
 	if (entry.device) lines.push(`  Device:  ${entry.device}`);
 	if (entry.archive) lines.push(`  Archive: ${entry.archive}`);
 	if (entry.notes) lines.push(`  Notes:   ${entry.notes}`);
+	return `${lines.join("\n")}\n`;
+}
+
+/** Aggregate cost totals across a set of journal entries. */
+export interface CostSummary {
+	/** Number of entries that carry any cost data. */
+	cooks: number;
+	totalMeat: number;
+	totalFuel: number;
+	total: number;
+	/** Combined weight of costed entries that also have a weight. */
+	weightedLb: number;
+	/** Average cost per pound over costed, weighted entries, or null. */
+	costPerLb: number | null;
+}
+
+/** Summarize cook costs across journal entries. Ignores entries with no cost. */
+export function summarizeCosts(entries: JournalEntry[]): CostSummary {
+	let cooks = 0;
+	let totalMeat = 0;
+	let totalFuel = 0;
+	let weightedCost = 0;
+	let weightedLb = 0;
+
+	for (const entry of entries) {
+		const total = entryTotalCost(entry);
+		if (total == null) continue;
+		cooks++;
+		totalMeat += entry.costMeat ?? 0;
+		totalFuel += entry.costFuel ?? 0;
+		if (entry.weightLb != null && entry.weightLb > 0) {
+			weightedCost += total;
+			weightedLb += entry.weightLb;
+		}
+	}
+
+	return {
+		cooks,
+		totalMeat,
+		totalFuel,
+		total: totalMeat + totalFuel,
+		weightedLb,
+		costPerLb: weightedLb > 0 ? weightedCost / weightedLb : null,
+	};
+}
+
+/** Format the cost summary as human-readable lines. */
+export function formatCostSummary(summary: CostSummary): string {
+	if (summary.cooks === 0) {
+		return 'No cook costs logged yet. Add costs with: thermoworks journal add --title "..." --cost-meat 40 --cost-fuel 8\n';
+	}
+	const lines = [
+		`Cook costs across ${summary.cooks} cook(s):`,
+		`  Meat:   ${formatMoney(summary.totalMeat)}`,
+		`  Fuel:   ${formatMoney(summary.totalFuel)}`,
+		`  Total:  ${formatMoney(summary.total)}`,
+	];
+	if (summary.costPerLb != null) {
+		lines.push(
+			`  Per lb: ${formatMoney(summary.costPerLb)} (over ${summary.weightedLb} lb of costed cooks)`,
+		);
+	}
 	return `${lines.join("\n")}\n`;
 }
 
@@ -184,12 +287,14 @@ export function buildImportEntry(archive: Archive, serial: string): ImportableEn
 	if (notes) entry.notes = notes;
 	return entry;
 }
-const USAGE = `Usage: thermoworks journal <add|list|show|import|rm> [options]
+const USAGE = `Usage: thermoworks journal <add|list|show|cost|import|rm> [options]
 
   journal add --title "Sunday brisket" [--meat brisket] [--weight 12]
-              [--rating 4] [--notes "..."] [--device SN] [--archive ID]
+              [--rating 4] [--cost-meat 40] [--cost-fuel 8] [--notes "..."]
+              [--device SN] [--archive ID]
   journal list [--json]
   journal show <id> [--json]
+  journal cost [--json]
   journal import [SERIAL] [--limit N] [--dry-run] [--json]
   journal rm <id>`;
 
@@ -237,6 +342,16 @@ export async function journal(args: string[], options: OutputOptions): Promise<v
 				return;
 			}
 			process.stdout.write(formatEntry(entry));
+			break;
+		}
+		case "cost": {
+			const entries = await loadJournal();
+			const summary = summarizeCosts(entries);
+			if (options.json) {
+				outputJson(summary);
+				return;
+			}
+			process.stdout.write(formatCostSummary(summary));
 			break;
 		}
 		case "import": {

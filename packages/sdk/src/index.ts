@@ -1,6 +1,8 @@
 export type { AlarmState } from "./alarm.js";
 export { escalateAlarm, getChannelAlarmState, getChannelsAlarmState } from "./alarm.js";
 export type { AuthSessionOptions } from "./auth.js";
+export type { CarryoverInput, CarryoverResult, CarryoverSize } from "./carryover.js";
+export { assessCarryover, carryoverRiseForSize } from "./carryover.js";
 export { ThermoworksCloud } from "./client.js";
 export type { DeviceEntry, StatuslineConfig } from "./config.js";
 export {
@@ -21,6 +23,17 @@ export {
 } from "./credentials.js";
 export { assessDeviceHealth, isChannelStale } from "./device-health.js";
 export { formatTimeAgo } from "./format.js";
+export type {
+	PasteurizationInput,
+	PasteurizationResult,
+	PasteurizationTable,
+	Protein,
+} from "./pasteurization.js";
+export {
+	assessPasteurization,
+	getPasteurizationTable,
+	requiredHoldMinutes,
+} from "./pasteurization.js";
 export type {
 	CookPlan,
 	CookPlanItem,

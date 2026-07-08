@@ -286,6 +286,7 @@ Continuously monitor temperatures with live refresh.
 ```bash
 npx thermoworks watch
 npx thermoworks watch --device M100009168 --interval 5
+npx thermoworks watch --alert-before 5
 npx thermoworks watch --bell
 npx thermoworks watch --json | jq .
 npx thermoworks watch --device M100009168 --record cook.csv
@@ -294,7 +295,8 @@ npx thermoworks watch --device M100009168 --record cook.csv
 Options:
 - `--device SN` — Watch a specific device by serial number
 - `--interval N` — Refresh interval in seconds (default: 10)
-- `--bell` — Ring the terminal bell each refresh while any channel is alarming (off by default)
+- `--alert-before N` — Show a heads-up next to any channel that is within `N` degrees of its high alarm, before it actually alarms. Pair with `--bell` to also ring the bell while a channel is approaching
+- `--bell` — Ring the terminal bell each refresh while any channel is alarming, or approaching its alarm when `--alert-before` is set (off by default)
 - `--json` — Emit one NDJSON object per refresh (timestamp plus devices and channels with alarm state) instead of the live display, for piping into other tools
 - `--record FILE` — Append each refresh to `FILE` while the display keeps running, building a time-series log of the cook
 - `--record-format csv|json` — Record file format (default `csv`). CSV writes one row per channel with a header; JSON writes one NDJSON frame per refresh
@@ -620,6 +622,39 @@ npx thermoworks doneness
 npx thermoworks doneness brisket
 npx thermoworks doneness --json
 ```
+
+### `thermoworks safe <serial>`
+
+Show food-safety pasteurization progress for a probe. Reads the current channel temperature and, using USDA time-at-temperature data (7.0-log10 Salmonella for poultry, 6.5-log10 for beef and pork), reports whether the food is safe now or how long it must hold at this temperature. Pulling poultry or pork at a lower temperature is safe when the core holds long enough, and this tells you when that point is reached. Estimates only, not a replacement for official food-safety guidance.
+
+```bash
+npx thermoworks safe ABC123 --channel 1
+npx thermoworks safe ABC123 --channel 1 --protein poultry --held 4
+npx thermoworks safe ABC123 --json
+```
+
+Options:
+- `--channel N` — Read a specific channel (1-9) instead of the device average
+- `--protein P` — Table to use: `poultry` (default), `beef`, or `pork`
+- `--held N` — Minutes the core has already held at or above the current temperature
+- `--json` — Print the full assessment as JSON
+
+### `thermoworks carryover <serial>`
+
+Predict when to pull food off the heat so carryover cooking lands it on the target temperature after resting. Meat keeps rising after it comes off the heat, so pulling at the target overshoots. This reads the current probe temperature and reports the lower pull temperature and how far the current reading is from it.
+
+```bash
+npx thermoworks carryover ABC123 --target 203 --channel 1 --rise 10
+npx thermoworks carryover ABC123 --target 135 --size medium
+npx thermoworks carryover ABC123 --target 203 --json
+```
+
+Options:
+- `--target N` — Desired final temperature in Fahrenheit after resting (required)
+- `--channel N` — Read a specific channel (1-9) instead of the device average
+- `--rise N` — Expected carryover rise in Fahrenheit
+- `--size S` — Preset rise instead of `--rise`: `small` (3), `medium` (6, default), or `large` (10)
+- `--json` — Print the full assessment as JSON
 
 ### `thermoworks open [target]`
 

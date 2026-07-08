@@ -9,6 +9,7 @@ import { archives, parseArchivesArgs } from "./commands/archives.js";
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import { backup } from "./commands/backup.js";
 import { calibration } from "./commands/calibration.js";
+import { carryover } from "./commands/carryover.js";
 import { completion } from "./commands/completion.js";
 import { config } from "./commands/config.js";
 import { convert } from "./commands/convert.js";
@@ -39,6 +40,7 @@ import { notifications } from "./commands/notifications.js";
 import { open } from "./commands/open.js";
 import { plan } from "./commands/plan.js";
 import { replay } from "./commands/replay.js";
+import { safe } from "./commands/safe.js";
 import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
@@ -91,6 +93,7 @@ Commands:
   watch            Continuously monitor temperatures (live refresh)
     --device SN    Watch a specific device by serial number
     --interval N   Refresh interval in seconds (default: 10)
+    --alert-before N  Warn when a channel is within N degrees of its high alarm
     --bell         Ring the terminal bell while any channel is alarming
 
   metrics          Serve live temperatures as Prometheus metrics on /metrics
@@ -142,6 +145,17 @@ Commands:
   guide [category] Show temperature guide (safe cooking temps)
 
   doneness [meat]  Show recommended internal pull temperatures for common cuts
+
+  safe <SERIAL>    Show food-safety pasteurization progress for a probe
+    --channel N    Read a specific channel (1-9) instead of the average
+    --protein P    Table to use: poultry, beef, or pork (default: poultry)
+    --held N       Minutes already held at or above the current temperature
+
+  carryover <SERIAL>  Predict when to pull so carryover lands on the target
+    --target F     Desired final temperature after resting (required)
+    --channel N    Read a specific channel (1-9) instead of the average
+    --rise DEG     Expected carryover rise in degrees
+    --size SIZE    Preset rise: small, medium (default), or large
 
   open [target]    Open a ThermoWorks site in your browser
     cloud          ThermoWorks Cloud web app (default)
@@ -387,6 +401,14 @@ async function main(): Promise<void> {
 
 		case "doneness":
 			await doneness(args[1], options);
+			break;
+
+		case "safe":
+			await safe(args.slice(1), options);
+			break;
+
+		case "carryover":
+			await carryover(args.slice(1), options);
 			break;
 
 		case "journal":

@@ -9,6 +9,8 @@ import {
 	channelHistoryKey,
 	colorStallAlert,
 	type DeviceWithChannels,
+	degreesToHighAlarm,
+	formatApproachingIndicator,
 	formatEtaIndicator,
 	formatRapidChangeIndicator,
 	formatStallIndicator,
@@ -19,6 +21,7 @@ import {
 	recordChannelReadings,
 	type WatchJsonFrame,
 	watchFrameHasAlarm,
+	watchFrameHasApproaching,
 } from "../src/commands/watch.js";
 
 // --- Helpers (same factories as devices-channels.test.ts) ---
@@ -1036,5 +1039,202 @@ describe("formatEtaIndicator", () => {
 		const result = formatWatchFrame(devices, new Date(), 10);
 		expect(result).toContain("\u23F1");
 		expect(result).toContain("~30min");
+	});
+});
+
+// =============================================================================
+// parseWatchArgs --alert-before
+// =============================================================================
+
+describe("parseWatchArgs --alert-before", () => {
+	it("defaults alertBefore to undefined", () => {
+		expect(parseWatchArgs([]).alertBefore).toBeUndefined();
+	});
+
+	it("parses a positive --alert-before value", () => {
+		expect(parseWatchArgs(["--alert-before", "5"]).alertBefore).toBe(5);
+	});
+
+	it("parses --alert-before alongside other flags", () => {
+		const result = parseWatchArgs(["--device", "S1", "--alert-before", "3", "--bell"]);
+		expect(result.device).toBe("S1");
+		expect(result.alertBefore).toBe(3);
+		expect(result.bell).toBe(true);
+	});
+
+	it("exits on a non-positive --alert-before value", () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+			throw new Error("process.exit");
+		});
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		expect(() => parseWatchArgs(["--alert-before", "0"])).toThrow("process.exit");
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("--alert-before"));
+		exitSpy.mockRestore();
+		errorSpy.mockRestore();
+	});
+});
+
+// =============================================================================
+// degreesToHighAlarm
+// =============================================================================
+
+describe("degreesToHighAlarm", () => {
+	function withAlarm(value: number | null, alarmValue: number, enabled = true): DeviceChannel {
+		return makeChannel({
+			value,
+			units: "F",
+			alarmHigh: {
+				enabled,
+				alarming: false,
+				muted: null,
+				value: alarmValue,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+	}
+
+	it("returns degrees remaining below the high alarm", () => {
+		expect(degreesToHighAlarm(withAlarm(200, 203))).toBe(3);
+	});
+
+	it("returns a negative value once past the alarm", () => {
+		expect(degreesToHighAlarm(withAlarm(210, 203))).toBe(-7);
+	});
+
+	it("returns null when the high alarm is disabled", () => {
+		expect(degreesToHighAlarm(withAlarm(200, 203, false))).toBeNull();
+	});
+
+	it("returns null when there is no reading", () => {
+		expect(degreesToHighAlarm(withAlarm(null, 203))).toBeNull();
+	});
+
+	it("returns null when there is no high alarm at all", () => {
+		expect(degreesToHighAlarm(makeChannel({ value: 200, units: "F" }))).toBeNull();
+	});
+});
+
+// =============================================================================
+// formatApproachingIndicator + watchFrameHasApproaching
+// =============================================================================
+
+describe("formatApproachingIndicator", () => {
+	function withAlarm(value: number, alarmValue: number): DeviceChannel {
+		return makeChannel({
+			value,
+			units: "F",
+			enabled: true,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: alarmValue,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+	}
+
+	it("shows a pre-alert when within the warning band", () => {
+		const out = formatApproachingIndicator(withAlarm(200, 203), 5);
+		expect(out).toContain("3\u00B0 to alarm");
+		expect(out).toContain("\uD83D\uDD14");
+	});
+
+	it("is empty when the channel is outside the band", () => {
+		expect(formatApproachingIndicator(withAlarm(180, 225), 5)).toBe("");
+	});
+
+	it("is empty once the channel has reached the alarm", () => {
+		expect(formatApproachingIndicator(withAlarm(225, 225), 5)).toBe("");
+		expect(formatApproachingIndicator(withAlarm(230, 225), 5)).toBe("");
+	});
+
+	it("rounds fractional degrees to one decimal", () => {
+		expect(formatApproachingIndicator(withAlarm(201.25, 203), 5)).toContain("1.8\u00B0 to alarm");
+	});
+
+	it("is empty when there is no high alarm", () => {
+		expect(formatApproachingIndicator(makeChannel({ value: 200, units: "F" }), 5)).toBe("");
+	});
+});
+
+describe("watchFrameHasApproaching", () => {
+	function approachingChannel(): DeviceChannel {
+		return makeChannel({
+			value: 200,
+			units: "F",
+			enabled: true,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 203,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+	}
+
+	it("is true when any channel is approaching its alarm", () => {
+		const device = makeDevice({ serial: "S1" });
+		const devices: DeviceWithChannels[] = [{ device, channels: [approachingChannel()] }];
+		expect(watchFrameHasApproaching(devices, 5)).toBe(true);
+	});
+
+	it("is false when no channel is within the band", () => {
+		const device = makeDevice({ serial: "S1" });
+		const ch = makeChannel({ value: 150, units: "F", enabled: true });
+		const devices: DeviceWithChannels[] = [{ device, channels: [ch] }];
+		expect(watchFrameHasApproaching(devices, 5)).toBe(false);
+	});
+});
+
+describe("formatWatchFrame with alert-before", () => {
+	it("appends the approaching indicator when a channel is near its alarm", () => {
+		const device = makeDevice({ serial: "SMOKE1", label: "Smoker" });
+		const ch = makeChannel({
+			value: 200,
+			units: "F",
+			number: "1",
+			label: "Pit",
+			enabled: true,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 203,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		const devices: DeviceWithChannels[] = [{ device, channels: [ch] }];
+
+		const result = formatWatchFrame(devices, new Date(), 10, undefined, false, 5);
+		expect(result).toContain("to alarm");
+	});
+
+	it("omits the indicator when alertBefore is not set", () => {
+		const device = makeDevice({ serial: "SMOKE1", label: "Smoker" });
+		const ch = makeChannel({
+			value: 200,
+			units: "F",
+			number: "1",
+			label: "Pit",
+			enabled: true,
+			alarmHigh: {
+				enabled: true,
+				alarming: false,
+				muted: null,
+				value: 203,
+				units: "F",
+				lastNotified: null,
+			},
+		});
+		const devices: DeviceWithChannels[] = [{ device, channels: [ch] }];
+
+		const result = formatWatchFrame(devices, new Date(), 10);
+		expect(result).not.toContain("to alarm");
 	});
 });

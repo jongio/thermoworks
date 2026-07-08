@@ -28,6 +28,7 @@ export interface WatchArgs {
 	recordFormat: WatchRecordFormat;
 	bell: boolean;
 	stallAlert: boolean;
+	alertBefore?: number;
 }
 
 /** Defaults applied when the matching flag is not passed. */
@@ -44,6 +45,7 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 	let recordFormat: WatchRecordFormat = "csv";
 	let bell = false;
 	let stallAlert = false;
+	let alertBefore: number | undefined;
 
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
@@ -65,6 +67,13 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 				process.exit(1);
 			}
 			recordFormat = value;
+		} else if (arg === "--alert-before" && i + 1 < args.length) {
+			const parsed = Number(args[++i]);
+			if (!Number.isFinite(parsed) || parsed <= 0) {
+				console.error("Error: --alert-before must be a positive number of degrees");
+				process.exit(1);
+			}
+			alertBefore = parsed;
 		} else if (arg === "--bell") {
 			bell = true;
 		} else if (arg === "--stall-alert") {
@@ -72,7 +81,7 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 		}
 	}
 
-	return { device, interval, record, recordFormat, bell, stallAlert };
+	return { device, interval, record, recordFormat, bell, stallAlert, alertBefore };
 }
 
 /** Format a Date to a time string for display in the watch header. */
@@ -170,6 +179,43 @@ export function formatEtaIndicator(channel: DeviceChannel): string {
 const ANSI_YELLOW = "\x1b[33m";
 const ANSI_RESET = "\x1b[0m";
 
+/**
+ * Degrees remaining before a channel reaches its enabled high alarm, or null
+ * when the channel has no enabled high alarm or no current reading. A negative
+ * value means the reading is already at or past the alarm.
+ */
+export function degreesToHighAlarm(channel: DeviceChannel): number | null {
+	const target = channel.alarmHigh?.enabled ? channel.alarmHigh.value : null;
+	const current = channel.value;
+	if (target == null || current == null) return null;
+	return target - current;
+}
+
+/**
+ * Format an approaching-alarm indicator when a channel is within `alertBefore`
+ * degrees of its high alarm but has not reached it yet. Returns an empty string
+ * when there is no high alarm, the channel is outside the warning band, or the
+ * channel is already alarming.
+ */
+export function formatApproachingIndicator(channel: DeviceChannel, alertBefore: number): string {
+	const diff = degreesToHighAlarm(channel);
+	if (diff == null || diff <= 0 || diff > alertBefore) return "";
+	const rounded = Math.round(diff * 10) / 10;
+	return `  \uD83D\uDD14 ${rounded}\u00B0 to alarm`;
+}
+
+/** True when any enabled channel is within `alertBefore` degrees of its high alarm. */
+export function watchFrameHasApproaching(
+	devices: DeviceWithChannels[],
+	alertBefore: number,
+): boolean {
+	return devices.some(({ channels }) =>
+		channels.some(
+			(ch) => ch.enabled !== false && formatApproachingIndicator(ch, alertBefore) !== "",
+		),
+	);
+}
+
 /** Wrap text in ANSI yellow for stall alert visibility. */
 export function colorStallAlert(text: string): string {
 	if (!text) return text;
@@ -183,6 +229,7 @@ export function formatWatchFrame(
 	interval: number,
 	history?: ChannelHistory,
 	stallAlert?: boolean,
+	alertBefore?: number,
 ): string {
 	const lines: string[] = [];
 
@@ -224,6 +271,14 @@ export function formatWatchFrame(
 				const etaSuffix = formatEtaIndicator(ch);
 				if (etaSuffix) {
 					line += etaSuffix;
+				}
+
+				// Append approaching-alarm pre-alert when within the warning band.
+				if (alertBefore !== undefined) {
+					const approaching = formatApproachingIndicator(ch, alertBefore);
+					if (approaching) {
+						line += stallAlert ? colorStallAlert(approaching) : approaching;
+					}
 				}
 
 				lines.push(line);
@@ -372,6 +427,7 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 		recordFormat,
 		bell,
 		stallAlert,
+		alertBefore,
 	} = parseWatchArgs(args, {
 		device: prefs.device,
 		interval: prefs.watchInterval,
@@ -445,11 +501,19 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 				console.log(JSON.stringify(frame));
 			} else {
 				console.clear();
-				console.log(formatWatchFrame(devicesWithChannels, now, interval, history, stallAlert));
+				console.log(
+					formatWatchFrame(devicesWithChannels, now, interval, history, stallAlert, alertBefore),
+				);
 			}
 
-			// Ring the terminal bell once per refresh while any channel is alarming.
-			if (bell && watchFrameHasAlarm(devicesWithChannels)) {
+			// Ring the terminal bell once per refresh while any channel is alarming
+			// or, when --alert-before is set, while any channel is approaching its alarm.
+			const shouldRing =
+				bell &&
+				(watchFrameHasAlarm(devicesWithChannels) ||
+					(alertBefore !== undefined &&
+						watchFrameHasApproaching(devicesWithChannels, alertBefore)));
+			if (shouldRing) {
 				process.stdout.write("\x07");
 			}
 		} catch (err) {

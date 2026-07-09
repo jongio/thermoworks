@@ -95,7 +95,7 @@ export function flattenArchive(archive: Archive): ExportRow[] {
 export function formatCsv(rows: ExportRow[]): string {
 	const header = "timestamp,channel,value,units";
 	const lines = rows.map(
-		(r) => `${r.timestamp},${escapeCsvField(r.channel)},${r.value},${r.units}`,
+		(r) => `${r.timestamp},${escapeCsvField(r.channel)},${r.value},${escapeCsvField(r.units)}`,
 	);
 	return `${[header, ...lines].join("\n")}\n`;
 }
@@ -104,10 +104,15 @@ export function formatCsv(rows: ExportRow[]): string {
 function escapeCsvField(field: string): string {
 	let escaped = field;
 	// OWASP: Prefix formula-trigger characters to prevent spreadsheet injection
-	if (/^[=+\-@|\t]/.test(escaped)) {
+	if (/^[=+\-@|\t\r]/.test(escaped)) {
 		escaped = `'${escaped}`;
 	}
-	if (escaped.includes(",") || escaped.includes('"') || escaped.includes("\n")) {
+	if (
+		escaped.includes(",") ||
+		escaped.includes('"') ||
+		escaped.includes("\n") ||
+		escaped.includes("\r")
+	) {
 		return `"${escaped.replace(/"/g, '""')}"`;
 	}
 	return escaped;
@@ -120,12 +125,14 @@ export function formatJson(rows: ExportRow[]): string {
 
 /** Escape a measurement name for InfluxDB line protocol (commas and spaces). */
 function escapeInfluxMeasurement(value: string): string {
-	return value.replace(/[ ,]/g, "\\$&");
+	// Newlines/carriage returns are line-protocol record separators and cannot be
+	// escaped, so collapse them to a space before escaping to prevent line injection.
+	return value.replace(/[\r\n]/g, " ").replace(/[ ,]/g, "\\$&");
 }
 
 /** Escape a tag key or value for InfluxDB line protocol (commas, equals, spaces). */
 function escapeInfluxTag(value: string): string {
-	return value.replace(/[ ,=]/g, "\\$&");
+	return value.replace(/[\r\n]/g, " ").replace(/[ ,=]/g, "\\$&");
 }
 
 /**
@@ -134,18 +141,21 @@ function escapeInfluxTag(value: string): string {
  *   thermoworks_temperature,serial=<s>,channel=<c>,units=<u> value=<n> <ns>
  * Tag keys and values are escaped per the line protocol spec. The timestamp is
  * nanoseconds since the Unix epoch, which is Influx's default write precision.
- * Readings with an unparseable timestamp are skipped.
+ * Readings with an unparseable timestamp or a non-finite value are skipped, and
+ * an empty units string is omitted rather than emitted as an invalid empty tag.
  */
 export function formatInflux(rows: ExportRow[], serial: string): string {
 	const measurement = escapeInfluxMeasurement("thermoworks_temperature");
 	const serialTag = escapeInfluxTag(serial);
 	const lines: string[] = [];
 	for (const r of rows) {
+		if (!Number.isFinite(r.value)) continue;
 		const ms = new Date(r.timestamp).getTime();
 		if (Number.isNaN(ms)) continue;
 		const ns = BigInt(ms) * 1_000_000n;
-		const tags = `serial=${serialTag},channel=${escapeInfluxTag(r.channel)},units=${escapeInfluxTag(r.units)}`;
-		lines.push(`${measurement},${tags} value=${r.value} ${ns}`);
+		const tags = [`serial=${serialTag}`, `channel=${escapeInfluxTag(r.channel)}`];
+		if (r.units !== "") tags.push(`units=${escapeInfluxTag(r.units)}`);
+		lines.push(`${measurement},${tags.join(",")} value=${r.value} ${ns}`);
 	}
 	return lines.length > 0 ? `${lines.join("\n")}\n` : "";
 }

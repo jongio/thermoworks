@@ -347,10 +347,15 @@ export const RECORD_CSV_HEADER = "timestamp,serial,channel,value,units,alarm";
 function escapeCsvField(field: string): string {
 	let escaped = field;
 	// OWASP: prefix formula-trigger characters so a label cannot become a formula.
-	if (/^[=+\-@\t\r]/.test(escaped)) {
+	if (/^[=+\-@|\t\r]/.test(escaped)) {
 		escaped = `'${escaped}`;
 	}
-	if (escaped.includes(",") || escaped.includes('"') || escaped.includes("\n")) {
+	if (
+		escaped.includes(",") ||
+		escaped.includes('"') ||
+		escaped.includes("\n") ||
+		escaped.includes("\r")
+	) {
 		return `"${escaped.replace(/"/g, '""')}"`;
 	}
 	return escaped;

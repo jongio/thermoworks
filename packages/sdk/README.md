@@ -32,6 +32,15 @@ The package exports:
 **Formatting:**
 - `formatTimeAgo(date)` — human-readable relative time (e.g., `"5m ago"`, `"2h ago"`)
 
+**Food safety:**
+- `assessPasteurization(input)` — pasteurization progress from a probe temperature, using USDA time-at-temperature data (types: `Protein`, `PasteurizationInput`, `PasteurizationResult`)
+- `requiredHoldMinutes(temperatureF, protein)` — minutes to hold at a temperature to pasteurize (`null` if too low to pasteurize, `0` if already instantly safe)
+- `getPasteurizationTable(protein)` — the raw hold-time table (`PasteurizationTable`) for `"poultry"`, `"beef"`, or `"pork"`
+
+**Carryover:**
+- `assessCarryover(input)` — predict the pull temperature so carryover cooking lands on a target after resting (types: `CarryoverInput`, `CarryoverResult`, `CarryoverSize`)
+- `carryoverRiseForSize(size)` — preset carryover rise in °F for a `"small"`, `"medium"`, or `"large"` cut
+
 **Credential helpers:**
 - `parseCredentialBlob(blob)` — parse a JSON credential blob into `{ email, password }`
 - `serializeCredentials(email, password)` — serialize credentials to JSON

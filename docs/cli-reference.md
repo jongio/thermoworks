@@ -1227,7 +1227,7 @@ npx thermoworks doneness --json
 
 ## `thermoworks safe`
 
-Show food-safety pasteurization progress for a probe. Reads the current channel temperature and reports whether the food is safe now or how long the core must hold at this temperature to be pasteurized. Poultry and pork pulled below the instant-safe temperature are safe once the core holds long enough, and this command tells you when that point is reached.
+Show food-safety pasteurization progress for a probe. Reads the current channel temperature and reports whether the food is safe now or how long the core must hold at this temperature to be pasteurized. Poultry, beef, and pork pulled below the instant-safe temperature are safe once the core holds long enough, and this command tells you when that point is reached.
 
 Data is adapted from USDA FSIS Appendix A time-at-temperature lethality tables: 7.0-log10 Salmonella reduction for poultry and 6.5-log10 for beef and pork. Values are interpolated between published points. These are estimates for planning, not a replacement for official food-safety guidance.
 
@@ -1292,21 +1292,21 @@ npx thermoworks carryover <serial> --target N [--channel N] [--rise N | --size s
 
 ```bash
 npx thermoworks carryover ABC123 --target 203 --channel 1 --rise 10
-# Carryover on channel 1: current 190F, target 203F
-#   Pull at 193F to land on 203F after resting (10F carryover).
-#   3F to go before you pull.
+# Carryover on channel 1: current 190°F, target 203°F
+#   Pull at 193°F to land on 203°F after resting (10°F carryover).
+#   3°F to go before you pull.
 
 npx thermoworks carryover ABC123 --target 135 --size small
-# Carryover on device average: current 130F, target 135F
-#   Pull at 132F to land on 135F after resting (3F carryover for a small cut).
-#   2F to go before you pull.
+# Carryover on device average: current 130°F, target 135°F
+#   Pull at 132°F to land on 135°F after resting (3°F carryover for a small cut).
+#   2°F to go before you pull.
 
 npx thermoworks carryover ABC123 --target 203 --json
 ```
 
 **Notes**
 
-- Once the reading passes the pull temperature the command says to pull now, and warns if pulling would overshoot the target after resting.
+- When the reading reaches the pull temperature the command says to pull now; once it is past the pull temperature it warns that carryover will overshoot the target after resting.
 - Celsius readings are converted to Fahrenheit for the assessment.
 - The default rise is a rough heuristic. Set `--rise` from your own logs for a better estimate.
 
@@ -1785,7 +1785,7 @@ npx thermoworks watch [--device SERIAL] [--interval N] [--alert-before N] [--bel
 - `--interval N` - Refresh interval in seconds. Must be >= 1. Defaults to `10`.
 - `--alert-before N` - Show a pre-alert next to any channel that is within `N` degrees of its enabled high alarm but has not reached it yet. `N` is in the channel's own units and must be positive. Use it to get a heads-up before a probe hits the alarm, for example to start wrapping or checking the fire. The indicator disappears once the channel actually alarms.
 - `--bell` - Ring the terminal bell once per refresh while any channel is in an alarm state. When `--alert-before` is also set, the bell rings while any channel is approaching its alarm too.
-- `--json` - Emit one newline-delimited JSON (NDJSON) object per refresh instead of the live display. Each frame has an ISO `timestamp` and a `devices` array; every device carries `serial`, `label`, `type`, `status`, `battery`, and a `channels` array with `number`, `label`, `value`, `units`, and `alarm` (`high`, `low`, or `normal`). The screen is not cleared, so output can be piped or appended to a file.
+- `--json` - Emit one newline-delimited JSON (NDJSON) object per refresh instead of the live display. Each frame has an ISO `timestamp` and a `devices` array; every device carries `serial`, `label`, `type`, `status`, `battery`, and a `channels` array with `number`, `label`, `value`, `units`, and `alarm` (`high`, `low`, or `none`). The screen is not cleared, so output can be piped or appended to a file.
 - `--record FILE` - Append each refresh to `FILE` as a running log while the live display (or `--json` stream) continues. Recording is independent of the on-screen format.
 - `--record-format csv|json` - Format for the record file. Defaults to `csv`. `csv` writes one row per channel (`timestamp,serial,channel,value,units,alarm`) with a header on a fresh file. `json` writes one NDJSON frame per refresh. CSV fields are guarded against spreadsheet formula injection.
 
@@ -1809,12 +1809,12 @@ npx thermoworks watch --alert-before 5 --bell
 #     Meat      160°F  🔔 5° to alarm
 
 npx thermoworks watch --json --interval 5 | jq .
-# {"timestamp":"2025-06-07T19:30:00.000Z","devices":[{"serial":"ABC123","label":"Smoker","type":"signals","status":"online","battery":87,"channels":[{"number":"1","label":"Pit","value":225,"units":"F","alarm":"normal"}]}]}
+# {"timestamp":"2025-06-07T19:30:00.000Z","devices":[{"serial":"ABC123","label":"Smoker","type":"signals","status":"online","battery":87,"channels":[{"number":"1","label":"Pit","value":225,"units":"F","alarm":"none"}]}]}
 
 npx thermoworks watch --device ABC123 --interval 30 --record cook.csv
 # Live display continues while each refresh is appended to cook.csv:
 # timestamp,serial,channel,value,units,alarm
-# 2025-06-07T19:30:00.000Z,ABC123,Pit,225,F,normal
+# 2025-06-07T19:30:00.000Z,ABC123,Pit,225,F,none
 ```
 
 **Notes**

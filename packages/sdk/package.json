@@ -49,7 +49,7 @@
 		"access": "public"
 	},
 	"scripts": {
-		"build": "tsup",
+		"build": "tsup && tsc -p tsconfig.json --emitDeclarationOnly && node scripts/emit-cts-dts.mjs",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:coverage": "vitest run --coverage",
@@ -59,7 +59,7 @@
 		"clean": "rimraf dist"
 	},
 	"devDependencies": {
-		"@types/node": "^26.1.0",
+		"@types/node": "^26.1.1",
 		"@vitest/coverage-v8": "^4.1.10",
 		"rimraf": "^6.1.3",
 		"tsup": "^8.5.1",

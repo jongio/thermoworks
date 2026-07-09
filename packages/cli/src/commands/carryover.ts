@@ -69,6 +69,10 @@ export function parseCarryoverArgs(args: string[]): CarryoverCommandOptions | { 
 		}
 	}
 
+	if (result.riseF !== undefined && result.size !== undefined) {
+		return { error: "--rise and --size cannot be used together" };
+	}
+
 	return result;
 }
 

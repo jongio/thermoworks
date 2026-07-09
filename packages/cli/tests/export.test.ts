@@ -341,6 +341,38 @@ describe("formatCsv", () => {
 		expect(csv).toContain('"Probe ""A"""');
 	});
 
+	it("prefixes formula-trigger channel names to prevent spreadsheet injection", () => {
+		for (const trigger of ["=1+1", "+2", "-3", "@SUM(A1)", "|cmd", "\tTAB"]) {
+			const rows: ExportRow[] = [
+				{ timestamp: "2026-01-15T12:00:00.000Z", channel: trigger, value: 1, units: "F" },
+			];
+			// None of these contain comma/quote/newline, so the field is only apostrophe-prefixed.
+			const line = formatCsv(rows).split("\n")[1] ?? "";
+			expect(line).toBe(`2026-01-15T12:00:00.000Z,'${trigger},1,F`);
+		}
+	});
+
+	it("escapes the units field, not just the channel", () => {
+		const rows: ExportRow[] = [
+			{
+				timestamp: "2026-01-15T12:00:00.000Z",
+				channel: "Pit",
+				value: 225,
+				units: "=WEBSERVICE(1)",
+			},
+		];
+		const csv = formatCsv(rows);
+		expect(csv).toContain("'=WEBSERVICE(1)");
+	});
+
+	it("quotes fields containing newlines or carriage returns", () => {
+		const rows: ExportRow[] = [
+			{ timestamp: "2026-01-15T12:00:00.000Z", channel: "Line1\nLine2", value: 1, units: "F" },
+		];
+		const csv = formatCsv(rows);
+		expect(csv).toContain('"Line1\nLine2"');
+	});
+
 	it("produces only header for empty rows", () => {
 		const csv = formatCsv([]);
 		expect(csv).toBe("timestamp,channel,value,units\n");
@@ -418,6 +450,46 @@ describe("formatInflux", () => {
 		const out = formatInflux(rows, "S1");
 		expect(out.trimEnd().split("\n")).toHaveLength(1);
 		expect(out).toContain("channel=Meat");
+	});
+
+	it("collapses newlines in tag values to prevent line-protocol injection", () => {
+		const rows: ExportRow[] = [
+			{
+				timestamp: "2026-01-15T12:00:00.000Z",
+				channel: "pit\nother,serial=x value=999 0",
+				value: 225,
+				units: "F",
+			},
+		];
+		const out = formatInflux(rows, "S1");
+		// The injected newline must not produce a second record.
+		expect(out.trimEnd().split("\n")).toHaveLength(1);
+		expect(out).not.toContain("\npit");
+	});
+
+	it("skips readings with a non-finite value", () => {
+		const rows: ExportRow[] = [
+			{ timestamp: "2026-01-15T12:00:00.000Z", channel: "A", value: Number.NaN, units: "F" },
+			{
+				timestamp: "2026-01-15T12:00:01.000Z",
+				channel: "B",
+				value: Number.POSITIVE_INFINITY,
+				units: "F",
+			},
+			{ timestamp: "2026-01-15T12:00:02.000Z", channel: "C", value: 200, units: "F" },
+		];
+		const out = formatInflux(rows, "S1");
+		expect(out.trimEnd().split("\n")).toHaveLength(1);
+		expect(out).toContain("channel=C");
+	});
+
+	it("omits the units tag when units is empty rather than emitting an invalid empty tag", () => {
+		const rows: ExportRow[] = [
+			{ timestamp: "2026-01-15T12:00:00.000Z", channel: "A", value: 200, units: "" },
+		];
+		const out = formatInflux(rows, "S1");
+		expect(out).toContain("serial=S1,channel=A value=200");
+		expect(out).not.toContain("units=");
 	});
 
 	it("returns an empty string for no rows", () => {

@@ -105,6 +105,14 @@ describe("parseCarryoverArgs", () => {
 			error: expect.stringContaining("Unknown option"),
 		});
 	});
+
+	it("rejects --rise and --size used together", () => {
+		expect(
+			parseCarryoverArgs(["ABC123", "--target", "203", "--rise", "8", "--size", "large"]),
+		).toEqual({
+			error: expect.stringContaining("cannot be used together"),
+		});
+	});
 });
 
 // =============================================================================

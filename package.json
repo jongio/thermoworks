@@ -14,7 +14,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.3",
-		"@microsoft/vally-cli": "^0.7.0",
+		"@microsoft/vally-cli": "^0.8.0",
 		"typescript": "^7.0.2"
 	},
 	"engines": {

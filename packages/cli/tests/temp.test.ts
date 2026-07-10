@@ -105,6 +105,26 @@ describe("temp", () => {
 		expect(logSpy).toHaveBeenCalledWith("165");
 	});
 
+	it("converts the average temperature to Celsius when --unit c is given", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetAverageTemperature.mockResolvedValue({ value: 212, units: "F" });
+
+		const { temp } = await import("../src/commands/temp.js");
+		await temp(["ABC123", "--unit", "c"], { json: false });
+
+		expect(logSpy).toHaveBeenCalledWith("100");
+	});
+
+	it("converts a channel temperature to Fahrenheit when --unit f is given", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetDeviceChannel.mockResolvedValue(makeChannel({ number: "2", value: 0, units: "C" }));
+
+		const { temp } = await import("../src/commands/temp.js");
+		await temp(["ABC123", "--channel", "2", "--unit", "f"], { json: false });
+
+		expect(logSpy).toHaveBeenCalledWith("32");
+	});
+
 	it("outputs JSON for the average when --json is set", async () => {
 		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
 		mockGetAverageTemperature.mockResolvedValue({ value: 203.5, units: "F" });
@@ -126,6 +146,23 @@ describe("temp", () => {
 
 		const output = JSON.parse(logSpy.mock.calls[0][0] as string);
 		expect(output).toEqual({ serial: "ABC123", channel: 3, value: 72.5, units: "F" });
+	});
+
+	it("outputs converted JSON with source units when --unit is set", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetAverageTemperature.mockResolvedValue({ value: 32, units: "F" });
+
+		const { temp } = await import("../src/commands/temp.js");
+		await temp(["ABC123", "--unit", "c"], { json: true });
+
+		const output = JSON.parse(logSpy.mock.calls[0][0] as string);
+		expect(output).toEqual({
+			serial: "ABC123",
+			channel: null,
+			value: 0,
+			units: "C",
+			sourceUnits: "F",
+		});
 	});
 
 	it("exits when no serial is provided", async () => {
@@ -150,6 +187,14 @@ describe("temp", () => {
 		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid channel"));
 	});
 
+	it("exits when the unit is invalid", async () => {
+		const { temp } = await import("../src/commands/temp.js");
+		await expect(temp(["ABC123", "--unit", "kelvin"], { json: false })).rejects.toThrow(
+			"process.exit",
+		);
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid unit"));
+	});
+
 	it("exits when no average reading is available", async () => {
 		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
 		mockGetAverageTemperature.mockResolvedValue(null);
@@ -168,6 +213,17 @@ describe("temp", () => {
 			"process.exit",
 		);
 		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("No reading for channel 2"));
+	});
+
+	it("exits when conversion is requested for unknown units", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetDeviceChannel.mockResolvedValue(makeChannel({ number: "2", value: 50, units: "H" }));
+
+		const { temp } = await import("../src/commands/temp.js");
+		await expect(
+			temp(["ABC123", "--channel", "2", "--unit", "f"], { json: false }),
+		).rejects.toThrow("process.exit");
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Cannot convert"));
 	});
 
 	it("exits when not logged in", async () => {

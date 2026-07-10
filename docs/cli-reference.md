@@ -234,7 +234,7 @@ channel's current reading.
 **Usage**
 
 ```bash
-npx thermoworks temp <SERIAL> [--channel <1-9>] [--json]
+npx thermoworks temp <SERIAL> [--channel <1-9>] [--unit auto|f|c] [--json]
 ```
 
 **Arguments**
@@ -244,7 +244,8 @@ npx thermoworks temp <SERIAL> [--channel <1-9>] [--json]
 **Options**
 
 - `--channel <1-9>` - Read a specific channel instead of the device average.
-- `--json` - Output `{ serial, channel, value, units }` as JSON. `channel` is `null` when averaging.
+- `--unit auto|f|c` - Convert the output value to Fahrenheit or Celsius. `auto` keeps the device's native unit.
+- `--json` - Output `{ serial, channel, value, units }` as JSON. `channel` is `null` when averaging. With `--unit`, JSON also includes `sourceUnits`.
 
 **Examples**
 
@@ -255,8 +256,14 @@ npx thermoworks temp M100009168
 npx thermoworks temp M100009168 --channel 2
 # 165
 
+npx thermoworks temp M100009168 --unit c
+# 95.3
+
 npx thermoworks temp M100009168 --json
 # {"serial":"M100009168","channel":null,"value":203.5,"units":"F"}
+
+npx thermoworks temp M100009168 --unit c --json
+# {"serial":"M100009168","channel":null,"value":95.3,"units":"C","sourceUnits":"F"}
 
 # use it in a shell conditional
 if (( $(npx thermoworks temp M100009168) > 200 )); then echo "pull it"; fi
@@ -2028,4 +2035,3 @@ npx thermoworks --version
 **Notes**
 
 - Reads the version from the CLI package's `package.json`.
-

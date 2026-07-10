@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { DeviceWithChannels } from "../src/lib/api.ts";
 import { PitDisplay } from "../src/pages/PitDisplay.tsx";
 
@@ -103,6 +103,8 @@ function makeChannel(
 	options: {
 		alarmHigh?: boolean;
 		alarmLow?: boolean;
+		highTarget?: number;
+		lowTarget?: number;
 		enabled?: boolean;
 	} = {},
 ): DeviceWithChannels["channels"][number] {
@@ -122,12 +124,28 @@ function makeChannel(
 		estimatedAlarmStatus: null,
 		rateOfChange: null,
 		rateOfChangeUnit: null,
-		alarmHigh: options.alarmHigh
-			? { enabled: true, alarming: true, muted: null, value: 200, units: "F", lastNotified: null }
-			: null,
-		alarmLow: options.alarmLow
-			? { enabled: true, alarming: true, muted: null, value: 32, units: "F", lastNotified: null }
-			: null,
+		alarmHigh:
+			options.alarmHigh || options.highTarget != null
+				? {
+						enabled: true,
+						alarming: options.alarmHigh ?? false,
+						muted: null,
+						value: options.highTarget ?? 200,
+						units: "F",
+						lastNotified: null,
+					}
+				: null,
+		alarmLow:
+			options.alarmLow || options.lowTarget != null
+				? {
+						enabled: true,
+						alarming: options.alarmLow ?? false,
+						muted: null,
+						value: options.lowTarget ?? 32,
+						units: "F",
+						lastNotified: null,
+					}
+				: null,
 		minimum: null,
 		maximum: null,
 	};
@@ -142,6 +160,10 @@ function renderPitDisplay() {
 }
 
 describe("PitDisplay", () => {
+	beforeEach(() => {
+		window.localStorage.clear();
+	});
+
 	it("shows loading state when no data yet", () => {
 		mockDevicesData = [];
 		mockDevicesLoading = true;
@@ -218,6 +240,54 @@ describe("PitDisplay", () => {
 
 		const reading = screen.getByText("28.0°F");
 		expect(reading).toHaveClass("text-alarm-low");
+	});
+
+	it("shows how far a channel is from a high target", () => {
+		mockDevicesData = [
+			makeDevice("TW-001", "Smoker", [makeChannel("Brisket", 175, { highTarget: 200 })]),
+		];
+		mockDevicesLoading = false;
+		mockDevicesError = null;
+		renderPitDisplay();
+
+		expect(screen.getByText("25.0°F to high target")).toBeInTheDocument();
+	});
+
+	it("shows how far a channel is past a high target", () => {
+		mockDevicesData = [
+			makeDevice("TW-001", "Smoker", [
+				makeChannel("Brisket", 205, { alarmHigh: true, highTarget: 200 }),
+			]),
+		];
+		mockDevicesLoading = false;
+		mockDevicesError = null;
+		renderPitDisplay();
+
+		expect(screen.getByText("5.0°F past high target")).toBeInTheDocument();
+	});
+
+	it("shows how far a channel is above a low target", () => {
+		mockDevicesData = [
+			makeDevice("TW-001", "Fridge", [makeChannel("Internal", 40, { lowTarget: 32 })]),
+		];
+		mockDevicesLoading = false;
+		mockDevicesError = null;
+		renderPitDisplay();
+
+		expect(screen.getByText("8.0°F above low target")).toBeInTheDocument();
+	});
+
+	it("uses the active temperature unit for target gaps", () => {
+		window.localStorage.setItem("thermoworks-unit", "C");
+		mockDevicesData = [
+			makeDevice("TW-001", "Smoker", [makeChannel("Brisket", 212, { highTarget: 221 })]),
+		];
+		mockDevicesLoading = false;
+		mockDevicesError = null;
+		renderPitDisplay();
+
+		expect(screen.getByText("100.0°C")).toBeInTheDocument();
+		expect(screen.getByText("5.0°C to high target")).toBeInTheDocument();
 	});
 
 	it("hides disabled channels", () => {

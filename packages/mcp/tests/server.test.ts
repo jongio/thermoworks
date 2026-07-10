@@ -382,6 +382,169 @@ describe("MCP Server", () => {
 		});
 	});
 
+	describe("get_alarm_targets tool", () => {
+		it("returns armed targets across all devices", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockClear();
+				(mockGetDevice as any).mockClear();
+				(mockGetAllDeviceChannels as any).mockReset();
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{ serial: "ABC123", label: "Smoker" },
+					{ serial: "DEF456", label: "Fridge" },
+				]);
+				(mockGetAllDeviceChannels as any).mockImplementation((serial: string) => {
+					if (serial === "ABC123") {
+						return Promise.resolve([
+							{
+								value: 225,
+								units: "F",
+								label: "Pit",
+								number: "1",
+								alarmHigh: {
+									enabled: true,
+									alarming: false,
+									muted: null,
+									value: 275,
+									units: "F",
+									lastNotified: null,
+								},
+								alarmLow: null,
+							},
+							{
+								value: 165,
+								units: "F",
+								label: "Meat",
+								number: "2",
+								alarmHigh: null,
+								alarmLow: null,
+							},
+						]);
+					}
+					return Promise.resolve([
+						{
+							value: 30,
+							units: "F",
+							label: "Internal",
+							number: "1",
+							alarmHigh: null,
+							alarmLow: {
+								enabled: true,
+								alarming: true,
+								muted: null,
+								value: 32,
+								units: "F",
+								lastNotified: null,
+							},
+						},
+					]);
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_alarm_targets");
+				const result = await handler({}, {});
+
+				expect(mockGetDevices).toHaveBeenCalledTimes(1);
+				expect(mockGetDevice).not.toHaveBeenCalled();
+				expect(mockGetAllDeviceChannels).toHaveBeenCalledWith("ABC123");
+				expect(mockGetAllDeviceChannels).toHaveBeenCalledWith("DEF456");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.deviceCount).toBe(2);
+				expect(parsed.targetCount).toBe(2);
+				expect(parsed.targets).toHaveLength(2);
+				expect(parsed.targets[0]).toMatchObject({
+					serial: "ABC123",
+					deviceLabel: "Smoker",
+					channel: 1,
+					channelLabel: "Pit",
+					current: { value: 225, units: "F" },
+					alarmHigh: { value: 275, units: "F", alarming: false },
+					alarmLow: null,
+				});
+				expect(parsed.targets[1].alarmLow).toMatchObject({
+					value: 32,
+					units: "F",
+					alarming: true,
+				});
+			} finally {
+				(mockGetAllDeviceChannels as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("filters targets to one device when serial is provided", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockClear();
+				(mockGetDevice as any).mockClear();
+				(mockGetAllDeviceChannels as any).mockReset();
+				(mockGetDevice as any).mockResolvedValueOnce({ serial: "DEF456", label: null });
+				(mockGetAllDeviceChannels as any).mockResolvedValueOnce([
+					{
+						value: 31,
+						units: "F",
+						label: "Internal",
+						number: "1",
+						alarmHigh: null,
+						alarmLow: {
+							enabled: true,
+							alarming: true,
+							muted: null,
+							value: 32,
+							units: "F",
+							lastNotified: null,
+						},
+					},
+				]);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_alarm_targets");
+				const result = await handler({ serial: "DEF456" }, {});
+
+				expect(mockGetDevice).toHaveBeenCalledWith("DEF456");
+				expect(mockGetDevices).not.toHaveBeenCalled();
+				expect(mockGetAllDeviceChannels).toHaveBeenCalledWith("DEF456");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.deviceCount).toBe(1);
+				expect(parsed.targetCount).toBe(1);
+				expect(parsed.targets[0].deviceLabel).toBe("DEF456");
+				expect(parsed.targets[0].alarmLow.alarming).toBe(true);
+			} finally {
+				(mockGetAllDeviceChannels as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("returns an empty target list when no alarms are armed", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([{ serial: "ABC123", label: "Smoker" }]);
+				(mockGetAllDeviceChannels as any).mockResolvedValueOnce([
+					{
+						value: 225,
+						units: "F",
+						label: "Pit",
+						number: "1",
+						alarmHigh: { enabled: false, alarming: false, value: 275, units: "F" },
+						alarmLow: null,
+					},
+					{ value: 165, units: "F", label: "Meat", number: "2", alarmHigh: null, alarmLow: null },
+				]);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_alarm_targets");
+				const result = await handler({}, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.deviceCount).toBe(1);
+				expect(parsed.targetCount).toBe(0);
+				expect(parsed.targets).toEqual([]);
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
 	describe("get_events tool", () => {
 		it("returns events with optional filters", async () => {
 			setupEnv();

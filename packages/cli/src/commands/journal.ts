@@ -1,3 +1,4 @@
+import { writeFile } from "node:fs/promises";
 import type { Archive } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 import { getCredentials } from "../credentials.js";
@@ -126,12 +127,17 @@ function formatStars(rating: number): string {
 	return "*".repeat(rating) + ".".repeat(Math.max(0, 5 - rating));
 }
 
+/** Return journal entries in the same newest-first order used by list and export. */
+export function sortJournalEntries(entries: JournalEntry[]): JournalEntry[] {
+	return [...entries].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 /** Format the list view (newest first). */
 export function formatList(entries: JournalEntry[]): string {
 	if (entries.length === 0) {
 		return 'No journal entries yet. Add one with: thermoworks journal add --title "..."\n';
 	}
-	const sorted = [...entries].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+	const sorted = sortJournalEntries(entries);
 	const lines = sorted.map((e) => {
 		const parts = [e.id, formatDate(e.createdAt), e.title];
 		if (e.meat) parts.push(e.meat);
@@ -237,6 +243,118 @@ export function formatCostSummary(summary: CostSummary): string {
 	return `${lines.join("\n")}\n`;
 }
 
+/** Parsed options for the journal export subcommand. */
+export interface JournalExportOptions {
+	format: "json" | "csv";
+	output?: string;
+}
+
+/** Parse args after `journal export`. Returns an error message on failure. */
+export function parseJournalExportArgs(args: string[]): JournalExportOptions | { error: string } {
+	let format: "json" | "csv" = "json";
+	let output: string | undefined;
+
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if (arg === undefined) continue;
+		if (arg === "--format") {
+			const value = args[++i];
+			if (value === undefined) return { error: "--format requires a value" };
+			if (value !== "json" && value !== "csv") {
+				return { error: '--format must be "json" or "csv"' };
+			}
+			format = value;
+		} else if (arg === "--output") {
+			const value = args[++i];
+			if (value === undefined) return { error: "--output requires a file path" };
+			output = value;
+		} else {
+			return { error: `Unknown option: ${arg}` };
+		}
+	}
+
+	return { format, output };
+}
+
+function escapeCsvField(value: string): string {
+	let escaped = value;
+	if (/^[=+\-@|\t\r]/.test(escaped)) {
+		escaped = `'${escaped}`;
+	}
+	if (
+		escaped.includes(",") ||
+		escaped.includes('"') ||
+		escaped.includes("\n") ||
+		escaped.includes("\r")
+	) {
+		return `"${escaped.replace(/"/g, '""')}"`;
+	}
+	return escaped;
+}
+
+function optionalField(value: string | number | undefined): string {
+	return value == null ? "" : String(value);
+}
+
+/** Format journal entries as CSV with stable columns for spreadsheet use. */
+export function formatJournalCsv(entries: JournalEntry[]): string {
+	const header = [
+		"id",
+		"createdAt",
+		"title",
+		"meat",
+		"weightLb",
+		"rating",
+		"costMeat",
+		"costFuel",
+		"device",
+		"archive",
+		"notes",
+	];
+	const rows = sortJournalEntries(entries).map((entry) =>
+		[
+			entry.id,
+			entry.createdAt,
+			entry.title,
+			optionalField(entry.meat),
+			optionalField(entry.weightLb),
+			optionalField(entry.rating),
+			optionalField(entry.costMeat),
+			optionalField(entry.costFuel),
+			optionalField(entry.device),
+			optionalField(entry.archive),
+			optionalField(entry.notes),
+		]
+			.map(escapeCsvField)
+			.join(","),
+	);
+	return `${[header.join(","), ...rows].join("\n")}\n`;
+}
+
+/** Format journal entries as pretty JSON using the same newest-first order as list. */
+export function formatJournalJson(entries: JournalEntry[]): string {
+	return `${JSON.stringify(sortJournalEntries(entries), null, 2)}\n`;
+}
+
+async function journalExport(args: string[]): Promise<void> {
+	const parsed = parseJournalExportArgs(args);
+	if ("error" in parsed) {
+		console.error(parsed.error);
+		process.exit(1);
+	}
+
+	const entries = await loadJournal();
+	const content = parsed.format === "csv" ? formatJournalCsv(entries) : formatJournalJson(entries);
+	if (parsed.output) {
+		await writeFile(parsed.output, content, "utf8");
+		console.error(
+			`Exported ${entries.length} journal entr${entries.length === 1 ? "y" : "ies"} to ${parsed.output}.`,
+		);
+		return;
+	}
+	process.stdout.write(content);
+}
+
 /** Parsed options for the journal import subcommand. */
 export interface JournalImportOptions {
 	serial?: string;
@@ -287,7 +405,7 @@ export function buildImportEntry(archive: Archive, serial: string): ImportableEn
 	if (notes) entry.notes = notes;
 	return entry;
 }
-const USAGE = `Usage: thermoworks journal <add|list|show|cost|import|rm> [options]
+const USAGE = `Usage: thermoworks journal <add|list|show|cost|import|export|rm> [options]
 
   journal add --title "Sunday brisket" [--meat brisket] [--weight 12]
               [--rating 4] [--cost-meat 40] [--cost-fuel 8] [--notes "..."]
@@ -296,6 +414,7 @@ const USAGE = `Usage: thermoworks journal <add|list|show|cost|import|rm> [option
   journal show <id> [--json]
   journal cost [--json]
   journal import [SERIAL] [--limit N] [--dry-run] [--json]
+  journal export [--format json|csv] [--output PATH]
   journal rm <id>`;
 
 /** Route `thermoworks journal <subcommand>` to the right handler. */
@@ -356,6 +475,10 @@ export async function journal(args: string[], options: OutputOptions): Promise<v
 		}
 		case "import": {
 			await journalImport(args.slice(1), options);
+			break;
+		}
+		case "export": {
+			await journalExport(args.slice(1));
 			break;
 		}
 		case "rm": {

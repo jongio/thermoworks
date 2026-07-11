@@ -172,6 +172,7 @@ Commands:
   journal list     List logbook entries (newest first)
   journal show <id>  Show one logbook entry
   journal cost     Summarize cook costs across the logbook
+  journal export   Export the local logbook as JSON or CSV
   journal rm <id>  Remove a logbook entry
 
   plan             Back-calculate cook start times for a target ready time

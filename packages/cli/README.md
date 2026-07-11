@@ -687,7 +687,7 @@ Options:
 - `--to c|f` — Target unit for a bare number (ignored when the value has a suffix)
 - `--json` — Print `{ input, value, unit }`
 
-### `thermoworks journal <add|list|show|cost|import|rm>`
+### `thermoworks journal <add|list|show|cost|import|export|rm>`
 
 Keep a local logbook of finished cooks: what the cut was, its weight, how it turned out, what it cost, and notes for next time. Entries are stored in `~/.thermoworks/journal.json`. No credentials required.
 
@@ -697,6 +697,7 @@ npx thermoworks journal list
 npx thermoworks journal show 9029it
 npx thermoworks journal cost
 npx thermoworks journal import SMOKE123 --limit 10 --dry-run
+npx thermoworks journal export --format csv --output cooks.csv
 npx thermoworks journal rm 9029it
 ```
 
@@ -704,6 +705,7 @@ Options:
 - `add` flags: `--title` (required), `--meat`, `--weight` (pounds), `--rating` (1 to 5), `--cost-meat` (meat cost), `--cost-fuel` (fuel cost), `--notes`, `--device SN`, `--archive ID`.
 - `cost` — Summarize meat, fuel, and total spend across the logbook, plus average cost per pound over cooks that have both a cost and a weight. Add `--json` for machine-readable output.
 - `import` flags: `[SERIAL]` (defaults to the configured device), `--limit N` (default 20), `--dry-run`, `--json`. Requires credentials.
+- `export` flags: `--format json|csv` (default json), `--output PATH` to write a file instead of stdout.
 - `--json` — On `list`, `show`, `cost`, and `import`, output as JSON.
 
 Costs are currency-agnostic (enter whatever currency you use). When an entry records both a cost and a weight, `show` and `cost` also report the per-pound figure. Each entry gets a short id and a created timestamp. A missing or corrupt journal file is ignored rather than crashing. `import` pulls finished cooks from a device's cloud archives and deduplicates on the archive id, so re-running only adds new cooks.
@@ -850,4 +852,3 @@ npx thermoworks devices --json --redact
 ## License
 
 MIT
-

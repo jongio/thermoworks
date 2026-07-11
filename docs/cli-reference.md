@@ -1382,7 +1382,7 @@ npx thermoworks convert 107c --json
 - A suffix (`c`/`f`) takes precedence over `--to`.
 - Prints a usage message and exits non-zero when the value cannot be parsed or a bare number is given without a valid `--to`.
 
-## `thermoworks journal <add|list|show|cost|import|rm>`
+## `thermoworks journal <add|list|show|cost|import|export|rm>`
 
 Keep a local logbook of finished cooks. Cloud archives store the raw session readings, but not the notes you actually want to keep: the cut, its weight, how it turned out, what it cost, and what to change next time. The journal is a local file at `~/.thermoworks/journal.json`. No credentials or network access required.
 
@@ -1394,6 +1394,7 @@ npx thermoworks journal list [--json]
 npx thermoworks journal show <id> [--json]
 npx thermoworks journal cost [--json]
 npx thermoworks journal import [SERIAL] [--limit N] [--dry-run] [--json]
+npx thermoworks journal export [--format json|csv] [--output PATH]
 npx thermoworks journal rm <id>
 ```
 
@@ -1421,6 +1422,10 @@ npx thermoworks journal rm <id>
 - `--dry-run` - Show what would be imported without writing anything.
 - `--json` - Output the imported (or candidate) entries as JSON. Requires credentials and network access.
 
+`export`:
+- `--format json|csv` - Output format. Defaults to `json`.
+- `--output PATH` - Write to a file instead of stdout.
+
 **Examples**
 
 ```bash
@@ -1446,6 +1451,9 @@ npx thermoworks journal import SMOKE123 --limit 10 --dry-run
 #   ghi  Cook on Jun 24, 2026, 9:30 AM
 # Skipped 7 already in the journal.
 
+npx thermoworks journal export --format csv --output cooks.csv
+# Exported 1 journal entry to cooks.csv.
+
 npx thermoworks journal rm 9029it
 ```
 
@@ -1454,6 +1462,7 @@ npx thermoworks journal rm 9029it
 - Costs are currency-agnostic. Enter values in whatever currency you use; the CLI never assumes a symbol.
 - Each entry gets a stable short id and an ISO created timestamp.
 - `list` shows entries newest first.
+- `export` uses the same newest-first order as `list`. CSV columns are `id`, `createdAt`, `title`, `meat`, `weightLb`, `rating`, `costMeat`, `costFuel`, `device`, `archive`, and `notes`.
 - A missing journal file lists nothing; a corrupt file is reported and treated as empty rather than crashing.
 - The file is created with owner-only permissions (directory `0700`, file `0600`).
 - `import` pulls finished cooks from a device's cloud archives, seeding the title from the archive label (or its date) and preserving the cook date as the entry timestamp. It requires credentials and network access.
@@ -2028,4 +2037,3 @@ npx thermoworks --version
 **Notes**
 
 - Reads the version from the CLI package's `package.json`.
-

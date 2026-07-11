@@ -1,7 +1,7 @@
 import type { DeviceChannel } from "thermoworks-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { formatSafe, parseSafeArgs } from "../src/commands/safe.js";
+import { formatSafe, parseManualTemperature, parseSafeArgs } from "../src/commands/safe.js";
 
 // --- Module mocks ---
 
@@ -94,6 +94,24 @@ describe("parseSafeArgs", () => {
 		});
 	});
 
+	it("parses manual temperature input", () => {
+		const parsed = parseSafeArgs(["--temp", "150f", "--protein", "pork", "--held", "3"]);
+		expect(parsed).toEqual({
+			manualTemperatureF: 150,
+			protein: "pork",
+			heldMinutes: 3,
+		});
+	});
+
+	it("rejects manual temperature with a serial or channel", () => {
+		expect(parseSafeArgs(["ABC123", "--temp", "150f"])).toEqual({
+			error: expect.stringContaining("device serial"),
+		});
+		expect(parseSafeArgs(["--temp", "150f", "--channel", "1"])).toEqual({
+			error: expect.stringContaining("--channel"),
+		});
+	});
+
 	it("rejects a channel out of range", () => {
 		expect(parseSafeArgs(["ABC123", "--channel", "10"])).toEqual({
 			error: expect.stringContaining("--channel"),
@@ -116,6 +134,19 @@ describe("parseSafeArgs", () => {
 		expect(parseSafeArgs(["ABC123", "--bogus"])).toEqual({
 			error: expect.stringContaining("Unknown option"),
 		});
+	});
+});
+
+describe("parseManualTemperature", () => {
+	it("parses Fahrenheit, Celsius, and bare Fahrenheit values", () => {
+		expect(parseManualTemperature("150f")).toBe(150);
+		expect(parseManualTemperature("74c")).toBe(165.2);
+		expect(parseManualTemperature("155")).toBe(155);
+	});
+
+	it("rejects invalid values", () => {
+		expect(parseManualTemperature("hot")).toBeNull();
+		expect(parseManualTemperature(undefined)).toBeNull();
 	});
 });
 
@@ -154,6 +185,28 @@ describe("formatSafe", () => {
 // =============================================================================
 
 describe("safe", () => {
+	it("prints a manual pasteurization assessment without credentials", async () => {
+		const { safe } = await import("../src/commands/safe.js");
+		await safe(["--temp", "150f", "--protein", "poultry", "--held", "0.5"], { json: false });
+
+		expect(mockGetCredentials).not.toHaveBeenCalled();
+		const out = stdoutSpy.mock.calls.map((c) => c[0]).join("");
+		expect(out).toContain("Poultry on manual temperature: 150°F");
+		expect(out).toContain("Safe in");
+	});
+
+	it("outputs manual assessment as JSON with null serial and channel", async () => {
+		const { safe } = await import("../src/commands/safe.js");
+		await safe(["--temp", "74c"], { json: true });
+
+		expect(mockGetCredentials).not.toHaveBeenCalled();
+		expect(logSpy).toHaveBeenCalledTimes(1);
+		const output = JSON.parse(logSpy.mock.calls[0][0] as string);
+		expect(output.serial).toBeNull();
+		expect(output.channel).toBeNull();
+		expect(output.temperatureF).toBe(165.2);
+	});
+
 	it("prints a pasteurization assessment for a channel", async () => {
 		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
 		mockGetDeviceChannel.mockResolvedValue(makeChannel({ number: "2", value: 150, units: "F" }));

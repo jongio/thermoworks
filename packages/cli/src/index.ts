@@ -103,6 +103,8 @@ Commands:
     --interval N   Poll interval in seconds (default: 10)
   events           Show device event history (alarms, status changes)
   archives <serial>  List archived sessions for a device
+    --from DATE    Only list archives starting on or after DATE
+    --to DATE      Only list archives starting on or before DATE
   stats <serial>   Show cross-session cook analytics for a device
 
   firmware         Show firmware versions and available updates
@@ -344,7 +346,13 @@ async function main(): Promise<void> {
 		case "archives": {
 			const archivesArgs = parseArchivesArgs(args);
 			if (!archivesArgs) {
-				console.error("Usage: thermoworks archives <serial> [--id ID] [--limit N] [--json]");
+				console.error(
+					"Usage: thermoworks archives <serial> [--id ID] [--limit N] [--from DATE] [--to DATE] [--json]",
+				);
+				process.exit(1);
+			}
+			if ("error" in archivesArgs) {
+				console.error(archivesArgs.error);
 				process.exit(1);
 			}
 			await archives(archivesArgs, options);

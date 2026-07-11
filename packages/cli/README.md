@@ -359,7 +359,15 @@ List archived sessions for a device.
 ```bash
 npx thermoworks archives M100009168
 npx thermoworks archives M100009168 --id <archive-id> --limit 10
+npx thermoworks archives M100009168 --from 2026-01-01 --to 2026-01-31
 ```
+
+Options:
+- `--id ID` - Show one archive in detail
+- `--limit N` - Maximum archives to fetch before filtering
+- `--from DATE` - Only list archives starting on or after DATE
+- `--to DATE` - Only list archives starting on or before DATE
+- `--json` - Emit the list or detail as JSON
 
 ### `thermoworks stats <serial>`
 
@@ -850,4 +858,3 @@ npx thermoworks devices --json --redact
 ## License
 
 MIT
-

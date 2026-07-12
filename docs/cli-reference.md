@@ -269,6 +269,49 @@ if (( $(npx thermoworks temp M100009168) > 200 )); then echo "pull it"; fi
 - The average (no `--channel`) excludes humidity channels and channels with no reading.
 - Exits non-zero with a message on stderr when no reading is available.
 
+## `thermoworks eta <SERIAL>`
+
+Estimate time-to-target for a single probe channel, in one shot, for scripts and status lines.
+Reads the channel's current temperature and rate of change, then runs the same done-time
+prediction that powers the live `watch` ETA. The target is the channel's enabled high alarm
+unless you pass `--target`.
+
+**Usage**
+
+```bash
+npx thermoworks eta <SERIAL> [--channel <1-9>] [--target <temp>] [--json]
+```
+
+**Arguments**
+
+- `SERIAL` - (Required) Device serial number.
+
+**Options**
+
+- `--channel <1-9>` - Probe channel to predict (default: 1).
+- `--target <temp>` - Target temperature. Defaults to the channel's enabled high alarm value.
+- `--json` - Output the full prediction object as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks eta M100009168 --channel 2
+# ETA for M100009168 channel 2:
+#   Now:        180°F  ->  target 203°F
+#   Time left:  ~23min (around 4:12:00 PM)
+#   Confidence: medium
+
+npx thermoworks eta M100009168 --json
+# {"serial":"M100009168","channel":1,"current":150,"target":203,"units":"F","rateOfChange":1,"estimatedMinutes":53,"estimatedTime":"...","confidence":"medium","method":"linear"}
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Prints `Done.` when the probe is already at or past the target.
+- Prints a `Cannot estimate` note when the temperature is not rising (rate of change is zero or negative).
+- Exits non-zero when the channel has no reading, or when there is no target (no enabled high alarm and no `--target`).
+
 ## `thermoworks demo <high|low|normal>`
 
 Output demo temperature data with alarm styling. No credentials or device configuration required.

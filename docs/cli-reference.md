@@ -643,7 +643,7 @@ Export archive readings to CSV, JSON, or InfluxDB line protocol. Outputs to stdo
 **Usage**
 
 ```bash
-npx thermoworks export <SERIAL> [--archive ID] [--format csv|json|influx] [--output PATH]
+npx thermoworks export <SERIAL> [--archive ID] [--format csv|json|influx] [--output PATH] [--downsample SECONDS]
 ```
 
 **Options**
@@ -652,6 +652,7 @@ npx thermoworks export <SERIAL> [--archive ID] [--format csv|json|influx] [--out
 - `--archive ID` - Export a specific archive by ID. Defaults to the latest archive.
 - `--format csv|json|influx` - Output format. Defaults to `json`.
 - `--output PATH` - Write to a file instead of stdout.
+- `--downsample SECONDS` - Thin the output to at most one reading per channel per SECONDS-wide time bucket. Positive integer. Off by default (every reading is exported).
 
 **Examples**
 
@@ -677,6 +678,9 @@ npx thermoworks export ABC123 --format influx | curl --data-binary @- "http://lo
 
 npx thermoworks export ABC123 --archive arch-001 --format csv --output brisket.csv
 # Exported 750 readings to brisket.csv
+
+npx thermoworks export ABC123 --downsample 300 --format csv --output brisket.csv
+# One reading per channel every 5 minutes, for a smaller file
 ```
 
 **Notes**
@@ -685,6 +689,7 @@ npx thermoworks export ABC123 --archive arch-001 --format csv --output brisket.c
 - Without `--archive`, exports the most recent archive for the device.
 - Readings are flattened into rows with timestamp, channel label, value, and units.
 - Rows are sorted by timestamp ascending.
+- `--downsample SECONDS` keeps the earliest reading in each channel's time bucket. Buckets are aligned to the Unix epoch, so the same instants bucket the same way across channels and repeated exports. Rows with an unparseable timestamp are always kept. Handy for turning a cook logged every few seconds into a per-minute or per-five-minute series.
 - CSV fields containing commas, quotes, or newlines are properly escaped.
 - The `influx` format writes one line protocol record per reading: measurement `thermoworks_temperature`, tags `serial`, `channel`, and `units`, a float `value` field, and a nanosecond epoch timestamp. Tag values are escaped per the line protocol spec (spaces, commas, and equals signs), and readings with an unparseable timestamp are skipped. Feed it to Telegraf, the Influx write API, or a Grafana InfluxDB source.
 - `--redact` masks the `serial` tag in `influx` output, matching CSV and JSON behavior.

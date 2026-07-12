@@ -460,6 +460,60 @@ npx thermoworks alarm list --json
 
 - Requires valid credentials from environment variables or the OS keychain.
 
+## `thermoworks alerts`
+
+Scan the current alarm state across devices and report any channel that is actively
+alarming. Built for scripting: it exits non-zero when any channel is alarming, so cron
+jobs and shell loops can trigger a notification.
+
+**Usage**
+
+```bash
+npx thermoworks alerts [SERIAL] [--json]
+```
+
+**Options**
+
+- `[SERIAL]` - (Optional) Scope the scan to a single device. Without it, every device on
+  the account is checked.
+- `--json` - Output the alarming channels as a JSON array.
+
+**Examples**
+
+```bash
+npx thermoworks alerts
+# Signals (ABC123)
+#   HIGH  Brisket  205°F
+
+npx thermoworks alerts ABC123
+
+npx thermoworks alerts --json
+
+# fire a notification when anything is alarming
+npx thermoworks alerts || notify-send "ThermoWorks alarm"
+```
+
+**Output**
+
+- Only channels currently in a `high` or `low` alarm state are listed. Everything else is
+  skipped.
+- Human output groups alarming channels under a bold device header (`label (serial)`), one
+  channel per line with its state and current reading.
+- With `--json`, prints an array of
+  `{ serial, deviceLabel, channel, channelLabel, state, value, units }` where `state` is
+  `"high"` or `"low"`.
+- When nothing is alarming, prints `No active alarms on any device.` (or `No active alarms
+  on <SERIAL>.` when scoped) in human mode, or `[]` with `--json`.
+
+**Exit code**
+
+- Exits `1` when at least one channel is alarming, `0` when everything is clear. The exit
+  code is set in both human and `--json` modes.
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+
 ## `thermoworks archives`
 
 List or inspect archived cooking sessions for a device.
@@ -1956,7 +2010,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal cost`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal cost`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `alerts`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { account } from "./commands/account.js";
 import { alarmClear, alarmList, alarmSet } from "./commands/alarm.js";
+import { alerts } from "./commands/alerts.js";
 import { archives, parseArchivesArgs } from "./commands/archives.js";
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import { backup } from "./commands/backup.js";
@@ -65,6 +66,9 @@ Commands:
   alarm set        Set alarm thresholds on a device channel
   alarm clear      Clear alarm thresholds on a device channel
   alarm list       List configured alarm thresholds (all devices or one SERIAL)
+
+  alerts           Scan current alarm state and exit non-zero if any channel is alarming
+    [SERIAL]       Scope the scan to a single device
 
   calibration <SERIAL>  Show NIST-traceable calibration data for a device
     --interval-months N  Recalibration interval for the due-date check (default: 12)
@@ -254,6 +258,10 @@ async function main(): Promise<void> {
 					);
 					process.exit(1);
 			}
+			break;
+
+		case "alerts":
+			await alerts(args.slice(1), options);
 			break;
 
 		case "copilot":

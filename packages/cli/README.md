@@ -175,6 +175,30 @@ Only channels with a high or low alarm armed are shown. With `--json`, prints an
 of `{ serial, deviceLabel, channel, channelLabel, alarmHigh, alarmLow }`.
 
 
+### `thermoworks alerts`
+
+Scan the current alarm state across your devices and report any channel that is actively
+alarming right now. Without a serial it checks every device on the account; pass a serial
+to scope to one device. Read-only, so it never changes any settings.
+
+Built for scripting: the command exits with code `1` when at least one channel is
+alarming and `0` when everything is clear. Drop it in a cron job or shell loop to trigger
+a webhook, text, or desktop notification when a cook goes out of range.
+
+```bash
+npx thermoworks alerts           # all devices
+npx thermoworks alerts <serial>  # one device
+npx thermoworks alerts --json    # machine-readable
+
+# fire a notification when anything is alarming
+npx thermoworks alerts || notify-send "ThermoWorks alarm"
+```
+
+With `--json`, prints an array of `{ serial, deviceLabel, channel, channelLabel, state,
+value, units }` where `state` is `"high"` or `"low"`. An empty array means nothing is
+alarming.
+
+
 ### `thermoworks calibration <serial>`
 
 Show NIST-traceable calibration data for a device, plus a recalibration due-date check based on a configurable interval (default 12 months).

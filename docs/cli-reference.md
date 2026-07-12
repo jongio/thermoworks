@@ -269,6 +269,49 @@ if (( $(npx thermoworks temp M100009168) > 200 )); then echo "pull it"; fi
 - The average (no `--channel`) excludes humidity channels and channels with no reading.
 - Exits non-zero with a message on stderr when no reading is available.
 
+## `thermoworks stall <SERIAL>`
+
+Check whether a cook has stalled, in one shot, for scripts and cron jobs. Pulls the device
+temperature history, runs stall detection over it, and reports whether the temperature has
+plateaued, when the stall started, how long it has lasted, and the average plateau temperature.
+When a stall is active it adds a short wrap suggestion.
+
+**Usage**
+
+```bash
+npx thermoworks stall <SERIAL> [--threshold <deg>] [--duration <min>] [--json]
+```
+
+**Arguments**
+
+- `SERIAL` - (Required) Device serial number.
+
+**Options**
+
+- `--threshold <deg>` - Maximum temperature spread that still counts as a stall (default: 2).
+- `--duration <min>` - Minutes the plateau must last to count as a stall (default: 30).
+- `--json` - Output `{ serial, isStalling, stallStart, stallDuration, avgTemp }` as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks stall M100009168
+# Stall on M100009168:
+#   Started:    2024-03-15T13:10:00.000Z
+#   Duration:   42 min
+#   Avg temp:   165.2°F
+#   Suggestion: wrap in foil or butcher paper (the Texas crutch) to push through, or hold steady and ride it out.
+
+npx thermoworks stall M100009168 --json
+# {"serial":"M100009168","isStalling":true,"stallStart":"2024-03-15T13:10:00.000Z","stallDuration":42,"avgTemp":165.2}
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Stall detection reuses the same logic that powers `watch --stall-alert`, exposed as a scriptable one-shot check.
+- Exits non-zero with a message on stderr when there is not enough history to assess a stall.
+
 ## `thermoworks demo <high|low|normal>`
 
 Output demo temperature data with alarm styling. No credentials or device configuration required.

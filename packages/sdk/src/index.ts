@@ -11,6 +11,18 @@ export {
 	isValidStatuslineConfig,
 } from "./config.js";
 export { toCelsius, toFahrenheit } from "./convert.js";
+export type {
+	CoolingAssessment,
+	CoolingOptions,
+	CoolingSample,
+	CoolingStageResult,
+} from "./cooling.js";
+export {
+	assessCooling,
+	FDA_STAGE1_END_F,
+	FDA_STAGE1_START_F,
+	FDA_STAGE2_END_F,
+} from "./cooling.js";
 export type { Credentials } from "./credentials.js";
 export {
 	CREDENTIAL_ACCOUNT,

@@ -1310,6 +1310,44 @@ npx thermoworks carryover ABC123 --target 203 --json
 - Celsius readings are converted to Fahrenheit for the assessment.
 - The default rise is a rough heuristic. Set `--rise` from your own logs for a better estimate.
 
+## `thermoworks cooldown`
+
+Check a cooldown against the FDA two-stage cooling rule. Cooked food should drop from 135°F to 70°F within 2 hours, and all the way to 41°F within 6 hours total, both measured from when the food first drops into the danger zone. The command reads the device's recent history, or you can pass a `--readings` list to check a curve offline.
+
+**Usage**
+
+```bash
+npx thermoworks cooldown <serial> [--stage1-limit <hours>] [--stage2-limit <hours>] [--json]
+npx thermoworks cooldown --readings "135@0,70@90,41@300" [--json]
+```
+
+**Options**
+
+- `--readings LIST` - Comma-separated `temp@minutes` pairs, temperatures in Fahrenheit, minutes elapsed. Runs the check offline with no login.
+- `--stage1-limit H` - Hours allowed to reach 70°F. Default 2.
+- `--stage2-limit H` - Hours allowed to reach 41°F. Default 6.
+- `--json` - Output the full assessment as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks cooldown ABC123
+# Cooling check for ABC123: Safe. Both stages met the FDA cooling deadlines.
+#   Stage 1 (135°F to 70°F): reached in 1 h 20 min, 40 min to spare. PASS
+#   Stage 2 (135°F to 41°F): reached in 4 h 50 min, 1 h 10 min to spare. PASS
+
+npx thermoworks cooldown --readings "135@0,70@150,45@400"
+# Cooling check for supplied readings: Not safe. At least one stage missed its deadline.
+#   Stage 1 (135°F to 70°F): reached in 2 h 30 min, 30 min over the 2 h limit. FAIL
+#   Stage 2 (135°F to 41°F): not reached in the data. Limit is 6 h.
+```
+
+**Notes**
+
+- Celsius readings from history are converted to Fahrenheit before the check.
+- The clock starts at the first reading at or below 135°F. If the first reading is already in the danger zone, the command notes that the true entry may be earlier.
+- Set `--stage1-limit` and `--stage2-limit` to match a local health code that differs from the federal rule.
+
 ## `thermoworks open`
 
 Open a ThermoWorks site in your default browser. The URL is always printed first, so the command is still useful over SSH or when no browser is available.

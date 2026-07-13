@@ -29,6 +29,7 @@ vi.mock("node:fs/promises", () => ({
 }));
 
 import {
+	downsampleRows,
 	type ExportRow,
 	exportData,
 	flattenArchive,
@@ -185,6 +186,78 @@ describe("parseExportArgs", () => {
 
 	it("throws on unknown option", () => {
 		expect(() => parseExportArgs(["export", "X", "--verbose"])).toThrow("Unknown option");
+	});
+
+	it("parses --downsample as a positive integer of seconds", () => {
+		const result = parseExportArgs(["export", "X", "--downsample", "60"]);
+		expect(result.downsample).toBe(60);
+	});
+
+	it("leaves downsample undefined when the flag is absent", () => {
+		const result = parseExportArgs(["export", "X"]);
+		expect(result.downsample).toBeUndefined();
+	});
+
+	it("throws on missing --downsample value", () => {
+		expect(() => parseExportArgs(["export", "X", "--downsample"])).toThrow("--downsample requires");
+	});
+
+	it("throws on a non-integer --downsample value", () => {
+		expect(() => parseExportArgs(["export", "X", "--downsample", "1.5"])).toThrow(
+			"positive integer",
+		);
+	});
+
+	it("throws on a zero or negative --downsample value", () => {
+		expect(() => parseExportArgs(["export", "X", "--downsample", "0"])).toThrow("positive integer");
+		expect(() => parseExportArgs(["export", "X", "--downsample", "-5"])).toThrow(
+			"positive integer",
+		);
+	});
+});
+
+// =============================================================================
+// downsampleRows
+// =============================================================================
+
+describe("downsampleRows", () => {
+	it("keeps the earliest reading per channel in each time bucket", () => {
+		const rows: ExportRow[] = [
+			{ timestamp: "2026-01-15T12:00:00.000Z", channel: "Pit", value: 225, units: "F" },
+			{ timestamp: "2026-01-15T12:00:30.000Z", channel: "Pit", value: 226, units: "F" },
+			{ timestamp: "2026-01-15T12:01:00.000Z", channel: "Pit", value: 230, units: "F" },
+		];
+		// 60s buckets: 12:00:00 and 12:00:30 share a bucket, 12:01:00 is the next.
+		const out = downsampleRows(rows, 60);
+		expect(out).toHaveLength(2);
+		expect(out[0]?.value).toBe(225);
+		expect(out[1]?.value).toBe(230);
+	});
+
+	it("buckets each channel independently", () => {
+		const rows: ExportRow[] = [
+			{ timestamp: "2026-01-15T12:00:00.000Z", channel: "Pit", value: 225, units: "F" },
+			{ timestamp: "2026-01-15T12:00:10.000Z", channel: "Meat", value: 140, units: "F" },
+			{ timestamp: "2026-01-15T12:00:20.000Z", channel: "Pit", value: 226, units: "F" },
+			{ timestamp: "2026-01-15T12:00:30.000Z", channel: "Meat", value: 141, units: "F" },
+		];
+		const out = downsampleRows(rows, 60);
+		// One Pit and one Meat row survive the single 60s bucket.
+		expect(out).toHaveLength(2);
+		expect(out.map((r) => r.channel).sort()).toEqual(["Meat", "Pit"]);
+	});
+
+	it("keeps rows with an unparseable timestamp", () => {
+		const rows: ExportRow[] = [
+			{ timestamp: "not-a-date", channel: "Pit", value: 1, units: "F" },
+			{ timestamp: "also-bad", channel: "Pit", value: 2, units: "F" },
+		];
+		const out = downsampleRows(rows, 60);
+		expect(out).toHaveLength(2);
+	});
+
+	it("returns an empty array for empty input", () => {
+		expect(downsampleRows([], 60)).toEqual([]);
 	});
 });
 
@@ -623,5 +696,32 @@ describe("exportData", () => {
 
 		await expect(exportData(["export", "X"])).rejects.toThrow("network fail");
 		expect(mockClose).toHaveBeenCalled();
+	});
+
+	it("downsamples readings when --downsample is provided", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetArchives.mockResolvedValue([
+			makeArchive({
+				id: "a1",
+				channels: [
+					makeArchiveChannel({
+						label: "Pit",
+						recentReadings: [
+							makeReading({ value: 225, timestamp: new Date("2026-01-15T12:00:00Z") }),
+							makeReading({ value: 226, timestamp: new Date("2026-01-15T12:00:30Z") }),
+							makeReading({ value: 230, timestamp: new Date("2026-01-15T12:01:00Z") }),
+						],
+					}),
+				],
+			}),
+		]);
+
+		await exportData(["export", "X", "--downsample", "60"]);
+
+		const written = stdoutWriteSpy.mock.calls[0]?.[0] as string;
+		const parsed = JSON.parse(written);
+		expect(parsed).toHaveLength(2);
+		expect(parsed[0].value).toBe(225);
+		expect(parsed[1].value).toBe(230);
 	});
 });

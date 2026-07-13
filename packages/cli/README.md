@@ -547,6 +547,7 @@ Export archive readings to CSV, JSON, or InfluxDB line protocol.
 ```bash
 npx thermoworks export M100009168
 npx thermoworks export M100009168 --archive <id> --format csv --output readings.csv
+npx thermoworks export M100009168 --downsample 60 --format csv --output readings.csv
 npx thermoworks export M100009168 --format influx | curl --data-binary @- "http://localhost:8086/api/v2/write?bucket=bbq&precision=ns"
 ```
 
@@ -554,6 +555,9 @@ Options:
 - `--archive ID` — Export a specific archive (default: latest)
 - `--format FMT` — Output format: `csv`, `json`, or `influx` (default: `json`)
 - `--output PATH` — Write to file (default: stdout)
+- `--downsample SECONDS` - Keep at most one reading per channel per SECONDS-wide time bucket, for smaller exports
+
+Downsampling keeps the earliest reading in each channel's time bucket (buckets are aligned to the Unix epoch, so the same instants bucket the same way across channels and exports). A long cook logged every few seconds becomes a per-minute or per-five-minute series with `--downsample 60` or `--downsample 300`, which is easier to chart and cheaper to store.
 
 The `influx` format emits one InfluxDB line protocol record per reading, measurement `thermoworks_temperature`, tagged with `serial`, `channel`, and `units`, a `value` field, and a nanosecond timestamp. It pipes straight into Telegraf, the Influx write API, or a file for a Grafana InfluxDB source. Tag values are escaped per the line protocol spec, and `--redact` masks the serial tag.
 

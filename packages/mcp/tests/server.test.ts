@@ -1848,7 +1848,7 @@ describe("MCP Server", () => {
 		it("does not add any new tools (tool count stays flat)", () => {
 			const server = createServer();
 			const tools = (server as any)._registeredTools as Record<string, unknown>;
-			expect(Object.keys(tools)).toHaveLength(21);
+			expect(Object.keys(tools)).toHaveLength(22);
 		});
 
 		describe("diagnose_cook", () => {

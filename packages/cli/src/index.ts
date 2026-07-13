@@ -148,6 +148,7 @@ Commands:
 
   safe <SERIAL>    Show food-safety pasteurization progress for a probe
     --channel N    Read a specific channel (1-9) instead of the average
+    --temp T       Assess a manual temperature value, e.g. 150f or 74c
     --protein P    Table to use: poultry, beef, or pork (default: poultry)
     --held N       Minutes already held at or above the current temperature
 

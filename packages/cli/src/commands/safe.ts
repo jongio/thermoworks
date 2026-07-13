@@ -15,8 +15,22 @@ const PROTEINS: Protein[] = ["poultry", "beef", "pork"];
 export interface SafeOptions {
 	serial?: string;
 	channel?: number;
+	manualTemperatureF?: number;
 	protein: Protein;
 	heldMinutes: number;
+}
+
+/** Parse a manual temperature value with an optional F/C suffix. Bare values are Fahrenheit. */
+export function parseManualTemperature(raw: string | undefined): number | null {
+	if (!raw) return null;
+	const match = /^(-?\d+(?:\.\d+)?)([fFcC]?)$/.exec(raw.trim());
+	if (!match) return null;
+	const value = Number(match[1]);
+	if (!Number.isFinite(value)) return null;
+	const unit = (match[2] ?? "F").toUpperCase();
+	if (unit === "C") return toFahrenheit(value);
+	if (unit === "F" || unit === "") return value;
+	return null;
 }
 
 /** Parse args after `safe`. Returns an error message on failure. */
@@ -35,6 +49,14 @@ export function parseSafeArgs(args: string[]): SafeOptions | { error: string } {
 				return { error: `--channel must be an integer from 1 to 9, got "${value}"` };
 			}
 			result.channel = n;
+		} else if (arg === "--temp") {
+			const value = args[++i];
+			if (value === undefined) return { error: "--temp requires a value" };
+			const temperature = parseManualTemperature(value);
+			if (temperature === null) {
+				return { error: `--temp must be a number with optional f or c suffix, got "${value}"` };
+			}
+			result.manualTemperatureF = temperature;
 		} else if (arg === "--protein") {
 			const value = args[++i];
 			if (value === undefined) return { error: "--protein requires a value" };
@@ -57,6 +79,13 @@ export function parseSafeArgs(args: string[]): SafeOptions | { error: string } {
 		} else {
 			return { error: `Unexpected argument: ${arg}` };
 		}
+	}
+
+	if (result.manualTemperatureF !== undefined && result.serial !== undefined) {
+		return { error: "--temp cannot be combined with a device serial" };
+	}
+	if (result.manualTemperatureF !== undefined && result.channel !== undefined) {
+		return { error: "--temp cannot be combined with --channel" };
 	}
 
 	return result;
@@ -104,20 +133,45 @@ export function formatSafe(result: PasteurizationResult, channelLabel: string): 
  * Pass `--held <minutes>` to say how long the probe has already held at or above
  * the current temperature (for example from a watch session). Human output is
  * two short lines; use `--json` for a machine-readable result.
+ *
+ * Pass `--temp <value>[f|c]` to run the same assessment for a manual reading
+ * without logging in.
  */
 export async function safe(args: string[], options: OutputOptions): Promise<void> {
 	const parsed = parseSafeArgs(args);
 	if ("error" in parsed) {
 		console.error(parsed.error);
 		console.error(
-			"Usage: thermoworks safe <SERIAL> [--channel <1-9>] [--protein poultry|beef|pork] [--held <minutes>] [--json]",
+			"Usage: thermoworks safe <SERIAL> [--channel <1-9>] [--protein poultry|beef|pork] [--held <minutes>] [--json]\n" +
+				"       thermoworks safe --temp <value>[f|c] [--protein poultry|beef|pork] [--held <minutes>] [--json]",
 		);
 		process.exit(1);
 	}
 
+	if (parsed.manualTemperatureF !== undefined) {
+		const result = assessPasteurization({
+			temperatureF: parsed.manualTemperatureF,
+			holdMinutes: parsed.heldMinutes,
+			protein: parsed.protein,
+		});
+
+		if (options.json) {
+			outputJson({
+				serial: null,
+				channel: null,
+				...result,
+			});
+			return;
+		}
+
+		process.stdout.write(formatSafe(result, "manual temperature"));
+		return;
+	}
+
 	if (!parsed.serial) {
 		console.error(
-			"Usage: thermoworks safe <SERIAL> [--channel <1-9>] [--protein poultry|beef|pork] [--held <minutes>] [--json]",
+			"Usage: thermoworks safe <SERIAL> [--channel <1-9>] [--protein poultry|beef|pork] [--held <minutes>] [--json]\n" +
+				"       thermoworks safe --temp <value>[f|c] [--protein poultry|beef|pork] [--held <minutes>] [--json]",
 		);
 		process.exit(1);
 	}

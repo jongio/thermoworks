@@ -1247,12 +1247,14 @@ Data is adapted from USDA FSIS Appendix A time-at-temperature lethality tables: 
 
 ```bash
 npx thermoworks safe <serial> [--channel N] [--protein P] [--held N] [--json]
+npx thermoworks safe --temp <value>[f|c] [--protein P] [--held N] [--json]
 ```
 
 **Options**
 
-- `<serial>` - (Required) Device serial number.
+- `<serial>` - Device serial number for live device mode.
 - `--channel N` - Read a specific channel (1-9) instead of the device average.
+- `--temp T` - Assess a manual temperature value such as `150f` or `74c` without logging in. Bare numbers are treated as Fahrenheit.
 - `--protein P` - Table to use: `poultry` (default), `beef`, or `pork`.
 - `--held N` - Minutes the core has already held at or above the current temperature (for example from a watch session). Default `0`.
 - `--json` - Output the full assessment as JSON.
@@ -1268,6 +1270,11 @@ npx thermoworks safe ABC123 --channel 1
 npx thermoworks safe ABC123 --channel 1 --protein poultry --held 4
 # Poultry on channel 1: 150°F
 #   Safe now. Held 4 min, needed 1.4 min at this temperature.
+#   Estimate only. Follow official food-safety guidance.
+
+npx thermoworks safe --temp 150f --protein poultry --held 0.5
+# Poultry on manual temperature: 150°F
+#   Safe in 0.9 min. Needs 1.4 min held at 150°F (held 0.5 min so far).
 #   Estimate only. Follow official food-safety guidance.
 
 npx thermoworks safe ABC123 --channel 1 --json

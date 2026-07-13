@@ -142,6 +142,23 @@ function getToolHandler(server: ReturnType<typeof createServer>, toolName: strin
 	return tool.handler;
 }
 
+function getPromptCallback(server: ReturnType<typeof createServer>, promptName: string) {
+	// Access the server internals to call prompt callbacks directly
+	const prompts = (server as any)._registeredPrompts as Record<
+		string,
+		{ callback: (args: any, extra: any) => any }
+	>;
+	const prompt = prompts[promptName];
+	if (!prompt) {
+		throw new Error(`Prompt "${promptName}" not found`);
+	}
+	return prompt.callback;
+}
+
+function promptText(result: any): string {
+	return result.messages.map((m: any) => m.content.text).join("\n");
+}
+
 describe("MCP Server", () => {
 	const originalEnv = process.env;
 
@@ -1654,6 +1671,94 @@ describe("MCP Server", () => {
 			} finally {
 				teardownEnv();
 			}
+		});
+	});
+
+	describe("guided prompts", () => {
+		it("registers exactly the three guided prompts", () => {
+			const server = createServer();
+			const prompts = (server as any)._registeredPrompts as Record<string, unknown>;
+			const names = Object.keys(prompts).sort();
+			expect(names).toEqual(["diagnose_cook", "food_safety_check", "when_to_wrap"]);
+		});
+
+		it("does not add any new tools (tool count stays flat)", () => {
+			const server = createServer();
+			const tools = (server as any)._registeredTools as Record<string, unknown>;
+			expect(Object.keys(tools)).toHaveLength(21);
+		});
+
+		describe("diagnose_cook", () => {
+			it("returns a single user message referencing the diagnostic tools", () => {
+				const server = createServer();
+				const result = getPromptCallback(server, "diagnose_cook")({}, {});
+				expect(result.messages).toHaveLength(1);
+				expect(result.messages[0].role).toBe("user");
+				expect(result.messages[0].content.type).toBe("text");
+				const text = promptText(result);
+				expect(text).toContain("get_live_cook_snapshot");
+				expect(text).toContain("get_temperature_history");
+				expect(text).toContain("get_eta");
+			});
+
+			it("names the device when a serial is passed", () => {
+				const server = createServer();
+				const text = promptText(
+					getPromptCallback(server, "diagnose_cook")({ serial: "ABC123" }, {}),
+				);
+				expect(text).toContain("device ABC123");
+				expect(text).not.toContain("Call get_devices first");
+			});
+
+			it("falls back to picking the active device when serial is omitted", () => {
+				const server = createServer();
+				const text = promptText(getPromptCallback(server, "diagnose_cook")({}, {}));
+				expect(text).toContain("Call get_devices first");
+			});
+
+			it("treats a blank serial as omitted", () => {
+				const server = createServer();
+				const text = promptText(getPromptCallback(server, "diagnose_cook")({ serial: "   " }, {}));
+				expect(text).toContain("Call get_devices first");
+			});
+		});
+
+		describe("when_to_wrap", () => {
+			it("references the stall band and the probe tools", () => {
+				const server = createServer();
+				const text = promptText(getPromptCallback(server, "when_to_wrap")({}, {}));
+				expect(text).toContain("get_device_channels");
+				expect(text).toContain("get_temperature_history");
+				expect(text).toContain("stall");
+				expect(text).toContain("Use the meat probe channel");
+			});
+
+			it("names the channel when one is passed", () => {
+				const server = createServer();
+				const text = promptText(
+					getPromptCallback(server, "when_to_wrap")({ serial: "ABC123", channel: "2" }, {}),
+				);
+				expect(text).toContain("device ABC123");
+				expect(text).toContain("Evaluate channel 2");
+			});
+		});
+
+		describe("food_safety_check", () => {
+			it("references the guide and the danger zone", () => {
+				const server = createServer();
+				const text = promptText(getPromptCallback(server, "food_safety_check")({}, {}));
+				expect(text).toContain("get_temperature_guide");
+				expect(text).toContain("get_temperature_history");
+				expect(text).toContain("40F to 140F");
+			});
+
+			it("names the device when a serial is passed", () => {
+				const server = createServer();
+				const text = promptText(
+					getPromptCallback(server, "food_safety_check")({ serial: "DEF456" }, {}),
+				);
+				expect(text).toContain("device DEF456");
+			});
 		});
 	});
 });

@@ -280,6 +280,26 @@ if (( $(npx thermoworks temp M100009168) > 200 )); then echo "pull it"; fi
 
 Exits non-zero if no reading is available.
 
+### `thermoworks stall <serial>`
+
+Check whether a cook has stalled, in one shot, for scripts and cron jobs. Pulls the device
+temperature history, runs stall detection over it, and reports whether the temperature has
+plateaued, when the stall started, how long it has lasted, and the average plateau temperature.
+When a stall is active it adds a short wrap suggestion.
+
+```bash
+npx thermoworks stall M100009168                       # human-readable stall report
+npx thermoworks stall M100009168 --threshold 3         # widen the plateau band to 3 degrees
+npx thermoworks stall M100009168 --duration 45         # require a 45-minute plateau
+npx thermoworks stall M100009168 --json                # { serial, isStalling, stallStart, stallDuration, avgTemp }
+```
+
+Options:
+- `--threshold N` — Maximum temperature spread to still count as a stall (default: 2)
+- `--duration N` — Minutes the plateau must last to count as a stall (default: 30)
+
+Exits non-zero when there is not enough history to assess a stall.
+
 ### `thermoworks watch`
 
 Continuously monitor temperatures with live refresh.

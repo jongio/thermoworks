@@ -43,6 +43,7 @@ import { replay } from "./commands/replay.js";
 import { safe } from "./commands/safe.js";
 import { search } from "./commands/search.js";
 import { session } from "./commands/session.js";
+import { stall } from "./commands/stall.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
 import { temp } from "./commands/temp.js";
 import { watch } from "./commands/watch.js";
@@ -87,6 +88,10 @@ Commands:
 
   temp <SERIAL>    Print a single temperature value for scripting
     --channel N    Read a specific channel (1-9) instead of the average
+
+  stall <SERIAL>   Check whether a cook has stalled (one-shot, for scripts)
+    --threshold N  Max temperature spread to count as a stall (default: 2)
+    --duration N   Minutes the plateau must last to count as a stall (default: 30)
   device rename <SERIAL> --name <TEXT>        Rename a device
   device reset-minmax <SERIAL> --channel <N>  Reset min/max readings for a channel
   mcp start        Start MCP server for AI assistants
@@ -443,6 +448,10 @@ async function main(): Promise<void> {
 
 		case "temp":
 			await temp(args.slice(1), options);
+			break;
+
+		case "stall":
+			await stall(args.slice(1), options);
 			break;
 
 		case "config":

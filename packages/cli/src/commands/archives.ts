@@ -1,3 +1,4 @@
+import type { Archive } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 
 import { getCredentials } from "../credentials.js";
@@ -8,17 +9,38 @@ export interface ArchivesArgs {
 	serial: string;
 	id?: string;
 	limit?: number;
+	from?: Date;
+	to?: Date;
+}
+
+export type ArchivesParseResult = ArchivesArgs | { error: string } | null;
+
+function parseDateFlag(
+	value: string | undefined,
+	flag: "--from" | "--to",
+): Date | { error: string } {
+	if (!value) return { error: `${flag} requires a value` };
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) {
+		return { error: `${flag} must be a valid date, got "${value}"` };
+	}
+	if (flag === "--to" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+		date.setUTCHours(23, 59, 59, 999);
+	}
+	return date;
 }
 
 /**
  * Parse command-specific args for `archives`.
- * Expected: `archives SERIAL [--id ID] [--limit N]`
+ * Expected: `archives SERIAL [--id ID] [--limit N] [--from DATE] [--to DATE]`
  * Returns null if serial is missing.
  */
-export function parseArchivesArgs(args: string[]): ArchivesArgs | null {
+export function parseArchivesArgs(args: string[]): ArchivesParseResult {
 	const positional: string[] = [];
 	let id: string | undefined;
 	let limit: number | undefined;
+	let from: Date | undefined;
+	let to: Date | undefined;
 
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
@@ -28,6 +50,14 @@ export function parseArchivesArgs(args: string[]): ArchivesArgs | null {
 		} else if (arg === "--limit") {
 			const next = args[++i];
 			if (next) limit = Number.parseInt(next, 10);
+		} else if (arg === "--from") {
+			const parsed = parseDateFlag(args[++i], "--from");
+			if ("error" in parsed) return parsed;
+			from = parsed;
+		} else if (arg === "--to") {
+			const parsed = parseDateFlag(args[++i], "--to");
+			if ("error" in parsed) return parsed;
+			to = parsed;
 		} else if (arg && !arg.startsWith("--")) {
 			positional.push(arg);
 		}
@@ -37,7 +67,25 @@ export function parseArchivesArgs(args: string[]): ArchivesArgs | null {
 	const serial = positional[1];
 	if (!serial) return null;
 
-	return { serial, id, limit };
+	return {
+		serial,
+		id,
+		limit,
+		...(from ? { from } : {}),
+		...(to ? { to } : {}),
+	};
+}
+
+/** Filter archives by start date, skipping undated archives when a date filter is active. */
+export function filterArchivesByDate(archives: Archive[], from?: Date, to?: Date): Archive[] {
+	if (!from && !to) return archives;
+	return archives.filter((archive) => {
+		if (!archive.start) return false;
+		const start = archive.start.getTime();
+		if (from && start < from.getTime()) return false;
+		if (to && start > to.getTime()) return false;
+		return true;
+	});
 }
 
 /** Format a duration between two dates as a human-readable string. */
@@ -79,7 +127,10 @@ export async function archives(
 		if (parsedArgs.id) {
 			await showArchiveDetail(client, parsedArgs.serial, parsedArgs.id, options);
 		} else {
-			await listArchives(client, parsedArgs.serial, parsedArgs.limit, options);
+			await listArchives(client, parsedArgs.serial, parsedArgs.limit, options, {
+				from: parsedArgs.from,
+				to: parsedArgs.to,
+			});
 		}
 	} finally {
 		client.close();
@@ -91,8 +142,10 @@ async function listArchives(
 	serial: string,
 	limit: number | undefined,
 	options: OutputOptions,
+	dateFilter: { from?: Date; to?: Date } = {},
 ): Promise<void> {
-	const archiveList = await client.getArchives(serial, limit ? { limit } : undefined);
+	const allArchives = await client.getArchives(serial, limit ? { limit } : undefined);
+	const archiveList = filterArchivesByDate(allArchives, dateFilter.from, dateFilter.to);
 
 	if (options.json) {
 		outputJson(archiveList);

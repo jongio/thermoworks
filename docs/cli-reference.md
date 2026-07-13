@@ -474,7 +474,7 @@ List or inspect archived cooking sessions for a device.
 **Usage**
 
 ```bash
-npx thermoworks archives <SERIAL> [--id ID] [--limit N]
+npx thermoworks archives <SERIAL> [--id ID] [--limit N] [--from DATE] [--to DATE]
 ```
 
 **Options**
@@ -482,6 +482,8 @@ npx thermoworks archives <SERIAL> [--id ID] [--limit N]
 - `<SERIAL>` - (Required) Device serial number.
 - `--id ID` - Show detailed view of a specific archive by ID.
 - `--limit N` - Maximum number of archives to list.
+- `--from DATE` - Only list archives starting on or after DATE.
+- `--to DATE` - Only list archives starting on or before DATE. Date-only values include the full day.
 - `--json` - Output as JSON.
 
 **Examples**
@@ -511,12 +513,15 @@ npx thermoworks archives ABC123 --id arch-001
 #     Meat: min=38°F max=205°F last=205°F
 
 npx thermoworks archives ABC123 --limit 5 --json
+
+npx thermoworks archives ABC123 --from 2026-01-01 --to 2026-01-31
 ```
 
 **Notes**
 
 - Requires valid credentials from environment variables or the OS keychain.
 - Without `--id`: lists archives showing label, start time, duration, and reading count.
+- Date filters use archive start time. Archives without a start time are skipped when `--from` or `--to` is set.
 - With `--id`: shows detailed view including per-channel min/max/last values.
 - Prints `No archives found.` when the device has no archived sessions.
 

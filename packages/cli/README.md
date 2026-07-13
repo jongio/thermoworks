@@ -659,6 +659,24 @@ Options:
 - `--size S` — Preset rise instead of `--rise`: `small` (3), `medium` (6, default), or `large` (10)
 - `--json` — Print the full assessment as JSON
 
+### `thermoworks wrap <serial>`
+
+Advise whether to wrap the cook now (the Texas crutch). Wrapping in foil or paper pushes meat through the stall faster and protects the bark, but wrap too early and the bark never sets. This reads the trailing probe history, then combines the current temperature, the wrap window, stall detection, and rate of climb into a single call: wrap now, hold, too early, or done.
+
+```bash
+npx thermoworks wrap ABC123 --target 203
+npx thermoworks wrap ABC123 --target 203 --wrap-at 165 --limit 30
+npx thermoworks wrap ABC123 --target 203 --json
+```
+
+Options:
+- `--target N` — Target internal temperature in Fahrenheit (required)
+- `--wrap-at N` — Temperature where the wrap window opens (default: 160)
+- `--limit N` — Look at only the most recent N readings
+- `--json` — Print the full assessment as JSON
+
+Readings come from the device history series, the same source as `history` and `graph`.
+
 ### `thermoworks open [target]`
 
 Open a ThermoWorks site in your browser. Prints the URL first, so it also works over SSH.

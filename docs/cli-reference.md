@@ -1310,6 +1310,45 @@ npx thermoworks carryover ABC123 --target 203 --json
 - Celsius readings are converted to Fahrenheit for the assessment.
 - The default rise is a rough heuristic. Set `--rise` from your own logs for a better estimate.
 
+## `thermoworks wrap`
+
+Advise whether to wrap the cook now (the Texas crutch). Wrapping in foil or butcher paper pushes meat through the stall faster and protects the bark, but wrapping too early keeps the bark from setting. The command reads the trailing probe history and combines the current temperature, the wrap window, stall detection, and rate of climb into a single call.
+
+The call is one of: `wrap-now` (inside the window and either stalled or barely climbing), `hold` (inside the window but still climbing well), `below-window` (under the wrap temperature, let the bark set), `at-target` (at or above the target, pull and rest), or `no-data`.
+
+**Usage**
+
+```bash
+npx thermoworks wrap <serial> --target N [--wrap-at N] [--limit N] [--json]
+```
+
+**Options**
+
+- `<serial>` - (Required) Device serial number.
+- `--target N` - (Required) Target internal temperature in Fahrenheit.
+- `--wrap-at N` - Temperature where the wrap window opens (default: 160F).
+- `--limit N` - Look at only the most recent N readings.
+- `--json` - Output the full assessment as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks wrap ABC123 --target 203
+# Wrap check for ABC123: Wrap now
+#   Stalled 45m near 165°F. Wrapping now pushes through the stall.
+#   current 165°F, target 203°F, wrap window 160°F
+#   Stalled for 45m.
+
+npx thermoworks wrap ABC123 --target 203 --wrap-at 165 --limit 30
+npx thermoworks wrap ABC123 --target 203 --json
+```
+
+**Notes**
+
+- Readings come from the device history series, the same source as `history` and `graph`.
+- Celsius readings are converted to Fahrenheit for the assessment.
+- The stall and rate signals reuse the same detection the `stall` analysis uses, so a `wrap-now` call lines up with an active stall.
+
 ## `thermoworks open`
 
 Open a ThermoWorks site in your default browser. The URL is always printed first, so the command is still useful over SSH or when no browser is available.

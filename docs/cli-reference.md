@@ -1310,6 +1310,53 @@ npx thermoworks carryover ABC123 --target 203 --json
 - Celsius readings are converted to Fahrenheit for the assessment.
 - The default rise is a rough heuristic. Set `--rise` from your own logs for a better estimate.
 
+## `thermoworks season`
+
+Scale a dry rub or a brine to the weight of a cut. Runs fully offline, reading only built-in recipes and standard ratios, so it needs no login and no network. Defaults to a dry rub; `--brine` and `--dry-brine` switch to the two brine plans.
+
+**Usage**
+
+```bash
+npx thermoworks season --weight <lb> [--recipe <name>] [--brine] [--dry-brine] [--list] [--json]
+```
+
+**Options**
+
+- `--weight LB` - (Required unless `--list`) Weight of the meat in pounds.
+- `--recipe NAME` - Dry-rub recipe to scale. Run with `--list` to see the names. Defaults to `classic`.
+- `--brine` - Wet brine plan (water, salt, sugar, and a time range) instead of a rub.
+- `--dry-brine` - Dry brine plan (salt and a fridge-rest range) instead of a rub.
+- `--list` - Show the built-in rub recipes and their ingredients.
+- `--json` - Output the plan as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks season --weight 12
+# Classic BBQ rub for 12 lb (about 12 tbsp total):
+#   paprika        3 tbsp
+#   brown sugar    3 tbsp
+#   kosher salt    1.5 tbsp
+#   ...
+
+npx thermoworks season --weight 8 --brine
+# Wet brine for 8 lb:
+#   Water:  8 qt
+#   Salt:   378 g (about 2.8 cup kosher) at 5% salinity
+#   Sugar:  189 g (optional)
+#   Time:   8 to 12 hours, refrigerated
+
+npx thermoworks season --weight 10 --dry-brine
+npx thermoworks season --list
+```
+
+**Notes**
+
+- Rub amounts scale at one tablespoon of finished rub per pound and are rounded to the nearest quarter tablespoon.
+- Wet brine salt is a percent of the water weight (5% by default); dry brine salt is a percent of the meat weight (1% by default).
+- Salt volumes assume Diamond Crystal kosher salt. Adjust if you use a denser salt like table or Morton.
+- `--brine` and `--dry-brine` cannot be combined.
+
 ## `thermoworks open`
 
 Open a ThermoWorks site in your default browser. The URL is always printed first, so the command is still useful over SSH or when no browser is available.

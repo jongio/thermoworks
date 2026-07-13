@@ -100,6 +100,15 @@ function summarizeDevice(device: Device, channels: DeviceChannel[]) {
 	};
 }
 
+function summarizeEnabledAlarm(alarm: DeviceChannel["alarmHigh"]) {
+	if (!alarm?.enabled) return null;
+	return {
+		value: alarm.value,
+		units: alarm.units,
+		alarming: alarm.alarming,
+	};
+}
+
 type PromptResult = {
 	messages: Array<{ role: "user"; content: { type: "text"; text: string } }>;
 };
@@ -206,6 +215,63 @@ export function createServer(): McpServer {
 								alarmingChannelCount: channels.filter((channel) => channel.alarmState !== "none")
 									.length,
 								devices: snapshots,
+							},
+							null,
+							2,
+						),
+					},
+				],
+			};
+		},
+	);
+
+	server.registerTool(
+		"get_alarm_targets",
+		{
+			description:
+				"List armed high and low alarm thresholds across ThermoWorks devices, with current readings and alarming state. Optionally filter to one device serial.",
+			inputSchema: z.object({
+				serial: z.string().optional().describe("Optional device serial number to inspect"),
+			}),
+		},
+		async ({ serial }) => {
+			const client = getClient();
+			const devices = serial ? [await client.getDevice(serial)] : await client.getDevices();
+			const targetGroups = await Promise.all(
+				devices.map(async (device) => {
+					const channels = await client.getAllDeviceChannels(device.serial);
+					return channels
+						.map((channel) => {
+							const alarmHigh = summarizeEnabledAlarm(channel.alarmHigh);
+							const alarmLow = summarizeEnabledAlarm(channel.alarmLow);
+							if (!alarmHigh && !alarmLow) return null;
+							return {
+								serial: device.serial,
+								deviceLabel: device.label || device.serial,
+								channel: channel.number != null ? Number(channel.number) : null,
+								channelLabel: channel.label ?? null,
+								current: {
+									value: channel.value,
+									units: channel.units,
+								},
+								alarmHigh,
+								alarmLow,
+							};
+						})
+						.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+				}),
+			);
+			const targets = targetGroups.flat();
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{
+								generatedAt: new Date().toISOString(),
+								deviceCount: devices.length,
+								targetCount: targets.length,
+								targets,
 							},
 							null,
 							2,

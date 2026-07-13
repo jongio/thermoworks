@@ -271,6 +271,7 @@ directly.
 ```bash
 npx thermoworks temp M100009168                # average, e.g. 203.5
 npx thermoworks temp M100009168 --channel 2    # one channel
+npx thermoworks temp M100009168 --unit c       # converted output
 npx thermoworks temp M100009168 --json         # { serial, channel, value, units }
 
 # use it in a shell conditional
@@ -850,4 +851,3 @@ npx thermoworks devices --json --redact
 ## License
 
 MIT
-

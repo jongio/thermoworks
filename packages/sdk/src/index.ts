@@ -66,6 +66,13 @@ export type {
 	SubscriptionOptions,
 } from "./subscribe.js";
 export { createSubscription } from "./subscribe.js";
+export type {
+	CookTimeline,
+	TimelineEvent,
+	TimelineKind,
+	TimelineOptions,
+} from "./timeline.js";
+export { buildCookTimeline } from "./timeline.js";
 export type { TokenCacheData } from "./token-cache.js";
 export { invalidateTokenCache, resolveTokenCachePath } from "./token-cache.js";
 export type {

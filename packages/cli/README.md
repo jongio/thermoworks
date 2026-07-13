@@ -770,6 +770,23 @@ Options:
 - `--speed N` — Time compression factor. `60` plays a minute of cook per second (default: `60`)
 - `--loop` — Restart from the beginning when the replay ends (Ctrl+C to stop)
 
+### `thermoworks timeline <serial>`
+
+Turn a saved cook into an annotated timeline. Reads an archive, picks a probe channel, and marks the milestones that matter: the start, the low point, the longest stall, the first time you crossed a target, the peak, and the end. Each line shows the elapsed clock time, the temperature, and a short label, so you can see the shape of a cook at a glance without scrubbing through every reading.
+
+```bash
+npx thermoworks timeline M100009168
+npx thermoworks timeline M100009168 --archive abc123 --channel 2
+npx thermoworks timeline M100009168 --target 203
+npx thermoworks timeline M100009168 --json
+```
+
+Options:
+- `--archive ID` — Chart a specific archive instead of the latest one
+- `--channel N` — Archive channel number to chart (default: first channel with readings)
+- `--target F` — Mark the first reading that reaches this temperature (Fahrenheit)
+- `--json` — Print the timeline as JSON for scripting
+
 ### `thermoworks mcp start`
 
 Start the MCP (Model Context Protocol) server for AI assistants. Runs over stdio.

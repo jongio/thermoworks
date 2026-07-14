@@ -49,6 +49,7 @@ import { session } from "./commands/session.js";
 import { stall } from "./commands/stall.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
 import { temp } from "./commands/temp.js";
+import { timeline } from "./commands/timeline.js";
 import { watch } from "./commands/watch.js";
 import { wrap } from "./commands/wrap.js";
 import { parseGlobalFlags, setRedaction } from "./output.js";
@@ -221,6 +222,12 @@ Commands:
     --channel N    Archive channel to replay (default: first with readings)
     --speed N      Time compression, e.g. 60 = a minute per second (default: 60)
     --loop         Restart from the beginning when the replay ends
+
+  timeline <SERIAL>  Annotate a saved cook with its key milestones
+    --archive ID     Chart a specific archive (default: latest)
+    --channel N      Archive channel to chart (default: first with readings)
+    --target F       Mark the first crossing of a target temperature
+    --json           Output the timeline as JSON
 
   demo <mode>      Show demo output (modes: high, low, normal)
 
@@ -464,6 +471,10 @@ async function main(): Promise<void> {
 
 		case "replay":
 			await replay(args.slice(1), options);
+			break;
+
+		case "timeline":
+			await timeline(args.slice(1), options);
 			break;
 
 		case "calibration":

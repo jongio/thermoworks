@@ -1827,6 +1827,49 @@ npx thermoworks replay ABC123 --loop
 - Prints `No readings to replay for <SERIAL>.` when the source has no usable readings.
 - Readings with non-finite values or invalid timestamps are skipped.
 
+## `thermoworks timeline <SERIAL>`
+
+Turn a saved cook into an annotated timeline. Reads an archive, picks a probe channel, and marks the milestones worth knowing about: the start, the low point, the longest stall, the first crossing of a target temperature, the peak, and the end. Each line shows the elapsed clock time, the temperature in Fahrenheit, and a short label, so you can read the shape of a cook without scrubbing every point. Distinct from `stats` (aggregate numbers) and `replay` (streams every reading): `timeline` condenses a cook down to the moments that changed.
+
+**Usage**
+
+```bash
+npx thermoworks timeline <SERIAL> [--archive ID] [--channel N] [--target F] [--json]
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `--archive ID` - Chart a specific archive. Defaults to the most recent archive.
+- `--channel N` - Archive channel number to chart. Defaults to the first channel that has readings.
+- `--target F` - Mark the first reading that reaches this temperature, in Fahrenheit.
+- `--json` - Output the full timeline as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks timeline ABC123
+# Timeline for Brisket 2026 - Meat 1 (182 readings)
+#   0:00   38°F  start   Cook started at 38°F
+#   3:12  151°F  stall   Stall began near 152°F, held 78m
+#   9:41  203°F  target  Hit target 203°F
+#  10:15  204°F  peak    Peaked at 204°F
+#  10:32  201°F  end     Cook ended at 201°F
+#   Min 38°F, max 204°F over 632m.
+
+npx thermoworks timeline ABC123 --archive brisket-2026 --channel 2
+npx thermoworks timeline ABC123 --target 203
+npx thermoworks timeline ABC123 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Celsius readings are converted to Fahrenheit before analysis.
+- The low point, stall, target, and peak are only shown when they fall between the start and end; if one lands on the first or last reading it folds into that line.
+- When two milestones share a reading, the more specific one wins: target over stall over peak over low.
+- A stall is the longest plateau that stays within 2°F for at least 30 minutes.
+
 ## `thermoworks device rename <SERIAL> --name <TEXT>`
 
 Rename a device label.

@@ -466,6 +466,8 @@ async function main(): Promise<void> {
 
 		case "season":
 			await season(args.slice(1), options);
+			break;
+
 		case "wrap":
 			await wrap(args.slice(1), options);
 			break;

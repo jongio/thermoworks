@@ -539,6 +539,12 @@ npx thermoworks alarm list --json
 
 - Requires valid credentials from environment variables or the OS keychain.
 
+## `thermoworks alerts`
+
+Scan the current alarm state across devices and report any channel that is actively
+alarming. Built for scripting: it exits non-zero when any channel is alarming, so cron
+jobs and shell loops can trigger a notification.
+
 ## `thermoworks alarm suggest`
 
 Suggest pit and meat-probe alarm thresholds for a cut of meat, from the built-in meat
@@ -548,15 +554,25 @@ suggested thresholds and the matching `alarm set` commands; it never writes to a
 **Usage**
 
 ```bash
+npx thermoworks alerts [SERIAL] [--json]
+```
+
+**Options (alerts)**
+
+- `[SERIAL]` - (Optional) Scope the scan to a single device. Without it, every device on
+  the account is checked.
+- `--json` - Output the alarming channels as a JSON array.
+
+```bash
 npx thermoworks alarm suggest <MEAT> [--pit-band <deg>] [--serial <SN>] [--meat-channel <1-9>] [--pit-channel <1-9>]
 ```
 
-**Arguments**
+**Arguments (alarm suggest)**
 
 - `MEAT` - (Required) A meat name or alias (for example `brisket`, `pulled pork`, `ribs`).
   Run `thermoworks doneness` to see the built-in cuts.
 
-**Options**
+**Options (alarm suggest)**
 
 - `--pit-band <deg>` - Half-width of the pit alarm band in degrees Fahrenheit. Default 25.
 - `--serial <SN>` - Fill the suggested commands with this serial instead of a placeholder.
@@ -567,6 +583,17 @@ npx thermoworks alarm suggest <MEAT> [--pit-band <deg>] [--serial <SN>] [--meat-
 **Examples**
 
 ```bash
+npx thermoworks alerts
+# Signals (ABC123)
+#   HIGH  Brisket  205°F
+
+npx thermoworks alerts ABC123
+
+npx thermoworks alerts --json
+
+# fire a notification when anything is alarming
+npx thermoworks alerts || notify-send "ThermoWorks alarm"
+
 npx thermoworks alarm suggest brisket
 # Alarm suggestions for Brisket:
 #   Meat probe high: 203°F  (pull temp; carryover adds a few more while it rests)
@@ -583,6 +610,27 @@ npx thermoworks alarm suggest ribs --json
 
 **Output**
 
+- Only channels currently in a `high` or `low` alarm state are listed. Everything else is
+  skipped.
+- Human output groups alarming channels under a bold device header (`label (serial)`), one
+  channel per line with its state and current reading.
+- With `--json`, prints an array of
+  `{ serial, deviceLabel, channel, channelLabel, state, value, units }` where `state` is
+  `"high"` or `"low"`.
+- When nothing is alarming, prints `No active alarms on any device.` (or `No active alarms
+  on <SERIAL>.` when scoped) in human mode, or `[]` with `--json`.
+
+**Exit code**
+
+- Exits `1` when at least one channel is alarming, `0` when everything is clear. The exit
+  code is set in both human and `--json` modes.
+
+**Notes (alerts)**
+
+- Requires valid credentials from environment variables or the OS keychain.
+
+**Output (alarm suggest)**
+
 - The meat-probe high alarm is set to the profile's pull temperature. By-feel cuts like
   ribs have no numeric target, so only a pit-band command is suggested.
 - The pit band is centered on the profile's reference pit temperature, plus or minus
@@ -591,11 +639,12 @@ npx thermoworks alarm suggest ribs --json
   and `<PIT_CH>` placeholders for you to fill in.
 - With `--json`, prints `{ meat, doneness, meatProbe, pit, commands }`.
 
-**Notes**
+**Notes (alarm suggest)**
 
 - Suggestions are a starting point. Tune them for your cook, smoker, and target doneness.
 
 
+## `thermoworks archives`
 
 List or inspect archived cooking sessions for a device.
 
@@ -2117,7 +2166,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal cost`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `alarm suggest`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal cost`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `alarm suggest`, `alerts`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

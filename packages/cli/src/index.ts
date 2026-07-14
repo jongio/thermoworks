@@ -50,6 +50,7 @@ import { stall } from "./commands/stall.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
 import { temp } from "./commands/temp.js";
 import { watch } from "./commands/watch.js";
+import { wrap } from "./commands/wrap.js";
 import { parseGlobalFlags, setRedaction } from "./output.js";
 
 // Clean exit on Ctrl+C
@@ -175,6 +176,11 @@ Commands:
     --channel N    Read a specific channel (1-9) instead of the average
     --rise DEG     Expected carryover rise in degrees
     --size SIZE    Preset rise: small, medium (default), or large
+
+  wrap <SERIAL>    Advise whether to wrap the cook now (the Texas crutch)
+    --target F     Target internal temperature in Fahrenheit (required)
+    --wrap-at F    Temperature where the wrap window opens (default: 160)
+    --limit N      Look at only the most recent N readings
 
   open [target]    Open a ThermoWorks site in your browser
     cloud          ThermoWorks Cloud web app (default)
@@ -442,6 +448,10 @@ async function main(): Promise<void> {
 
 		case "carryover":
 			await carryover(args.slice(1), options);
+			break;
+
+		case "wrap":
+			await wrap(args.slice(1), options);
 			break;
 
 		case "journal":

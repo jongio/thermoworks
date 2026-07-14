@@ -117,10 +117,65 @@ describe("parseArchivesArgs", () => {
 		expect(result).toEqual({ serial: "XYZ", id: "a1", limit: 10 });
 	});
 
+	it("parses --from and --to date filters", async () => {
+		const { parseArchivesArgs } = await import("../src/commands/archives.js");
+		const result = parseArchivesArgs([
+			"archives",
+			"ABC123",
+			"--from",
+			"2026-01-01",
+			"--to",
+			"2026-01-31",
+		]);
+		expect(result).toMatchObject({ serial: "ABC123", id: undefined, limit: undefined });
+		expect(result && !("error" in result) ? result.from?.toISOString() : null).toBe(
+			"2026-01-01T00:00:00.000Z",
+		);
+		expect(result && !("error" in result) ? result.to?.toISOString() : null).toBe(
+			"2026-01-31T23:59:59.999Z",
+		);
+	});
+
+	it("returns an error for invalid date filters", async () => {
+		const { parseArchivesArgs } = await import("../src/commands/archives.js");
+		expect(parseArchivesArgs(["archives", "ABC123", "--from", "not-a-date"])).toEqual({
+			error: expect.stringContaining("--from"),
+		});
+		expect(parseArchivesArgs(["archives", "ABC123", "--to"])).toEqual({
+			error: "--to requires a value",
+		});
+	});
+
 	it("returns null when serial is missing", async () => {
 		const { parseArchivesArgs } = await import("../src/commands/archives.js");
 		const result = parseArchivesArgs(["archives"]);
 		expect(result).toBeNull();
+	});
+
+	describe("filterArchivesByDate", () => {
+		it("filters by start date and skips undated archives when active", async () => {
+			const { filterArchivesByDate } = await import("../src/commands/archives.js");
+			const archives = [
+				makeArchive({ id: "old", start: new Date("2025-12-31T23:00:00Z") }),
+				makeArchive({ id: "match", start: new Date("2026-01-15T12:00:00Z") }),
+				makeArchive({ id: "late", start: new Date("2026-02-01T00:00:00Z") }),
+				makeArchive({ id: "undated", start: null }),
+			];
+
+			const filtered = filterArchivesByDate(
+				archives,
+				new Date("2026-01-01T00:00:00Z"),
+				new Date("2026-01-31T23:59:59.999Z"),
+			);
+
+			expect(filtered.map((a) => a.id)).toEqual(["match"]);
+		});
+
+		it("returns the original list when no filter is active", async () => {
+			const { filterArchivesByDate } = await import("../src/commands/archives.js");
+			const archives = [makeArchive({ id: "a1" })];
+			expect(filterArchivesByDate(archives)).toBe(archives);
+		});
 	});
 
 	it("ignores unknown flags", async () => {
@@ -222,6 +277,28 @@ describe("archives (list mode)", () => {
 		await archives({ serial: "S1" });
 
 		expect(mockGetArchives).toHaveBeenCalledWith("S1", undefined);
+	});
+
+	it("filters listed archives by date range", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetArchives.mockResolvedValue([
+			makeArchive({ id: "old", label: "Old", start: new Date("2025-12-31T23:00:00Z") }),
+			makeArchive({ id: "match", label: "January Cook", start: new Date("2026-01-15T12:00:00Z") }),
+			makeArchive({ id: "undated", label: "Undated", start: null }),
+		]);
+
+		const { archives } = await import("../src/commands/archives.js");
+		await archives({
+			serial: "S1",
+			from: new Date("2026-01-01T00:00:00Z"),
+			to: new Date("2026-01-31T23:59:59.999Z"),
+		});
+
+		const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+		expect(output).toContain("Found 1 archive");
+		expect(output).toContain("January Cook");
+		expect(output).not.toContain("Old");
+		expect(output).not.toContain("Undated");
 	});
 
 	it("exits with error when not logged in", async () => {
@@ -376,6 +453,22 @@ describe("archives --json", () => {
 		expect(output).toHaveLength(1);
 		expect(output[0].id).toBe("arc-1");
 		expect(output[0].label).toBe("Brisket");
+	});
+
+	it("outputs filtered archive list as JSON", async () => {
+		const archiveData = [
+			makeArchive({ id: "old", start: new Date("2025-12-31T23:00:00Z") }),
+			makeArchive({ id: "match", start: new Date("2026-01-15T12:00:00Z") }),
+		];
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetArchives.mockResolvedValue(archiveData);
+
+		const { archives } = await import("../src/commands/archives.js");
+		await archives({ serial: "S1", from: new Date("2026-01-01T00:00:00Z") }, { json: true });
+
+		const output = JSON.parse(logSpy.mock.calls[0][0] as string);
+		expect(output).toHaveLength(1);
+		expect(output[0].id).toBe("match");
 	});
 
 	it("outputs single archive as JSON object in detail mode", async () => {

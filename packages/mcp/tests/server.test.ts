@@ -142,6 +142,23 @@ function getToolHandler(server: ReturnType<typeof createServer>, toolName: strin
 	return tool.handler;
 }
 
+function getPromptCallback(server: ReturnType<typeof createServer>, promptName: string) {
+	// Access the server internals to call prompt callbacks directly
+	const prompts = (server as any)._registeredPrompts as Record<
+		string,
+		{ callback: (args: any, extra: any) => any }
+	>;
+	const prompt = prompts[promptName];
+	if (!prompt) {
+		throw new Error(`Prompt "${promptName}" not found`);
+	}
+	return prompt.callback;
+}
+
+function promptText(result: any): string {
+	return result.messages.map((m: any) => m.content.text).join("\n");
+}
+
 describe("MCP Server", () => {
 	const originalEnv = process.env;
 
@@ -376,6 +393,169 @@ describe("MCP Server", () => {
 				const parsed = JSON.parse(result.content[0].text);
 				expect(parsed.devices[0].label).toBe("DEF456");
 				expect(parsed.devices[0].session.active).toBe(false);
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
+	describe("get_alarm_targets tool", () => {
+		it("returns armed targets across all devices", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockClear();
+				(mockGetDevice as any).mockClear();
+				(mockGetAllDeviceChannels as any).mockReset();
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{ serial: "ABC123", label: "Smoker" },
+					{ serial: "DEF456", label: "Fridge" },
+				]);
+				(mockGetAllDeviceChannels as any).mockImplementation((serial: string) => {
+					if (serial === "ABC123") {
+						return Promise.resolve([
+							{
+								value: 225,
+								units: "F",
+								label: "Pit",
+								number: "1",
+								alarmHigh: {
+									enabled: true,
+									alarming: false,
+									muted: null,
+									value: 275,
+									units: "F",
+									lastNotified: null,
+								},
+								alarmLow: null,
+							},
+							{
+								value: 165,
+								units: "F",
+								label: "Meat",
+								number: "2",
+								alarmHigh: null,
+								alarmLow: null,
+							},
+						]);
+					}
+					return Promise.resolve([
+						{
+							value: 30,
+							units: "F",
+							label: "Internal",
+							number: "1",
+							alarmHigh: null,
+							alarmLow: {
+								enabled: true,
+								alarming: true,
+								muted: null,
+								value: 32,
+								units: "F",
+								lastNotified: null,
+							},
+						},
+					]);
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_alarm_targets");
+				const result = await handler({}, {});
+
+				expect(mockGetDevices).toHaveBeenCalledTimes(1);
+				expect(mockGetDevice).not.toHaveBeenCalled();
+				expect(mockGetAllDeviceChannels).toHaveBeenCalledWith("ABC123");
+				expect(mockGetAllDeviceChannels).toHaveBeenCalledWith("DEF456");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.deviceCount).toBe(2);
+				expect(parsed.targetCount).toBe(2);
+				expect(parsed.targets).toHaveLength(2);
+				expect(parsed.targets[0]).toMatchObject({
+					serial: "ABC123",
+					deviceLabel: "Smoker",
+					channel: 1,
+					channelLabel: "Pit",
+					current: { value: 225, units: "F" },
+					alarmHigh: { value: 275, units: "F", alarming: false },
+					alarmLow: null,
+				});
+				expect(parsed.targets[1].alarmLow).toMatchObject({
+					value: 32,
+					units: "F",
+					alarming: true,
+				});
+			} finally {
+				(mockGetAllDeviceChannels as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("filters targets to one device when serial is provided", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockClear();
+				(mockGetDevice as any).mockClear();
+				(mockGetAllDeviceChannels as any).mockReset();
+				(mockGetDevice as any).mockResolvedValueOnce({ serial: "DEF456", label: null });
+				(mockGetAllDeviceChannels as any).mockResolvedValueOnce([
+					{
+						value: 31,
+						units: "F",
+						label: "Internal",
+						number: "1",
+						alarmHigh: null,
+						alarmLow: {
+							enabled: true,
+							alarming: true,
+							muted: null,
+							value: 32,
+							units: "F",
+							lastNotified: null,
+						},
+					},
+				]);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_alarm_targets");
+				const result = await handler({ serial: "DEF456" }, {});
+
+				expect(mockGetDevice).toHaveBeenCalledWith("DEF456");
+				expect(mockGetDevices).not.toHaveBeenCalled();
+				expect(mockGetAllDeviceChannels).toHaveBeenCalledWith("DEF456");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.deviceCount).toBe(1);
+				expect(parsed.targetCount).toBe(1);
+				expect(parsed.targets[0].deviceLabel).toBe("DEF456");
+				expect(parsed.targets[0].alarmLow.alarming).toBe(true);
+			} finally {
+				(mockGetAllDeviceChannels as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("returns an empty target list when no alarms are armed", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([{ serial: "ABC123", label: "Smoker" }]);
+				(mockGetAllDeviceChannels as any).mockResolvedValueOnce([
+					{
+						value: 225,
+						units: "F",
+						label: "Pit",
+						number: "1",
+						alarmHigh: { enabled: false, alarming: false, value: 275, units: "F" },
+						alarmLow: null,
+					},
+					{ value: 165, units: "F", label: "Meat", number: "2", alarmHigh: null, alarmLow: null },
+				]);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_alarm_targets");
+				const result = await handler({}, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.deviceCount).toBe(1);
+				expect(parsed.targetCount).toBe(0);
+				expect(parsed.targets).toEqual([]);
 			} finally {
 				teardownEnv();
 			}
@@ -1654,6 +1834,94 @@ describe("MCP Server", () => {
 			} finally {
 				teardownEnv();
 			}
+		});
+	});
+
+	describe("guided prompts", () => {
+		it("registers exactly the three guided prompts", () => {
+			const server = createServer();
+			const prompts = (server as any)._registeredPrompts as Record<string, unknown>;
+			const names = Object.keys(prompts).sort();
+			expect(names).toEqual(["diagnose_cook", "food_safety_check", "when_to_wrap"]);
+		});
+
+		it("does not add any new tools (tool count stays flat)", () => {
+			const server = createServer();
+			const tools = (server as any)._registeredTools as Record<string, unknown>;
+			expect(Object.keys(tools)).toHaveLength(22);
+		});
+
+		describe("diagnose_cook", () => {
+			it("returns a single user message referencing the diagnostic tools", () => {
+				const server = createServer();
+				const result = getPromptCallback(server, "diagnose_cook")({}, {});
+				expect(result.messages).toHaveLength(1);
+				expect(result.messages[0].role).toBe("user");
+				expect(result.messages[0].content.type).toBe("text");
+				const text = promptText(result);
+				expect(text).toContain("get_live_cook_snapshot");
+				expect(text).toContain("get_temperature_history");
+				expect(text).toContain("get_eta");
+			});
+
+			it("names the device when a serial is passed", () => {
+				const server = createServer();
+				const text = promptText(
+					getPromptCallback(server, "diagnose_cook")({ serial: "ABC123" }, {}),
+				);
+				expect(text).toContain("device ABC123");
+				expect(text).not.toContain("Call get_devices first");
+			});
+
+			it("falls back to picking the active device when serial is omitted", () => {
+				const server = createServer();
+				const text = promptText(getPromptCallback(server, "diagnose_cook")({}, {}));
+				expect(text).toContain("Call get_devices first");
+			});
+
+			it("treats a blank serial as omitted", () => {
+				const server = createServer();
+				const text = promptText(getPromptCallback(server, "diagnose_cook")({ serial: "   " }, {}));
+				expect(text).toContain("Call get_devices first");
+			});
+		});
+
+		describe("when_to_wrap", () => {
+			it("references the stall band and the probe tools", () => {
+				const server = createServer();
+				const text = promptText(getPromptCallback(server, "when_to_wrap")({}, {}));
+				expect(text).toContain("get_device_channels");
+				expect(text).toContain("get_temperature_history");
+				expect(text).toContain("stall");
+				expect(text).toContain("Use the meat probe channel");
+			});
+
+			it("names the channel when one is passed", () => {
+				const server = createServer();
+				const text = promptText(
+					getPromptCallback(server, "when_to_wrap")({ serial: "ABC123", channel: "2" }, {}),
+				);
+				expect(text).toContain("device ABC123");
+				expect(text).toContain("Evaluate channel 2");
+			});
+		});
+
+		describe("food_safety_check", () => {
+			it("references the guide and the danger zone", () => {
+				const server = createServer();
+				const text = promptText(getPromptCallback(server, "food_safety_check")({}, {}));
+				expect(text).toContain("get_temperature_guide");
+				expect(text).toContain("get_temperature_history");
+				expect(text).toContain("40F to 140F");
+			});
+
+			it("names the device when a serial is passed", () => {
+				const server = createServer();
+				const text = promptText(
+					getPromptCallback(server, "food_safety_check")({ serial: "DEF456" }, {}),
+				);
+				expect(text).toContain("device DEF456");
+			});
 		});
 	});
 });

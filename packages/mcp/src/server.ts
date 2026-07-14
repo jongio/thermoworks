@@ -100,6 +100,31 @@ function summarizeDevice(device: Device, channels: DeviceChannel[]) {
 	};
 }
 
+function summarizeEnabledAlarm(alarm: DeviceChannel["alarmHigh"]) {
+	if (!alarm?.enabled) return null;
+	return {
+		value: alarm.value,
+		units: alarm.units,
+		alarming: alarm.alarming,
+	};
+}
+
+type PromptResult = {
+	messages: Array<{ role: "user"; content: { type: "text"; text: string } }>;
+};
+
+/** Wrap prompt text in the single-user-message shape the MCP prompts API expects. */
+function userPrompt(text: string): PromptResult {
+	return { messages: [{ role: "user", content: { type: "text", text } }] };
+}
+
+/** Instruction for picking which device to work on, honoring an optional serial argument. */
+function deviceClause(serial?: string): string {
+	return serial?.trim()
+		? `Work with device ${serial.trim()}.`
+		: "Call get_devices first and pick the device with an active cook. If more than one looks active, ask me which to use.";
+}
+
 export function createServer(): McpServer {
 	const server = new McpServer({
 		name: "thermoworks-mcp",
@@ -190,6 +215,63 @@ export function createServer(): McpServer {
 								alarmingChannelCount: channels.filter((channel) => channel.alarmState !== "none")
 									.length,
 								devices: snapshots,
+							},
+							null,
+							2,
+						),
+					},
+				],
+			};
+		},
+	);
+
+	server.registerTool(
+		"get_alarm_targets",
+		{
+			description:
+				"List armed high and low alarm thresholds across ThermoWorks devices, with current readings and alarming state. Optionally filter to one device serial.",
+			inputSchema: z.object({
+				serial: z.string().optional().describe("Optional device serial number to inspect"),
+			}),
+		},
+		async ({ serial }) => {
+			const client = getClient();
+			const devices = serial ? [await client.getDevice(serial)] : await client.getDevices();
+			const targetGroups = await Promise.all(
+				devices.map(async (device) => {
+					const channels = await client.getAllDeviceChannels(device.serial);
+					return channels
+						.map((channel) => {
+							const alarmHigh = summarizeEnabledAlarm(channel.alarmHigh);
+							const alarmLow = summarizeEnabledAlarm(channel.alarmLow);
+							if (!alarmHigh && !alarmLow) return null;
+							return {
+								serial: device.serial,
+								deviceLabel: device.label || device.serial,
+								channel: channel.number != null ? Number(channel.number) : null,
+								channelLabel: channel.label ?? null,
+								current: {
+									value: channel.value,
+									units: channel.units,
+								},
+								alarmHigh,
+								alarmLow,
+							};
+						})
+						.filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+				}),
+			);
+			const targets = targetGroups.flat();
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{
+								generatedAt: new Date().toISOString(),
+								deviceCount: devices.length,
+								targetCount: targets.length,
+								targets,
 							},
 							null,
 							2,
@@ -723,6 +805,104 @@ export function createServer(): McpServer {
 				],
 			};
 		},
+	);
+
+	server.registerPrompt(
+		"diagnose_cook",
+		{
+			title: "Diagnose the current cook",
+			description:
+				"Walk the live cook and report whether temps are climbing, stalled, or need attention, with next steps.",
+			argsSchema: {
+				serial: z
+					.string()
+					.optional()
+					.describe("Device serial number. Leave empty to pick the active device."),
+			},
+		},
+		({ serial }) =>
+			userPrompt(
+				`Diagnose the current cook and tell me if it needs attention.
+
+${deviceClause(serial)}
+
+Steps:
+1. Call get_live_cook_snapshot for the device to read every channel: current temp, alarm state, and rate of change.
+2. Call get_temperature_history with a limit around 60 to see the recent trend for the pit and the meat probes.
+3. Classify each probe as climbing, holding, stalled, or dropping. A meat probe stuck between 150F and 170F with a near-zero rate is a stall, not a fault.
+4. Compare the pit temp against its target band and flag any drift over about 15F.
+5. Report overall status, anything that needs action now, and how the cook is tracking. If a probe has a high alarm set, call get_eta for it.
+
+Keep it short and tied to the readings you got back.`,
+			),
+	);
+
+	server.registerPrompt(
+		"when_to_wrap",
+		{
+			title: "Decide when to wrap",
+			description:
+				"Evaluate wrap timing for a brisket or pork butt against the stall, and call whether to wrap now, wait, or that the stall already broke.",
+			argsSchema: {
+				serial: z
+					.string()
+					.optional()
+					.describe("Device serial number. Leave empty to pick the active device."),
+				channel: z
+					.string()
+					.optional()
+					.describe("Meat probe channel number. Leave empty to use the meat probe."),
+			},
+		},
+		({ serial, channel }) => {
+			const channelClause = channel?.trim()
+				? `Evaluate channel ${channel.trim()}.`
+				: "Use the meat probe channel, the one measuring the brisket or pork rather than the pit.";
+			return userPrompt(
+				`Tell me whether to wrap now.
+
+${deviceClause(serial)} ${channelClause}
+
+The Texas crutch (wrapping in foil or butcher paper) pushes the meat through the stall, the long plateau near 150F to 170F where evaporative cooling holds the temperature flat.
+
+Steps:
+1. Call get_device_channels or get_live_cook_snapshot to read the meat probe current temp and rate of change.
+2. Call get_temperature_history with a limit around 90 and look at the recent readings for that probe.
+3. Decide:
+   - Below the stall band and still climbing: too early, keep cooking.
+   - Inside 150F to 170F with the rate near zero for a sustained stretch: this is the stall, wrapping now speeds it up. Say wrap.
+   - Above 170F and climbing again: the stall already broke, wrapping mainly helps bark and moisture, so it is optional.
+4. Give a one line call (wrap now, wait, or stall already broke) plus the temp and trend you based it on.`,
+			);
+		},
+	);
+
+	server.registerPrompt(
+		"food_safety_check",
+		{
+			title: "Check food safety",
+			description:
+				"Confirm the cook cleared the danger zone in time and reached a safe internal temperature for the cut.",
+			argsSchema: {
+				serial: z
+					.string()
+					.optional()
+					.describe("Device serial number. Leave empty to pick the active device."),
+			},
+		},
+		({ serial }) =>
+			userPrompt(
+				`Check the food safety of this cook.
+
+${deviceClause(serial)}
+
+Steps:
+1. Call get_temperature_guide for the recommended safe internal temperatures by cut.
+2. Call get_live_cook_snapshot for the current probe temps and get_temperature_history with a limit around 200 for how they got there.
+3. Danger zone is 40F to 140F. Most cuts should clear 140F within about 4 hours of the surface entering that range. Seared whole-muscle beef and pork can be more lenient; poultry and ground meat are strict. From the history, estimate how long the probe sat between 40F and 140F.
+4. Compare the current or final internal temp against the guide for the cut. If you do not know the cut, ask.
+5. Report whether the danger-zone time looks safe, whether the internal temp reached a safe finish, and any specific concern.`,
+			),
 	);
 
 	return server;

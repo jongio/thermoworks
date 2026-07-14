@@ -15,6 +15,7 @@ import { carryover } from "./commands/carryover.js";
 import { completion } from "./commands/completion.js";
 import { config } from "./commands/config.js";
 import { convert } from "./commands/convert.js";
+import { cooldown } from "./commands/cooldown.js";
 import {
 	copilotRemove,
 	copilotSetup,
@@ -179,6 +180,10 @@ Commands:
     --rise DEG     Expected carryover rise in degrees
     --size SIZE    Preset rise: small, medium (default), or large
 
+  cooldown <SERIAL>  Check cooling against the FDA two-stage rule
+    --readings LIST  Offline "temp@minutes" pairs in Fahrenheit, comma-separated
+    --stage1-limit H  Hours allowed for 135F to 70F (default 2)
+    --stage2-limit H  Hours allowed for 135F to 41F (default 6)
   season           Scale a rub or brine to the weight of a cut (offline)
     --weight LB    Weight of the meat in pounds (required)
     --recipe NAME  Rub recipe to use (see --list)
@@ -462,6 +467,10 @@ async function main(): Promise<void> {
 
 		case "carryover":
 			await carryover(args.slice(1), options);
+			break;
+
+		case "cooldown":
+			await cooldown(args.slice(1), options);
 			break;
 
 		case "season":

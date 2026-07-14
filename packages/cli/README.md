@@ -762,6 +762,23 @@ Options:
 - `--size S` — Preset rise instead of `--rise`: `small` (3), `medium` (6, default), or `large` (10)
 - `--json` — Print the full assessment as JSON
 
+### `thermoworks cooldown [serial]`
+
+Check a cooldown against the FDA two-stage cooling rule: cooked food should drop from 135°F to 70°F within 2 hours, and to 41°F within 6 hours total, both measured from the moment it enters the danger zone. Reads the device's recent history, or pass `--readings` to check a curve offline.
+
+```bash
+npx thermoworks cooldown ABC123
+npx thermoworks cooldown ABC123 --json
+npx thermoworks cooldown --readings "135@0,70@90,41@300"
+npx thermoworks cooldown ABC123 --stage1-limit 1.5 --stage2-limit 5
+```
+
+Options:
+- `--readings LIST` — Comma-separated `temp@minutes` pairs in Fahrenheit for an offline check, no login needed
+- `--stage1-limit H` — Hours allowed to reach 70°F (default 2)
+- `--stage2-limit H` — Hours allowed to reach 41°F (default 6)
+- `--json` — Print the full assessment as JSON
+
 ### `thermoworks season`
 
 Scale a dry rub or a brine to the weight of the cut. Runs fully offline: no login, no network, just built-in recipes and standard ratios. Handy while you are still at the counter deciding how much rub to mix or how much salt a brine needs.

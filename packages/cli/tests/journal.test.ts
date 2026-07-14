@@ -348,3 +348,96 @@ describe("formatCostSummary", () => {
 		expect(out).toContain("Per lb: 5.00");
 	});
 });
+
+describe("journal export helpers", () => {
+	it("parses export options", async () => {
+		const { parseJournalExportArgs } = await import("../src/commands/journal.js");
+		expect(parseJournalExportArgs([])).toEqual({ format: "json", output: undefined });
+		expect(parseJournalExportArgs(["--format", "csv", "--output", "cooks.csv"])).toEqual({
+			format: "csv",
+			output: "cooks.csv",
+		});
+	});
+
+	it("rejects invalid export options", async () => {
+		const { parseJournalExportArgs } = await import("../src/commands/journal.js");
+		expect(parseJournalExportArgs(["--format", "xml"])).toEqual({
+			error: '--format must be "json" or "csv"',
+		});
+		expect(parseJournalExportArgs(["--output"])).toEqual({
+			error: "--output requires a file path",
+		});
+		expect(parseJournalExportArgs(["--bogus"])).toEqual({
+			error: "Unknown option: --bogus",
+		});
+	});
+
+	it("formats CSV newest first with escaped cells", async () => {
+		const { formatJournalCsv } = await import("../src/commands/journal.js");
+		const csv = formatJournalCsv([
+			sampleEntry({ id: "old", createdAt: "2026-01-01T00:00:00.000Z", title: "=Old" }),
+			sampleEntry({
+				id: "new",
+				createdAt: "2026-02-01T00:00:00.000Z",
+				title: "New cook",
+				meat: "pork, ribs",
+				notes: 'Wrapped "late"',
+				costMeat: 12.5,
+			}),
+		]);
+
+		const lines = csv.trimEnd().split("\n");
+		expect(lines[0]).toBe(
+			"id,createdAt,title,meat,weightLb,rating,costMeat,costFuel,device,archive,notes",
+		);
+		expect(lines[1]).toContain('new,2026-02-01T00:00:00.000Z,New cook,"pork, ribs"');
+		expect(lines[1]).toContain('"Wrapped ""late"""');
+		expect(lines[2]).toContain("old,2026-01-01T00:00:00.000Z,'=Old");
+	});
+
+	it("formats JSON newest first", async () => {
+		const { formatJournalJson } = await import("../src/commands/journal.js");
+		const json = formatJournalJson([
+			sampleEntry({ id: "old", createdAt: "2026-01-01T00:00:00.000Z" }),
+			sampleEntry({ id: "new", createdAt: "2026-02-01T00:00:00.000Z" }),
+		]);
+		const parsed = JSON.parse(json) as JournalEntry[];
+		expect(parsed.map((entry) => entry.id)).toEqual(["new", "old"]);
+	});
+});
+
+describe("journal export command", () => {
+	it("writes CSV to stdout", async () => {
+		mockReadFile.mockResolvedValue(
+			JSON.stringify([sampleEntry({ id: "abc123", title: "Sunday brisket" })]) as never,
+		);
+		const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+		const { journal } = await import("../src/commands/journal.js");
+		await journal(["export", "--format", "csv"], { json: false });
+
+		const output = stdoutSpy.mock.calls.map((call) => call[0]).join("");
+		expect(output).toContain("id,createdAt,title");
+		expect(output).toContain("abc123");
+	});
+
+	it("writes JSON to an output file and reports the count", async () => {
+		mockReadFile.mockResolvedValue(
+			JSON.stringify([
+				sampleEntry({ id: "one", createdAt: "2026-01-01T00:00:00.000Z" }),
+				sampleEntry({ id: "two", createdAt: "2026-02-01T00:00:00.000Z" }),
+			]) as never,
+		);
+		const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+		const { journal } = await import("../src/commands/journal.js");
+		await journal(["export", "--output", "journal.json"], { json: false });
+
+		expect(mockWriteFile).toHaveBeenCalledWith(
+			"journal.json",
+			expect.stringContaining('"id": "two"'),
+			"utf8",
+		);
+		expect(errorSpy).toHaveBeenCalledWith("Exported 2 journal entries to journal.json.");
+	});
+});

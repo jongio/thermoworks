@@ -77,6 +77,13 @@ export type {
 	SubscriptionOptions,
 } from "./subscribe.js";
 export { createSubscription } from "./subscribe.js";
+export type {
+	CookTimeline,
+	TimelineEvent,
+	TimelineKind,
+	TimelineOptions,
+} from "./timeline.js";
+export { buildCookTimeline } from "./timeline.js";
 export type { TokenCacheData } from "./token-cache.js";
 export { invalidateTokenCache, resolveTokenCachePath } from "./token-cache.js";
 export type {
@@ -122,3 +129,9 @@ export type {
 	User,
 } from "./types.js";
 export { AuthError, NetworkError, NotFoundError } from "./types.js";
+export type { WrapInput, WrapRecommendation, WrapResult } from "./wrap-advisor.js";
+export {
+	assessWrap,
+	DEFAULT_SLOW_RATE,
+	DEFAULT_WRAP_AT_F,
+} from "./wrap-advisor.js";

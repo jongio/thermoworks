@@ -5,6 +5,8 @@ import { fileURLToPath } from "node:url";
 
 import { account } from "./commands/account.js";
 import { alarmClear, alarmList, alarmSet } from "./commands/alarm.js";
+import { alarmSuggest } from "./commands/alarm-suggest.js";
+import { alerts } from "./commands/alerts.js";
 import { archives, parseArchivesArgs } from "./commands/archives.js";
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import { backup } from "./commands/backup.js";
@@ -26,6 +28,7 @@ import { device } from "./commands/device.js";
 import { devices, parseDevicesArgs } from "./commands/devices.js";
 import { doctor } from "./commands/doctor.js";
 import { doneness } from "./commands/doneness.js";
+import { eta } from "./commands/eta.js";
 import { events, parseEventsArgs } from "./commands/events.js";
 import { exportData } from "./commands/export.js";
 import { fan } from "./commands/fan.js";
@@ -44,9 +47,12 @@ import { safe } from "./commands/safe.js";
 import { search } from "./commands/search.js";
 import { season } from "./commands/season.js";
 import { session } from "./commands/session.js";
+import { stall } from "./commands/stall.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
 import { temp } from "./commands/temp.js";
+import { timeline } from "./commands/timeline.js";
 import { watch } from "./commands/watch.js";
+import { wrap } from "./commands/wrap.js";
 import { parseGlobalFlags, setRedaction } from "./output.js";
 
 // Clean exit on Ctrl+C
@@ -66,6 +72,10 @@ Commands:
   alarm set        Set alarm thresholds on a device channel
   alarm clear      Clear alarm thresholds on a device channel
   alarm list       List configured alarm thresholds (all devices or one SERIAL)
+  alarm suggest    Suggest pit and meat-probe alarm thresholds for a cut of meat
+
+  alerts           Scan current alarm state and exit non-zero if any channel is alarming
+    [SERIAL]       Scope the scan to a single device
 
   calibration <SERIAL>  Show NIST-traceable calibration data for a device
     --interval-months N  Recalibration interval for the due-date check (default: 12)
@@ -88,6 +98,14 @@ Commands:
 
   temp <SERIAL>    Print a single temperature value for scripting
     --channel N    Read a specific channel (1-9) instead of the average
+
+  eta <SERIAL>     Estimate time-to-target for a probe channel (one-shot, for scripts)
+    --channel N    Probe channel to predict (1-9, default: 1)
+    --target N     Target temperature (default: the channel's high alarm)
+
+  stall <SERIAL>   Check whether a cook has stalled (one-shot, for scripts)
+    --threshold N  Max temperature spread to count as a stall (default: 2)
+    --duration N   Minutes the plateau must last to count as a stall (default: 30)
   device rename <SERIAL> --name <TEXT>        Rename a device
   device reset-minmax <SERIAL> --channel <N>  Reset min/max readings for a channel
   mcp start        Start MCP server for AI assistants
@@ -104,6 +122,8 @@ Commands:
     --interval N   Poll interval in seconds (default: 10)
   events           Show device event history (alarms, status changes)
   archives <serial>  List archived sessions for a device
+    --from DATE    Only list archives starting on or after DATE
+    --to DATE      Only list archives starting on or before DATE
   stats <serial>   Show cross-session cook analytics for a device
 
   firmware         Show firmware versions and available updates
@@ -149,6 +169,7 @@ Commands:
 
   safe <SERIAL>    Show food-safety pasteurization progress for a probe
     --channel N    Read a specific channel (1-9) instead of the average
+    --temp T       Assess a manual temperature value, e.g. 150f or 74c
     --protein P    Table to use: poultry, beef, or pork (default: poultry)
     --held N       Minutes already held at or above the current temperature
 
@@ -164,6 +185,10 @@ Commands:
     --brine        Wet brine plan instead of a rub
     --dry-brine    Dry brine plan instead of a rub
     --list         Show the built-in rub recipes
+  wrap <SERIAL>    Advise whether to wrap the cook now (the Texas crutch)
+    --target F     Target internal temperature in Fahrenheit (required)
+    --wrap-at F    Temperature where the wrap window opens (default: 160)
+    --limit N      Look at only the most recent N readings
 
   open [target]    Open a ThermoWorks site in your browser
     cloud          ThermoWorks Cloud web app (default)
@@ -180,6 +205,7 @@ Commands:
   journal list     List logbook entries (newest first)
   journal show <id>  Show one logbook entry
   journal cost     Summarize cook costs across the logbook
+  journal export   Export the local logbook as JSON or CSV
   journal rm <id>  Remove a logbook entry
 
   plan             Back-calculate cook start times for a target ready time
@@ -203,6 +229,12 @@ Commands:
     --channel N    Archive channel to replay (default: first with readings)
     --speed N      Time compression, e.g. 60 = a minute per second (default: 60)
     --loop         Restart from the beginning when the replay ends
+
+  timeline <SERIAL>  Annotate a saved cook with its key milestones
+    --archive ID     Chart a specific archive (default: latest)
+    --channel N      Archive channel to chart (default: first with readings)
+    --target F       Mark the first crossing of a target temperature
+    --json           Output the timeline as JSON
 
   demo <mode>      Show demo output (modes: high, low, normal)
 
@@ -254,14 +286,21 @@ async function main(): Promise<void> {
 				case "list":
 					await alarmList(args.slice(2), options);
 					break;
+				case "suggest":
+					await alarmSuggest(args.slice(2), options);
+					break;
 				default:
 					console.error(
 						subcommand
 							? `Unknown alarm command: ${subcommand}`
-							: "Usage: thermoworks alarm <set|clear|list>",
+							: "Usage: thermoworks alarm <set|clear|list|suggest>",
 					);
 					process.exit(1);
 			}
+			break;
+
+		case "alerts":
+			await alerts(args.slice(1), options);
 			break;
 
 		case "copilot":
@@ -352,7 +391,13 @@ async function main(): Promise<void> {
 		case "archives": {
 			const archivesArgs = parseArchivesArgs(args);
 			if (!archivesArgs) {
-				console.error("Usage: thermoworks archives <serial> [--id ID] [--limit N] [--json]");
+				console.error(
+					"Usage: thermoworks archives <serial> [--id ID] [--limit N] [--from DATE] [--to DATE] [--json]",
+				);
+				process.exit(1);
+			}
+			if ("error" in archivesArgs) {
+				console.error(archivesArgs.error);
 				process.exit(1);
 			}
 			await archives(archivesArgs, options);
@@ -421,6 +466,8 @@ async function main(): Promise<void> {
 
 		case "season":
 			await season(args.slice(1), options);
+		case "wrap":
+			await wrap(args.slice(1), options);
 			break;
 
 		case "journal":
@@ -435,6 +482,10 @@ async function main(): Promise<void> {
 			await replay(args.slice(1), options);
 			break;
 
+		case "timeline":
+			await timeline(args.slice(1), options);
+			break;
+
 		case "calibration":
 			await calibration(args[1], options, args);
 			break;
@@ -445,6 +496,14 @@ async function main(): Promise<void> {
 
 		case "temp":
 			await temp(args.slice(1), options);
+			break;
+
+		case "eta":
+			await eta(args.slice(1), options);
+			break;
+
+		case "stall":
+			await stall(args.slice(1), options);
 			break;
 
 		case "config":

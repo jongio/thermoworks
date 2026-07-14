@@ -28,6 +28,14 @@ interface ChannelDisplay {
 	value: number | null;
 	units: string | null;
 	alarmState: AlarmState;
+	targets: ChannelTarget[];
+}
+
+interface ChannelTarget {
+	kind: "high" | "low";
+	value: number;
+	units: string;
+	alarming: boolean;
 }
 
 function extractChannels(devices: DeviceWithChannels[]): ChannelDisplay[] {
@@ -43,6 +51,24 @@ function extractChannels(devices: DeviceWithChannels[]): ChannelDisplay[] {
 				value: channel.value ?? null,
 				units: channel.units ?? null,
 				alarmState: getChannelAlarmState(channel),
+				targets: [
+					channel.alarmHigh?.enabled && channel.alarmHigh.value != null && channel.alarmHigh.units
+						? {
+								kind: "high",
+								value: channel.alarmHigh.value,
+								units: channel.alarmHigh.units,
+								alarming: channel.alarmHigh.alarming,
+							}
+						: null,
+					channel.alarmLow?.enabled && channel.alarmLow.value != null && channel.alarmLow.units
+						? {
+								kind: "low",
+								value: channel.alarmLow.value,
+								units: channel.alarmLow.units,
+								alarming: channel.alarmLow.alarming,
+							}
+						: null,
+				].filter((target): target is ChannelTarget => target !== null),
 			});
 		}
 	}
@@ -76,9 +102,36 @@ function alarmPulseClass(state: AlarmState): string {
 	return "";
 }
 
+function formatTargetGap({
+	current,
+	currentUnits,
+	target,
+	convert,
+	unit,
+}: {
+	current: number;
+	currentUnits: string;
+	target: ChannelTarget;
+	convert: (value: number, fromUnit: string) => number;
+	unit: string;
+}): string {
+	const currentValue = convert(current, currentUnits);
+	const targetValue = convert(target.value, target.units);
+	const delta = target.kind === "high" ? targetValue - currentValue : currentValue - targetValue;
+	const absDelta = Math.abs(delta).toFixed(1);
+
+	if (Math.abs(delta) < 0.05) return `At ${target.kind} target`;
+	if (target.kind === "high") {
+		return delta > 0
+			? `${absDelta}°${unit} to high target`
+			: `${absDelta}°${unit} past high target`;
+	}
+	return delta > 0 ? `${absDelta}°${unit} above low target` : `${absDelta}°${unit} past low target`;
+}
+
 /** Single channel tile for the grid/carousel layout. */
 function ChannelTile({ channel, large }: { channel: ChannelDisplay; large?: boolean }) {
-	const { formatTemp } = useTemperatureUnit();
+	const { convert, formatTemp, unit } = useTemperatureUnit();
 	const hasReading = channel.value != null && channel.units != null;
 
 	return (
@@ -109,6 +162,27 @@ function ChannelTile({ channel, large }: { channel: ChannelDisplay; large?: bool
 				</span>
 			) : (
 				<span className="text-neutral-500 text-5xl mt-3 font-mono">--</span>
+			)}
+			{hasReading && channel.targets.length > 0 && (
+				<div className="mt-3 flex flex-col items-center gap-1 text-neutral-300 text-sm">
+					{channel.targets.map((target) => (
+						<span
+							key={target.kind}
+							className={cn(
+								target.kind === "high" ? "text-alarm-high" : "text-alarm-low",
+								target.alarming && "font-semibold",
+							)}
+						>
+							{formatTargetGap({
+								current: channel.value as number,
+								currentUnits: channel.units as string,
+								target,
+								convert,
+								unit,
+							})}
+						</span>
+					))}
+				</div>
 			)}
 		</section>
 	);

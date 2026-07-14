@@ -174,6 +174,27 @@ npx thermoworks alarm list --json    # machine-readable
 Only channels with a high or low alarm armed are shown. With `--json`, prints an array
 of `{ serial, deviceLabel, channel, channelLabel, alarmHigh, alarmLow }`.
 
+### `thermoworks alarm suggest`
+
+Suggest pit and meat-probe alarm thresholds for a cut of meat, from the built-in meat
+profiles. Offline, so it needs no login or network access. It only prints suggestions
+and the matching `alarm set` commands; it never writes to a device.
+
+```bash
+npx thermoworks alarm suggest brisket
+npx thermoworks alarm suggest brisket --pit-band 30
+npx thermoworks alarm suggest brisket --serial <serial> --meat-channel 1 --pit-channel 2
+npx thermoworks alarm suggest ribs --json
+```
+
+The meat-probe high alarm is set to the profile's pull temperature (skipped for
+by-feel cuts like ribs). The pit band is centered on the profile's reference pit
+temperature, plus or minus `--pit-band` degrees (default 25). Pass `--serial`,
+`--meat-channel`, and `--pit-channel` to turn the suggested commands into ready-to-run
+lines; otherwise they print with `<SERIAL>`, `<MEAT_CH>`, and `<PIT_CH>` placeholders.
+
+With `--json`, prints `{ meat, doneness, meatProbe, pit, commands }`.
+
 
 ### `thermoworks alerts`
 
@@ -295,6 +316,7 @@ directly.
 ```bash
 npx thermoworks temp M100009168                # average, e.g. 203.5
 npx thermoworks temp M100009168 --channel 2    # one channel
+npx thermoworks temp M100009168 --unit c       # converted output
 npx thermoworks temp M100009168 --json         # { serial, channel, value, units }
 
 # use it in a shell conditional
@@ -302,6 +324,49 @@ if (( $(npx thermoworks temp M100009168) > 200 )); then echo "pull it"; fi
 ```
 
 Exits non-zero if no reading is available.
+
+### `thermoworks eta <serial>`
+
+Estimate time-to-target for a single probe channel, in one shot, for scripts and status lines.
+Reads the channel's current temperature and rate of change, then runs the same done-time
+prediction that powers the live `watch` ETA. The target is the channel's enabled high alarm
+unless you pass `--target`.
+
+```bash
+npx thermoworks eta M100009168                      # channel 1 to its high alarm
+npx thermoworks eta M100009168 --channel 2          # a specific probe
+npx thermoworks eta M100009168 --target 203         # override the target
+npx thermoworks eta M100009168 --json               # full prediction object
+```
+
+Options:
+- `--channel N` — Probe channel to predict (1-9, default: 1)
+- `--target N` — Target temperature (default: the channel's high alarm value)
+- `--json` — Emit `{ serial, channel, current, target, units, rateOfChange, estimatedMinutes, estimatedTime, confidence, method }`
+
+Prints `Done.` when the probe is already at or past the target, and a `Cannot estimate` note
+when the temperature is not rising. Exits non-zero when the channel has no reading or no target
+(no high alarm and no `--target`).
+
+### `thermoworks stall <serial>`
+
+Check whether a cook has stalled, in one shot, for scripts and cron jobs. Pulls the device
+temperature history, runs stall detection over it, and reports whether the temperature has
+plateaued, when the stall started, how long it has lasted, and the average plateau temperature.
+When a stall is active it adds a short wrap suggestion.
+
+```bash
+npx thermoworks stall M100009168                       # human-readable stall report
+npx thermoworks stall M100009168 --threshold 3         # widen the plateau band to 3 degrees
+npx thermoworks stall M100009168 --duration 45         # require a 45-minute plateau
+npx thermoworks stall M100009168 --json                # { serial, isStalling, stallStart, stallDuration, avgTemp }
+```
+
+Options:
+- `--threshold N` — Maximum temperature spread to still count as a stall (default: 2)
+- `--duration N` — Minutes the plateau must last to count as a stall (default: 30)
+
+Exits non-zero when there is not enough history to assess a stall.
 
 ### `thermoworks watch`
 
@@ -383,7 +448,15 @@ List archived sessions for a device.
 ```bash
 npx thermoworks archives M100009168
 npx thermoworks archives M100009168 --id <archive-id> --limit 10
+npx thermoworks archives M100009168 --from 2026-01-01 --to 2026-01-31
 ```
+
+Options:
+- `--id ID` - Show one archive in detail
+- `--limit N` - Maximum archives to fetch before filtering
+- `--from DATE` - Only list archives starting on or after DATE
+- `--to DATE` - Only list archives starting on or before DATE
+- `--json` - Emit the list or detail as JSON
 
 ### `thermoworks stats <serial>`
 
@@ -570,6 +643,7 @@ Export archive readings to CSV, JSON, or InfluxDB line protocol.
 ```bash
 npx thermoworks export M100009168
 npx thermoworks export M100009168 --archive <id> --format csv --output readings.csv
+npx thermoworks export M100009168 --downsample 60 --format csv --output readings.csv
 npx thermoworks export M100009168 --format influx | curl --data-binary @- "http://localhost:8086/api/v2/write?bucket=bbq&precision=ns"
 ```
 
@@ -577,6 +651,9 @@ Options:
 - `--archive ID` — Export a specific archive (default: latest)
 - `--format FMT` — Output format: `csv`, `json`, or `influx` (default: `json`)
 - `--output PATH` — Write to file (default: stdout)
+- `--downsample SECONDS` - Keep at most one reading per channel per SECONDS-wide time bucket, for smaller exports
+
+Downsampling keeps the earliest reading in each channel's time bucket (buckets are aligned to the Unix epoch, so the same instants bucket the same way across channels and exports). A long cook logged every few seconds becomes a per-minute or per-five-minute series with `--downsample 60` or `--downsample 300`, which is easier to chart and cheaper to store.
 
 The `influx` format emits one InfluxDB line protocol record per reading, measurement `thermoworks_temperature`, tagged with `serial`, `channel`, and `units`, a `value` field, and a nanosecond timestamp. It pipes straight into Telegraf, the Influx write API, or a file for a Grafana InfluxDB source. Tag values are escaped per the line protocol spec, and `--redact` masks the serial tag.
 
@@ -650,18 +727,20 @@ npx thermoworks doneness brisket
 npx thermoworks doneness --json
 ```
 
-### `thermoworks safe <serial>`
+### `thermoworks safe <serial>|--temp <value>`
 
 Show food-safety pasteurization progress for a probe. Reads the current channel temperature and, using USDA time-at-temperature data (7.0-log10 Salmonella for poultry, 6.5-log10 for beef and pork), reports whether the food is safe now or how long it must hold at this temperature. Pulling poultry, beef, or pork at a lower temperature is safe when the core holds long enough, and this tells you when that point is reached. Estimates only, not a replacement for official food-safety guidance.
 
 ```bash
 npx thermoworks safe ABC123 --channel 1
 npx thermoworks safe ABC123 --channel 1 --protein poultry --held 4
+npx thermoworks safe --temp 150f --protein poultry --held 0.5
 npx thermoworks safe ABC123 --json
 ```
 
 Options:
 - `--channel N` — Read a specific channel (1-9) instead of the device average
+- `--temp T` - Assess a manual temperature value such as `150f` or `74c` without logging in
 - `--protein P` — Table to use: `poultry` (default), `beef`, or `pork`
 - `--held N` — Minutes the core has already held at or above the current temperature
 - `--json` — Print the full assessment as JSON
@@ -711,7 +790,7 @@ Options:
 - `--to c|f` — Target unit for a bare number (ignored when the value has a suffix)
 - `--json` — Print `{ input, value, unit }`
 
-### `thermoworks journal <add|list|show|cost|import|rm>`
+### `thermoworks journal <add|list|show|cost|import|export|rm>`
 
 Keep a local logbook of finished cooks: what the cut was, its weight, how it turned out, what it cost, and notes for next time. Entries are stored in `~/.thermoworks/journal.json`. No credentials required.
 
@@ -721,6 +800,7 @@ npx thermoworks journal list
 npx thermoworks journal show 9029it
 npx thermoworks journal cost
 npx thermoworks journal import SMOKE123 --limit 10 --dry-run
+npx thermoworks journal export --format csv --output cooks.csv
 npx thermoworks journal rm 9029it
 ```
 
@@ -728,6 +808,7 @@ Options:
 - `add` flags: `--title` (required), `--meat`, `--weight` (pounds), `--rating` (1 to 5), `--cost-meat` (meat cost), `--cost-fuel` (fuel cost), `--notes`, `--device SN`, `--archive ID`.
 - `cost` — Summarize meat, fuel, and total spend across the logbook, plus average cost per pound over cooks that have both a cost and a weight. Add `--json` for machine-readable output.
 - `import` flags: `[SERIAL]` (defaults to the configured device), `--limit N` (default 20), `--dry-run`, `--json`. Requires credentials.
+- `export` flags: `--format json|csv` (default json), `--output PATH` to write a file instead of stdout.
 - `--json` — On `list`, `show`, `cost`, and `import`, output as JSON.
 
 Costs are currency-agnostic (enter whatever currency you use). When an entry records both a cost and a weight, `show` and `cost` also report the per-pound figure. Each entry gets a short id and a created timestamp. A missing or corrupt journal file is ignored rather than crashing. `import` pulls finished cooks from a device's cloud archives and deduplicates on the archive id, so re-running only adds new cooks.
@@ -874,4 +955,3 @@ npx thermoworks devices --json --redact
 ## License
 
 MIT
-

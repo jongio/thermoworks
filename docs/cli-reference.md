@@ -539,7 +539,63 @@ npx thermoworks alarm list --json
 
 - Requires valid credentials from environment variables or the OS keychain.
 
-## `thermoworks archives`
+## `thermoworks alarm suggest`
+
+Suggest pit and meat-probe alarm thresholds for a cut of meat, from the built-in meat
+profiles. Offline, so it needs no credentials or network access. It only prints the
+suggested thresholds and the matching `alarm set` commands; it never writes to a device.
+
+**Usage**
+
+```bash
+npx thermoworks alarm suggest <MEAT> [--pit-band <deg>] [--serial <SN>] [--meat-channel <1-9>] [--pit-channel <1-9>]
+```
+
+**Arguments**
+
+- `MEAT` - (Required) A meat name or alias (for example `brisket`, `pulled pork`, `ribs`).
+  Run `thermoworks doneness` to see the built-in cuts.
+
+**Options**
+
+- `--pit-band <deg>` - Half-width of the pit alarm band in degrees Fahrenheit. Default 25.
+- `--serial <SN>` - Fill the suggested commands with this serial instead of a placeholder.
+- `--meat-channel <1-9>` - Channel for the meat probe in the suggested commands.
+- `--pit-channel <1-9>` - Channel for the pit probe in the suggested commands.
+- `--json` - Output the suggestion as JSON.
+
+**Examples**
+
+```bash
+npx thermoworks alarm suggest brisket
+# Alarm suggestions for Brisket:
+#   Meat probe high: 203°F  (pull temp; carryover adds a few more while it rests)
+#   Pit band:        225-275°F  (target 250°F +/- 25)
+#
+# Set them with:
+#   thermoworks alarm set <SERIAL> --channel <MEAT_CH> --high 203
+#   thermoworks alarm set <SERIAL> --channel <PIT_CH> --high 275 --low 225
+
+npx thermoworks alarm suggest brisket --serial ABC123 --meat-channel 1 --pit-channel 2
+
+npx thermoworks alarm suggest ribs --json
+```
+
+**Output**
+
+- The meat-probe high alarm is set to the profile's pull temperature. By-feel cuts like
+  ribs have no numeric target, so only a pit-band command is suggested.
+- The pit band is centered on the profile's reference pit temperature, plus or minus
+  `--pit-band` degrees.
+- Without `--serial` and the channel flags, commands print with `<SERIAL>`, `<MEAT_CH>`,
+  and `<PIT_CH>` placeholders for you to fill in.
+- With `--json`, prints `{ meat, doneness, meatProbe, pit, commands }`.
+
+**Notes**
+
+- Suggestions are a starting point. Tune them for your cook, smoker, and target doneness.
+
+
 
 List or inspect archived cooking sessions for a device.
 
@@ -2061,7 +2117,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal cost`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal cost`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `alarm suggest`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

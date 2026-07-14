@@ -174,6 +174,27 @@ npx thermoworks alarm list --json    # machine-readable
 Only channels with a high or low alarm armed are shown. With `--json`, prints an array
 of `{ serial, deviceLabel, channel, channelLabel, alarmHigh, alarmLow }`.
 
+### `thermoworks alarm suggest`
+
+Suggest pit and meat-probe alarm thresholds for a cut of meat, from the built-in meat
+profiles. Offline, so it needs no login or network access. It only prints suggestions
+and the matching `alarm set` commands; it never writes to a device.
+
+```bash
+npx thermoworks alarm suggest brisket
+npx thermoworks alarm suggest brisket --pit-band 30
+npx thermoworks alarm suggest brisket --serial <serial> --meat-channel 1 --pit-channel 2
+npx thermoworks alarm suggest ribs --json
+```
+
+The meat-probe high alarm is set to the profile's pull temperature (skipped for
+by-feel cuts like ribs). The pit band is centered on the profile's reference pit
+temperature, plus or minus `--pit-band` degrees (default 25). Pass `--serial`,
+`--meat-channel`, and `--pit-channel` to turn the suggested commands into ready-to-run
+lines; otherwise they print with `<SERIAL>`, `<MEAT_CH>`, and `<PIT_CH>` placeholders.
+
+With `--json`, prints `{ meat, doneness, meatProbe, pit, commands }`.
+
 
 ### `thermoworks calibration <serial>`
 

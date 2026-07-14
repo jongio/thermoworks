@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { account } from "./commands/account.js";
 import { alarmClear, alarmList, alarmSet } from "./commands/alarm.js";
+import { alarmSuggest } from "./commands/alarm-suggest.js";
 import { archives, parseArchivesArgs } from "./commands/archives.js";
 import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import { backup } from "./commands/backup.js";
@@ -67,6 +68,7 @@ Commands:
   alarm set        Set alarm thresholds on a device channel
   alarm clear      Clear alarm thresholds on a device channel
   alarm list       List configured alarm thresholds (all devices or one SERIAL)
+  alarm suggest    Suggest pit and meat-probe alarm thresholds for a cut of meat
 
   calibration <SERIAL>  Show NIST-traceable calibration data for a device
     --interval-months N  Recalibration interval for the due-date check (default: 12)
@@ -260,11 +262,14 @@ async function main(): Promise<void> {
 				case "list":
 					await alarmList(args.slice(2), options);
 					break;
+				case "suggest":
+					await alarmSuggest(args.slice(2), options);
+					break;
 				default:
 					console.error(
 						subcommand
 							? `Unknown alarm command: ${subcommand}`
-							: "Usage: thermoworks alarm <set|clear|list>",
+							: "Usage: thermoworks alarm <set|clear|list|suggest>",
 					);
 					process.exit(1);
 			}

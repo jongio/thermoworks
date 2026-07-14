@@ -762,6 +762,25 @@ Options:
 - `--size S` — Preset rise instead of `--rise`: `small` (3), `medium` (6, default), or `large` (10)
 - `--json` — Print the full assessment as JSON
 
+### `thermoworks season`
+
+Scale a dry rub or a brine to the weight of the cut. Runs fully offline: no login, no network, just built-in recipes and standard ratios. Handy while you are still at the counter deciding how much rub to mix or how much salt a brine needs.
+
+```bash
+npx thermoworks season --weight 12
+npx thermoworks season --weight 12 --recipe coffee
+npx thermoworks season --weight 8 --brine
+npx thermoworks season --weight 10 --dry-brine
+npx thermoworks season --list
+```
+
+Options:
+- `--weight LB` — Weight of the meat in pounds (required unless `--list`)
+- `--recipe NAME` — Dry-rub recipe to scale (run `--list` to see them)
+- `--brine` — Wet brine plan (water, salt, sugar, and a time range) instead of a rub
+- `--dry-brine` — Dry brine plan (salt and a fridge-rest range) instead of a rub
+- `--list` — Show the built-in rub recipes
+- `--json` — Print the plan as JSON
 ### `thermoworks wrap <serial>`
 
 Advise whether to wrap the cook now (the Texas crutch). Wrapping in foil or paper pushes meat through the stall faster and protects the bark, but wrap too early and the bark never sets. This reads the trailing probe history, then combines the current temperature, the wrap window, stall detection, and rate of climb into a single call: wrap now, hold, too early, or done.

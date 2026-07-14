@@ -1511,6 +1511,9 @@ npx thermoworks carryover ABC123 --target 203 --json
 - Celsius readings are converted to Fahrenheit for the assessment.
 - The default rise is a rough heuristic. Set `--rise` from your own logs for a better estimate.
 
+## `thermoworks season`
+
+Scale a dry rub or a brine to the weight of a cut. Runs fully offline, reading only built-in recipes and standard ratios, so it needs no login and no network. Defaults to a dry rub; `--brine` and `--dry-brine` switch to the two brine plans.
 ## `thermoworks wrap`
 
 Advise whether to wrap the cook now (the Texas crutch). Wrapping in foil or butcher paper pushes meat through the stall faster and protects the bark, but wrapping too early keeps the bark from setting. The command reads the trailing probe history and combines the current temperature, the wrap window, stall detection, and rate of climb into a single call.
@@ -1520,11 +1523,18 @@ The call is one of: `wrap-now` (inside the window and either stalled or barely c
 **Usage**
 
 ```bash
+npx thermoworks season --weight <lb> [--recipe <name>] [--brine] [--dry-brine] [--list] [--json]
 npx thermoworks wrap <serial> --target N [--wrap-at N] [--limit N] [--json]
 ```
 
 **Options**
 
+- `--weight LB` - (Required unless `--list`) Weight of the meat in pounds.
+- `--recipe NAME` - Dry-rub recipe to scale. Run with `--list` to see the names. Defaults to `classic`.
+- `--brine` - Wet brine plan (water, salt, sugar, and a time range) instead of a rub.
+- `--dry-brine` - Dry brine plan (salt and a fridge-rest range) instead of a rub.
+- `--list` - Show the built-in rub recipes and their ingredients.
+- `--json` - Output the plan as JSON.
 - `<serial>` - (Required) Device serial number.
 - `--target N` - (Required) Target internal temperature in Fahrenheit.
 - `--wrap-at N` - Temperature where the wrap window opens (default: 160F).
@@ -1534,6 +1544,22 @@ npx thermoworks wrap <serial> --target N [--wrap-at N] [--limit N] [--json]
 **Examples**
 
 ```bash
+npx thermoworks season --weight 12
+# Classic BBQ rub for 12 lb (about 12 tbsp total):
+#   paprika        3 tbsp
+#   brown sugar    3 tbsp
+#   kosher salt    1.5 tbsp
+#   ...
+
+npx thermoworks season --weight 8 --brine
+# Wet brine for 8 lb:
+#   Water:  8 qt
+#   Salt:   378 g (about 2.8 cup kosher) at 5% salinity
+#   Sugar:  189 g (optional)
+#   Time:   8 to 12 hours, refrigerated
+
+npx thermoworks season --weight 10 --dry-brine
+npx thermoworks season --list
 npx thermoworks wrap ABC123 --target 203
 # Wrap check for ABC123: Wrap now
 #   Stalled 45m near 165°F. Wrapping now pushes through the stall.
@@ -1546,6 +1572,10 @@ npx thermoworks wrap ABC123 --target 203 --json
 
 **Notes**
 
+- Rub amounts scale at one tablespoon of finished rub per pound and are rounded to the nearest quarter tablespoon.
+- Wet brine salt is a percent of the water weight (5% by default); dry brine salt is a percent of the meat weight (1% by default).
+- Salt volumes assume Diamond Crystal kosher salt. Adjust if you use a denser salt like table or Morton.
+- `--brine` and `--dry-brine` cannot be combined.
 - Readings come from the device history series, the same source as `history` and `graph`.
 - Celsius readings are converted to Fahrenheit for the assessment.
 - The stall and rate signals reuse the same detection the `stall` analysis uses, so a `wrap-now` call lines up with an active stall.

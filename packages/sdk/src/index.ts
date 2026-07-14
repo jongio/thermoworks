@@ -52,6 +52,17 @@ export {
 	nextReplayIndex,
 } from "./replay.js";
 export type {
+	DryBrinePlan,
+	RubIngredient,
+	RubPlan,
+	RubRecipe,
+	SeasoningIngredientAmount,
+	SeasoningOptions,
+	SeasoningPlan,
+	WetBrinePlan,
+} from "./season.js";
+export { calculateSeasoning, listRubRecipes, resolveRubRecipe } from "./season.js";
+export type {
 	RapidChangeOptions,
 	RapidChangeResult,
 	StallOptions,

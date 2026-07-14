@@ -45,6 +45,7 @@ import { plan } from "./commands/plan.js";
 import { replay } from "./commands/replay.js";
 import { safe } from "./commands/safe.js";
 import { search } from "./commands/search.js";
+import { season } from "./commands/season.js";
 import { session } from "./commands/session.js";
 import { stall } from "./commands/stall.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
@@ -178,6 +179,12 @@ Commands:
     --rise DEG     Expected carryover rise in degrees
     --size SIZE    Preset rise: small, medium (default), or large
 
+  season           Scale a rub or brine to the weight of a cut (offline)
+    --weight LB    Weight of the meat in pounds (required)
+    --recipe NAME  Rub recipe to use (see --list)
+    --brine        Wet brine plan instead of a rub
+    --dry-brine    Dry brine plan instead of a rub
+    --list         Show the built-in rub recipes
   wrap <SERIAL>    Advise whether to wrap the cook now (the Texas crutch)
     --target F     Target internal temperature in Fahrenheit (required)
     --wrap-at F    Temperature where the wrap window opens (default: 160)
@@ -455,6 +462,10 @@ async function main(): Promise<void> {
 
 		case "carryover":
 			await carryover(args.slice(1), options);
+			break;
+
+		case "season":
+			await season(args.slice(1), options);
 			break;
 
 		case "wrap":

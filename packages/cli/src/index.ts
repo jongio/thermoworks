@@ -26,6 +26,7 @@ import { device } from "./commands/device.js";
 import { devices, parseDevicesArgs } from "./commands/devices.js";
 import { doctor } from "./commands/doctor.js";
 import { doneness } from "./commands/doneness.js";
+import { eta } from "./commands/eta.js";
 import { events, parseEventsArgs } from "./commands/events.js";
 import { exportData } from "./commands/export.js";
 import { fan } from "./commands/fan.js";
@@ -88,6 +89,10 @@ Commands:
 
   temp <SERIAL>    Print a single temperature value for scripting
     --channel N    Read a specific channel (1-9) instead of the average
+
+  eta <SERIAL>     Estimate time-to-target for a probe channel (one-shot, for scripts)
+    --channel N    Probe channel to predict (1-9, default: 1)
+    --target N     Target temperature (default: the channel's high alarm)
 
   stall <SERIAL>   Check whether a cook has stalled (one-shot, for scripts)
     --threshold N  Max temperature spread to count as a stall (default: 2)
@@ -448,6 +453,10 @@ async function main(): Promise<void> {
 
 		case "temp":
 			await temp(args.slice(1), options);
+			break;
+
+		case "eta":
+			await eta(args.slice(1), options);
 			break;
 
 		case "stall":

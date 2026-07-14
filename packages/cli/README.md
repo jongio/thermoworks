@@ -280,6 +280,29 @@ if (( $(npx thermoworks temp M100009168) > 200 )); then echo "pull it"; fi
 
 Exits non-zero if no reading is available.
 
+### `thermoworks eta <serial>`
+
+Estimate time-to-target for a single probe channel, in one shot, for scripts and status lines.
+Reads the channel's current temperature and rate of change, then runs the same done-time
+prediction that powers the live `watch` ETA. The target is the channel's enabled high alarm
+unless you pass `--target`.
+
+```bash
+npx thermoworks eta M100009168                      # channel 1 to its high alarm
+npx thermoworks eta M100009168 --channel 2          # a specific probe
+npx thermoworks eta M100009168 --target 203         # override the target
+npx thermoworks eta M100009168 --json               # full prediction object
+```
+
+Options:
+- `--channel N` — Probe channel to predict (1-9, default: 1)
+- `--target N` — Target temperature (default: the channel's high alarm value)
+- `--json` — Emit `{ serial, channel, current, target, units, rateOfChange, estimatedMinutes, estimatedTime, confidence, method }`
+
+Prints `Done.` when the probe is already at or past the target, and a `Cannot estimate` note
+when the temperature is not rising. Exits non-zero when the channel has no reading or no target
+(no high alarm and no `--target`).
+
 ### `thermoworks stall <serial>`
 
 Check whether a cook has stalled, in one shot, for scripts and cron jobs. Pulls the device

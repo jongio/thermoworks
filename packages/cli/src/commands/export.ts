@@ -20,24 +20,26 @@ export interface ExportOptions {
 	archiveId?: string;
 	format: "csv" | "json" | "influx";
 	output?: string;
+	downsample?: number;
 }
 
 /**
  * Parse export-specific CLI args from remaining argv after global flags.
- * Expected: export SERIAL [--archive ID] [--format csv|json|influx] [--output PATH]
+ * Expected: export SERIAL [--archive ID] [--format csv|json|influx] [--output PATH] [--downsample SECONDS]
  */
 export function parseExportArgs(args: string[]): ExportOptions {
 	// args[0] is "export", args[1] is SERIAL
 	const serial = args[1];
 	if (!serial || serial.startsWith("--")) {
 		throw new Error(
-			"Usage: thermoworks export SERIAL [--archive ID] [--format csv|json|influx] [--output PATH]",
+			"Usage: thermoworks export SERIAL [--archive ID] [--format csv|json|influx] [--output PATH] [--downsample SECONDS]",
 		);
 	}
 
 	let archiveId: string | undefined;
 	let format: "csv" | "json" | "influx" = "json";
 	let output: string | undefined;
+	let downsample: number | undefined;
 
 	for (let i = 2; i < args.length; i++) {
 		switch (args[i]) {
@@ -58,12 +60,23 @@ export function parseExportArgs(args: string[]): ExportOptions {
 				output = args[++i];
 				if (!output) throw new Error("--output requires a file path");
 				break;
+			case "--downsample":
+				{
+					const val = args[++i];
+					if (!val) throw new Error("--downsample requires a value in seconds");
+					const n = Number(val);
+					if (!Number.isInteger(n) || n <= 0) {
+						throw new Error("--downsample must be a positive integer number of seconds");
+					}
+					downsample = n;
+				}
+				break;
 			default:
 				throw new Error(`Unknown option: ${args[i]}`);
 		}
 	}
 
-	return { serial, archiveId, format, output };
+	return { serial, archiveId, format, output, downsample };
 }
 
 /**
@@ -89,6 +102,33 @@ export function flattenArchive(archive: Archive): ExportRow[] {
 	// Sort by timestamp ascending for consistent output
 	rows.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 	return rows;
+}
+
+/**
+ * Downsample rows to at most one reading per channel per fixed time bucket.
+ * Buckets are `intervalSeconds` wide, aligned to the Unix epoch, so the same
+ * wall-clock instants bucket identically across channels and exports. Rows must
+ * be sorted ascending by timestamp (as flattenArchive returns them); the
+ * earliest reading in each channel/bucket is kept. Rows with an unparseable
+ * timestamp are always kept so no data is silently dropped.
+ */
+export function downsampleRows(rows: ExportRow[], intervalSeconds: number): ExportRow[] {
+	const bucketMs = intervalSeconds * 1000;
+	const seen = new Set<string>();
+	const out: ExportRow[] = [];
+	for (const row of rows) {
+		const ms = new Date(row.timestamp).getTime();
+		if (Number.isNaN(ms)) {
+			out.push(row);
+			continue;
+		}
+		const bucket = Math.floor(ms / bucketMs);
+		const key = `${row.channel}|${bucket}`;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		out.push(row);
+	}
+	return out;
 }
 
 /** Format rows as CSV with header line. */
@@ -187,7 +227,9 @@ export async function exportData(args: string[]): Promise<void> {
 			archive = archives[0]!;
 		}
 
-		const rows = maybeRedact(flattenArchive(archive));
+		const flat = flattenArchive(archive);
+		const sampled = options.downsample ? downsampleRows(flat, options.downsample) : flat;
+		const rows = maybeRedact(sampled);
 		let content: string;
 		if (options.format === "csv") {
 			content = formatCsv(rows);

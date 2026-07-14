@@ -24,6 +24,7 @@ thermoworks mcp start
 | `get_device_channels` | Get temperature/sensor readings for a device |
 | `get_average_temperature` | Get average temperature across device channels |
 | `get_live_cook_snapshot` | Get one JSON snapshot with devices, channels, alarms, battery, firmware, and active session info |
+| `get_alarm_targets` | List armed high/low alarm thresholds with current readings and alarming state |
 | `get_events` | Get device events (alarms, status changes) |
 | `get_archives` | Get historical session archives |
 | `search_archives` | Search archives across all devices by label, date range, or text query |
@@ -40,6 +41,18 @@ thermoworks mcp start
 | `end_session` | End the active monitoring session on a device |
 | `get_firmware_status` | Check firmware update status for all devices |
 | `get_eta` | Predict when a probe will reach its target temperature from the current rate of change |
+
+## Guided Prompts
+
+Prompts are user-initiated templates the assistant can run to get a starting point for common questions. They return a step-by-step plan that chains the tools above, so they add guidance without adding any tools.
+
+| Prompt | Arguments | Description |
+|--------|-----------|-------------|
+| `diagnose_cook` | `serial` (optional) | Walk the live cook and report whether temps are climbing, stalled, or need attention, with next steps |
+| `when_to_wrap` | `serial` (optional), `channel` (optional) | Evaluate wrap timing against the stall and call whether to wrap now, wait, or that the stall already broke |
+| `food_safety_check` | `serial` (optional) | Confirm the cook cleared the danger zone in time and reached a safe internal temperature for the cut |
+
+Leave `serial` empty and the prompt picks the device with an active cook.
 
 ## Authentication
 

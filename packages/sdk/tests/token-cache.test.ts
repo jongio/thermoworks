@@ -125,12 +125,22 @@ describe("token-cache module", () => {
 	});
 
 	describe("writeTokenCache (symlink and error paths)", () => {
-		it("skips write when cache path is a symlink", async () => {
+		it("skips write when cache path is a symlink", async (ctx) => {
 			const { symlink } = await import("node:fs/promises");
 			const realFile = join(testDir, "real-cache.json");
 			const linkPath = join(testDir, "symlinked-cache.json");
 			await writeFile(realFile, "{}", "utf8");
-			await symlink(realFile, linkPath);
+			try {
+				await symlink(realFile, linkPath);
+			} catch (err) {
+				// Windows requires elevated privileges or Developer Mode to create
+				// symlinks (EPERM). The symlink guard is fully exercised on POSIX;
+				// skip here rather than fail spuriously where symlinks are unsupported.
+				if ((err as NodeJS.ErrnoException).code === "EPERM") {
+					ctx.skip();
+				}
+				throw err;
+			}
 
 			const warnSpy = vi.spyOn(process, "emitWarning").mockImplementation(() => {});
 			const { writeTokenCache } = await import("../src/token-cache.js");

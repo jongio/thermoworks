@@ -350,4 +350,27 @@ describe("useAlarmSnooze", () => {
 		// Storage should be cleaned up
 		expect(localStorage.getItem(ALARM_SNOOZE_STORAGE_KEY)).toBeNull();
 	});
+
+	it("shares a single interval across multiple mounted instances", () => {
+		vi.useFakeTimers({ shouldAdvanceTime: false });
+		vi.setSystemTime(new Date("2025-06-01T00:00:00Z"));
+		const setIntervalSpy = vi.spyOn(globalThis, "setInterval");
+
+		const a = renderHook(() => useAlarmSnooze());
+		const b = renderHook(() => useAlarmSnooze());
+		const c = renderHook(() => useAlarmSnooze());
+
+		// No snooze active yet, so no interval should be running.
+		expect(setIntervalSpy).not.toHaveBeenCalled();
+
+		act(() => {
+			a.result.current.snooze("S1", "1", "high", 5);
+		});
+
+		// One shared interval drives all three instances, not one per instance.
+		expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+		expect(a.result.current.isSnoozed("S1", "1", "high")).toBe(true);
+		expect(b.result.current.isSnoozed("S1", "1", "high")).toBe(true);
+		expect(c.result.current.isSnoozed("S1", "1", "high")).toBe(true);
+	});
 });

@@ -89,6 +89,63 @@ export function formatSnoozeRemaining(ms: number): string {
 	return `${minutes}m ${seconds}s`;
 }
 
+// ─── Shared countdown ticker ─────────────────────────────────────────────────
+//
+// A single interval drives every mounted hook instance. Registering the timer
+// per hook meant one active snooze spun N intervals (one per ChannelReading);
+// the shared ticker keeps exactly one interval while any snooze is active and
+// stops it when the last consumer unmounts or all snoozes expire.
+
+const tickListeners = new Set<() => void>();
+let sharedTimer: ReturnType<typeof setInterval> | null = null;
+
+/** True when at least one snooze has not yet expired. */
+function hasActiveSnooze(now = Date.now()): boolean {
+	return Object.values(loadSnoozeMap()).some((expiry) => expiry > now);
+}
+
+function stopSharedTicker(): void {
+	if (sharedTimer !== null) {
+		clearInterval(sharedTimer);
+		sharedTimer = null;
+	}
+}
+
+function startSharedTicker(): void {
+	if (sharedTimer !== null || tickListeners.size === 0 || !hasActiveSnooze()) return;
+	sharedTimer = setInterval(() => {
+		// Prune expired entries once, centrally, then notify every consumer.
+		const map = loadSnoozeMap();
+		const now = Date.now();
+		let dirty = false;
+		for (const [key, expiry] of Object.entries(map)) {
+			if (expiry <= now) {
+				delete map[key];
+				dirty = true;
+			}
+		}
+		if (dirty) saveSnoozeMap(map);
+		for (const listener of tickListeners) listener();
+		if (!hasActiveSnooze(now)) stopSharedTicker();
+	}, 1000);
+}
+
+/** Register a re-render callback with the shared ticker; returns an unsubscribe. */
+function subscribeToSnoozeTicker(listener: () => void): () => void {
+	tickListeners.add(listener);
+	startSharedTicker();
+	return () => {
+		tickListeners.delete(listener);
+		if (tickListeners.size === 0) stopSharedTicker();
+	};
+}
+
+/** Notify consumers and (re)start the ticker after a snooze is added or removed. */
+function notifySnoozeChange(): void {
+	for (const listener of tickListeners) listener();
+	startSharedTicker();
+}
+
 // ─── React Hook ──────────────────────────────────────────────────────────────
 
 interface UseAlarmSnoozeResult {
@@ -115,35 +172,16 @@ interface UseAlarmSnoozeResult {
  * and `getRemainingMs` return fresh values on each render cycle.
  */
 export function useAlarmSnooze(): UseAlarmSnoozeResult {
-	const [tick, setTick] = useState(0);
+	const [, setTick] = useState(0);
 
-	// Re-render every second while snoozes are active for countdown display.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: tick drives countdown timer lifecycle
-	useEffect(() => {
-		const map = loadSnoozeMap();
-		const now = Date.now();
-
-		// Prune expired entries on each cycle.
-		let dirty = false;
-		for (const [key, expiry] of Object.entries(map)) {
-			if (expiry <= now) {
-				delete map[key];
-				dirty = true;
-			}
-		}
-		if (dirty) saveSnoozeMap(map);
-
-		const hasActive = Object.values(map).some((expiry) => expiry > now);
-		if (!hasActive) return;
-
-		const id = setInterval(() => setTick((t) => t + 1), 1000);
-		return () => clearInterval(id);
-	}, [tick]);
+	// Subscribe to the shared countdown ticker so this consumer re-renders once
+	// per second while any snooze is active (a single interval drives them all).
+	useEffect(() => subscribeToSnoozeTicker(() => setTick((t) => t + 1)), []);
 
 	const snooze = useCallback(
 		(serial: string, channelNumber: string, direction: "high" | "low", minutes: number) => {
 			snoozeAlarm(snoozeKey(serial, channelNumber, direction), minutes);
-			setTick((t) => t + 1);
+			notifySnoozeChange();
 		},
 		[],
 	);
@@ -151,7 +189,7 @@ export function useAlarmSnooze(): UseAlarmSnoozeResult {
 	const unsnoozeFn = useCallback(
 		(serial: string, channelNumber: string, direction: "high" | "low") => {
 			unsnoozeAlarm(snoozeKey(serial, channelNumber, direction));
-			setTick((t) => t + 1);
+			notifySnoozeChange();
 		},
 		[],
 	);

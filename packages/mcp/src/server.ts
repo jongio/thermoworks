@@ -51,7 +51,93 @@ export function resetClient(): void {
 
 type ToolResult = { content: Array<{ type: "text"; text: string }> };
 
+/**
+ * Field names whose values are user- or device-provided free text. Their values
+ * are fenced before appearing in tool output an LLM reads, so injected text in a
+ * device label cannot be interpreted as instructions. Constrained fields (status,
+ * type, units, numeric values, serials/ids) are intentionally omitted: they are
+ * not free-text vectors and fencing them would only add noise.
+ */
+const UNTRUSTED_STRING_FIELDS: ReadonlySet<string> = new Set([
+	"label",
+	"deviceLabel",
+	"channelLabel",
+	"sessionLabel",
+	"firmware",
+	"notes",
+]);
+
+/**
+ * Wrap an untrusted, cloud-provided free-text value in an explicit data boundary
+ * so an LLM consuming the tool output treats it strictly as data, never as
+ * instructions. Strips control characters, collapses whitespace (so a multi-line
+ * payload cannot pose as separate instruction lines), caps length, and defuses
+ * the boundary markers to prevent breakout. See
+ * `_shared/PROMPT_INJECTION_PROTOCOL.md`.
+ */
+export function fenceUntrusted(value: string | null | undefined): string | null {
+	if (value == null) return null;
+	const cleaned = value
+		// biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally stripping control chars
+		.replace(/[\u0000-\u001f\u007f\u009b]/g, " ")
+		.replace(/\s+/g, " ")
+		.trim()
+		.slice(0, 200)
+		.replaceAll("[UNTRUSTED_DATA]", "(UNTRUSTED DATA)")
+		.replaceAll("[/UNTRUSTED_DATA]", "(/UNTRUSTED DATA)");
+	if (cleaned.length === 0) return cleaned;
+	return `[UNTRUSTED_DATA]${cleaned}[/UNTRUSTED_DATA]`;
+}
+
+/**
+ * Recursively fence untrusted free-text fields (see {@link UNTRUSTED_STRING_FIELDS})
+ * anywhere in a tool-output value, plus the health tool's `issues` string array.
+ * Dates and other non-plain objects pass through unchanged so JSON serialization
+ * is unaffected.
+ */
+export function fenceToolOutput(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(fenceToolOutput);
+	if (
+		value !== null &&
+		typeof value === "object" &&
+		Object.getPrototypeOf(value) === Object.prototype
+	) {
+		const out: Record<string, unknown> = {};
+		for (const [key, entry] of Object.entries(value)) {
+			if (typeof entry === "string" && UNTRUSTED_STRING_FIELDS.has(key)) {
+				out[key] = fenceUntrusted(entry);
+			} else if (key === "issues" && Array.isArray(entry)) {
+				out[key] = entry.map((item) =>
+					typeof item === "string" ? fenceUntrusted(item) : fenceToolOutput(item),
+				);
+			} else {
+				out[key] = fenceToolOutput(entry);
+			}
+		}
+		return out;
+	}
+	return value;
+}
+
+/** Serialize a tool payload to fenced JSON text (untrusted strings boundary-marked). */
+function toolJson(payload: unknown): ToolResult {
+	return { content: [{ type: "text", text: JSON.stringify(fenceToolOutput(payload), null, 2) }] };
+}
+
 async function handleTool<T>(fn: (client: ThermoworksCloud) => Promise<T>): Promise<ToolResult> {
+	const client = getClient();
+	const result = await fn(client);
+	return toolJson(result);
+}
+
+/**
+ * Serialize a trusted tool result WITHOUT untrusted-data fencing. Reserved for
+ * ThermoWorks-authored global reference content (e.g. the temperature guide)
+ * that a malicious peer cannot control, so fencing would only add noise.
+ */
+async function handleReferenceTool<T>(
+	fn: (client: ThermoworksCloud) => Promise<T>,
+): Promise<ToolResult> {
 	const client = getClient();
 	const result = await fn(client);
 	return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
@@ -185,7 +271,7 @@ export function createServer(): McpServer {
 					content: [{ type: "text", text: "No temperature readings available for this device" }],
 				};
 			}
-			return { content: [{ type: "text", text: JSON.stringify(avg, null, 2) }] };
+			return { content: [{ type: "text", text: JSON.stringify(fenceToolOutput(avg), null, 2) }] };
 		},
 	);
 
@@ -208,25 +294,13 @@ export function createServer(): McpServer {
 				}),
 			);
 			const channels = snapshots.flatMap((snapshot) => snapshot.channels);
-			return {
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(
-							{
-								generatedAt: new Date().toISOString(),
-								deviceCount: snapshots.length,
-								channelCount: channels.length,
-								alarmingChannelCount: channels.filter((channel) => channel.alarmState !== "none")
-									.length,
-								devices: snapshots,
-							},
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return toolJson({
+				generatedAt: new Date().toISOString(),
+				deviceCount: snapshots.length,
+				channelCount: channels.length,
+				alarmingChannelCount: channels.filter((channel) => channel.alarmState !== "none").length,
+				devices: snapshots,
+			});
 		},
 	);
 
@@ -267,23 +341,12 @@ export function createServer(): McpServer {
 				}),
 			);
 			const targets = targetGroups.flat();
-			return {
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(
-							{
-								generatedAt: new Date().toISOString(),
-								deviceCount: devices.length,
-								targetCount: targets.length,
-								targets,
-							},
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return toolJson({
+				generatedAt: new Date().toISOString(),
+				deviceCount: devices.length,
+				targetCount: targets.length,
+				targets,
+			});
 		},
 	);
 
@@ -380,18 +443,7 @@ export function createServer(): McpServer {
 			const client = getClient();
 			const history = await client.getHistory(serial);
 			const readings = limit ? history.readings.slice(-limit) : history.readings;
-			return {
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(
-							{ deviceId: history.deviceId, readingCount: readings.length, readings },
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return toolJson({ deviceId: history.deviceId, readingCount: readings.length, readings });
 		},
 	);
 
@@ -402,7 +454,7 @@ export function createServer(): McpServer {
 				"Get the cooking temperature reference guide with categories and recommendations",
 			inputSchema: z.object({}),
 		},
-		() => handleTool((client) => client.getTemperatureGuide()),
+		() => handleReferenceTool((client) => client.getTemperatureGuide()),
 	);
 
 	server.registerTool(
@@ -443,23 +495,12 @@ export function createServer(): McpServer {
 			await client.setAlarm(serial, channel, config);
 			const updated = await client.getDeviceChannel(serial, channel);
 
-			return {
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(
-							{
-								serial,
-								channel,
-								alarmHigh: updated.alarmHigh,
-								alarmLow: updated.alarmLow,
-							},
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return toolJson({
+				serial,
+				channel,
+				alarmHigh: updated.alarmHigh,
+				alarmLow: updated.alarmLow,
+			});
 		},
 	);
 
@@ -480,7 +521,7 @@ export function createServer(): McpServer {
 					content: [{ type: "text", text: `No fan controller found for device ${serial}` }],
 				};
 			}
-			return { content: [{ type: "text", text: JSON.stringify(state, null, 2) }] };
+			return { content: [{ type: "text", text: JSON.stringify(fenceToolOutput(state), null, 2) }] };
 		},
 	);
 
@@ -583,7 +624,9 @@ export function createServer(): McpServer {
 				});
 			}
 
-			return { content: [{ type: "text", text: JSON.stringify(results, null, 2) }] };
+			return {
+				content: [{ type: "text", text: JSON.stringify(fenceToolOutput(results), null, 2) }],
+			};
 		},
 	);
 
@@ -674,18 +717,11 @@ export function createServer(): McpServer {
 			});
 
 			const limited = allResults.slice(0, effectiveLimit);
-			return {
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(
-							{ totalMatches: allResults.length, returned: limited.length, archives: limited },
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return toolJson({
+				totalMatches: allResults.length,
+				returned: limited.length,
+				archives: limited,
+			});
 		},
 	);
 
@@ -707,7 +743,12 @@ export function createServer(): McpServer {
 					? Math.round((new Date(archive.end).getTime() - new Date(archive.start).getTime()) / 1000)
 					: null;
 			return {
-				content: [{ type: "text", text: JSON.stringify({ ...archive, durationSeconds }, null, 2) }],
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(fenceToolOutput({ ...archive, durationSeconds }), null, 2),
+					},
+				],
 			};
 		},
 	);
@@ -783,32 +824,21 @@ export function createServer(): McpServer {
 				formatted = rem > 0 ? `~${hrs}h ${rem}min remaining` : `~${hrs}h remaining`;
 			}
 
-			return {
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(
-							{
-								serial,
-								channel,
-								current,
-								target,
-								rateOfChange: rate,
-								units: ch.units,
-								prediction: {
-									estimatedMinutes: prediction.estimatedMinutes,
-									estimatedTime: prediction.estimatedTime,
-									confidence: prediction.confidence,
-									method: prediction.method,
-								},
-								formatted,
-							},
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return toolJson({
+				serial,
+				channel,
+				current,
+				target,
+				rateOfChange: rate,
+				units: ch.units,
+				prediction: {
+					estimatedMinutes: prediction.estimatedMinutes,
+					estimatedTime: prediction.estimatedTime,
+					confidence: prediction.confidence,
+					method: prediction.method,
+				},
+				formatted,
+			});
 		},
 	);
 
@@ -884,12 +914,14 @@ export function createServer(): McpServer {
 						? "low"
 						: "none";
 
-				// Determine overall urgency from health issues, alarms, and firmware
+				// Determine overall urgency from health issues, alarms, and firmware.
+				// An active alarm is the most urgent signal (consistent with the CLI
+				// `devices --sort health` triage, where an alarm outranks stale/
+				// battery/offline criticals), so it escalates to critical.
 				let urgency = health.overall;
-				if (alarmState !== "none" && urgency === "good") {
-					urgency = "warning";
-				}
-				if (firmwareUpdateAvailable && urgency === "good") {
+				if (alarmState !== "none") {
+					urgency = "critical";
+				} else if (firmwareUpdateAvailable && urgency === "good") {
 					urgency = "warning";
 				}
 
@@ -928,23 +960,12 @@ export function createServer(): McpServer {
 				return b.issues.length - a.issues.length;
 			});
 
-			return {
-				content: [
-					{
-						type: "text",
-						text: JSON.stringify(
-							{
-								generatedAt: new Date().toISOString(),
-								deviceCount: filtered.length,
-								totalDevices: devices.length,
-								devices: filtered,
-							},
-							null,
-							2,
-						),
-					},
-				],
-			};
+			return toolJson({
+				generatedAt: new Date().toISOString(),
+				deviceCount: filtered.length,
+				totalDevices: devices.length,
+				devices: filtered,
+			});
 		},
 	);
 

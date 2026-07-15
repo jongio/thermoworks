@@ -8,13 +8,28 @@ import { DeviceCard } from "./DeviceCard.tsx";
 interface SortableDeviceCardProps {
 	item: DeviceWithChannels;
 	client: ThermoworksWebClient;
+	/** Whether this device is marked as a favorite. */
+	isFavorite?: boolean;
+	/** Whether this device is hidden (shown only via "Show hidden" toggle). */
+	isHidden?: boolean;
+	/** Callback to toggle this device's favorite status. */
+	onToggleFavorite?: (serial: string) => void;
+	/** Callback to toggle this device's hidden status. */
+	onToggleHidden?: (serial: string) => void;
 }
 
 /**
  * Wrapper around DeviceCard that integrates with @dnd-kit/sortable.
  * Renders a drag handle and applies transform/transition styles during drag.
  */
-export function SortableDeviceCard({ item, client }: SortableDeviceCardProps) {
+export function SortableDeviceCard({
+	item,
+	client,
+	isFavorite,
+	isHidden,
+	onToggleFavorite,
+	onToggleHidden,
+}: SortableDeviceCardProps) {
 	const {
 		attributes,
 		listeners,
@@ -51,7 +66,14 @@ export function SortableDeviceCard({ item, client }: SortableDeviceCardProps) {
 				<GripVertical className="h-4 w-4" />
 			</button>
 			<div className="flex-1 min-w-0">
-				<DeviceCard item={item} client={client} />
+				<DeviceCard
+					item={item}
+					client={client}
+					isFavorite={isFavorite}
+					isHidden={isHidden}
+					onToggleFavorite={onToggleFavorite}
+					onToggleHidden={onToggleHidden}
+				/>
 			</div>
 		</div>
 	);

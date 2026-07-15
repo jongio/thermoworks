@@ -17,7 +17,7 @@ export const COMMANDS: CommandSpec[] = [
 	{ name: "calibration", subcommands: [] },
 	{ name: "copilot", subcommands: ["setup", "status", "remove"] },
 	{ name: "data-usage", subcommands: [] },
-	{ name: "devices", subcommands: [] },
+	{ name: "devices", subcommands: ["--sort", "--critical"] },
 	{ name: "device", subcommands: ["rename", "reset-minmax"] },
 	{ name: "mcp", subcommands: ["start"] },
 	{ name: "watch", subcommands: ["--until-alarm", "--timeout"] },

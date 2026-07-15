@@ -1,7 +1,10 @@
 import {
 	type AlarmState,
+	assessDeviceHealth,
+	type Device,
 	type DeviceChannel,
 	type DeviceFilter,
+	type DeviceHealth,
 	formatTimeAgo,
 	getChannelAlarmState,
 	ThermoworksCloud,
@@ -16,6 +19,10 @@ export interface DevicesOptions extends OutputOptions {
 	channels?: boolean;
 	/** Optional filter applied to the device list. */
 	filter?: DeviceFilter;
+	/** Sort devices by health priority (alarms first, then critical, warning, good). */
+	sortByHealth?: boolean;
+	/** Only show devices needing attention (alarming, critical, or warning health). */
+	criticalOnly?: boolean;
 }
 
 /** Parse a named flag value from args (e.g., "--type" "node" → "node"). */
@@ -70,12 +77,64 @@ export function parseDevicesArgs(args: string[], base: OutputOptions): DevicesOp
 	}
 
 	if (Object.keys(filter).length > 0) options.filter = filter;
+
+	// --sort health
+	const sort = getFlagValue(args, "--sort");
+	if (sort !== undefined) {
+		if (sort !== "health") {
+			console.error(`Invalid --sort value: ${sort}. Supported values: health`);
+			process.exit(1);
+		}
+		options.sortByHealth = true;
+	}
+
+	// --critical
+	if (args.includes("--critical")) {
+		options.criticalOnly = true;
+	}
+
 	return options;
 }
 
 const ANSI_RED = "\x1b[31m";
+const ANSI_YELLOW = "\x1b[33m";
+const ANSI_GREEN = "\x1b[32m";
 const ANSI_BLUE = "\x1b[34m";
 const ANSI_RESET = "\x1b[0m";
+
+/**
+ * Compute a numeric health priority for sorting.
+ *
+ * Lower values sort first (most urgent). Alarm state is checked separately
+ * from `assessDeviceHealth` because the SDK health assessment does not
+ * cover channel alarm state.
+ *
+ * Priority 0: active channel alarm (high or low)
+ * Priority 1: critical overall health (stale, low battery, offline combined)
+ * Priority 2: warning overall health
+ * Priority 3: good (healthy)
+ */
+export function computeHealthPriority(health: DeviceHealth, channels: DeviceChannel[]): number {
+	const hasAlarm = channels.some((ch) => getChannelAlarmState(ch) !== "none");
+	if (hasAlarm) return 0;
+	if (health.overall === "critical") return 1;
+	if (health.overall === "warning") return 2;
+	return 3;
+}
+
+/** Format a colored health tag for terminal display. */
+function formatHealthTag(priority: number): string {
+	switch (priority) {
+		case 0:
+			return `${ANSI_RED}[ALARM]${ANSI_RESET}`;
+		case 1:
+			return `${ANSI_RED}[CRITICAL]${ANSI_RESET}`;
+		case 2:
+			return `${ANSI_YELLOW}[WARNING]${ANSI_RESET}`;
+		default:
+			return `${ANSI_GREEN}[OK]${ANSI_RESET}`;
+	}
+}
 
 /** Format alarm state for display, applying ANSI color when alarming. */
 function formatAlarmState(alarm: AlarmState): string {
@@ -103,6 +162,7 @@ export function formatChannelLine(channel: DeviceChannel, index: number): string
 
 export async function devices(options: DevicesOptions = { json: false }): Promise<void> {
 	const showChannels = options.channels ?? true;
+	const useHealth = options.sortByHealth || options.criticalOnly;
 
 	const creds = await getCredentials();
 	if (!creds) {
@@ -115,9 +175,9 @@ export async function devices(options: DevicesOptions = { json: false }): Promis
 	try {
 		const deviceList = await client.getDevices(options.filter);
 
-		// Fetch channels for all devices in parallel when needed
+		// Channels are needed for display, JSON enrichment, and health assessment.
 		const displayChannels = showChannels && !options.json;
-		const needChannels = showChannels;
+		const needChannels = showChannels || useHealth;
 
 		const channelsBySerial = new Map<string, DeviceChannel[]>();
 		if (needChannels && deviceList.length > 0) {
@@ -132,37 +192,83 @@ export async function devices(options: DevicesOptions = { json: false }): Promis
 			}
 		}
 
+		// Compute health assessment and priority for each device when triage flags are active.
+		const healthBySerial = new Map<string, { health: DeviceHealth; priority: number }>();
+		if (useHealth) {
+			for (const device of deviceList) {
+				const channels = channelsBySerial.get(device.serial) ?? [];
+				const health = assessDeviceHealth(device, channels);
+				const priority = computeHealthPriority(health, channels);
+				healthBySerial.set(device.serial, { health, priority });
+			}
+		}
+
+		// Apply --critical filter: remove devices with good health and no alarms.
+		let displayList: Device[] = deviceList;
+		if (options.criticalOnly) {
+			displayList = deviceList.filter((d) => {
+				const entry = healthBySerial.get(d.serial);
+				return entry != null && entry.priority < 3;
+			});
+		}
+
+		// Apply --sort health: sort by priority (lowest = most urgent first).
+		if (options.sortByHealth) {
+			displayList = [...displayList].sort((a, b) => {
+				const pa = healthBySerial.get(a.serial)?.priority ?? 3;
+				const pb = healthBySerial.get(b.serial)?.priority ?? 3;
+				return pa - pb;
+			});
+		}
+
 		if (options.json) {
-			if (showChannels) {
-				const output = deviceList.map((device) => {
-					const channels = channelsBySerial.get(device.serial) ?? [];
-					const enabledChannels = channels.filter((ch) => ch.enabled !== false);
-					return {
-						...device,
-						channels: enabledChannels.map((ch) => ({
-							number: ch.number,
-							label: ch.label,
-							value: ch.value,
-							units: ch.units,
-							alarm: getChannelAlarmState(ch),
-						})),
+			const output = displayList.map((device) => {
+				const channels = channelsBySerial.get(device.serial) ?? [];
+				const enabledChannels = channels.filter((ch) => ch.enabled !== false);
+
+				const base: Record<string, unknown> = {
+					...device,
+					...(showChannels
+						? {
+								channels: enabledChannels.map((ch) => ({
+									number: ch.number,
+									label: ch.label,
+									value: ch.value,
+									units: ch.units,
+									alarm: getChannelAlarmState(ch),
+								})),
+							}
+						: {}),
+				};
+
+				// Include health summary when triage flags are active.
+				const entry = healthBySerial.get(device.serial);
+				if (entry) {
+					base.health = {
+						overall: entry.health.overall,
+						priority: entry.priority,
+						issues: entry.health.issues,
 					};
-				});
-				outputJson(output);
+				}
+
+				return base;
+			});
+			outputJson(output);
+			return;
+		}
+
+		if (displayList.length === 0) {
+			if (options.criticalOnly) {
+				console.log("No devices need attention.");
 			} else {
-				outputJson(deviceList);
+				console.log(options.filter ? "No devices match the filter." : "No devices found.");
 			}
 			return;
 		}
 
-		if (deviceList.length === 0) {
-			console.log(options.filter ? "No devices match the filter." : "No devices found.");
-			return;
-		}
+		console.log(`Found ${displayList.length} device${displayList.length > 1 ? "s" : ""}:\n`);
 
-		console.log(`Found ${deviceList.length} device${deviceList.length > 1 ? "s" : ""}:\n`);
-
-		for (const device of deviceList) {
+		for (const device of displayList) {
 			const name = device.label || device.serial;
 			const parts: string[] = [name];
 
@@ -172,6 +278,12 @@ export async function devices(options: DevicesOptions = { json: false }): Promis
 			if (device.lastSeen) {
 				const ago = formatTimeAgo(device.lastSeen);
 				parts.push(`last seen ${ago}`);
+			}
+
+			// Append health tag when sorting or filtering by health.
+			const entry = healthBySerial.get(device.serial);
+			if (entry) {
+				parts.push(formatHealthTag(entry.priority));
 			}
 
 			console.log(`  ${parts.join("  ")}`);

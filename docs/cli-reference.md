@@ -195,7 +195,7 @@ List all connected devices visible in your ThermoWorks Cloud account.
 **Usage**
 
 ```bash
-npx thermoworks devices [--type T] [--status S] [--label L] [--serial SN] [--active-within N]
+npx thermoworks devices [--type T] [--status S] [--label L] [--serial SN] [--active-within N] [--sort health] [--critical]
 ```
 
 **Options**
@@ -205,8 +205,10 @@ npx thermoworks devices [--type T] [--status S] [--label L] [--serial SN] [--act
 - `--label <L>` - Filter by exact device label. Comma-separated for match-any.
 - `--serial <SN>` - Filter by serial number. Comma-separated for match-any.
 - `--active-within <N>` - Only include devices seen within N minutes.
+- `--sort health` - Sort devices by attention needed: active alarms first, then critical health issues (stale readings, very low battery), then warnings (low battery, offline), then healthy devices.
+- `--critical` - Only show devices that need attention (active alarms, critical or warning health). Healthy devices are hidden.
 - `--no-channels` - Hide channel readings.
-- `--json` - Output as JSON.
+- `--json` - Output as JSON. When `--sort health` or `--critical` is active, each device includes a `health` object with `overall`, `priority`, and `issues`.
 
 **Examples**
 
@@ -215,14 +217,22 @@ npx thermoworks devices
 npx thermoworks devices --status online
 npx thermoworks devices --type node,smoke
 npx thermoworks devices --active-within 30 --json
+npx thermoworks devices --sort health
+npx thermoworks devices --critical
+npx thermoworks devices --critical --json
+npx thermoworks devices --sort health --type signals
 ```
 
 **Notes**
 
 - Requires valid credentials from environment variables or the OS keychain.
 - Prints `No devices found.` when the account has no devices, or `No devices match the filter.` when a filter excludes everything.
+- Prints `No devices need attention.` when `--critical` is active and all devices are healthy.
 - Otherwise prints one line per device with the label or serial number, and includes any available type, status, battery percentage, and `last seen` age.
+- When `--sort health` or `--critical` is active, a colored health tag is appended to each device line: `[ALARM]` (red), `[CRITICAL]` (red), `[WARNING]` (yellow), or `[OK]` (green).
+- Health priority: alarm state is checked per channel using alarm thresholds, while stale readings, low battery, and offline status are assessed via the SDK `assessDeviceHealth` function.
 - Filters combine (all must match). Type, status, label, and serial values are matched exactly.
+- `--sort health` and `--critical` work alongside all existing filter flags.
 
 
 ## `thermoworks temp <SERIAL>`

@@ -96,6 +96,8 @@ Commands:
 
   devices          List connected devices and channel readings
     --active-within N  Only devices seen within N minutes
+    --sort health      Sort by attention needed (alarms, offline, battery, stale)
+    --critical         Only show devices needing attention
 
   temp <SERIAL>    Print a single temperature value for scripting
     --channel N    Read a specific channel (1-9) instead of the average

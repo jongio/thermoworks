@@ -379,6 +379,7 @@ npx thermoworks watch --alert-before 5
 npx thermoworks watch --bell
 npx thermoworks watch --json | jq .
 npx thermoworks watch --device M100009168 --record cook.csv
+npx thermoworks watch --until-alarm --timeout 600
 ```
 
 Options:
@@ -389,6 +390,8 @@ Options:
 - `--json` — Emit one NDJSON object per refresh (timestamp plus devices and channels with alarm state) instead of the live display, for piping into other tools
 - `--record FILE` — Append each refresh to `FILE` while the display keeps running, building a time-series log of the cook
 - `--record-format csv|json` — Record file format (default `csv`). CSV writes one row per channel with a header; JSON writes one NDJSON frame per refresh
+- `--until-alarm` — Exit with code 0 when any watched channel enters a high or low alarm state. Prints the device, channel, current temperature, threshold, and alarm type. With `--json`, emits a machine-readable alarm result object. Designed for scripting: the process blocks until an alarm fires (or `--timeout` expires)
+- `--timeout N` — Requires `--until-alarm`. Exit with code 2 if no alarm is detected within `N` seconds. Without this flag, `--until-alarm` waits indefinitely
 
 ### `thermoworks metrics`
 

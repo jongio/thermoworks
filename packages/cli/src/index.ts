@@ -115,6 +115,8 @@ Commands:
     --interval N   Refresh interval in seconds (default: 10)
     --alert-before N  Warn when a channel is within N degrees of its high alarm
     --bell         Ring the terminal bell while any channel is alarming
+    --until-alarm  Exit when any channel enters a high or low alarm state (for scripts)
+    --timeout N    With --until-alarm, exit with code 2 if no alarm within N seconds
 
   metrics          Serve live temperatures as Prometheus metrics on /metrics
     --host HOST    Bind address (default: 127.0.0.1)

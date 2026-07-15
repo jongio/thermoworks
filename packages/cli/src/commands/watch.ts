@@ -29,6 +29,64 @@ export interface WatchArgs {
 	bell: boolean;
 	stallAlert: boolean;
 	alertBefore?: number;
+	untilAlarm: boolean;
+	timeout?: number;
+}
+
+/**
+ * Exit code used when `--until-alarm --timeout` expires before any channel
+ * enters an alarm state. Distinct from 1 (general error) so scripts can
+ * distinguish "no alarm yet" from "something broke."
+ */
+export const UNTIL_ALARM_TIMEOUT_EXIT_CODE = 2;
+
+/** Result emitted when `--until-alarm` detects a channel in alarm state. */
+export interface AlarmTriggerResult {
+	device: string;
+	channel: string;
+	value: number;
+	units: string;
+	threshold: number;
+	alarmType: "high" | "low";
+}
+
+/**
+ * Scan watched devices for the first enabled channel in an alarm state.
+ * Returns the alarm details when found, or `null` when no channel is alarming.
+ * Reuses the SDK's `getChannelAlarmState` to avoid duplicating alarm logic.
+ */
+export function findFirstAlarmingChannel(devices: DeviceWithChannels[]): AlarmTriggerResult | null {
+	for (const { device, channels } of devices) {
+		for (const ch of channels) {
+			if (ch.enabled === false) continue;
+			const state = getChannelAlarmState(ch);
+			if (state === "none") continue;
+
+			const alarm = state === "high" ? ch.alarmHigh : ch.alarmLow;
+			return {
+				device: device.label ?? device.serial,
+				channel: ch.label ?? ch.number ?? "unknown",
+				value: ch.value ?? 0,
+				units: ch.units ?? "",
+				threshold: alarm?.value ?? 0,
+				alarmType: state,
+			};
+		}
+	}
+	return null;
+}
+
+/** Format an `AlarmTriggerResult` for human-readable console output. */
+export function formatAlarmTrigger(result: AlarmTriggerResult): string {
+	const parts = [
+		`Alarm triggered: ${result.alarmType.toUpperCase()}`,
+		`  Device:    ${result.device}`,
+		`  Channel:   ${result.channel}`,
+		`  Value:     ${result.value}°${result.units}`,
+		`  Threshold: ${result.threshold}°${result.units}`,
+		`  Type:      ${result.alarmType}`,
+	];
+	return parts.join("\n");
 }
 
 /** Defaults applied when the matching flag is not passed. */
@@ -46,6 +104,8 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 	let bell = false;
 	let stallAlert = false;
 	let alertBefore: number | undefined;
+	let untilAlarm = false;
+	let timeout: number | undefined;
 
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
@@ -78,10 +138,34 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 			bell = true;
 		} else if (arg === "--stall-alert") {
 			stallAlert = true;
+		} else if (arg === "--until-alarm") {
+			untilAlarm = true;
+		} else if (arg === "--timeout" && i + 1 < args.length) {
+			const parsed = Number(args[++i]);
+			if (!Number.isFinite(parsed) || parsed <= 0) {
+				console.error("Error: --timeout must be a positive number of seconds");
+				process.exit(1);
+			}
+			timeout = parsed;
 		}
 	}
 
-	return { device, interval, record, recordFormat, bell, stallAlert, alertBefore };
+	if (timeout !== undefined && !untilAlarm) {
+		console.error("Error: --timeout requires --until-alarm");
+		process.exit(1);
+	}
+
+	return {
+		device,
+		interval,
+		record,
+		recordFormat,
+		bell,
+		stallAlert,
+		alertBefore,
+		untilAlarm,
+		timeout,
+	};
 }
 
 /** Format a Date to a time string for display in the watch header. */
@@ -422,6 +506,10 @@ function sleep(seconds: number): { promise: Promise<void>; cancel: () => void } 
 /**
  * Run the watch loop: continuously fetch device temperatures and display them.
  * Exits on SIGINT (handled by the global handler in index.ts).
+ *
+ * When `--until-alarm` is active the loop exits with code 0 on the first
+ * detected alarm, or with {@link UNTIL_ALARM_TIMEOUT_EXIT_CODE} when
+ * `--timeout` expires before any alarm fires.
  */
 export async function watch(args: string[], options: OutputOptions): Promise<void> {
 	const prefs = await loadPreferences();
@@ -433,6 +521,8 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 		bell,
 		stallAlert,
 		alertBefore,
+		untilAlarm,
+		timeout,
 	} = parseWatchArgs(args, {
 		device: prefs.device,
 		interval: prefs.watchInterval,
@@ -460,7 +550,13 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 		client.close();
 	});
 
+	const startTime = Date.now();
+
 	while (true) {
+		// Hoist so the alarm check (outside the try-catch) can access the
+		// fetched data. Remains undefined when the fetch itself fails.
+		let fetchedDevices: DeviceWithChannels[] | undefined;
+
 		try {
 			let deviceList = await client.getDevices();
 
@@ -521,8 +617,38 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 			if (shouldRing) {
 				process.stdout.write("\x07");
 			}
+
+			fetchedDevices = devicesWithChannels;
 		} catch (err) {
 			console.error(`Error fetching data: ${err instanceof Error ? err.message : String(err)}`);
+		}
+
+		// Alarm and timeout checks live outside the try-catch so process.exit
+		// propagates without being swallowed by the fetch error handler.
+		if (untilAlarm && fetchedDevices) {
+			const trigger = findFirstAlarmingChannel(fetchedDevices);
+			if (trigger) {
+				if (options.json) {
+					console.log(JSON.stringify({ alarm: trigger }));
+				} else {
+					console.log(formatAlarmTrigger(trigger));
+				}
+				process.exit(0);
+			}
+		}
+
+		// Check timeout after the fetch cycle so the elapsed time accounts for
+		// network latency and the check fires reliably after each iteration.
+		if (untilAlarm && timeout !== undefined) {
+			const elapsed = (Date.now() - startTime) / 1000;
+			if (elapsed >= timeout) {
+				if (options.json) {
+					console.log(JSON.stringify({ timeout: true, elapsed: Math.round(elapsed) }));
+				} else {
+					console.error(`Timeout: no alarm detected within ${timeout}s`);
+				}
+				process.exit(UNTIL_ALARM_TIMEOUT_EXIT_CODE);
+			}
 		}
 
 		const { promise } = sleep(interval);

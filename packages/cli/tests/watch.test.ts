@@ -2,6 +2,7 @@ import type { Device, DeviceChannel, TemperatureReading } from "thermoworks-sdk"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+	type AlarmTriggerResult,
 	buildRecordChunk,
 	buildRecordCsvRows,
 	buildWatchJsonFrame,
@@ -10,6 +11,8 @@ import {
 	colorStallAlert,
 	type DeviceWithChannels,
 	degreesToHighAlarm,
+	findFirstAlarmingChannel,
+	formatAlarmTrigger,
 	formatApproachingIndicator,
 	formatEtaIndicator,
 	formatRapidChangeIndicator,
@@ -19,6 +22,7 @@ import {
 	parseWatchArgs,
 	RECORD_CSV_HEADER,
 	recordChannelReadings,
+	UNTIL_ALARM_TIMEOUT_EXIT_CODE,
 	type WatchJsonFrame,
 	watchFrameHasAlarm,
 	watchFrameHasApproaching,
@@ -123,6 +127,9 @@ describe("parseWatchArgs", () => {
 			recordFormat: "csv",
 			bell: false,
 			stallAlert: false,
+			alertBefore: undefined,
+			untilAlarm: false,
+			timeout: undefined,
 		});
 	});
 
@@ -200,6 +207,54 @@ describe("parseWatchArgs", () => {
 		expect(result.interval).toBe(5);
 		expect(result.bell).toBe(true);
 	});
+
+	it("defaults untilAlarm to false", () => {
+		const result = parseWatchArgs([]);
+		expect(result.untilAlarm).toBe(false);
+		expect(result.timeout).toBeUndefined();
+	});
+
+	it("parses --until-alarm flag", () => {
+		const result = parseWatchArgs(["--until-alarm"]);
+		expect(result.untilAlarm).toBe(true);
+	});
+
+	it("parses --until-alarm with --timeout", () => {
+		const result = parseWatchArgs(["--until-alarm", "--timeout", "60"]);
+		expect(result.untilAlarm).toBe(true);
+		expect(result.timeout).toBe(60);
+	});
+
+	it("parses --until-alarm alongside device and interval", () => {
+		const result = parseWatchArgs(["--device", "S1", "--until-alarm", "--interval", "2"]);
+		expect(result.device).toBe("S1");
+		expect(result.interval).toBe(2);
+		expect(result.untilAlarm).toBe(true);
+	});
+
+	it("exits with error for --timeout without --until-alarm", () => {
+		parseWatchArgs(["--timeout", "30"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith("Error: --timeout requires --until-alarm");
+	});
+
+	it("exits with error for non-numeric timeout", () => {
+		parseWatchArgs(["--until-alarm", "--timeout", "abc"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith("Error: --timeout must be a positive number of seconds");
+	});
+
+	it("exits with error for zero timeout", () => {
+		parseWatchArgs(["--until-alarm", "--timeout", "0"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith("Error: --timeout must be a positive number of seconds");
+	});
+
+	it("exits with error for negative timeout", () => {
+		parseWatchArgs(["--until-alarm", "--timeout", "-5"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith("Error: --timeout must be a positive number of seconds");
+	});
 });
 
 // =============================================================================
@@ -269,6 +324,252 @@ describe("watchFrameHasAlarm", () => {
 			},
 		];
 		expect(watchFrameHasAlarm(devices)).toBe(true);
+	});
+});
+
+// =============================================================================
+// findFirstAlarmingChannel
+// =============================================================================
+
+describe("findFirstAlarmingChannel", () => {
+	it("returns null when there are no devices", () => {
+		expect(findFirstAlarmingChannel([])).toBeNull();
+	});
+
+	it("returns null when no channel is alarming", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1", label: "Smoker" }),
+				channels: [makeChannel({ value: 200, units: "F", label: "Pit", number: "1" })],
+			},
+		];
+		expect(findFirstAlarmingChannel(devices)).toBeNull();
+	});
+
+	it("returns alarm details for a high alarm", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1", label: "Smoker" }),
+				channels: [
+					makeChannel({
+						value: 275,
+						units: "F",
+						label: "Pit",
+						number: "1",
+						alarmHigh: {
+							enabled: true,
+							alarming: true,
+							muted: null,
+							value: 250,
+							units: "F",
+							lastNotified: null,
+						},
+					}),
+				],
+			},
+		];
+		const result = findFirstAlarmingChannel(devices);
+		expect(result).toEqual({
+			device: "Smoker",
+			channel: "Pit",
+			value: 275,
+			units: "F",
+			threshold: 250,
+			alarmType: "high",
+		});
+	});
+
+	it("returns alarm details for a low alarm", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1", label: "Fridge" }),
+				channels: [
+					makeChannel({
+						value: 45,
+						units: "F",
+						label: "Internal",
+						number: "1",
+						alarmLow: {
+							enabled: true,
+							alarming: true,
+							muted: null,
+							value: 40,
+							units: "F",
+							lastNotified: null,
+						},
+					}),
+				],
+			},
+		];
+		const result = findFirstAlarmingChannel(devices);
+		expect(result).toEqual({
+			device: "Fridge",
+			channel: "Internal",
+			value: 45,
+			units: "F",
+			threshold: 40,
+			alarmType: "low",
+		});
+	});
+
+	it("ignores disabled channels", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1", label: "Smoker" }),
+				channels: [
+					{
+						...makeChannel({
+							value: 275,
+							units: "F",
+							label: "Pit",
+							number: "1",
+							alarmHigh: {
+								enabled: true,
+								alarming: true,
+								muted: null,
+								value: 250,
+								units: "F",
+								lastNotified: null,
+							},
+						}),
+						enabled: false,
+					},
+				],
+			},
+		];
+		expect(findFirstAlarmingChannel(devices)).toBeNull();
+	});
+
+	it("falls back to serial when device label is null", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "ABC123" }),
+				channels: [
+					makeChannel({
+						value: 275,
+						units: "F",
+						label: "Pit",
+						number: "1",
+						alarmHigh: {
+							enabled: true,
+							alarming: true,
+							muted: null,
+							value: 250,
+							units: "F",
+							lastNotified: null,
+						},
+					}),
+				],
+			},
+		];
+		const result = findFirstAlarmingChannel(devices);
+		expect(result?.device).toBe("ABC123");
+	});
+
+	it("falls back to channel number when label is null", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "S1", label: "Smoker" }),
+				channels: [
+					makeChannel({
+						value: 275,
+						units: "F",
+						label: null,
+						number: "2",
+						alarmHigh: {
+							enabled: true,
+							alarming: true,
+							muted: null,
+							value: 250,
+							units: "F",
+							lastNotified: null,
+						},
+					}),
+				],
+			},
+		];
+		const result = findFirstAlarmingChannel(devices);
+		expect(result?.channel).toBe("2");
+	});
+
+	it("returns the first alarming channel across multiple devices", () => {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({ serial: "D1", label: "Grill" }),
+				channels: [makeChannel({ value: 200, units: "F", label: "Pit", number: "1" })],
+			},
+			{
+				device: makeDevice({ serial: "D2", label: "Smoker" }),
+				channels: [
+					makeChannel({
+						value: 210,
+						units: "F",
+						label: "Meat",
+						number: "1",
+						alarmHigh: {
+							enabled: true,
+							alarming: true,
+							muted: null,
+							value: 203,
+							units: "F",
+							lastNotified: null,
+						},
+					}),
+				],
+			},
+		];
+		const result = findFirstAlarmingChannel(devices);
+		expect(result?.device).toBe("Smoker");
+		expect(result?.channel).toBe("Meat");
+		expect(result?.alarmType).toBe("high");
+	});
+});
+
+// =============================================================================
+// formatAlarmTrigger
+// =============================================================================
+
+describe("formatAlarmTrigger", () => {
+	it("formats a high alarm trigger for console output", () => {
+		const trigger: AlarmTriggerResult = {
+			device: "Smoker",
+			channel: "Meat",
+			value: 205,
+			units: "F",
+			threshold: 203,
+			alarmType: "high",
+		};
+		const output = formatAlarmTrigger(trigger);
+		expect(output).toContain("Alarm triggered: HIGH");
+		expect(output).toContain("Device:    Smoker");
+		expect(output).toContain("Channel:   Meat");
+		expect(output).toContain("Value:     205°F");
+		expect(output).toContain("Threshold: 203°F");
+		expect(output).toContain("Type:      high");
+	});
+
+	it("formats a low alarm trigger", () => {
+		const trigger: AlarmTriggerResult = {
+			device: "Fridge",
+			channel: "Internal",
+			value: 45,
+			units: "F",
+			threshold: 40,
+			alarmType: "low",
+		};
+		const output = formatAlarmTrigger(trigger);
+		expect(output).toContain("Alarm triggered: LOW");
+		expect(output).toContain("Type:      low");
+	});
+});
+
+// =============================================================================
+// UNTIL_ALARM_TIMEOUT_EXIT_CODE
+// =============================================================================
+
+describe("UNTIL_ALARM_TIMEOUT_EXIT_CODE", () => {
+	it("is 2, distinct from general error code 1", () => {
+		expect(UNTIL_ALARM_TIMEOUT_EXIT_CODE).toBe(2);
 	});
 });
 

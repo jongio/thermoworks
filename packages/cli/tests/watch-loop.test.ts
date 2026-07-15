@@ -259,3 +259,296 @@ describe("watch", () => {
 		void watchPromise;
 	});
 });
+
+// =============================================================================
+// watch --until-alarm loop behavior
+// =============================================================================
+
+// These tests need getChannelAlarmState to return real alarm states (not the
+// constant "normal" mock above), so they register their own SDK mock with the
+// actual alarm-detection logic inlined.
+
+const mockGetCredentialsAlarm = vi.fn<() => Promise<{ email: string; password: string } | null>>();
+const mockGetDevicesAlarm = vi.fn<() => Promise<Device[]>>();
+const mockGetAllDeviceChannelsAlarm = vi.fn<(serial: string) => Promise<DeviceChannel[]>>();
+const mockCloseAlarm = vi.fn<() => void>();
+
+function registerAlarmMocks() {
+	vi.doMock("thermoworks-sdk", () => {
+		class MockThermoworksCloud {
+			getDevices = mockGetDevicesAlarm;
+			getAllDeviceChannels = mockGetAllDeviceChannelsAlarm;
+			close = mockCloseAlarm;
+		}
+
+		return {
+			ThermoworksCloud: MockThermoworksCloud,
+			// Real alarm detection so findFirstAlarmingChannel works correctly.
+			getChannelAlarmState: (ch: DeviceChannel) => {
+				if (ch.alarmHigh?.alarming) return "high";
+				if (ch.alarmLow?.alarming) return "low";
+				return "none";
+			},
+		};
+	});
+
+	vi.doMock("../src/credentials.js", () => ({
+		getCredentials: mockGetCredentialsAlarm,
+	}));
+
+	vi.doMock("../src/preferences.js", () => ({
+		loadPreferences: vi.fn(() => Promise.resolve({})),
+	}));
+}
+
+describe("watch --until-alarm", () => {
+	let logSpy: ReturnType<typeof vi.spyOn>;
+	let errorSpy: ReturnType<typeof vi.spyOn>;
+	let exitSpy: ReturnType<typeof vi.spyOn>;
+
+	beforeEach(() => {
+		vi.resetModules();
+		vi.useFakeTimers();
+
+		mockGetCredentialsAlarm.mockReset();
+		mockGetDevicesAlarm.mockReset();
+		mockGetAllDeviceChannelsAlarm.mockReset();
+		mockCloseAlarm.mockReset();
+
+		registerAlarmMocks();
+
+		// Suppress console.clear and process.on but we don't need to assert on them.
+		vi.spyOn(console, "clear").mockImplementation(() => {});
+		logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+		errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+			throw new Error("process.exit");
+		});
+		vi.spyOn(process, "on").mockImplementation(
+			((..._args: Parameters<typeof process.on>) => process) as typeof process.on,
+		);
+	});
+
+	afterEach(() => {
+		vi.clearAllTimers();
+		vi.useRealTimers();
+		vi.restoreAllMocks();
+	});
+
+	it("exits with code 0 when a channel enters high alarm", async () => {
+		mockGetCredentialsAlarm.mockResolvedValue({ email: "pit@example.com", password: "secret" });
+		mockGetDevicesAlarm.mockResolvedValue([
+			makeDevice({ serial: "ABC123", label: "Smoker", type: "signals" }),
+		]);
+		mockGetAllDeviceChannelsAlarm.mockResolvedValue([
+			makeChannel({
+				value: 275,
+				units: "F",
+				label: "Pit",
+				number: "1",
+				enabled: true,
+				alarmHigh: {
+					enabled: true,
+					alarming: true,
+					muted: null,
+					value: 250,
+					units: "F",
+					lastNotified: null,
+				},
+			}),
+		]);
+
+		const { watch } = await import("../src/commands/watch.js");
+
+		await expect(watch(["--until-alarm", "--interval", "1"], OUTPUT_OPTIONS)).rejects.toThrow(
+			"process.exit",
+		);
+
+		expect(exitSpy).toHaveBeenCalledWith(0);
+		// Should print the alarm trigger details.
+		const logOutput = logSpy.mock.calls.map((c) => c[0]).join("\n");
+		expect(logOutput).toContain("Alarm triggered: HIGH");
+		expect(logOutput).toContain("Smoker");
+		expect(logOutput).toContain("Pit");
+		expect(logOutput).toContain("275°F");
+		expect(logOutput).toContain("250°F");
+	});
+
+	it("exits with code 0 when a channel enters low alarm", async () => {
+		mockGetCredentialsAlarm.mockResolvedValue({ email: "pit@example.com", password: "secret" });
+		mockGetDevicesAlarm.mockResolvedValue([makeDevice({ serial: "S1", label: "Fridge" })]);
+		mockGetAllDeviceChannelsAlarm.mockResolvedValue([
+			makeChannel({
+				value: 45,
+				units: "F",
+				label: "Internal",
+				number: "1",
+				enabled: true,
+				alarmLow: {
+					enabled: true,
+					alarming: true,
+					muted: null,
+					value: 40,
+					units: "F",
+					lastNotified: null,
+				},
+			}),
+		]);
+
+		const { watch } = await import("../src/commands/watch.js");
+
+		await expect(watch(["--until-alarm", "--interval", "1"], OUTPUT_OPTIONS)).rejects.toThrow(
+			"process.exit",
+		);
+
+		expect(exitSpy).toHaveBeenCalledWith(0);
+		const logOutput = logSpy.mock.calls.map((c) => c[0]).join("\n");
+		expect(logOutput).toContain("Alarm triggered: LOW");
+	});
+
+	it("emits a JSON alarm result with --json", async () => {
+		mockGetCredentialsAlarm.mockResolvedValue({ email: "pit@example.com", password: "secret" });
+		mockGetDevicesAlarm.mockResolvedValue([
+			makeDevice({ serial: "ABC123", label: "Smoker", type: "signals" }),
+		]);
+		mockGetAllDeviceChannelsAlarm.mockResolvedValue([
+			makeChannel({
+				value: 205,
+				units: "F",
+				label: "Meat",
+				number: "2",
+				enabled: true,
+				alarmHigh: {
+					enabled: true,
+					alarming: true,
+					muted: null,
+					value: 203,
+					units: "F",
+					lastNotified: null,
+				},
+			}),
+		]);
+
+		const { watch } = await import("../src/commands/watch.js");
+
+		await expect(watch(["--until-alarm", "--interval", "1"], { json: true })).rejects.toThrow(
+			"process.exit",
+		);
+
+		expect(exitSpy).toHaveBeenCalledWith(0);
+
+		// The last log call should contain the alarm JSON object.
+		const lastLogCall = logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string;
+		const parsed = JSON.parse(lastLogCall);
+		expect(parsed.alarm).toEqual({
+			device: "Smoker",
+			channel: "Meat",
+			value: 205,
+			units: "F",
+			threshold: 203,
+			alarmType: "high",
+		});
+	});
+
+	it("exits with code 2 on timeout", async () => {
+		mockGetCredentialsAlarm.mockResolvedValue({ email: "pit@example.com", password: "secret" });
+		// Allow exactly two fetch cycles (iteration 1 under timeout, iteration
+		// 2 fires the timeout check). Third+ calls hang to prevent residual
+		// iterations from producing unhandled rejections.
+		mockGetDevicesAlarm
+			.mockResolvedValueOnce([makeDevice({ serial: "ABC123", label: "Smoker" })])
+			.mockResolvedValueOnce([makeDevice({ serial: "ABC123", label: "Smoker" })])
+			.mockImplementation(() => new Promise<Device[]>(() => {}));
+		mockGetAllDeviceChannelsAlarm.mockResolvedValue([
+			makeChannel({ value: 180, units: "F", label: "Meat", number: "1", enabled: true }),
+		]);
+
+		const { watch } = await import("../src/commands/watch.js");
+
+		const watchPromise = watch(
+			["--until-alarm", "--timeout", "1", "--interval", "2"],
+			OUTPUT_OPTIONS,
+		);
+		// Attach a rejection handler BEFORE advancing timers so the rejection
+		// that fires during advanceTimersByTimeAsync is not reported as unhandled.
+		const assertion = expect(watchPromise).rejects.toThrow("process.exit");
+
+		await flushMicrotasks();
+		await vi.advanceTimersByTimeAsync(2000);
+		await flushMicrotasks();
+
+		await assertion;
+		expect(exitSpy).toHaveBeenCalledWith(2);
+		expect(errorSpy).toHaveBeenCalledWith("Timeout: no alarm detected within 1s");
+	});
+
+	it("emits a JSON timeout result with --json", async () => {
+		mockGetCredentialsAlarm.mockResolvedValue({ email: "pit@example.com", password: "secret" });
+		mockGetDevicesAlarm
+			.mockResolvedValueOnce([makeDevice({ serial: "ABC123", label: "Smoker" })])
+			.mockResolvedValueOnce([makeDevice({ serial: "ABC123", label: "Smoker" })])
+			.mockImplementation(() => new Promise<Device[]>(() => {}));
+		mockGetAllDeviceChannelsAlarm.mockResolvedValue([
+			makeChannel({ value: 180, units: "F", label: "Meat", number: "1", enabled: true }),
+		]);
+
+		const { watch } = await import("../src/commands/watch.js");
+
+		const watchPromise = watch(["--until-alarm", "--timeout", "1", "--interval", "2"], {
+			json: true,
+		});
+		const assertion = expect(watchPromise).rejects.toThrow("process.exit");
+
+		await flushMicrotasks();
+		await vi.advanceTimersByTimeAsync(2000);
+		await flushMicrotasks();
+
+		await assertion;
+		expect(exitSpy).toHaveBeenCalledWith(2);
+
+		// The last log call should be a JSON timeout object.
+		const lastLogCall = logSpy.mock.calls[logSpy.mock.calls.length - 1]?.[0] as string;
+		const parsed = JSON.parse(lastLogCall);
+		expect(parsed.timeout).toBe(true);
+		expect(typeof parsed.elapsed).toBe("number");
+	});
+
+	it("keeps watching without --until-alarm even when a channel is alarming", async () => {
+		mockGetCredentialsAlarm.mockResolvedValue({ email: "pit@example.com", password: "secret" });
+		mockGetDevicesAlarm
+			.mockResolvedValueOnce([makeDevice({ serial: "ABC123", label: "Smoker", type: "signals" })])
+			.mockImplementationOnce(() => new Promise<Device[]>(() => {}));
+		mockGetAllDeviceChannelsAlarm.mockResolvedValue([
+			makeChannel({
+				value: 275,
+				units: "F",
+				label: "Pit",
+				number: "1",
+				enabled: true,
+				alarmHigh: {
+					enabled: true,
+					alarming: true,
+					muted: null,
+					value: 250,
+					units: "F",
+					lastNotified: null,
+				},
+			}),
+		]);
+
+		const { watch } = await import("../src/commands/watch.js");
+		// Normal watch (no --until-alarm): should NOT exit on alarm.
+		const watchPromise = watch(["--interval", "1"], OUTPUT_OPTIONS);
+
+		await flushMicrotasks();
+
+		// exitSpy should NOT have been called with 0 (alarm exit).
+		expect(exitSpy).not.toHaveBeenCalledWith(0);
+		// The loop should proceed to the next iteration.
+		await vi.advanceTimersByTimeAsync(1000);
+		await flushMicrotasks();
+		expect(mockGetDevicesAlarm).toHaveBeenCalledTimes(2);
+
+		void watchPromise;
+	});
+});

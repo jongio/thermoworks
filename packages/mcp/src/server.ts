@@ -1,7 +1,12 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import type { AlarmSetOptions, Device, DeviceChannel } from "thermoworks-sdk";
-import { getChannelAlarmState, predictDoneTime, ThermoworksCloud } from "thermoworks-sdk";
+import {
+	assessDeviceHealth,
+	getChannelAlarmState,
+	predictDoneTime,
+	ThermoworksCloud,
+} from "thermoworks-sdk";
 import { z } from "zod";
 
 let cachedCreds: { email: string; password: string } | null = null;
@@ -797,6 +802,142 @@ export function createServer(): McpServer {
 									method: prediction.method,
 								},
 								formatted,
+							},
+							null,
+							2,
+						),
+					},
+				],
+			};
+		},
+	);
+
+	server.registerTool(
+		"get_device_health_summary",
+		{
+			description:
+				"Get a prioritized health summary across all devices, highlighting active alarms, offline or stale status, low battery, and available firmware updates. Sorted by urgency so the devices needing attention appear first.",
+			inputSchema: z.object({
+				only_issues: z
+					.boolean()
+					.optional()
+					.describe("When true, omit devices with no issues (default false)"),
+			}),
+		},
+		async ({ only_issues }) => {
+			const client = getClient();
+			const devices = await client.getDevices();
+
+			// Build firmware lookup for update detection
+			const checkable = devices.filter((d) => d.type && d.firmware);
+			const uniqueTypes = [...new Set(checkable.map((d) => d.type as string))];
+			const firmwareMap = new Map<string, string>();
+
+			// Fetch channels and firmware info in parallel
+			const [deviceEntries, firmwareSettlements] = await Promise.all([
+				Promise.all(
+					devices.map(async (device) => ({
+						device,
+						channels: await client.getAllDeviceChannels(device.serial),
+					})),
+				),
+				Promise.allSettled(
+					uniqueTypes.map(async (type) => {
+						const info = await client.getFirmwareInfo(type);
+						return { type, info };
+					}),
+				),
+			]);
+
+			for (const settlement of firmwareSettlements) {
+				if (settlement.status === "fulfilled" && settlement.value.info) {
+					firmwareMap.set(settlement.value.type, settlement.value.info.version);
+				}
+			}
+
+			const summaries = deviceEntries.map(({ device, channels }) => {
+				const health = assessDeviceHealth(device, channels);
+
+				// Build issue list from health assessment
+				const issues: string[] = health.issues.map((issue) =>
+					issue.detail ? `${issue.message} (${issue.detail})` : issue.message,
+				);
+
+				// Check firmware update availability
+				let firmwareUpdateAvailable = false;
+				if (device.type && device.firmware) {
+					const latestVersion = firmwareMap.get(device.type);
+					if (latestVersion && device.firmware !== latestVersion) {
+						firmwareUpdateAvailable = true;
+						issues.push(
+							`Firmware update available (current: ${device.firmware}, latest: ${latestVersion})`,
+						);
+					}
+				}
+
+				// Compute alarm state and alarming channel count
+				const activeChannels = channels.filter((ch) => ch.enabled !== false && ch.value != null);
+				const alarmingChannels = activeChannels.filter((ch) => getChannelAlarmState(ch) !== "none");
+				const alarmState = alarmingChannels.some((ch) => getChannelAlarmState(ch) === "high")
+					? "high"
+					: alarmingChannels.length > 0
+						? "low"
+						: "none";
+
+				// Determine overall urgency from health issues, alarms, and firmware
+				let urgency = health.overall;
+				if (alarmState !== "none" && urgency === "good") {
+					urgency = "warning";
+				}
+				if (firmwareUpdateAvailable && urgency === "good") {
+					urgency = "warning";
+				}
+
+				return {
+					serial: device.serial,
+					label: device.label || device.serial,
+					status: device.status,
+					battery: device.battery,
+					alarmState,
+					alarmingChannelCount: alarmingChannels.length,
+					channelCount: activeChannels.length,
+					firmwareUpdateAvailable,
+					health: urgency,
+					issues,
+				};
+			});
+
+			// Filter healthy devices when only_issues is set
+			const filtered = only_issues
+				? summaries.filter((s) => s.issues.length > 0 || s.alarmState !== "none")
+				: summaries;
+
+			// Sort by urgency: critical first, then warning, then good
+			const urgencyOrder: Record<string, number> = {
+				critical: 0,
+				warning: 1,
+				good: 2,
+			};
+			filtered.sort((a, b) => {
+				const healthDiff = (urgencyOrder[a.health] ?? 2) - (urgencyOrder[b.health] ?? 2);
+				if (healthDiff !== 0) return healthDiff;
+				// Within same urgency: alarming devices first
+				const alarmDiff = (a.alarmState !== "none" ? 0 : 1) - (b.alarmState !== "none" ? 0 : 1);
+				if (alarmDiff !== 0) return alarmDiff;
+				// Then by issue count (more issues first)
+				return b.issues.length - a.issues.length;
+			});
+
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(
+							{
+								generatedAt: new Date().toISOString(),
+								deviceCount: filtered.length,
+								totalDevices: devices.length,
+								devices: filtered,
 							},
 							null,
 							2,

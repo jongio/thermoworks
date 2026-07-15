@@ -115,7 +115,9 @@ const ANSI_RESET = "\x1b[0m";
  * Priority 3: good (healthy)
  */
 export function computeHealthPriority(health: DeviceHealth, channels: DeviceChannel[]): number {
-	const hasAlarm = channels.some((ch) => getChannelAlarmState(ch) !== "none");
+	const hasAlarm = channels.some(
+		(ch) => ch.enabled !== false && getChannelAlarmState(ch) !== "none",
+	);
 	if (hasAlarm) return 0;
 	if (health.overall === "critical") return 1;
 	if (health.overall === "warning") return 2;

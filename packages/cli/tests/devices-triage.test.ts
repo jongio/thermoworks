@@ -241,6 +241,16 @@ describe("computeHealthPriority", () => {
 		const channels = [makeAlarmingChannel()];
 		expect(computeHealthPriority(health, channels)).toBe(0);
 	});
+
+	it("ignores disabled channels when detecting alarms", async () => {
+		const { computeHealthPriority } = await import("../src/commands/devices.js");
+		const health = { overall: "good" as const, issues: [] };
+		// A disabled probe with a residual alarming flag must not push the device
+		// to alarm priority; the display and JSON paths (and watch) skip disabled
+		// channels, so health priority must agree.
+		const channels = [makeAlarmingChannel({ enabled: false })];
+		expect(computeHealthPriority(health, channels)).toBe(3);
+	});
 });
 
 // =============================================================================

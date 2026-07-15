@@ -27,6 +27,26 @@ import { VirtualizedDeviceGrid } from "./VirtualizedDeviceGrid.tsx";
 /** Device count threshold above which virtualization is enabled. */
 const VIRTUALIZATION_THRESHOLD = 20;
 
+/**
+ * Merge a reordered list of visible device serials back into the full persisted
+ * order. Hidden devices (absent from `visibleIds`) keep their original slots, so
+ * reordering while "Show hidden" is off does not relocate them to the end.
+ */
+export function mergeVisibleReorder(
+	fullOrder: string[],
+	visibleIds: string[],
+	reorderedVisible: string[],
+): string[] {
+	const visibleSet = new Set(visibleIds);
+	let vi = 0;
+	return fullOrder.map((serial) => {
+		if (!visibleSet.has(serial)) return serial;
+		const next = reorderedVisible[vi];
+		vi += 1;
+		return next ?? serial;
+	});
+}
+
 interface DeviceListProps {
 	data: DeviceWithChannels[];
 	isLoading: boolean;
@@ -111,10 +131,11 @@ export function DeviceList({
 			const newIndex = visibleIds.indexOf(over.id as string);
 			if (oldIndex === -1 || newIndex === -1) return;
 
-			const reordered = arrayMove(visibleIds, oldIndex, newIndex);
-			saveOrder(reordered);
+			const reorderedVisible = arrayMove(visibleIds, oldIndex, newIndex);
+			const fullOrder = orderedDevices.map((d) => d.device.serial);
+			saveOrder(mergeVisibleReorder(fullOrder, visibleIds, reorderedVisible));
 		},
-		[visibleIds, saveOrder],
+		[visibleIds, orderedDevices, saveOrder],
 	);
 
 	return (

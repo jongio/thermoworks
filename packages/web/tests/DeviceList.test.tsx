@@ -2,7 +2,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DeviceList } from "../src/components/DeviceList.tsx";
+import { DeviceList, mergeVisibleReorder } from "../src/components/DeviceList.tsx";
 import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../src/lib/api.ts";
 
@@ -296,5 +296,42 @@ describe("DeviceList", () => {
 		expect(
 			screen.getByText("Make sure your devices are registered in ThermoWorks Cloud."),
 		).toBeInTheDocument();
+	});
+});
+
+describe("mergeVisibleReorder", () => {
+	it("keeps hidden devices in their original slots when reordering visible ones", () => {
+		// Full persisted order: A, B, C(hidden), D. Visible view (hidden off,
+		// no favorites): A, B, D. User drags D to the front → [D, A, B].
+		const fullOrder = ["A", "B", "C", "D"];
+		const visibleIds = ["A", "B", "D"];
+		const reorderedVisible = ["D", "A", "B"];
+
+		const merged = mergeVisibleReorder(fullOrder, visibleIds, reorderedVisible);
+
+		// C stays at its original index 2 instead of being pushed to the end.
+		expect(merged).toEqual(["D", "A", "C", "B"]);
+	});
+
+	it("is a no-op shape when all devices are visible", () => {
+		const fullOrder = ["A", "B", "C"];
+		const visibleIds = ["A", "B", "C"];
+		const reorderedVisible = ["C", "A", "B"];
+
+		expect(mergeVisibleReorder(fullOrder, visibleIds, reorderedVisible)).toEqual(["C", "A", "B"]);
+	});
+
+	it("preserves multiple interspersed hidden devices", () => {
+		const fullOrder = ["A", "H1", "B", "H2", "C"];
+		const visibleIds = ["A", "B", "C"];
+		const reorderedVisible = ["C", "B", "A"];
+
+		expect(mergeVisibleReorder(fullOrder, visibleIds, reorderedVisible)).toEqual([
+			"C",
+			"H1",
+			"B",
+			"H2",
+			"A",
+		]);
 	});
 });

@@ -14,9 +14,10 @@ import {
 	SortableContext,
 	sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
-import { ListRestart, RefreshCw } from "lucide-react";
-import { useCallback } from "react";
+import { Eye, EyeOff, ListRestart, RefreshCw } from "lucide-react";
+import { useCallback, useMemo } from "react";
 import { useDeviceOrder } from "../hooks/useDeviceOrder.ts";
+import { useDeviceVisibility } from "../hooks/useDeviceVisibility.ts";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { DeviceListSkeleton } from "./Skeleton.tsx";
@@ -46,9 +47,47 @@ export function DeviceList({
 	client,
 	isFiltering = false,
 }: DeviceListProps) {
-	const useVirtualization = data.length > VIRTUALIZATION_THRESHOLD;
-	const { orderedDevices, orderedIds, hasCustomOrder, saveOrder, resetOrder } =
-		useDeviceOrder(data);
+	const { orderedDevices, hasCustomOrder, saveOrder, resetOrder } = useDeviceOrder(data);
+	const {
+		favorites,
+		hiddenSerials,
+		showHidden,
+		setShowHidden,
+		toggleFavorite,
+		toggleHidden,
+		isFavorite,
+		isHidden,
+	} = useDeviceVisibility();
+
+	// Filter hidden devices and sort favorites first, composing with existing order
+	const visibleDevices = useMemo(() => {
+		const filtered = showHidden
+			? orderedDevices
+			: orderedDevices.filter((d) => !hiddenSerials.has(d.device.serial));
+
+		if (favorites.size === 0) return filtered;
+
+		// Stable partition: favorites keep their relative order, then non-favorites
+		const favs: DeviceWithChannels[] = [];
+		const rest: DeviceWithChannels[] = [];
+		for (const d of filtered) {
+			if (favorites.has(d.device.serial)) {
+				favs.push(d);
+			} else {
+				rest.push(d);
+			}
+		}
+		return [...favs, ...rest];
+	}, [orderedDevices, favorites, hiddenSerials, showHidden]);
+
+	const visibleIds = useMemo(() => visibleDevices.map((d) => d.device.serial), [visibleDevices]);
+
+	const hiddenCount = useMemo(
+		() => data.filter((d) => hiddenSerials.has(d.device.serial)).length,
+		[data, hiddenSerials],
+	);
+
+	const useVirtualization = visibleDevices.length > VIRTUALIZATION_THRESHOLD;
 
 	// Configure DnD sensors: pointer (desktop) + touch (mobile, long-press activation)
 	const sensors = useSensors(
@@ -68,14 +107,14 @@ export function DeviceList({
 			const { active, over } = event;
 			if (!over || active.id === over.id) return;
 
-			const oldIndex = orderedIds.indexOf(active.id as string);
-			const newIndex = orderedIds.indexOf(over.id as string);
+			const oldIndex = visibleIds.indexOf(active.id as string);
+			const newIndex = visibleIds.indexOf(over.id as string);
 			if (oldIndex === -1 || newIndex === -1) return;
 
-			const reordered = arrayMove(orderedIds, oldIndex, newIndex);
+			const reordered = arrayMove(visibleIds, oldIndex, newIndex);
 			saveOrder(reordered);
 		},
-		[orderedIds, saveOrder],
+		[visibleIds, saveOrder],
 	);
 
 	return (
@@ -84,15 +123,38 @@ export function DeviceList({
 			<div className="flex items-center justify-between">
 				<div className="text-sm text-muted-foreground">
 					{data.length > 0 && (
-						<span>
-							{data.length} device{data.length !== 1 ? "s" : ""}
-						</span>
+						<>
+							<span>
+								{visibleDevices.length} device
+								{visibleDevices.length !== 1 ? "s" : ""}
+							</span>
+							{hiddenCount > 0 && !showHidden && (
+								<span className="ml-1">({hiddenCount} hidden)</span>
+							)}
+						</>
 					)}
 					{lastUpdated && (
 						<span className="ml-2">- Updated {lastUpdated.toLocaleTimeString()}</span>
 					)}
 				</div>
 				<div className="flex items-center gap-2">
+					{hiddenCount > 0 && (
+						<button
+							type="button"
+							onClick={() => setShowHidden(!showHidden)}
+							aria-label={showHidden ? "Hide hidden devices" : "Show hidden devices"}
+							className={cn(
+								"inline-flex items-center gap-1.5 rounded-md px-3 py-1.5",
+								"text-sm text-muted-foreground hover:text-foreground",
+								"border border-border hover:bg-muted",
+								"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+								showHidden && "bg-muted text-foreground",
+							)}
+						>
+							{showHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+							{showHidden ? "Hide hidden" : `Show hidden (${hiddenCount})`}
+						</button>
+					)}
 					{hasCustomOrder && !useVirtualization && (
 						<button
 							type="button"
@@ -152,20 +214,46 @@ export function DeviceList({
 				</div>
 			)}
 
-			{/* Device grid - virtualized for large lists, sortable for small */}
-			{data.length > 0 &&
+			{/* All-hidden empty state */}
+			{!isLoading && data.length > 0 && visibleDevices.length === 0 && !error && (
+				<div className="text-center py-12">
+					<EyeOff className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+					<p className="text-muted-foreground">All devices are hidden.</p>
+					<p className="text-sm text-muted-foreground mt-1">
+						Use the "Show hidden" button to reveal them.
+					</p>
+				</div>
+			)}
+
+			{/* Device grid: virtualized for large lists, sortable for small */}
+			{visibleDevices.length > 0 &&
 				(useVirtualization ? (
-					<VirtualizedDeviceGrid data={orderedDevices} client={client} />
+					<VirtualizedDeviceGrid
+						data={visibleDevices}
+						client={client}
+						favorites={favorites}
+						hiddenSerials={hiddenSerials}
+						onToggleFavorite={toggleFavorite}
+						onToggleHidden={toggleHidden}
+					/>
 				) : (
 					<DndContext
 						sensors={sensors}
 						collisionDetection={closestCenter}
 						onDragEnd={handleDragEnd}
 					>
-						<SortableContext items={orderedIds} strategy={rectSortingStrategy}>
+						<SortableContext items={visibleIds} strategy={rectSortingStrategy}>
 							<div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-								{orderedDevices.map((item) => (
-									<SortableDeviceCard key={item.device.serial} item={item} client={client} />
+								{visibleDevices.map((item) => (
+									<SortableDeviceCard
+										key={item.device.serial}
+										item={item}
+										client={client}
+										isFavorite={isFavorite(item.device.serial)}
+										isHidden={isHidden(item.device.serial)}
+										onToggleFavorite={toggleFavorite}
+										onToggleHidden={toggleHidden}
+									/>
 								))}
 							</div>
 						</SortableContext>

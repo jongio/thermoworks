@@ -1,4 +1,13 @@
-import { Battery, ChevronDown, ChevronUp, Thermometer, Wifi } from "lucide-react";
+import {
+	Battery,
+	ChevronDown,
+	ChevronUp,
+	Eye,
+	EyeOff,
+	Star,
+	Thermometer,
+	Wifi,
+} from "lucide-react";
 import React, { Suspense, useState } from "react";
 import { Link } from "react-router-dom";
 import { useArchiveData } from "../hooks/useArchiveData.ts";
@@ -18,6 +27,14 @@ const TemperatureChart = React.lazy(() => import("./TemperatureChart"));
 interface DeviceCardProps {
 	item: DeviceWithChannels;
 	client: ThermoworksWebClient;
+	/** Whether this device is marked as a favorite. */
+	isFavorite?: boolean;
+	/** Whether this device is hidden (shown only via "Show hidden" toggle). */
+	isHidden?: boolean;
+	/** Callback to toggle this device's favorite status. */
+	onToggleFavorite?: (serial: string) => void;
+	/** Callback to toggle this device's hidden status. */
+	onToggleHidden?: (serial: string) => void;
 }
 
 function statusIndicator(status: string | null): { color: string; label: string } {
@@ -38,7 +55,14 @@ function batteryIcon(level: number | null): string {
 	return "text-red-500";
 }
 
-export function DeviceCard({ item, client }: DeviceCardProps) {
+export function DeviceCard({
+	item,
+	client,
+	isFavorite = false,
+	isHidden = false,
+	onToggleFavorite,
+	onToggleHidden,
+}: DeviceCardProps) {
 	const { device, channels } = item;
 	const name = device.label ?? device.serial;
 	const status = statusIndicator(device.status);
@@ -57,6 +81,7 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 			className={cn(
 				"rounded-lg border border-border bg-card p-4 shadow-sm",
 				"transition-shadow hover:shadow-md",
+				isHidden && "opacity-60",
 			)}
 		>
 			{/* Header */}
@@ -83,6 +108,37 @@ export function DeviceCard({ item, client }: DeviceCardProps) {
 					aria-label={`Status: ${status.label}`}
 					role="status"
 				>
+					{onToggleFavorite && (
+						<button
+							type="button"
+							onClick={() => onToggleFavorite(device.serial)}
+							aria-label={isFavorite ? `Remove ${name} from favorites` : `Add ${name} to favorites`}
+							className={cn(
+								"inline-flex items-center justify-center rounded-md p-1",
+								"text-muted-foreground hover:text-foreground",
+								"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+								"transition-colors",
+								isFavorite && "text-yellow-500 hover:text-yellow-600",
+							)}
+						>
+							<Star className={cn("h-3.5 w-3.5", isFavorite && "fill-current")} />
+						</button>
+					)}
+					{onToggleHidden && (
+						<button
+							type="button"
+							onClick={() => onToggleHidden(device.serial)}
+							aria-label={isHidden ? `Unhide ${name}` : `Hide ${name}`}
+							className={cn(
+								"inline-flex items-center justify-center rounded-md p-1",
+								"text-muted-foreground hover:text-foreground",
+								"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+								"transition-colors",
+							)}
+						>
+							{isHidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+						</button>
+					)}
 					<ShareButton serial={device.serial} client={client} />
 					<span className={cn("h-2 w-2 rounded-full", status.color)} title={status.label} />
 					<span className="text-xs text-muted-foreground">{status.label}</span>

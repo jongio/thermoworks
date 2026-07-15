@@ -7,6 +7,14 @@ import { DeviceCard } from "./DeviceCard.tsx";
 interface VirtualizedDeviceGridProps {
 	data: DeviceWithChannels[];
 	client: ThermoworksWebClient;
+	/** Set of favorited device serial numbers. */
+	favorites?: ReadonlySet<string>;
+	/** Set of hidden device serial numbers. */
+	hiddenSerials?: ReadonlySet<string>;
+	/** Callback to toggle a device's favorite status. */
+	onToggleFavorite?: (serial: string) => void;
+	/** Callback to toggle a device's hidden status. */
+	onToggleHidden?: (serial: string) => void;
 }
 
 /** Estimated height (px) per card row to reduce layout shift before measurement. */
@@ -17,7 +25,14 @@ const ESTIMATED_ROW_HEIGHT = 280;
  * Groups devices into rows matching the responsive column count,
  * then virtualizes the rows for smooth scrolling performance.
  */
-export function VirtualizedDeviceGrid({ data, client }: VirtualizedDeviceGridProps) {
+export function VirtualizedDeviceGrid({
+	data,
+	client,
+	favorites,
+	hiddenSerials,
+	onToggleFavorite,
+	onToggleHidden,
+}: VirtualizedDeviceGridProps) {
 	const { ref: columnsRef, columns } = useContainerColumns();
 	const scrollRef = useRef<HTMLUListElement>(null);
 	const savedScrollTop = useRef(0);
@@ -92,7 +107,15 @@ export function VirtualizedDeviceGrid({ data, client }: VirtualizedDeviceGridPro
 									style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
 								>
 									{rowDevices.map((item) => (
-										<DeviceCard key={item.device.serial} item={item} client={client} />
+										<DeviceCard
+											key={item.device.serial}
+											item={item}
+											client={client}
+											isFavorite={favorites?.has(item.device.serial)}
+											isHidden={hiddenSerials?.has(item.device.serial)}
+											onToggleFavorite={onToggleFavorite}
+											onToggleHidden={onToggleHidden}
+										/>
 									))}
 								</div>
 							</div>

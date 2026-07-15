@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { DeviceChannel } from "thermoworks-sdk";
 import type { DeviceWithChannels } from "../lib/api.ts";
 import { getChannelAlarmState } from "../lib/api.ts";
+import { isAlarmSnoozed, snoozeKey } from "./useAlarmSnooze.ts";
 
 export const NOTIFICATION_PREFERENCE_STORAGE_KEY = "thermoworks-notifications-enabled";
 
@@ -77,6 +78,14 @@ export function useAlarmNotifications(data: DeviceWithChannels[]): void {
 				currentAlarms.add(key);
 
 				if (previousAlarmsRef.current.has(key)) continue;
+
+				// Skip notification if this alarm is snoozed in localStorage.
+				if (
+					channel.number != null &&
+					isAlarmSnoozed(snoozeKey(device.serial, channel.number, state))
+				) {
+					continue;
+				}
 
 				// New alarm - fire notification (requesting permission if needed).
 				const title = device.label ?? device.serial;

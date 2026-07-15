@@ -101,6 +101,43 @@ vi.mock("thermoworks-sdk", () => {
 				method: options?.method ?? "linear",
 			};
 		},
+		assessDeviceHealth: (device: any, _channels: any[]) => {
+			const issues: any[] = [];
+			if (device.status !== "online") {
+				issues.push({
+					code: "offline",
+					severity: "warning",
+					message: "Device is offline",
+					detail: device.status ? `Status: ${device.status}` : undefined,
+				});
+			}
+			if (device.battery != null && device.battery < 5) {
+				issues.push({
+					code: "low_battery",
+					severity: "critical",
+					message: "Battery critically low",
+					detail: `Battery at ${device.battery}%`,
+				});
+			} else if (device.battery != null && device.battery < 20) {
+				issues.push({
+					code: "low_battery",
+					severity: "warning",
+					message: "Battery low",
+					detail: `Battery at ${device.battery}%`,
+				});
+			}
+			let overall: "good" | "warning" | "critical" = "good";
+			for (const issue of issues) {
+				if (issue.severity === "critical") {
+					overall = "critical";
+					break;
+				}
+				if (issue.severity === "warning") {
+					overall = "warning";
+				}
+			}
+			return { overall, issues };
+		},
 	};
 });
 
@@ -1837,6 +1874,238 @@ describe("MCP Server", () => {
 		});
 	});
 
+	describe("get_device_health_summary tool", () => {
+		it("returns all devices sorted by urgency (critical, warning, good)", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{
+						serial: "GOOD1",
+						label: "Healthy",
+						type: null,
+						status: "online",
+						battery: 90,
+						firmware: null,
+					},
+					{
+						serial: "CRIT1",
+						label: "Critical",
+						type: null,
+						status: "offline",
+						battery: 3,
+						firmware: null,
+					},
+					{
+						serial: "WARN1",
+						label: "Warning",
+						type: null,
+						status: "offline",
+						battery: 50,
+						firmware: null,
+					},
+				]);
+				(mockGetAllDeviceChannels as any).mockImplementation(() =>
+					Promise.resolve([
+						{
+							value: 72,
+							units: "F",
+							label: "Ch1",
+							number: "1",
+							enabled: true,
+							alarmHigh: null,
+							alarmLow: null,
+						},
+					]),
+				);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_device_health_summary");
+				const result = await handler({}, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.deviceCount).toBe(3);
+				expect(parsed.totalDevices).toBe(3);
+				// Critical first (battery 3% + offline)
+				expect(parsed.devices[0].serial).toBe("CRIT1");
+				expect(parsed.devices[0].health).toBe("critical");
+				// Warning second (offline)
+				expect(parsed.devices[1].serial).toBe("WARN1");
+				expect(parsed.devices[1].health).toBe("warning");
+				// Good last
+				expect(parsed.devices[2].serial).toBe("GOOD1");
+				expect(parsed.devices[2].health).toBe("good");
+			} finally {
+				(mockGetAllDeviceChannels as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("omits healthy devices when only_issues is true", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{
+						serial: "SICK1",
+						label: "Sick Device",
+						type: null,
+						status: "offline",
+						battery: 10,
+						firmware: null,
+					},
+					{
+						serial: "OK1",
+						label: "Healthy Device",
+						type: null,
+						status: "online",
+						battery: 80,
+						firmware: null,
+					},
+				]);
+				(mockGetAllDeviceChannels as any).mockImplementation(() => Promise.resolve([]));
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_device_health_summary");
+				const result = await handler({ only_issues: true }, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.deviceCount).toBe(1);
+				expect(parsed.totalDevices).toBe(2);
+				expect(parsed.devices[0].serial).toBe("SICK1");
+				expect(parsed.devices.find((d: any) => d.serial === "OK1")).toBeUndefined();
+			} finally {
+				(mockGetAllDeviceChannels as any).mockReset();
+				teardownEnv();
+			}
+		});
+
+		it("returns correct shape for a healthy device", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{
+						serial: "ABC123",
+						label: "Smoker",
+						type: "Signals",
+						status: "online",
+						battery: 95,
+						firmware: "2.0.0",
+					},
+				]);
+				(mockGetAllDeviceChannels as any).mockResolvedValueOnce([
+					{
+						value: 225,
+						units: "F",
+						label: "Pit",
+						number: "1",
+						enabled: true,
+						alarmHigh: null,
+						alarmLow: null,
+					},
+					{
+						value: 165,
+						units: "F",
+						label: "Meat",
+						number: "2",
+						enabled: true,
+						alarmHigh: null,
+						alarmLow: null,
+					},
+					{ value: null, units: "F", label: "Unused", number: "3", enabled: false },
+				]);
+				(mockGetFirmwareInfo as any).mockResolvedValueOnce({
+					name: "Signals",
+					version: "2.0.0",
+					location: "",
+					md5: "",
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_device_health_summary");
+				const result = await handler({}, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.devices).toHaveLength(1);
+				const device = parsed.devices[0];
+				expect(device.serial).toBe("ABC123");
+				expect(device.label).toBe("Smoker");
+				expect(device.status).toBe("online");
+				expect(device.battery).toBe(95);
+				expect(device.alarmState).toBe("none");
+				expect(device.alarmingChannelCount).toBe(0);
+				expect(device.channelCount).toBe(2);
+				expect(device.firmwareUpdateAvailable).toBe(false);
+				expect(device.health).toBe("good");
+				expect(device.issues).toEqual([]);
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("includes firmware update and alarming channels in output", async () => {
+			setupEnv();
+			try {
+				(mockGetDevices as any).mockResolvedValueOnce([
+					{
+						serial: "FW1",
+						label: "Outdated Firmware",
+						type: "Smoke",
+						status: "online",
+						battery: 80,
+						firmware: "1.0.0",
+					},
+				]);
+				(mockGetAllDeviceChannels as any).mockResolvedValueOnce([
+					{
+						value: 225,
+						units: "F",
+						label: "Pit",
+						number: "1",
+						enabled: true,
+						alarmHigh: {
+							enabled: true,
+							alarming: true,
+							muted: null,
+							value: 200,
+							units: "F",
+							lastNotified: null,
+						},
+						alarmLow: null,
+					},
+					{
+						value: 165,
+						units: "F",
+						label: "Meat",
+						number: "2",
+						enabled: true,
+						alarmHigh: null,
+						alarmLow: null,
+					},
+				]);
+				(mockGetFirmwareInfo as any).mockResolvedValueOnce({
+					name: "Smoke",
+					version: "1.1.0",
+					location: "",
+					md5: "",
+				});
+
+				const server = createServer();
+				const handler = getToolHandler(server, "get_device_health_summary");
+				const result = await handler({}, {});
+
+				const parsed = JSON.parse(result.content[0].text);
+				const device = parsed.devices[0];
+				expect(device.firmwareUpdateAvailable).toBe(true);
+				expect(device.alarmState).toBe("high");
+				expect(device.alarmingChannelCount).toBe(1);
+				expect(device.channelCount).toBe(2);
+				expect(device.health).toBe("warning");
+				expect(device.issues).toContainEqual(expect.stringContaining("Firmware update available"));
+			} finally {
+				teardownEnv();
+			}
+		});
+	});
+
 	describe("guided prompts", () => {
 		it("registers exactly the three guided prompts", () => {
 			const server = createServer();
@@ -1848,7 +2117,7 @@ describe("MCP Server", () => {
 		it("does not add any new tools (tool count stays flat)", () => {
 			const server = createServer();
 			const tools = (server as any)._registeredTools as Record<string, unknown>;
-			expect(Object.keys(tools)).toHaveLength(22);
+			expect(Object.keys(tools)).toHaveLength(23);
 		});
 
 		describe("diagnose_cook", () => {

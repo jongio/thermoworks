@@ -7,6 +7,7 @@ import {
 	setNotificationsEnabled,
 	useAlarmNotifications,
 } from "../src/hooks/useAlarmNotifications.ts";
+import { snoozeAlarm, snoozeKey, unsnoozeAlarm } from "../src/hooks/useAlarmSnooze.ts";
 import type { DeviceWithChannels } from "../src/lib/api.ts";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -316,9 +317,64 @@ describe("useAlarmNotifications", () => {
 		expect(focusSpy).toHaveBeenCalled();
 		expect(notification.close).toHaveBeenCalled();
 	});
-});
 
-// ─── getNotificationsEnabled / setNotificationsEnabled ───────────────────────
+	it("does not fire notification when alarm is snoozed", () => {
+		// Snooze the high alarm for channel "1" on device S1.
+		snoozeAlarm(snoozeKey("S1", "1", "high"), 15);
+
+		const data: DeviceWithChannels[] = [
+			{ device: makeDevice("S1", "My Smoker"), channels: [alarmingChannel("high")] },
+		];
+
+		renderHook(() => useAlarmNotifications(data));
+
+		expect(notificationInstances).toHaveLength(0);
+	});
+
+	it("fires notification for a different alarm direction even when one direction is snoozed", () => {
+		// Snooze the HIGH alarm, but fire a LOW alarm.
+		snoozeAlarm(snoozeKey("S1", "1", "high"), 15);
+
+		const data: DeviceWithChannels[] = [
+			{
+				device: makeDevice("S1", "My Smoker"),
+				channels: [alarmingChannel("low", 180.0, 190.0)],
+			},
+		];
+
+		renderHook(() => useAlarmNotifications(data));
+
+		expect(notificationInstances).toHaveLength(1);
+		expect(notificationInstances[0].options.body).toContain("below");
+	});
+
+	it("fires notification again after snooze is cancelled", () => {
+		snoozeAlarm(snoozeKey("S1", "1", "high"), 15);
+
+		const alarming: DeviceWithChannels[] = [
+			{ device: makeDevice("S1", "My Smoker"), channels: [alarmingChannel("high")] },
+		];
+		const resolved: DeviceWithChannels[] = [
+			{ device: makeDevice("S1", "My Smoker"), channels: [makeChannel()] },
+		];
+
+		const { rerender } = renderHook(({ d }) => useAlarmNotifications(d), {
+			initialProps: { d: alarming },
+		});
+
+		// Snoozed: no notification.
+		expect(notificationInstances).toHaveLength(0);
+
+		// Unsnooze.
+		unsnoozeAlarm(snoozeKey("S1", "1", "high"));
+
+		// Alarm resolves then re-fires, which resets the previousAlarms tracking.
+		rerender({ d: resolved });
+		rerender({ d: alarming });
+
+		expect(notificationInstances).toHaveLength(1);
+	});
+});
 
 describe("getNotificationsEnabled", () => {
 	it("returns true by default", () => {

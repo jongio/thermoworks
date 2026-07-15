@@ -296,12 +296,23 @@ npx thermoworks devices --serial ABC123
 npx thermoworks devices --active-within 30        # seen in the last 30 minutes
 ```
 
+Sort and filter by device health (triage):
+
+```bash
+npx thermoworks devices --sort health             # alarms first, then critical, warning, healthy
+npx thermoworks devices --critical                 # only devices needing attention
+npx thermoworks devices --critical --json          # JSON output includes health summary
+npx thermoworks devices --sort health --type signals  # combine with existing filters
+```
+
 Filter options:
-- `--type T` — device type (e.g. `node`, `smoke`, `signals`). Comma-separated for match-any.
-- `--status S` — status (e.g. `online`, `offline`). Comma-separated for match-any.
-- `--label L` — exact device label. Comma-separated for match-any.
-- `--serial SN` — serial number. Comma-separated for match-any.
-- `--active-within N` — only devices seen within N minutes.
+- `--type T` - device type (e.g. `node`, `smoke`, `signals`). Comma-separated for match-any.
+- `--status S` - status (e.g. `online`, `offline`). Comma-separated for match-any.
+- `--label L` - exact device label. Comma-separated for match-any.
+- `--serial SN` - serial number. Comma-separated for match-any.
+- `--active-within N` - only devices seen within N minutes.
+- `--sort health` - sort by attention needed: active alarms first, then critical, warnings, healthy.
+- `--critical` - only show devices needing attention (alarms, critical, or warning health).
 
 Filters combine (all must match) and work with `--json` and `--no-channels`. Type,
 status, label, and serial values are matched exactly.

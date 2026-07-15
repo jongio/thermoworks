@@ -513,6 +513,35 @@ describe("watch --until-alarm", () => {
 		expect(typeof parsed.elapsed).toBe("number");
 	});
 
+	it("fires the timeout well before a long --interval elapses", async () => {
+		mockGetCredentialsAlarm.mockResolvedValue({ email: "pit@example.com", password: "secret" });
+		// One fetch cycle, then the bounded wait must let the timeout fire at ~1s
+		// rather than blocking for the full 10s poll interval.
+		mockGetDevicesAlarm
+			.mockResolvedValueOnce([makeDevice({ serial: "ABC123", label: "Smoker" })])
+			.mockImplementation(() => new Promise<Device[]>(() => {}));
+		mockGetAllDeviceChannelsAlarm.mockResolvedValue([
+			makeChannel({ value: 180, units: "F", label: "Meat", number: "1", enabled: true }),
+		]);
+
+		const { watch } = await import("../src/commands/watch.js");
+
+		const watchPromise = watch(["--until-alarm", "--timeout", "1", "--interval", "10"], {
+			json: false,
+		});
+		const assertion = expect(watchPromise).rejects.toThrow("process.exit");
+
+		await flushMicrotasks();
+		// Advance only 1s: far short of the 10s interval. Before the fix this
+		// would not exit until 10s; now the bounded wait fires the timeout.
+		await vi.advanceTimersByTimeAsync(1000);
+		await flushMicrotasks();
+
+		await assertion;
+		expect(exitSpy).toHaveBeenCalledWith(2);
+		expect(errorSpy).toHaveBeenCalledWith("Timeout: no alarm detected within 1s");
+	});
+
 	it("keeps watching without --until-alarm even when a channel is alarming", async () => {
 		mockGetCredentialsAlarm.mockResolvedValue({ email: "pit@example.com", password: "secret" });
 		mockGetDevicesAlarm

@@ -107,28 +107,42 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 	let untilAlarm = false;
 	let timeout: number | undefined;
 
-	for (let i = 0; i < args.length; i++) {
+	let i = 0;
+	// Consume the value that must follow a value-taking flag, erroring when it is
+	// missing (e.g. `--timeout` passed as the final token) instead of silently
+	// ignoring the flag.
+	const nextValue = (flag: string): string => {
+		const value = args[i + 1];
+		if (value === undefined) {
+			console.error(`Error: ${flag} requires a value`);
+			process.exit(1);
+		}
+		i += 1;
+		return value;
+	};
+
+	for (; i < args.length; i++) {
 		const arg = args[i];
-		if (arg === "--device" && i + 1 < args.length) {
-			device = args[++i];
-		} else if (arg === "--interval" && i + 1 < args.length) {
-			const parsed = Number(args[++i]);
+		if (arg === "--device") {
+			device = nextValue("--device");
+		} else if (arg === "--interval") {
+			const parsed = Number(nextValue("--interval"));
 			if (Number.isNaN(parsed) || parsed < 1) {
 				console.error("Error: --interval must be a positive number (>= 1)");
 				process.exit(1);
 			}
 			interval = parsed;
-		} else if (arg === "--record" && i + 1 < args.length) {
-			record = args[++i];
-		} else if (arg === "--record-format" && i + 1 < args.length) {
-			const value = args[++i];
+		} else if (arg === "--record") {
+			record = nextValue("--record");
+		} else if (arg === "--record-format") {
+			const value = nextValue("--record-format");
 			if (value !== "csv" && value !== "json") {
 				console.error("Error: --record-format must be 'csv' or 'json'");
 				process.exit(1);
 			}
 			recordFormat = value;
-		} else if (arg === "--alert-before" && i + 1 < args.length) {
-			const parsed = Number(args[++i]);
+		} else if (arg === "--alert-before") {
+			const parsed = Number(nextValue("--alert-before"));
 			if (!Number.isFinite(parsed) || parsed <= 0) {
 				console.error("Error: --alert-before must be a positive number of degrees");
 				process.exit(1);
@@ -140,8 +154,8 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 			stallAlert = true;
 		} else if (arg === "--until-alarm") {
 			untilAlarm = true;
-		} else if (arg === "--timeout" && i + 1 < args.length) {
-			const parsed = Number(args[++i]);
+		} else if (arg === "--timeout") {
+			const parsed = Number(nextValue("--timeout"));
 			if (!Number.isFinite(parsed) || parsed <= 0) {
 				console.error("Error: --timeout must be a positive number of seconds");
 				process.exit(1);
@@ -552,6 +566,22 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 
 	const startTime = Date.now();
 
+	// Exit with the timeout code once the deadline has passed. Defined once so the
+	// check can run both before and after the sleep, keeping the exit near the
+	// requested --timeout regardless of a large --interval.
+	const exitIfTimedOut = (): void => {
+		if (!untilAlarm || timeout === undefined) return;
+		const elapsed = (Date.now() - startTime) / 1000;
+		if (elapsed >= timeout) {
+			if (options.json) {
+				console.log(JSON.stringify({ timeout: true, elapsed: Math.round(elapsed) }));
+			} else {
+				console.error(`Timeout: no alarm detected within ${timeout}s`);
+			}
+			process.exit(UNTIL_ALARM_TIMEOUT_EXIT_CODE);
+		}
+	};
+
 	while (true) {
 		// Hoist so the alarm check (outside the try-catch) can access the
 		// fetched data. Remains undefined when the fetch itself fails.
@@ -639,19 +669,20 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 
 		// Check timeout after the fetch cycle so the elapsed time accounts for
 		// network latency and the check fires reliably after each iteration.
-		if (untilAlarm && timeout !== undefined) {
-			const elapsed = (Date.now() - startTime) / 1000;
-			if (elapsed >= timeout) {
-				if (options.json) {
-					console.log(JSON.stringify({ timeout: true, elapsed: Math.round(elapsed) }));
-				} else {
-					console.error(`Timeout: no alarm detected within ${timeout}s`);
-				}
-				process.exit(UNTIL_ALARM_TIMEOUT_EXIT_CODE);
-			}
-		}
+		exitIfTimedOut();
 
-		const { promise } = sleep(interval);
+		// Bound the wait by the time left on --timeout so the deadline is honored
+		// promptly instead of only at the next full poll interval.
+		let waitSeconds = interval;
+		if (untilAlarm && timeout !== undefined) {
+			const remaining = timeout - (Date.now() - startTime) / 1000;
+			waitSeconds = Math.max(0, Math.min(interval, remaining));
+		}
+		const { promise } = sleep(waitSeconds);
 		await promise;
+
+		// The deadline may have elapsed during the wait; exit now rather than
+		// waiting for another full fetch cycle.
+		exitIfTimedOut();
 	}
 }

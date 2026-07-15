@@ -255,6 +255,24 @@ describe("parseWatchArgs", () => {
 		expect(exitSpy).toHaveBeenCalledWith(1);
 		expect(errorSpy).toHaveBeenCalledWith("Error: --timeout must be a positive number of seconds");
 	});
+
+	it("exits with error when a value flag is missing its value", () => {
+		parseWatchArgs(["--until-alarm", "--timeout"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith("Error: --timeout requires a value");
+	});
+
+	it("exits with error when --interval is missing its value", () => {
+		parseWatchArgs(["--interval"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith("Error: --interval requires a value");
+	});
+
+	it("exits with error when --device is the final token", () => {
+		parseWatchArgs(["--bell", "--device"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith("Error: --device requires a value");
+	});
 });
 
 // =============================================================================

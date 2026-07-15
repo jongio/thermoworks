@@ -20,7 +20,7 @@ export const COMMANDS: CommandSpec[] = [
 	{ name: "devices", subcommands: [] },
 	{ name: "device", subcommands: ["rename", "reset-minmax"] },
 	{ name: "mcp", subcommands: ["start"] },
-	{ name: "watch", subcommands: [] },
+	{ name: "watch", subcommands: ["--until-alarm", "--timeout"] },
 	{ name: "events", subcommands: [] },
 	{ name: "archives", subcommands: [] },
 	{ name: "firmware", subcommands: [] },

@@ -2118,7 +2118,7 @@ Continuously monitor device temperatures with a live-refreshing display. Clears 
 **Usage**
 
 ```bash
-npx thermoworks watch [--device SERIAL] [--interval N] [--alert-before N] [--bell] [--json] [--record FILE] [--record-format csv|json]
+npx thermoworks watch [--device SERIAL] [--interval N] [--alert-before N] [--bell] [--json] [--record FILE] [--record-format csv|json] [--until-alarm] [--timeout N]
 ```
 
 **Options**
@@ -2130,6 +2130,8 @@ npx thermoworks watch [--device SERIAL] [--interval N] [--alert-before N] [--bel
 - `--json` - Emit one newline-delimited JSON (NDJSON) object per refresh instead of the live display. Each frame has an ISO `timestamp` and a `devices` array; every device carries `serial`, `label`, `type`, `status`, `battery`, and a `channels` array with `number`, `label`, `value`, `units`, and `alarm` (`high`, `low`, or `none`). The screen is not cleared, so output can be piped or appended to a file.
 - `--record FILE` - Append each refresh to `FILE` as a running log while the live display (or `--json` stream) continues. Recording is independent of the on-screen format.
 - `--record-format csv|json` - Format for the record file. Defaults to `csv`. `csv` writes one row per channel (`timestamp,serial,channel,value,units,alarm`) with a header on a fresh file. `json` writes one NDJSON frame per refresh. CSV fields are guarded against spreadsheet formula injection.
+- `--until-alarm` - Exit with code 0 when any watched channel first enters a high or low alarm state. Prints device, channel, current temperature, threshold, and alarm type. With `--json`, emits a machine-readable `{"alarm": {...}}` object containing the same fields. All existing filters (`--device`, `--interval`) apply. The watch display still refreshes while waiting, so you can monitor progress visually. Designed for scripts that need to block until a temperature event occurs.
+- `--timeout N` - Requires `--until-alarm`. Exit with code 2 if no alarm is detected within `N` seconds. `N` must be a positive number. Without this flag, `--until-alarm` waits indefinitely.
 
 **Examples**
 
@@ -2157,6 +2159,22 @@ npx thermoworks watch --device ABC123 --interval 30 --record cook.csv
 # Live display continues while each refresh is appended to cook.csv:
 # timestamp,serial,channel,value,units,alarm
 # 2025-06-07T19:30:00.000Z,ABC123,Pit,225,F,none
+
+# Block until any channel alarms, then print the result and exit 0:
+npx thermoworks watch --until-alarm
+# Alarm triggered: HIGH
+#   Device:    Smoker
+#   Channel:   Meat
+#   Value:     205°F
+#   Threshold: 203°F
+#   Type:      high
+
+# Same with a 10-minute timeout (exits code 2 if no alarm within 600s):
+npx thermoworks watch --until-alarm --timeout 600
+
+# Machine-readable alarm result for scripts:
+npx thermoworks watch --until-alarm --json
+# {"alarm":{"device":"Smoker","channel":"Meat","value":205,"units":"F","threshold":203,"alarmType":"high"}}
 ```
 
 **Notes**
@@ -2170,6 +2188,7 @@ npx thermoworks watch --device ABC123 --interval 30 --record cook.csv
 - The `--interval` must be a positive number >= 1; values below 1 produce an error.
 - When `--device` or `--interval` are omitted, falls back to the `device` and `watchInterval` defaults saved with `thermoworks config`.
 - `--record` appends across refreshes, so pointing at an existing CSV log continues it without repeating the header. Delete the file first to start fresh.
+- `--timeout` without `--until-alarm` is rejected with an error. The timeout exit code (2) is distinct from general errors (1) so scripts can distinguish "no alarm yet" from "something broke."
 
 ## `thermoworks config`
 

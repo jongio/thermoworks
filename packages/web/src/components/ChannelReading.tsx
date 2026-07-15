@@ -1,6 +1,7 @@
-import { Bell } from "lucide-react";
+import { Bell, X } from "lucide-react";
 import { useState } from "react";
 import type { DeviceChannel } from "thermoworks-sdk";
+import { formatSnoozeRemaining, SNOOZE_PRESETS, useAlarmSnooze } from "../hooks/useAlarmSnooze.ts";
 import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";
 import { type AlarmState, getChannelAlarmState, type ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
@@ -54,6 +55,10 @@ export function ChannelReading({ channel, client, serial, onAlarmSaved }: Channe
 
 	const canConfigureAlarm = client != null && serial != null && channel.number != null;
 
+	// Alarm snooze state (local to browser, does not touch cloud settings).
+	const { snooze, unsnooze, isSnoozed, getRemainingMs } = useAlarmSnooze();
+	const channelNumber = channel.number;
+
 	return (
 		<>
 			<div
@@ -105,6 +110,59 @@ export function ChannelReading({ channel, client, serial, onAlarmSaved }: Channe
 					)}
 				</div>
 			</div>
+			{alarmState !== "none" &&
+				serial != null &&
+				channelNumber != null &&
+				(isSnoozed(serial, channelNumber, alarmState) ? (
+					<div className="flex items-center gap-1.5 px-3 pb-1">
+						<span
+							role="status"
+							className={cn(
+								"rounded bg-muted px-1.5 py-0.5",
+								"text-[10px] font-medium text-muted-foreground",
+							)}
+							aria-label="Alarm snoozed"
+						>
+							Snoozed: {formatSnoozeRemaining(getRemainingMs(serial, channelNumber, alarmState))}
+						</span>
+						<button
+							type="button"
+							onClick={() => unsnooze(serial, channelNumber, alarmState)}
+							className={cn(
+								"rounded p-0.5 transition-colors",
+								"text-muted-foreground hover:bg-muted hover:text-foreground",
+								"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+							)}
+							aria-label={`Cancel snooze for ${label}`}
+							title="Cancel snooze"
+						>
+							<X className="h-3 w-3" />
+						</button>
+					</div>
+				) : (
+					<fieldset
+						className="flex items-center gap-1 border-0 px-3 pb-1"
+						aria-label={`Snooze alarm for ${label}`}
+					>
+						<span className="text-[10px] text-muted-foreground">Snooze:</span>
+						{SNOOZE_PRESETS.map((minutes) => (
+							<button
+								key={minutes}
+								type="button"
+								onClick={() => snooze(serial, channelNumber, alarmState, minutes)}
+								className={cn(
+									"rounded px-1.5 py-0.5 text-[10px] font-medium",
+									"text-muted-foreground transition-colors",
+									"hover:bg-muted hover:text-foreground",
+									"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+								)}
+								aria-label={`Snooze alarm for ${minutes} minutes`}
+							>
+								{minutes}m
+							</button>
+						))}
+					</fieldset>
+				))}
 			{showAlarmConfig && canConfigureAlarm && (
 				<AlarmConfig
 					client={client}

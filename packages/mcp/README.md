@@ -41,6 +41,7 @@ thermoworks mcp start
 | `end_session` | End the active monitoring session on a device |
 | `get_firmware_status` | Check firmware update status for all devices |
 | `get_eta` | Predict when a probe will reach its target temperature from the current rate of change |
+| `get_device_health_summary` | Get a prioritized health summary across all devices: alarms, offline/stale status, low battery, firmware updates. Supports `only_issues` to filter to devices needing attention |
 
 ## Guided Prompts
 

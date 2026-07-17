@@ -108,6 +108,7 @@ The setup wizard writes config to `~/.thermoworks/config.json`.
 | `devices[].label` | `string` | Label used in output and setup summaries |
 | `devices[].channels` | `number[] \| "avg"` | Specific 1-based channel numbers to show, or `"avg"` to display the average temperature across temperature channels |
 | `refreshSeconds` | `number` | API cache duration in seconds (default: 30) |
+| `channelLabels` | `Record<string, string>` | Optional map of `"serial:channel"` to custom display labels |
 
 If the file is missing, the CLI falls back to an empty device list with a 30-second cache until you run setup.
 
@@ -316,6 +317,27 @@ Filter options:
 
 Filters combine (all must match) and work with `--json` and `--no-channels`. Type,
 status, label, and serial values are matched exactly.
+
+### `thermoworks label set <serial> <channel> <name>`
+
+Assign a custom display label to a specific device channel. The label persists in
+`~/.thermoworks/config.json` and is used by all surfaces (CLI, web, VS Code).
+
+```bash
+npx thermoworks label set ABC123 1 "Brisket"
+```
+
+### `thermoworks label get <serial> <channel>`
+
+Print the current custom label for a channel (or report that none is set).
+
+### `thermoworks label list`
+
+Show all custom channel labels currently stored in the config.
+
+### `thermoworks label clear <serial> <channel>`
+
+Remove a custom label for a channel, reverting to the cloud or default label.
 
 ### `thermoworks temp <serial>`
 

@@ -469,6 +469,46 @@ checkFirmware();
 
 ---
 
+## 8. Channel Labels
+
+Assign custom display labels to channels and resolve them with a three-tier fallback (custom > cloud > "Ch N"):
+
+```typescript
+import {
+  ThermoworksCloud,
+  channelLabelKey,
+  resolveChannelLabel,
+  sanitizeLabel,
+  type ChannelLabelMap,
+} from "thermoworks-sdk";
+
+// Build a label map (stored in ~/.thermoworks/config.json under "channelLabels")
+const labels: ChannelLabelMap = {
+  [channelLabelKey("ABC123", "1")]: "Brisket",
+  [channelLabelKey("ABC123", "2")]: "Pit",
+};
+
+const client = new ThermoworksCloud({ email, password });
+const devices = await client.getDevices();
+
+for (const device of devices) {
+  const channels = await client.getAllDeviceChannels(device.serial);
+  for (const [i, ch] of channels.entries()) {
+    // Resolves: custom label > cloud ch.label > "Ch N"
+    const name = resolveChannelLabel(device.serial, ch, labels, i);
+    console.log(`${name}: ${ch.value}°${ch.units}`);
+  }
+}
+
+// Always sanitize user-provided labels before storing
+const userInput = "My <script>Label\x1b[31m";
+const safe = sanitizeLabel(userInput); // "My Label"
+
+client.close();
+```
+
+---
+
 ## Additional Patterns
 
 ### Unit Conversion

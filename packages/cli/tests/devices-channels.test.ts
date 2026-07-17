@@ -22,6 +22,11 @@ vi.mock("../src/credentials.js", () => ({
 	getCredentials: vi.fn(),
 }));
 
+vi.mock("../src/config.js", () => ({
+	loadConfig: vi.fn().mockResolvedValue({ devices: [], refreshSeconds: 30 }),
+	saveConfig: vi.fn(),
+}));
+
 import { ThermoworksCloud } from "thermoworks-sdk";
 import { getCredentials } from "../src/credentials.js";
 
@@ -360,6 +365,7 @@ describe("devices --json with channels", () => {
 		expect(output[0].channels[0]).toEqual({
 			number: "1",
 			label: "Ambient",
+			displayName: "Ambient",
 			value: 225,
 			units: "F",
 			alarm: "none",
@@ -367,6 +373,7 @@ describe("devices --json with channels", () => {
 		expect(output[0].channels[1]).toEqual({
 			number: "2",
 			label: "Meat",
+			displayName: "Meat",
 			value: 165,
 			units: "F",
 			alarm: "none",

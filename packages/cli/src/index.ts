@@ -39,6 +39,7 @@ import { graph } from "./commands/graph.js";
 import { guide } from "./commands/guide.js";
 import { history } from "./commands/history.js";
 import { journal } from "./commands/journal.js";
+import { label } from "./commands/label.js";
 import { mcpStart } from "./commands/mcp.js";
 import { metrics } from "./commands/metrics.js";
 import { notifications } from "./commands/notifications.js";
@@ -112,6 +113,12 @@ Commands:
     --duration N   Minutes the plateau must last to count as a stall (default: 30)
   device rename <SERIAL> --name <TEXT>        Rename a device
   device reset-minmax <SERIAL> --channel <N>  Reset min/max readings for a channel
+
+  label set <SERIAL> <CH> <LABEL>  Set a persistent channel label
+  label get <SERIAL> <CH>          Show the label for a channel
+  label list [SERIAL]              List all labels (optionally for one device)
+  label clear <SERIAL> <CH>        Remove a channel label
+
   mcp start        Start MCP server for AI assistants
   watch            Continuously monitor temperatures (live refresh)
     --device SN    Watch a specific device by serial number
@@ -376,6 +383,10 @@ async function main(): Promise<void> {
 			await devices(parseDevicesArgs(args.slice(1), options));
 			break;
 		}
+
+		case "label":
+			await label(args.slice(1), options);
+			break;
 
 		case "watch":
 			await watch(args.slice(1), options);

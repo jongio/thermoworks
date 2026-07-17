@@ -1,15 +1,18 @@
 import {
 	type AlarmState,
 	assessDeviceHealth,
+	type ChannelLabelMap,
 	type Device,
 	type DeviceChannel,
 	type DeviceFilter,
 	type DeviceHealth,
 	formatTimeAgo,
 	getChannelAlarmState,
+	resolveChannelLabel,
 	ThermoworksCloud,
 } from "thermoworks-sdk";
 
+import { loadConfig } from "../config.js";
 import { getCredentials } from "../credentials.js";
 import { type OutputOptions, outputJson } from "../output.js";
 
@@ -151,15 +154,23 @@ function formatAlarmState(alarm: AlarmState): string {
 }
 
 /** Format a single channel line for terminal display. */
-export function formatChannelLine(channel: DeviceChannel, index: number): string {
+export function formatChannelLine(
+	channel: DeviceChannel,
+	index: number,
+	serial?: string,
+	channelLabels?: ChannelLabelMap,
+): string {
 	const chNum = channel.number ?? String(index + 1);
-	const label = channel.label ?? `Ch${chNum}`;
+	const displayName =
+		serial != null
+			? resolveChannelLabel(serial, channel, channelLabels, index)
+			: (channel.label ?? `Ch${chNum}`);
 	const value = channel.value;
 	const units = channel.units ?? "";
 	const alarm = getChannelAlarmState(channel);
 	const stateStr = formatAlarmState(alarm);
 
-	return `    Ch${chNum} ${label}: ${value}°${units} ${stateStr}`;
+	return `    Ch${chNum} ${displayName}: ${value}°${units} ${stateStr}`;
 }
 
 export async function devices(options: DevicesOptions = { json: false }): Promise<void> {
@@ -176,6 +187,10 @@ export async function devices(options: DevicesOptions = { json: false }): Promis
 
 	try {
 		const deviceList = await client.getDevices(options.filter);
+
+		// Load persisted channel labels for display resolution.
+		const config = await loadConfig();
+		const channelLabels = config.channelLabels;
 
 		// Channels are needed for display, JSON enrichment, and health assessment.
 		const displayChannels = showChannels && !options.json;
@@ -232,9 +247,10 @@ export async function devices(options: DevicesOptions = { json: false }): Promis
 					...device,
 					...(showChannels
 						? {
-								channels: enabledChannels.map((ch) => ({
+								channels: enabledChannels.map((ch, idx) => ({
 									number: ch.number,
 									label: ch.label,
+									displayName: resolveChannelLabel(device.serial, ch, channelLabels, idx),
 									value: ch.value,
 									units: ch.units,
 									alarm: getChannelAlarmState(ch),
@@ -294,7 +310,7 @@ export async function devices(options: DevicesOptions = { json: false }): Promis
 				const channels = channelsBySerial.get(device.serial) ?? [];
 				const activeChannels = channels.filter((ch) => ch.enabled !== false && ch.value != null);
 				for (const [i, ch] of activeChannels.entries()) {
-					console.log(formatChannelLine(ch, i));
+					console.log(formatChannelLine(ch, i, device.serial, channelLabels));
 				}
 			}
 		}

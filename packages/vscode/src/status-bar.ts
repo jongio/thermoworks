@@ -1,8 +1,10 @@
 import {
 	type AlarmState,
+	type ChannelLabelMap,
 	type DeviceChannel,
 	escalateAlarm,
 	getChannelsAlarmState,
+	resolveChannelLabel,
 	ThermoworksCloud,
 } from "thermoworks-sdk";
 import * as vscode from "vscode";
@@ -41,6 +43,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 	private deviceParts: string[][] = [];
 	private configuredDevices: ConfiguredDevice[] = [];
 	private channelsBySerial = new Map<string, DeviceChannel[]>();
+	private channelLabels: ChannelLabelMap | undefined;
 
 	constructor(
 		credentialStore: CredentialStore,
@@ -183,6 +186,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 
 			this.clearRetry();
 			this.configuredDevices = data.configuredDevices;
+			this.channelLabels = data.channelLabels;
 			this.channelsBySerial = new Map(
 				data.configuredDevices.map((d, i) => [d.device.serial, data.channelResults[i] ?? []]),
 			);
@@ -339,7 +343,7 @@ export class TemperatureStatusBar implements vscode.Disposable {
 		);
 		if (this.isStale(gen)) return null;
 
-		return { configuredDevices, channelResults };
+		return { configuredDevices, channelResults, channelLabels: config.channelLabels };
 	}
 
 	/**
@@ -390,7 +394,12 @@ export class TemperatureStatusBar implements vscode.Disposable {
 				for (const chNum of deviceConfig.channels) {
 					const ch = allChannels[chNum - 1];
 					if (ch?.value != null && ch.units != null) {
-						const chLabel = ch.label || `Ch${chNum}`;
+						const chLabel = resolveChannelLabel(
+							entry.device.serial,
+							ch,
+							this.channelLabels,
+							chNum - 1,
+						);
 						parts.push(`${deviceConfig.label}:${chLabel}:${Math.round(ch.value)}\u00B0${ch.units}`);
 						tooltipLines.push(
 							`🌡️ ${deviceConfig.label} → ${chLabel}: ${Math.round(ch.value)}°${ch.units}`,

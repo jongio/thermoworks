@@ -3,6 +3,7 @@ import {
 	type ArchiveChannel,
 	assessDeviceHealth,
 	type CalibrationRecord,
+	type ChannelLabelMap,
 	type Device,
 	type DeviceChannel,
 	type DeviceEvent,
@@ -10,6 +11,7 @@ import {
 	formatTimeAgo,
 	getChannelAlarmState,
 	isChannelStale,
+	resolveChannelLabel,
 	type User,
 } from "thermoworks-sdk";
 import * as vscode from "vscode";
@@ -206,8 +208,13 @@ export class ChannelNode extends vscode.TreeItem {
 	readonly serial: string;
 	readonly channelNumber: number;
 
-	constructor(channel: DeviceChannel, deviceSerial: string, index: number) {
-		const label = channel.label || `Channel ${index + 1}`;
+	constructor(
+		channel: DeviceChannel,
+		deviceSerial: string,
+		index: number,
+		channelLabels?: ChannelLabelMap,
+	) {
+		const label = resolveChannelLabel(deviceSerial, channel, channelLabels, index);
 		const alarm = getChannelAlarmState(channel);
 		const stale = isChannelStale(channel);
 
@@ -591,6 +598,7 @@ export function buildDeviceChildren(
 	channels: DeviceChannel[],
 	firmwareOutdated = false,
 	averageTemp?: { value: number; units: string } | null,
+	channelLabels?: ChannelLabelMap,
 ): TreeNode[] {
 	const children: TreeNode[] = [];
 
@@ -605,7 +613,7 @@ export function buildDeviceChildren(
 	for (let i = 0; i < tempChannels.length; i++) {
 		const ch = tempChannels[i];
 		if (ch) {
-			channelNodes.push(new ChannelNode(ch, device.serial, i));
+			channelNodes.push(new ChannelNode(ch, device.serial, i, channelLabels));
 		}
 	}
 	if (channelNodes.length > 0) {

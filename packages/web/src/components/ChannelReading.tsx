@@ -20,6 +20,8 @@ interface ChannelReadingProps {
 	channel: DeviceChannel;
 	client?: ThermoworksWebClient;
 	serial?: string;
+	/** Resolved display name (custom label > cloud label > "Ch N"). */
+	displayName?: string;
 	onAlarmSaved?: () => void;
 }
 
@@ -45,10 +47,16 @@ function alarmBgClass(state: AlarmState): string {
 	}
 }
 
-export function ChannelReading({ channel, client, serial, onAlarmSaved }: ChannelReadingProps) {
+export function ChannelReading({
+	channel,
+	client,
+	serial,
+	displayName,
+	onAlarmSaved,
+}: ChannelReadingProps) {
 	const { formatTemp } = useTemperatureUnit();
 	const alarmState = getChannelAlarmState(channel);
-	const label = channel.label ?? `Ch ${channel.number ?? "?"}`;
+	const label = displayName ?? channel.label ?? `Ch ${channel.number ?? "?"}`;
 	const hasReading = channel.value != null && channel.units != null;
 	const stale = isChannelStale(channel);
 	const [showAlarmConfig, setShowAlarmConfig] = useState(false);

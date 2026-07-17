@@ -604,7 +604,7 @@ describe("findFirstAlarmingChannel", () => {
 			},
 		];
 		const result = findFirstAlarmingChannel(devices);
-		expect(result?.channel).toBe("2");
+		expect(result?.channel).toBe("Ch 2");
 	});
 
 	it("returns the first alarming channel across multiple devices", () => {
@@ -907,6 +907,7 @@ describe("buildWatchJsonFrame", () => {
 		expect(frame.devices[0]?.channels[0]).toEqual({
 			number: "1",
 			label: "Pit",
+			displayName: "Pit",
 			value: 225,
 			units: "F",
 			alarm: "none",
@@ -1025,8 +1026,22 @@ describe("watch recording chunk", () => {
 					status: "online",
 					battery: 80,
 					channels: [
-						{ number: "1", label: "Brisket", value: 165, units: "F", alarm: "normal" },
-						{ number: "2", label: "Pit", value: 250, units: "F", alarm: "high" },
+						{
+							number: "1",
+							label: "Brisket",
+							displayName: "Brisket",
+							value: 165,
+							units: "F",
+							alarm: "normal",
+						},
+						{
+							number: "2",
+							label: "Pit",
+							displayName: "Pit",
+							value: 250,
+							units: "F",
+							alarm: "high",
+						},
 					],
 				},
 			],
@@ -1057,7 +1072,7 @@ describe("watch recording chunk", () => {
 
 	it("guards against CSV formula injection in labels", () => {
 		const frame = makeFrame();
-		frame.devices[0]!.channels[0]!.label = "=SUM(A1:A2)";
+		frame.devices[0]!.channels[0]!.displayName = "=SUM(A1:A2)";
 		const rows = buildRecordCsvRows(frame);
 		expect(rows[0]).toContain("'=SUM(A1:A2)");
 	});

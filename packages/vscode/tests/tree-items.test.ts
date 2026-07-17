@@ -343,7 +343,7 @@ describe("tree-items", () => {
 		it("uses fallback label when channel label is null", () => {
 			const ch = makeChannel({ label: null });
 			const node = new ChannelNode(ch, "ABC123", 2);
-			expect(node.label).toBe("Channel 3");
+			expect(node.label).toBe("Ch 1");
 		});
 
 		it("converts temperature when units preference is C and native is F", () => {

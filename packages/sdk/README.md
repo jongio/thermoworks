@@ -59,6 +59,9 @@ The package exports:
 **Type interfaces:**
 - `Account`, `Alarm`, `Archive`, `CalibrationRecord`, `Credentials`, `Device`, `DeviceChannel`, `DeviceEvent`, `DeviceFilter`, `EventFilter`, `FirmwareInfo`, `MinMaxReading`, `TemperatureGuide`, `ThermoworksConfig`, `User`, and more
 
+**Testing fixtures:**
+- `thermoworks-sdk/testing` — typed offline builders, canonical Signals/Smoke/Node/offline devices, alarm and firmware scenarios, archives, and `FakeThermoworksCloud`
+
 ## Usage
 
 ```typescript
@@ -81,6 +84,28 @@ for (const device of devices) {
 
 client.close();
 ```
+
+## Offline test fixtures
+
+Use `thermoworks-sdk/testing` for tests, demos, and smoke fixtures that need realistic data without ThermoWorks Cloud access:
+
+```typescript
+import {
+	FIXTURE_DEVICES,
+	FakeThermoworksCloud,
+	getFixtureChannels,
+	makeChannel,
+	makeDevice,
+} from "thermoworks-sdk/testing";
+
+const client = new FakeThermoworksCloud();
+const devices = await client.getDevices();
+const highAlarmChannels = getFixtureChannels("DEMO-SIGNALS-4CH", "high");
+const customDevice = makeDevice({ serial: "TEST-SMOKE", label: "Test Smoke", type: "smoke" });
+const customChannel = makeChannel({ number: "1", label: "Pit", value: 225 });
+```
+
+The canonical fixtures cover a four-channel Signals, two-channel Smoke, Node, an offline Node, high/low alarm states, up-to-date and update-available firmware, and session archives. Prefer these fixtures over hand-written mock shapes in package tests so demos and offline behavior stay consistent.
 
 ## API
 

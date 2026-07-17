@@ -42,6 +42,7 @@ thermoworks mcp start
 | `get_firmware_status` | Check firmware update status for all devices |
 | `get_eta` | Predict when a probe will reach its target temperature from the current rate of change |
 | `get_device_health_summary` | Get a prioritized health summary across all devices: alarms, offline/stale status, low battery, firmware updates. Supports `only_issues` to filter to devices needing attention |
+| `plan_cook` | Build a backwards cook plan so every item finishes at the same serve time. Accepts a target ready time and items by meat name, weight, or explicit hours |
 
 ## Guided Prompts
 

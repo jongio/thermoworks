@@ -1,9 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import type { AlarmSetOptions, Device, DeviceChannel } from "thermoworks-sdk";
+import type { AlarmSetOptions, CookPlanItemInput, Device, DeviceChannel } from "thermoworks-sdk";
 import {
 	assessDeviceHealth,
 	getChannelAlarmState,
+	planCook,
 	predictDoneTime,
 	ThermoworksCloud,
 } from "thermoworks-sdk";
@@ -966,6 +967,84 @@ export function createServer(): McpServer {
 				totalDevices: devices.length,
 				devices: filtered,
 			});
+		},
+	);
+
+	server.registerTool(
+		"plan_cook",
+		{
+			description:
+				"Build a backwards cook plan so every item is ready at the same serve time. Accepts a target ready time and one or more items (by meat name, explicit hours, or weight). Returns per-item start, pull, cook, and rest times sorted by earliest start. No network access needed.",
+			inputSchema: z.object({
+				ready_at: z
+					.string()
+					.describe("ISO 8601 date-time when everything should be ready to serve"),
+				items: z
+					.array(
+						z.object({
+							meat: z
+								.string()
+								.optional()
+								.describe('Meat profile name or alias (e.g. "brisket", "pork butt", "ribs")'),
+							hours: z
+								.number()
+								.positive()
+								.optional()
+								.describe("Explicit cook time in hours, overriding any profile estimate"),
+							weight_lb: z
+								.number()
+								.positive()
+								.optional()
+								.describe("Weight in pounds, used with per-pound profiles"),
+							rest_minutes: z
+								.number()
+								.min(0)
+								.optional()
+								.describe("Rest time in minutes, overriding the profile default"),
+							label: z
+								.string()
+								.optional()
+								.describe("Display label; defaults to the meat name or item index"),
+						}),
+					)
+					.min(1)
+					.describe("Items to include in the cook plan"),
+			}),
+		},
+		({ ready_at, items }) => {
+			const readyAt = new Date(ready_at);
+			if (Number.isNaN(readyAt.getTime())) {
+				return {
+					content: [
+						{
+							type: "text" as const,
+							text: `Invalid ready_at: "${ready_at}". Provide an ISO 8601 date-time.`,
+						},
+					],
+				};
+			}
+
+			const mapped: CookPlanItemInput[] = items.map((item) => ({
+				meat: item.meat,
+				hours: item.hours,
+				weightLb: item.weight_lb,
+				restMinutes: item.rest_minutes,
+				label: item.label,
+			}));
+
+			try {
+				const plan = planCook(mapped, { readyAt });
+				return toolJson(plan);
+			} catch (err) {
+				return {
+					content: [
+						{
+							type: "text" as const,
+							text: err instanceof Error ? err.message : String(err),
+						},
+					],
+				};
+			}
 		},
 	);
 

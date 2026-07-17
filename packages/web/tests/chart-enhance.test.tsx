@@ -1,8 +1,11 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import type { DeviceEvent } from "thermoworks-sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TemperatureChart } from "../src/components/TemperatureChart.tsx";
+import { getEventMarkerItems } from "../src/components/TemperatureEventMarkers.tsx";
 import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";
+import type { ThermoworksWebClient } from "../src/lib/api.ts";
 import type { ChartDataPoint } from "../src/lib/export.ts";
 import { downloadCSV } from "../src/lib/export.ts";
 
@@ -73,6 +76,35 @@ function makeDenseChannels(pointCount: number) {
 			})),
 		},
 	];
+}
+
+function makeEvent(
+	id: string,
+	eventType: string,
+	eventTime: Date,
+	overrides: Partial<DeviceEvent> = {},
+): DeviceEvent {
+	return {
+		id,
+		eventType,
+		severity: 2,
+		eventTime,
+		deviceId: "SN-001",
+		channelId: "1",
+		accountId: "acc-1",
+		valueBefore: null,
+		valueAfter: null,
+		groups: null,
+		...overrides,
+	};
+}
+
+function makeClient(events: DeviceEvent[]) {
+	const getEvents = vi.fn(async () => events);
+	return {
+		isAuthenticated: true,
+		getEvents,
+	} as unknown as ThermoworksWebClient & { getEvents: typeof getEvents };
 }
 
 describe("downloadCSV", () => {
@@ -228,5 +260,87 @@ describe("TemperatureChart", () => {
 
 		fireEvent.click(checkbox);
 		expect(checkbox).not.toBeChecked();
+	});
+
+	it("filters event marker items by supported type and visible time range", () => {
+		const start = new Date("2026-01-01T00:00:00Z").getTime();
+		const end = new Date("2026-01-01T01:00:00Z").getTime();
+		const inRange = new Date(start + 30 * 60_000);
+		const markers = getEventMarkerItems(
+			[
+				makeEvent("alarm", "High Temperature Alarm", inRange),
+				makeEvent("status", "Battery Status", inRange),
+				makeEvent("connection", "Device Offline", inRange),
+				makeEvent("fan", "Fan Speed Changed", inRange),
+				makeEvent("unsupported", "Recipe Note", inRange),
+				makeEvent("outside", "Low Temperature Alarm", new Date(end + 1)),
+			],
+			{ start, end },
+		);
+
+		expect(markers.map((marker) => marker.category)).toEqual([
+			"alarm",
+			"status",
+			"connection",
+			"fan",
+		]);
+		expect(markers.map((marker) => marker.event.id)).not.toContain("unsupported");
+		expect(markers.map((marker) => marker.event.id)).not.toContain("outside");
+	});
+
+	it("fetches event markers for the chart device and visible time range", async () => {
+		const channels = makeChannels();
+		const client = makeClient([]);
+		renderWithProvider(
+			<TemperatureChart channels={channels as never} client={client} deviceId="SN-001" />,
+		);
+
+		await waitFor(() => expect(client.getEvents).toHaveBeenCalled());
+		const filter = client.getEvents.mock.calls[0]?.[0];
+		const readings = channels[0]?.recentReadings ?? [];
+		const minTime = Math.min(...readings.map((reading) => reading.timestamp.getTime()));
+		const maxTime = Math.max(...readings.map((reading) => reading.timestamp.getTime()));
+		expect(filter?.deviceId).toBe("SN-001");
+		expect(filter?.startTime?.getTime()).toBe(minTime);
+		expect(filter?.endTime?.getTime()).toBe(maxTime);
+	});
+
+	it("renders event marker legend, toggle, supported markers, and accessible details", async () => {
+		const channels = makeChannels();
+		const eventTime = channels[0]?.recentReadings[1]?.timestamp ?? new Date();
+		const events = [
+			makeEvent("alarm", "High Temperature Alert", eventTime, {
+				severity: 3,
+				valueBefore: "170",
+				valueAfter: "205",
+			}),
+			makeEvent("status", "Battery Status", eventTime),
+			makeEvent("connection", "Device Connection Restored", eventTime),
+			makeEvent("fan", "Fan Output Changed", eventTime),
+		];
+		const client = makeClient(events);
+		renderWithProvider(
+			<TemperatureChart channels={channels as never} client={client} deviceId="SN-001" />,
+		);
+
+		expect(screen.getByText("Events:")).toBeInTheDocument();
+		expect(screen.getByRole("checkbox", { name: "Show event markers" })).toBeChecked();
+		expect(await screen.findByTestId("event-marker-alarm")).toBeInTheDocument();
+		expect(screen.getByTestId("event-marker-status")).toBeInTheDocument();
+		expect(screen.getByTestId("event-marker-connection")).toBeInTheDocument();
+		expect(screen.getByTestId("event-marker-fan")).toBeInTheDocument();
+
+		const alarmMarker = screen.getByTestId("event-marker-alarm");
+		expect(alarmMarker).toHaveAccessibleName(/High Temperature Alert/);
+		expect(alarmMarker).toHaveAccessibleName(/severity 3/);
+		expect(alarmMarker).toHaveAccessibleName(/170 → 205/);
+
+		fireEvent.focus(alarmMarker);
+		expect(screen.getByRole("tooltip")).toHaveTextContent("High Temperature Alert");
+		expect(screen.getByRole("tooltip")).toHaveTextContent("Value 170 → 205");
+
+		fireEvent.click(screen.getByRole("checkbox", { name: "Show event markers" }));
+		expect(screen.queryByTestId("event-marker-layer")).not.toBeInTheDocument();
+		expect(screen.queryByText("Events:")).not.toBeInTheDocument();
 	});
 });

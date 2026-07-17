@@ -520,7 +520,11 @@ export class ThermoworksCloud {
 		const limit = Math.min(Math.max(1, filter?.limit ?? 50), 500);
 
 		const filters: Array<{
-			fieldFilter: { field: { fieldPath: string }; op: string; value: { stringValue: string } };
+			fieldFilter: {
+				field: { fieldPath: string };
+				op: string;
+				value: { stringValue: string } | { timestampValue: string };
+			};
 		}> = [
 			{
 				fieldFilter: {
@@ -547,6 +551,26 @@ export class ThermoworksCloud {
 					field: { fieldPath: "EventType" },
 					op: "EQUAL",
 					value: { stringValue: filter.eventType },
+				},
+			});
+		}
+
+		if (filter?.startTime) {
+			filters.push({
+				fieldFilter: {
+					field: { fieldPath: "EventTime" },
+					op: "GREATER_THAN_OR_EQUAL",
+					value: { timestampValue: filter.startTime.toISOString() },
+				},
+			});
+		}
+
+		if (filter?.endTime) {
+			filters.push({
+				fieldFilter: {
+					field: { fieldPath: "EventTime" },
+					op: "LESS_THAN_OR_EQUAL",
+					value: { timestampValue: filter.endTime.toISOString() },
 				},
 			});
 		}

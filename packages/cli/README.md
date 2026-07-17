@@ -391,6 +391,8 @@ npx thermoworks watch --bell
 npx thermoworks watch --json | jq .
 npx thermoworks watch --device M100009168 --record cook.csv
 npx thermoworks watch --until-alarm --timeout 600
+npx thermoworks watch --webhook https://hooks.slack.com/services/T00/B00/xxx
+npx thermoworks watch --webhook https://example.com/hook --webhook-format generic
 ```
 
 Options:
@@ -403,6 +405,8 @@ Options:
 - `--record-format csv|json` — Record file format (default `csv`). CSV writes one row per channel with a header; JSON writes one NDJSON frame per refresh
 - `--until-alarm` — Exit with code 0 when any watched channel enters a high or low alarm state. Prints the device, channel, current temperature, threshold, and alarm type. With `--json`, emits a machine-readable alarm result object. Designed for scripting: the process blocks until an alarm fires (or `--timeout` expires)
 - `--timeout N` — Requires `--until-alarm`. Exit with code 2 if no alarm is detected within `N` seconds. Without this flag, `--until-alarm` waits indefinitely
+- `--webhook URL` — POST a JSON alarm payload to `URL` when any channel enters an alarm state (repeatable for multiple endpoints). Format is auto-detected from the URL (Slack, Discord) or defaults to generic JSON. Set the `THERMOWORKS_WEBHOOK_URL` env var instead to keep secrets out of shell history. Delivery failures retry with exponential backoff and are logged without crashing the watch loop
+- `--webhook-format generic|slack|discord` — Override the auto-detected webhook payload format
 
 ### `thermoworks metrics`
 

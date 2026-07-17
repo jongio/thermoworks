@@ -100,15 +100,34 @@ Write-Host "Version checks:"
 try {
     $nodeVer = (node -v) -replace '^v', ''
     $nodeMajor = [int]($nodeVer -split '\.')[0]
-    if ($nodeMajor -ge 18) {
-        Write-Host "  [PASS] Node.js $nodeVer >= 18" -ForegroundColor Green
+    if ($nodeMajor -ge 22) {
+        Write-Host "  [PASS] Node.js $nodeVer >= 22 (matches CI)" -ForegroundColor Green
         $pass++
+    } elseif ($nodeMajor -ge 18) {
+        Write-Host "  [WARN] Node.js $nodeVer >= 18 but CI uses 22 - consider upgrading" -ForegroundColor Yellow
+        $warn++
     } else {
-        Write-Host "  [FAIL] Node.js $nodeVer < 18 - please upgrade" -ForegroundColor Red
+        Write-Host "  [FAIL] Node.js $nodeVer < 18 - please upgrade to 22+" -ForegroundColor Red
         $fail++
     }
 } catch {
     Write-Host "  [FAIL] Could not determine Node.js version" -ForegroundColor Red
+    $fail++
+}
+
+# --- pnpm version check ---
+try {
+    $pnpmVer = (pnpm -v) -replace '\s+', ''
+    $pnpmMajor = [int]($pnpmVer -split '\.')[0]
+    if ($pnpmMajor -ge 11) {
+        Write-Host "  [PASS] pnpm $pnpmVer >= 11 (matches CI)" -ForegroundColor Green
+        $pass++
+    } else {
+        Write-Host "  [WARN] pnpm $pnpmVer < 11 - CI uses pnpm 11. Run: corepack prepare pnpm@latest --activate" -ForegroundColor Yellow
+        $warn++
+    }
+} catch {
+    Write-Host "  [FAIL] Could not determine pnpm version" -ForegroundColor Red
     $fail++
 }
 Write-Host ""
@@ -159,6 +178,29 @@ if ($LASTEXITCODE -eq 0) {
 } else {
     Write-Host "  [FAIL] pnpm typecheck failed" -ForegroundColor Red
     $tcResult | Select-Object -Last 5 | ForEach-Object { Write-Host "    $_" }
+    $fail++
+}
+
+Write-Host "  Linting..."
+$lintResult = pnpm lint 2>&1
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "  [PASS] pnpm lint succeeded" -ForegroundColor Green
+    $pass++
+} else {
+    Write-Host "  [FAIL] pnpm lint failed" -ForegroundColor Red
+    $lintResult | Select-Object -Last 5 | ForEach-Object { Write-Host "    $_" }
+    Write-Host "         Fix: pnpm format && pnpm lint" -ForegroundColor Yellow
+    $fail++
+}
+
+Write-Host "  Validating eval specs..."
+$evalResult = pnpm eval:lint 2>&1
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "  [PASS] pnpm eval:lint succeeded" -ForegroundColor Green
+    $pass++
+} else {
+    Write-Host "  [FAIL] pnpm eval:lint failed" -ForegroundColor Red
+    $evalResult | Select-Object -Last 5 | ForEach-Object { Write-Host "    $_" }
     $fail++
 }
 

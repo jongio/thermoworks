@@ -72,12 +72,26 @@ echo ""
 echo "Version checks:"
 node_version=$(node -v 2>/dev/null | sed 's/v//')
 node_major=$(echo "$node_version" | cut -d. -f1)
-if [ "$node_major" -ge 18 ] 2>/dev/null; then
-  echo -e "  ${GREEN}✓${NC} Node.js $node_version >= 18"
+if [ "$node_major" -ge 22 ] 2>/dev/null; then
+  echo -e "  ${GREEN}✓${NC} Node.js $node_version >= 22 (matches CI)"
+  ((pass++))
+elif [ "$node_major" -ge 18 ] 2>/dev/null; then
+  echo -e "  ${YELLOW}⚠${NC} Node.js $node_version >= 18 but CI uses 22 — consider upgrading"
+  ((warn++))
+else
+  echo -e "  ${RED}✗${NC} Node.js $node_version < 18 — please upgrade to 22+"
+  ((fail++))
+fi
+
+# --- pnpm version check ---
+pnpm_version=$(pnpm -v 2>/dev/null | tr -d '[:space:]')
+pnpm_major=$(echo "$pnpm_version" | cut -d. -f1)
+if [ "$pnpm_major" -ge 11 ] 2>/dev/null; then
+  echo -e "  ${GREEN}✓${NC} pnpm $pnpm_version >= 11 (matches CI)"
   ((pass++))
 else
-  echo -e "  ${RED}✗${NC} Node.js $node_version < 18 — please upgrade"
-  ((fail++))
+  echo -e "  ${YELLOW}⚠${NC} pnpm $pnpm_version < 11 — CI uses pnpm 11. Run: corepack prepare pnpm@latest --activate"
+  ((warn++))
 fi
 echo ""
 
@@ -119,6 +133,25 @@ if pnpm typecheck 2>&1 | tail -3; then
   ((pass++))
 else
   echo -e "  ${RED}✗${NC} pnpm typecheck failed"
+  ((fail++))
+fi
+
+echo "  Linting..."
+if pnpm lint 2>&1 | tail -3; then
+  echo -e "  ${GREEN}✓${NC} pnpm lint succeeded"
+  ((pass++))
+else
+  echo -e "  ${RED}✗${NC} pnpm lint failed"
+  echo -e "         Fix: pnpm format && pnpm lint"
+  ((fail++))
+fi
+
+echo "  Validating eval specs..."
+if pnpm eval:lint 2>&1 | tail -3; then
+  echo -e "  ${GREEN}✓${NC} pnpm eval:lint succeeded"
+  ((pass++))
+else
+  echo -e "  ${RED}✗${NC} pnpm eval:lint failed"
   ((fail++))
 fi
 

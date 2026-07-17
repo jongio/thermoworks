@@ -226,6 +226,9 @@ In VS Code: Command Palette → **ThermoWorks: Demo (Simulate Alarm)** — popul
 This repository uses `pnpm` workspaces.
 
 ```bash
+# Verify your environment matches CI (first thing after cloning)
+pnpm dev:doctor
+
 # Install dependencies
 pnpm install
 

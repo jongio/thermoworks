@@ -2128,7 +2128,7 @@ Continuously monitor device temperatures with a live-refreshing display. Clears 
 **Usage**
 
 ```bash
-npx thermoworks watch [--device SERIAL] [--interval N] [--alert-before N] [--bell] [--json] [--record FILE] [--record-format csv|json] [--until-alarm] [--timeout N]
+npx thermoworks watch [--device SERIAL] [--interval N] [--alert-before N] [--bell] [--json] [--record FILE] [--record-format csv|json] [--until-alarm] [--timeout N] [--webhook URL] [--webhook-format generic|slack|discord]
 ```
 
 **Options**
@@ -2142,6 +2142,8 @@ npx thermoworks watch [--device SERIAL] [--interval N] [--alert-before N] [--bel
 - `--record-format csv|json` - Format for the record file. Defaults to `csv`. `csv` writes one row per channel (`timestamp,serial,channel,value,units,alarm`) with a header on a fresh file. `json` writes one NDJSON frame per refresh. CSV fields are guarded against spreadsheet formula injection.
 - `--until-alarm` - Exit with code 0 when any watched channel first enters a high or low alarm state. Prints device, channel, current temperature, threshold, and alarm type. With `--json`, emits a machine-readable `{"alarm": {...}}` object containing the same fields. All existing filters (`--device`, `--interval`) apply. The watch display still refreshes while waiting, so you can monitor progress visually. Designed for scripts that need to block until a temperature event occurs.
 - `--timeout N` - Requires `--until-alarm`. Exit with code 2 if no alarm is detected within `N` seconds. `N` must be a positive number. Without this flag, `--until-alarm` waits indefinitely.
+- `--webhook URL` - POST a JSON alarm payload to `URL` when any channel transitions into a high or low alarm state. Can be repeated to send to multiple endpoints. The payload format is auto-detected from the URL hostname (Slack, Discord) or defaults to generic JSON. To avoid exposing the URL in shell history, set the `THERMOWORKS_WEBHOOK_URL` environment variable instead (comma-separated for multiple URLs). Delivery failures retry with exponential backoff (up to 3 attempts) and are logged without crashing the watch loop.
+- `--webhook-format generic|slack|discord` - Override the auto-detected payload format for all webhook URLs. `generic` sends a flat JSON object with `event`, `device`, `channel`, `value`, `units`, `threshold`, `alarmType`, and `timestamp` fields. `slack` sends a Slack Block Kit message. `discord` sends a Discord embed.
 
 **Examples**
 
@@ -2185,6 +2187,21 @@ npx thermoworks watch --until-alarm --timeout 600
 # Machine-readable alarm result for scripts:
 npx thermoworks watch --until-alarm --json
 # {"alarm":{"device":"Smoker","channel":"Meat","value":205,"units":"F","threshold":203,"alarmType":"high"}}
+
+# POST to a Slack webhook on every alarm transition:
+npx thermoworks watch --webhook https://hooks.slack.com/services/T00/B00/xxx
+
+# POST to a generic URL, auto-detected as generic JSON:
+npx thermoworks watch --webhook https://example.com/hook
+
+# Explicit format override for a Discord webhook:
+npx thermoworks watch --webhook https://discord.com/api/webhooks/123/token --webhook-format discord
+
+# Multiple webhooks (Slack + generic endpoint):
+npx thermoworks watch --webhook https://hooks.slack.com/services/T00/B00/xxx --webhook https://example.com/hook
+
+# Webhook URL via environment variable (keeps secrets out of shell history):
+THERMOWORKS_WEBHOOK_URL=https://hooks.slack.com/services/T00/B00/xxx npx thermoworks watch
 ```
 
 **Notes**
@@ -2199,6 +2216,9 @@ npx thermoworks watch --until-alarm --json
 - When `--device` or `--interval` are omitted, falls back to the `device` and `watchInterval` defaults saved with `thermoworks config`.
 - `--record` appends across refreshes, so pointing at an existing CSV log continues it without repeating the header. Delete the file first to start fresh.
 - `--timeout` without `--until-alarm` is rejected with an error. The timeout exit code (2) is distinct from general errors (1) so scripts can distinguish "no alarm yet" from "something broke."
+- Webhook notifications fire only on alarm transitions (a channel changing from normal to alarming), not on every refresh while the alarm remains active. When the channel returns to normal and alarms again, the webhook fires again.
+- Failed webhook deliveries retry with exponential backoff (up to 3 attempts). Failures are logged to stderr without crashing the watch loop.
+- The generic JSON payload shape: `{ event: "alarm", device, channel, value, units, threshold, alarmType, timestamp }`. Slack and Discord payloads use each platform's native formatting (Block Kit and embeds, respectively).
 
 ## `thermoworks config`
 

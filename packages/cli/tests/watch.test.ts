@@ -130,6 +130,8 @@ describe("parseWatchArgs", () => {
 			alertBefore: undefined,
 			untilAlarm: false,
 			timeout: undefined,
+			webhooks: [],
+			webhookFormat: undefined,
 		});
 	});
 
@@ -272,6 +274,101 @@ describe("parseWatchArgs", () => {
 		parseWatchArgs(["--bell", "--device"]);
 		expect(exitSpy).toHaveBeenCalledWith(1);
 		expect(errorSpy).toHaveBeenCalledWith("Error: --device requires a value");
+	});
+
+	// --- --webhook flag ---
+
+	it("parses a single --webhook URL", () => {
+		const result = parseWatchArgs(["--webhook", "https://example.com/hook"]);
+		expect(result.webhooks).toEqual(["https://example.com/hook"]);
+	});
+
+	it("parses multiple --webhook URLs", () => {
+		const result = parseWatchArgs([
+			"--webhook",
+			"https://example.com/a",
+			"--webhook",
+			"https://example.com/b",
+		]);
+		expect(result.webhooks).toEqual(["https://example.com/a", "https://example.com/b"]);
+	});
+
+	it("exits with error for invalid --webhook URL", () => {
+		parseWatchArgs(["--webhook", "not-a-url"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("--webhook value is not a valid URL"),
+		);
+	});
+
+	it("exits with error when --webhook is missing its value", () => {
+		parseWatchArgs(["--webhook"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith("Error: --webhook requires a value");
+	});
+
+	it("parses --webhook-format flag", () => {
+		const result = parseWatchArgs([
+			"--webhook",
+			"https://example.com/hook",
+			"--webhook-format",
+			"slack",
+		]);
+		expect(result.webhookFormat).toBe("slack");
+	});
+
+	it("accepts discord as --webhook-format", () => {
+		const result = parseWatchArgs([
+			"--webhook",
+			"https://example.com/hook",
+			"--webhook-format",
+			"discord",
+		]);
+		expect(result.webhookFormat).toBe("discord");
+	});
+
+	it("exits with error for invalid --webhook-format", () => {
+		parseWatchArgs(["--webhook-format", "xml"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith(
+			"Error: --webhook-format must be 'generic', 'slack', or 'discord'",
+		);
+	});
+
+	it("defaults webhooks to empty array and webhookFormat to undefined", () => {
+		const result = parseWatchArgs([]);
+		expect(result.webhooks).toEqual([]);
+		expect(result.webhookFormat).toBeUndefined();
+	});
+
+	it("reads THERMOWORKS_WEBHOOK_URL env var when no --webhook flag given", () => {
+		process.env.THERMOWORKS_WEBHOOK_URL = "https://env.example.com/hook";
+		try {
+			const result = parseWatchArgs([]);
+			expect(result.webhooks).toEqual(["https://env.example.com/hook"]);
+		} finally {
+			delete process.env.THERMOWORKS_WEBHOOK_URL;
+		}
+	});
+
+	it("splits comma-separated env var URLs", () => {
+		process.env.THERMOWORKS_WEBHOOK_URL = "https://a.example.com/hook, https://b.example.com/hook";
+		try {
+			const result = parseWatchArgs([]);
+			expect(result.webhooks).toEqual(["https://a.example.com/hook", "https://b.example.com/hook"]);
+		} finally {
+			delete process.env.THERMOWORKS_WEBHOOK_URL;
+		}
+	});
+
+	it("ignores env var when --webhook flag is present", () => {
+		process.env.THERMOWORKS_WEBHOOK_URL = "https://env.example.com/hook";
+		try {
+			const result = parseWatchArgs(["--webhook", "https://flag.example.com/hook"]);
+			expect(result.webhooks).toEqual(["https://flag.example.com/hook"]);
+		} finally {
+			delete process.env.THERMOWORKS_WEBHOOK_URL;
+		}
 	});
 });
 

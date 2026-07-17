@@ -14,6 +14,13 @@ import {
 import { getCredentials } from "../credentials.js";
 import type { OutputOptions } from "../output.js";
 import { loadPreferences } from "../preferences.js";
+import {
+	type AlarmEvent,
+	AlarmNotifier,
+	alarmKey,
+	type WebhookFormat,
+	WebhookSink,
+} from "./alarm-notifier.js";
 import { formatChannelLine } from "./devices.js";
 import { formatChannelTrend } from "./sparkline.js";
 
@@ -31,6 +38,8 @@ export interface WatchArgs {
 	alertBefore?: number;
 	untilAlarm: boolean;
 	timeout?: number;
+	webhooks: string[];
+	webhookFormat?: WebhookFormat;
 }
 
 /**
@@ -106,6 +115,8 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 	let alertBefore: number | undefined;
 	let untilAlarm = false;
 	let timeout: number | undefined;
+	const webhooks: string[] = [];
+	let webhookFormat: WebhookFormat | undefined;
 
 	let i = 0;
 	// Consume the value that must follow a value-taking flag, erroring when it is
@@ -161,12 +172,46 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 				process.exit(1);
 			}
 			timeout = parsed;
+		} else if (arg === "--webhook") {
+			const url = nextValue("--webhook");
+			try {
+				new URL(url);
+			} catch {
+				console.error(`Error: --webhook value is not a valid URL: ${url}`);
+				process.exit(1);
+			}
+			webhooks.push(url);
+		} else if (arg === "--webhook-format") {
+			const value = nextValue("--webhook-format");
+			if (value !== "generic" && value !== "slack" && value !== "discord") {
+				console.error("Error: --webhook-format must be 'generic', 'slack', or 'discord'");
+				process.exit(1);
+			}
+			webhookFormat = value;
 		}
 	}
 
 	if (timeout !== undefined && !untilAlarm) {
 		console.error("Error: --timeout requires --until-alarm");
 		process.exit(1);
+	}
+
+	// Merge env-var webhooks (comma-separated) when no --webhook flags given.
+	if (webhooks.length === 0) {
+		const envUrl = process.env.THERMOWORKS_WEBHOOK_URL;
+		if (envUrl) {
+			for (const raw of envUrl.split(",")) {
+				const trimmed = raw.trim();
+				if (trimmed) {
+					try {
+						new URL(trimmed);
+						webhooks.push(trimmed);
+					} catch {
+						console.error(`Warning: ignoring invalid URL in THERMOWORKS_WEBHOOK_URL: ${trimmed}`);
+					}
+				}
+			}
+		}
 	}
 
 	return {
@@ -179,6 +224,8 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 		alertBefore,
 		untilAlarm,
 		timeout,
+		webhooks,
+		webhookFormat,
 	};
 }
 
@@ -537,6 +584,8 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 		alertBefore,
 		untilAlarm,
 		timeout,
+		webhooks,
+		webhookFormat,
 	} = parseWatchArgs(args, {
 		device: prefs.device,
 		interval: prefs.watchInterval,
@@ -558,6 +607,14 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 
 	// Accumulate per-channel reading history for stall/rapid detection.
 	const history: ChannelHistory = new Map();
+
+	// Set up webhook alarm notifier when URLs are configured.
+	const notifier = new AlarmNotifier();
+	for (const url of webhooks) {
+		notifier.addSink(new WebhookSink({ url, format: webhookFormat }));
+	}
+	// Track alarm transitions so webhooks fire only on state changes.
+	const activeAlarms = new Set<string>();
 
 	// Register cleanup so the client is closed on process exit (covers SIGINT via global handler)
 	process.on("exit", () => {
@@ -646,6 +703,48 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 						watchFrameHasApproaching(devicesWithChannels, alertBefore)));
 			if (shouldRing) {
 				process.stdout.write("\x07");
+			}
+
+			// Dispatch webhook notifications on alarm transitions (new alarms only).
+			if (notifier.hasSinks) {
+				const currentKeys = new Set<string>();
+
+				for (const { device, channels } of devicesWithChannels) {
+					for (const ch of channels) {
+						if (ch.enabled === false) continue;
+						const state = getChannelAlarmState(ch);
+						if (state === "none") continue;
+
+						const key = alarmKey(device.serial, ch.number, state);
+						currentKeys.add(key);
+
+						if (!activeAlarms.has(key)) {
+							const alarm = state === "high" ? ch.alarmHigh : ch.alarmLow;
+							const event: AlarmEvent = {
+								device: device.label ?? device.serial,
+								channel: ch.label ?? ch.number ?? "unknown",
+								value: ch.value ?? 0,
+								units: ch.units ?? "",
+								threshold: alarm?.value ?? 0,
+								alarmType: state,
+								timestamp: now.toISOString(),
+							};
+							// Fire and forget; errors are logged inside the notifier.
+							notifier.notify(event);
+						}
+					}
+				}
+
+				// Clear keys for alarms that are no longer active so they
+				// retrigger if the channel re-enters an alarm state.
+				for (const key of activeAlarms) {
+					if (!currentKeys.has(key)) {
+						activeAlarms.delete(key);
+					}
+				}
+				for (const key of currentKeys) {
+					activeAlarms.add(key);
+				}
 			}
 
 			fetchedDevices = devicesWithChannels;

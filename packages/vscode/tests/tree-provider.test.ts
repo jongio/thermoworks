@@ -145,6 +145,15 @@ vi.mock("thermoworks-sdk", () => ({
 	formatTimeAgo: (_date: Date) => "just now",
 	assessDeviceHealth: (_device: unknown, _channels: unknown) => ({ overall: "good", issues: [] }),
 	isChannelStale: () => false,
+	DEFAULT_STATUSLINE_CONFIG: { devices: [], refreshSeconds: 30 },
+	isValidStatuslineConfig: (v: unknown) => v != null && typeof v === "object",
+	isValidDeviceEntry: () => true,
+	resolveChannelLabel: (
+		_serial: string,
+		ch: { label?: string | null; number?: string | null },
+		_labels?: unknown,
+		idx?: number,
+	) => ch.label ?? (ch.number ? `Ch ${ch.number}` : `Ch ${(idx ?? 0) + 1}`),
 }));
 
 const { mockDeviceStreamSetDevices, mockDeviceStreamDispose, deviceStreamInstances } = vi.hoisted(

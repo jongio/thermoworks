@@ -235,6 +235,36 @@ npx thermoworks devices --sort health --type signals
 - `--sort health` and `--critical` work alongside all existing filter flags.
 
 
+## `thermoworks label set|get|list|clear`
+
+Manage custom display labels for device channels. Labels persist in `~/.thermoworks/config.json` under the `channelLabels` map (keyed by `"serial:channel"`). All surfaces (CLI, web, VS Code) use a three-tier resolution: custom label > cloud label > "Ch N".
+
+**Subcommands:**
+
+| Subcommand | Usage | Description |
+|---|---|---|
+| `set` | `label set <serial> <channel> <name>` | Assign a custom display label to a channel |
+| `get` | `label get <serial> <channel>` | Print the current custom label for a channel |
+| `list` | `label list` | Show all stored channel labels |
+| `clear` | `label clear <serial> <channel>` | Remove a custom label, reverting to cloud/default |
+
+```bash
+# Assign "Brisket" to channel 1 of device ABC123
+npx thermoworks label set ABC123 1 "Brisket"
+
+# View the label
+npx thermoworks label get ABC123 1
+
+# List all labels
+npx thermoworks label list
+
+# Remove the label
+npx thermoworks label clear ABC123 1
+```
+
+**JSON output** (`devices --json` and `watch --json`): includes an additive `displayName` field alongside the existing `label` field.
+
+
 ## `thermoworks temp <SERIAL>`
 
 Print a single temperature value to stdout for shell scripts and automation. Without

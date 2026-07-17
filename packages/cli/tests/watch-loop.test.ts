@@ -19,6 +19,14 @@ function registerModuleMocks() {
 		return {
 			ThermoworksCloud: MockThermoworksCloud,
 			getChannelAlarmState: vi.fn(() => "normal"),
+			resolveChannelLabel: vi.fn(
+				(
+					_serial: string,
+					ch: { label?: string | null; number?: string | null },
+					_labels?: unknown,
+					idx?: number,
+				) => ch.label ?? (ch.number ? `Ch ${ch.number}` : `Ch ${(idx ?? 0) + 1}`),
+			),
 		};
 	});
 
@@ -28,6 +36,11 @@ function registerModuleMocks() {
 
 	vi.doMock("../src/preferences.js", () => ({
 		loadPreferences: vi.fn(() => Promise.resolve({})),
+	}));
+
+	vi.doMock("../src/config.js", () => ({
+		loadConfig: vi.fn(() => Promise.resolve({ devices: [], refreshSeconds: 30 })),
+		saveConfig: vi.fn(),
 	}));
 }
 
@@ -192,7 +205,7 @@ describe("watch", () => {
 		const { watch } = await importWatchModule();
 		const watchPromise = watch(["--interval", "1"], OUTPUT_OPTIONS);
 
-		await flushMicrotasks();
+		await flushMicrotasks(10);
 
 		expect(mockGetDevices).toHaveBeenCalledTimes(1);
 		expect(mockGetAllDeviceChannels).toHaveBeenCalledWith("ABC123");
@@ -246,7 +259,7 @@ describe("watch", () => {
 		const { watch } = await importWatchModule();
 		const watchPromise = watch(["--interval", "1"], { json: true });
 
-		await flushMicrotasks();
+		await flushMicrotasks(10);
 
 		expect(clearSpy).not.toHaveBeenCalled();
 		expect(logSpy).toHaveBeenCalledTimes(1);
@@ -289,6 +302,12 @@ function registerAlarmMocks() {
 				if (ch.alarmLow?.alarming) return "low";
 				return "none";
 			},
+			resolveChannelLabel: (
+				_serial: string,
+				ch: { label?: string | null; number?: string | null },
+				_labels?: unknown,
+				idx?: number,
+			) => ch.label ?? (ch.number ? `Ch ${ch.number}` : `Ch ${(idx ?? 0) + 1}`),
 		};
 	});
 
@@ -298,6 +317,11 @@ function registerAlarmMocks() {
 
 	vi.doMock("../src/preferences.js", () => ({
 		loadPreferences: vi.fn(() => Promise.resolve({})),
+	}));
+
+	vi.doMock("../src/config.js", () => ({
+		loadConfig: vi.fn(() => Promise.resolve({ devices: [], refreshSeconds: 30 })),
+		saveConfig: vi.fn(),
 	}));
 }
 

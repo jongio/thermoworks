@@ -1,7 +1,15 @@
-import type { Archive, Device, DeviceChannel, DeviceGroup, User } from "thermoworks-sdk";
+import type {
+	Archive,
+	ChannelLabelMap,
+	Device,
+	DeviceChannel,
+	DeviceGroup,
+	User,
+} from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 import * as vscode from "vscode";
 import type { ClientManager } from "../client-manager";
+import { loadConfig } from "../config";
 import type { CredentialStore } from "../credentials";
 import {
 	DEMO_ARCHIVES,
@@ -605,7 +613,11 @@ export class ThermoworksTreeProvider
 				averageTemp = await this.getCachedAverageTemp(serial);
 			}
 
-			return buildDeviceChildren(device, channels, firmwareOutdated, averageTemp);
+			// Load channel labels for display resolution.
+			const config = await loadConfig();
+			const channelLabels: ChannelLabelMap | undefined = config.channelLabels;
+
+			return buildDeviceChildren(device, channels, firmwareOutdated, averageTemp, channelLabels);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to load channels";
 			return [new ErrorNode(message)];

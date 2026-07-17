@@ -12,6 +12,7 @@ import {
 import React, { Suspense, useState } from "react";
 import { Link } from "react-router-dom";
 import { useArchiveData } from "../hooks/useArchiveData.ts";
+import { resolveChannelLabel, useChannelLabels } from "../hooks/useChannelLabels.ts";
 import { useRestTimer } from "../hooks/useRestTimer.ts";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
@@ -76,6 +77,7 @@ export function DeviceCard({
 		error: archiveError,
 	} = useArchiveData(client, device.serial, showChart);
 	const { isResting, remainingFormatted } = useRestTimer(device.serial);
+	const { labels: channelLabels } = useChannelLabels();
 
 	const archiveChannels = archives[0]?.channels ?? null;
 
@@ -186,7 +188,10 @@ export function DeviceCard({
 				<div className="space-y-2">
 					{enabledChannels.map((channel, idx) => (
 						<div key={channel.number ?? idx}>
-							<ChannelReading channel={channel} />
+							<ChannelReading
+								channel={channel}
+								displayName={resolveChannelLabel(device.serial, channel, channelLabels, idx)}
+							/>
 							<div className="flex items-center gap-1.5 mt-0.5">
 								<StallBadge channel={channel} />
 								<EtaBadge channel={channel} />

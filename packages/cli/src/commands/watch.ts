@@ -1,16 +1,19 @@
 import { appendFileSync, existsSync, statSync } from "node:fs";
 import {
 	type AlarmState,
+	type ChannelLabelMap,
 	type Device,
 	type DeviceChannel,
 	detectRapidChange,
 	detectStall,
 	getChannelAlarmState,
 	predictDoneTime,
+	resolveChannelLabel,
 	type TemperatureReading,
 	ThermoworksCloud,
 } from "thermoworks-sdk";
 
+import { loadConfig } from "../config.js";
 import { getCredentials } from "../credentials.js";
 import type { OutputOptions } from "../output.js";
 import { loadPreferences } from "../preferences.js";
@@ -67,9 +70,12 @@ export interface AlarmTriggerResult {
  * Returns the alarm details when found, or `null` when no channel is alarming.
  * Reuses the SDK's `getChannelAlarmState` to avoid duplicating alarm logic.
  */
-export function findFirstAlarmingChannel(devices: DeviceWithChannels[]): AlarmTriggerResult | null {
+export function findFirstAlarmingChannel(
+	devices: DeviceWithChannels[],
+	channelLabels?: ChannelLabelMap,
+): AlarmTriggerResult | null {
 	for (const { device, channels } of devices) {
-		for (const ch of channels) {
+		for (const [i, ch] of channels.entries()) {
 			if (ch.enabled === false) continue;
 			const state = getChannelAlarmState(ch);
 			if (state === "none") continue;
@@ -77,7 +83,7 @@ export function findFirstAlarmingChannel(devices: DeviceWithChannels[]): AlarmTr
 			const alarm = state === "high" ? ch.alarmHigh : ch.alarmLow;
 			return {
 				device: device.label ?? device.serial,
-				channel: ch.label ?? ch.number ?? "unknown",
+				channel: resolveChannelLabel(device.serial, ch, channelLabels, i),
 				value: ch.value ?? 0,
 				units: ch.units ?? "",
 				threshold: alarm?.value ?? 0,
@@ -422,6 +428,7 @@ export function formatWatchFrame(
 	history?: ChannelHistory,
 	stallAlert?: boolean,
 	alertBefore?: number,
+	channelLabels?: ChannelLabelMap,
 ): string {
 	const lines: string[] = [];
 
@@ -442,7 +449,7 @@ export function formatWatchFrame(
 			const activeChannels = channels.filter((ch) => ch.enabled !== false && ch.value != null);
 			for (const [i, ch] of activeChannels.entries()) {
 				const trend = formatChannelTrend(ch);
-				const channelLine = formatChannelLine(ch, i);
+				const channelLine = formatChannelLine(ch, i, device.serial, channelLabels);
 				let line = trend ? `${channelLine}  ${trend}` : channelLine;
 
 				// Append stall/rapid indicators when history is available.
@@ -485,6 +492,8 @@ export function formatWatchFrame(
 export interface WatchJsonChannel {
 	number: string | null;
 	label: string | null;
+	/** Resolved display name: custom label > cloud label > "Ch N". */
+	displayName: string;
 	value: number | null;
 	units: string | null;
 	alarm: AlarmState;
@@ -510,6 +519,7 @@ export interface WatchJsonFrame {
 export function buildWatchJsonFrame(
 	devices: DeviceWithChannels[],
 	timestamp: Date,
+	channelLabels?: ChannelLabelMap,
 ): WatchJsonFrame {
 	return {
 		timestamp: timestamp.toISOString(),
@@ -521,9 +531,10 @@ export function buildWatchJsonFrame(
 			battery: device.battery,
 			channels: channels
 				.filter((ch) => ch.enabled !== false)
-				.map((ch) => ({
+				.map((ch, idx) => ({
 					number: ch.number,
 					label: ch.label,
+					displayName: resolveChannelLabel(device.serial, ch, channelLabels, idx),
 					value: ch.value,
 					units: ch.units,
 					alarm: getChannelAlarmState(ch),
@@ -558,7 +569,7 @@ export function buildRecordCsvRows(frame: WatchJsonFrame): string[] {
 	const rows: string[] = [];
 	for (const device of frame.devices) {
 		for (const ch of device.channels) {
-			const channel = ch.label ?? ch.number ?? "unknown";
+			const channel = ch.displayName;
 			const value = ch.value ?? "";
 			const units = ch.units ?? "";
 			rows.push(
@@ -646,6 +657,10 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 		process.exit(1);
 	}
 
+	// Load persisted channel labels for display resolution.
+	const watchConfig = await loadConfig();
+	const channelLabels: ChannelLabelMap | undefined = watchConfig.channelLabels;
+
 	// For CSV, only write the header when starting a fresh (missing or empty) file.
 	let needsCsvHeader =
 		record !== undefined && recordFormat === "csv"
@@ -726,7 +741,7 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 			// Record readings into history for stall/rapid detection.
 			recordChannelReadings(history, devicesWithChannels, now);
 
-			const frame = buildWatchJsonFrame(devicesWithChannels, now);
+			const frame = buildWatchJsonFrame(devicesWithChannels, now, channelLabels);
 
 			if (record !== undefined) {
 				const chunk = buildRecordChunk(frame, recordFormat, needsCsvHeader);
@@ -753,7 +768,15 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 			} else {
 				console.clear();
 				console.log(
-					formatWatchFrame(devicesWithChannels, now, interval, history, stallAlert, alertBefore),
+					formatWatchFrame(
+						devicesWithChannels,
+						now,
+						interval,
+						history,
+						stallAlert,
+						alertBefore,
+						channelLabels,
+					),
 				);
 			}
 
@@ -773,7 +796,7 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 				const currentKeys = new Set<string>();
 
 				for (const { device, channels } of devicesWithChannels) {
-					for (const ch of channels) {
+					for (const [chIdx, ch] of channels.entries()) {
 						if (ch.enabled === false) continue;
 						const state = getChannelAlarmState(ch);
 						if (state === "none") continue;
@@ -785,7 +808,7 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 							const alarm = state === "high" ? ch.alarmHigh : ch.alarmLow;
 							const event: AlarmEvent = {
 								device: device.label ?? device.serial,
-								channel: ch.label ?? ch.number ?? "unknown",
+								channel: resolveChannelLabel(device.serial, ch, channelLabels, chIdx),
 								value: ch.value ?? 0,
 								units: ch.units ?? "",
 								threshold: alarm?.value ?? 0,
@@ -818,7 +841,7 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 		// Alarm and timeout checks live outside the try-catch so process.exit
 		// propagates without being swallowed by the fetch error handler.
 		if (untilAlarm && fetchedDevices) {
-			const trigger = findFirstAlarmingChannel(fetchedDevices);
+			const trigger = findFirstAlarmingChannel(fetchedDevices, channelLabels);
 			if (trigger) {
 				if (options.json) {
 					console.log(JSON.stringify({ alarm: trigger }));

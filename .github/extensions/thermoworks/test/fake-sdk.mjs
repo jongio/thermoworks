@@ -29,31 +29,31 @@ export function parseCredentialBlob(blob) {
   }
 }
 
-// Two fake devices, so the device/session picker has something to switch between.
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const fixturePath = join(dirname(fileURLToPath(import.meta.url)), "shared-fixtures.json");
+const fixtures = JSON.parse(readFileSync(fixturePath, "utf8"), (_key, value) =>
+  typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value) ? new Date(value) : value,
+);
+
+const signals = fixtures.devices.find((d) => d.type === "signals");
+const smoke = fixtures.devices.find((d) => d.type === "smoke");
+const signalsChannels = fixtures.channels[signals.serial].normal;
+const smokeChannels = fixtures.channels[smoke.serial].high;
+
+// Canvas smoke tests use stable short serials while the payload comes from shared SDK fixtures.
 const DEVICES = [
   {
+    ...signals,
     serial: "ABC123",
-    label: "Signals",
-    type: "signals",
-    status: "online",
-    sessionLabel: "Sunday Brisket",
-    sessionStart: new Date(Date.now() - 90 * 60000),
-    channels: [
-      { number: "1", label: "Pit", value: 250, units: "F", enabled: true, alarmHigh: null, alarmLow: null },
-      { number: "2", label: "Brisket", value: 165, units: "F", enabled: true, alarmHigh: { alarming: false }, alarmLow: null },
-    ],
+    channels: signalsChannels.slice(0, 2),
   },
   {
+    ...smoke,
     serial: "XYZ789",
-    label: "Smoke",
-    type: "smoke",
-    status: "online",
-    sessionLabel: "Chicken Thighs",
-    sessionStart: new Date(Date.now() - 30 * 60000),
-    channels: [
-      { number: "1", label: "Grate", value: 375, units: "F", enabled: true, alarmHigh: null, alarmLow: null },
-      { number: "2", label: "Thigh", value: 168, units: "F", enabled: true, alarmHigh: { alarming: true }, alarmLow: null },
-    ],
+    channels: smokeChannels,
   },
 ];
 

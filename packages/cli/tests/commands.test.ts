@@ -1,4 +1,4 @@
-import type { Device, DeviceChannel } from "thermoworks-sdk";
+import { makeChannel, makeDevice } from "thermoworks-sdk/testing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // --- Module mocks ---
@@ -49,54 +49,6 @@ const mockWriteCache = vi.mocked(writeCache);
 const mockClient = new ThermoworksCloud({ email: "", password: "" });
 const mockGetDevices = vi.mocked(mockClient.getDevices);
 const mockGetAllDeviceChannels = vi.mocked(mockClient.getAllDeviceChannels);
-
-// --- Helpers ---
-
-function makeDevice(overrides: Partial<Device> & { serial: string }): Device {
-	return {
-		serial: overrides.serial,
-		deviceId: null,
-		label: overrides.label ?? null,
-		type: overrides.type ?? null,
-		status: overrides.status ?? null,
-		battery: overrides.battery ?? null,
-		batteryState: null,
-		wifiStrength: null,
-		firmware: null,
-		color: null,
-		thumbnail: null,
-		deviceDisplayUnits: null,
-		iotDeviceId: null,
-		recordingIntervalInSeconds: null,
-		transmitIntervalInSeconds: null,
-		pendingLoad: null,
-		batteryAlertSent: null,
-		lastSeen: overrides.lastSeen ?? null,
-		lastTelemetrySaved: null,
-		lastWifiConnection: null,
-		lastBluetoothConnection: null,
-		sessionStart: null,
-		accountId: null,
-	};
-}
-
-function makeChannel(overrides: Partial<DeviceChannel> = {}): DeviceChannel {
-	return {
-		value: overrides.value ?? null,
-		units: overrides.units ?? null,
-		label: overrides.label ?? null,
-		status: null,
-		type: null,
-		number: null,
-		lastSeen: null,
-		lastTelemetrySaved: null,
-		showAvgTemp: null,
-		alarmHigh: null,
-		alarmLow: null,
-		minimum: null,
-		maximum: null,
-	};
-}
 
 // --- Test suites ---
 

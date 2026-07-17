@@ -9,8 +9,15 @@ import { join } from "node:path";
 
 const distDir = join(import.meta.dirname, "..", "dist");
 
-for (const file of readdirSync(distDir)) {
-	if (file.endsWith(".d.ts")) {
-		copyFileSync(join(distDir, file), join(distDir, file.replace(/\.d\.ts$/, ".d.cts")));
+function mirrorDeclarations(dir) {
+	for (const entry of readdirSync(dir, { withFileTypes: true })) {
+		const path = join(dir, entry.name);
+		if (entry.isDirectory()) {
+			mirrorDeclarations(path);
+		} else if (entry.name.endsWith(".d.ts")) {
+			copyFileSync(path, join(dir, entry.name.replace(/\.d\.ts$/, ".d.cts")));
+		}
 	}
 }
+
+mirrorDeclarations(distDir);

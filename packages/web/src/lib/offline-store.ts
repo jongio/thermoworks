@@ -1,8 +1,9 @@
 import type { DeviceWithChannels } from "./api.ts";
 
 const DB_NAME = "thermoworks";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = "devices";
+const OUTBOX_STORE_NAME = "mutationOutbox";
 const CACHE_KEY = "latest";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
@@ -19,6 +20,9 @@ function openDB(): Promise<IDBDatabase> {
 			const db = request.result;
 			if (!db.objectStoreNames.contains(STORE_NAME)) {
 				db.createObjectStore(STORE_NAME);
+			}
+			if (!db.objectStoreNames.contains(OUTBOX_STORE_NAME)) {
+				db.createObjectStore(OUTBOX_STORE_NAME, { keyPath: "id" });
 			}
 		};
 

@@ -1,5 +1,6 @@
 import { WifiOff } from "lucide-react";
 import { useOfflineCacheContext } from "../context/OfflineCacheContext.tsx";
+import { useOfflineMutationCounts } from "../hooks/useOfflineMutations.ts";
 import { useOnlineStatus } from "../hooks/useOnlineStatus.ts";
 import { cn } from "../lib/utils.ts";
 
@@ -23,8 +24,9 @@ function formatTimeAgo(date: Date): string {
 export function OfflineBanner() {
 	const isOnline = useOnlineStatus();
 	const { cachedAt, isFromCache } = useOfflineCacheContext();
+	const { pendingCount, conflictCount } = useOfflineMutationCounts();
 
-	if (isOnline) return null;
+	if (isOnline && pendingCount === 0 && conflictCount === 0) return null;
 
 	return (
 		<div
@@ -38,11 +40,24 @@ export function OfflineBanner() {
 			)}
 		>
 			<WifiOff className="h-4 w-4 shrink-0" aria-hidden="true" />
-			<p className="text-sm font-medium">
-				You're offline.
-				{isFromCache && cachedAt
-					? ` Last updated ${formatTimeAgo(cachedAt)}.`
-					: " Data may be outdated."}
+			<p className="text-sm font-medium flex flex-wrap items-center gap-2">
+				<span>
+					{isOnline ? "Offline changes pending." : "You're offline."}
+					{!isOnline &&
+						(isFromCache && cachedAt
+							? ` Last updated ${formatTimeAgo(cachedAt)}.`
+							: " Data may be outdated.")}
+				</span>
+				{pendingCount > 0 && (
+					<span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">
+						{pendingCount} pending
+					</span>
+				)}
+				{conflictCount > 0 && (
+					<span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-900 dark:bg-red-900/60 dark:text-red-100">
+						{conflictCount} needs review — check current device state, then retry online
+					</span>
+				)}
 			</p>
 		</div>
 	);

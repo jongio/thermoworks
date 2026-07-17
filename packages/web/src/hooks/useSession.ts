@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ThermoworksWebClient } from "../lib/api.ts";
+import {
+	enqueueEndSessionMutation,
+	enqueueStartSessionMutation,
+} from "../lib/offline-mutations.ts";
 
 export interface UseSessionResult {
 	isActive: boolean;
@@ -80,7 +84,12 @@ export function useSession(
 			if (!client?.isAuthenticated) return;
 			setError(null);
 			try {
-				const result = await client.startSession(serial, newLabel);
+				const wasActive = isActive;
+				const result = navigator.onLine
+					? await client.startSession(serial, newLabel)
+					: await enqueueStartSessionMutation({ serial, label: newLabel, wasActive }).then(() => ({
+							success: true,
+						}));
 				if (result.success) {
 					const now = new Date();
 					optimisticOverrideRef.current = true;
@@ -94,14 +103,17 @@ export function useSession(
 				setError(err instanceof Error ? err.message : "Failed to start session");
 			}
 		},
-		[client, serial],
+		[client, isActive, serial],
 	);
 
 	const endSession = useCallback(async () => {
 		if (!client?.isAuthenticated) return;
 		setError(null);
 		try {
-			const result = await client.endSession(serial);
+			const wasActive = isActive;
+			const result = navigator.onLine
+				? await client.endSession(serial)
+				: await enqueueEndSessionMutation({ serial, wasActive }).then(() => ({ success: true }));
 			if (result.success) {
 				optimisticOverrideRef.current = false;
 				setIsActive(false);
@@ -112,7 +124,7 @@ export function useSession(
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to end session");
 		}
-	}, [client, serial]);
+	}, [client, isActive, serial]);
 
 	return { isActive, elapsed, label, startSession, endSession, error };
 }

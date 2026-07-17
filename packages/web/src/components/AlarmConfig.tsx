@@ -2,6 +2,7 @@ import { Bell, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AlarmSetOptions } from "thermoworks-sdk";
 import type { ThermoworksWebClient } from "../lib/api.ts";
+import { enqueueAlarmMutation } from "../lib/offline-mutations.ts";
 import { cn } from "../lib/utils.ts";
 
 interface AlarmConfigProps {
@@ -129,7 +130,20 @@ export function AlarmConfig({
 				return;
 			}
 
-			await client.setAlarm(serial, channelNumber, config);
+			if (!navigator.onLine) {
+				await enqueueAlarmMutation({
+					serial,
+					channel: channelNumber,
+					config,
+					currentHighValue,
+					currentHighEnabled,
+					currentLowValue,
+					currentLowEnabled,
+					channelUnits,
+				});
+			} else {
+				await client.setAlarm(serial, channelNumber, config);
+			}
 			onSaved();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to save alarm");
@@ -143,7 +157,9 @@ export function AlarmConfig({
 		channelNumber,
 		channelUnits,
 		currentHighValue,
+		currentHighEnabled,
 		currentLowValue,
+		currentLowEnabled,
 		onClose,
 		onSaved,
 	]);

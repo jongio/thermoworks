@@ -1,6 +1,7 @@
 import { Outlet } from "react-router-dom";
 import type { StoredAccount } from "../hooks/useAccounts.ts";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts.ts";
+import { useOfflineMutationReplay } from "../hooks/useOfflineMutations.ts";
 import type { ThermoworksWebClient } from "../lib/api.ts";
 import { BottomNav } from "./BottomNav.tsx";
 import { KeyboardShortcutsHelp } from "./KeyboardShortcutsHelp.tsx";
@@ -35,6 +36,7 @@ export function AppLayout({
 }: AppLayoutProps) {
 	const context: AppOutletContext = { client };
 	const { shortcuts, showHelp, setShowHelp } = useKeyboardShortcuts();
+	useOfflineMutationReplay(client);
 
 	return (
 		<div className="flex h-screen overflow-hidden">

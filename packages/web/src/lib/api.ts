@@ -1019,6 +1019,12 @@ export class ThermoworksWebClient {
 		return devices;
 	}
 
+	async getDevice(serial: string): Promise<Device | null> {
+		const fields = await this.fetchDocFields(`documents/devices/${encodeURIComponent(serial)}`);
+		if (!fields) return null;
+		return parseDevice(fields);
+	}
+
 	async getDeviceChannel(serial: string, channel: number): Promise<DeviceChannel | null> {
 		const path = `documents/devices/${encodeURIComponent(serial)}/channels/${channel}`;
 		const fields = await this.fetchDocFields(path);

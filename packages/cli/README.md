@@ -108,6 +108,7 @@ The setup wizard writes config to `~/.thermoworks/config.json`.
 | `devices[].label` | `string` | Label used in output and setup summaries |
 | `devices[].channels` | `number[] \| "avg"` | Specific 1-based channel numbers to show, or `"avg"` to display the average temperature across temperature channels |
 | `refreshSeconds` | `number` | API cache duration in seconds (default: 30) |
+| `channelLabels` | `Record<string, string>` | Optional map of `"serial:channel"` to custom display labels |
 
 If the file is missing, the CLI falls back to an empty device list with a 30-second cache until you run setup.
 
@@ -317,6 +318,27 @@ Filter options:
 Filters combine (all must match) and work with `--json` and `--no-channels`. Type,
 status, label, and serial values are matched exactly.
 
+### `thermoworks label set <serial> <channel> <name>`
+
+Assign a custom display label to a specific device channel. The label persists in
+`~/.thermoworks/config.json` and is used by all surfaces (CLI, web, VS Code).
+
+```bash
+npx thermoworks label set ABC123 1 "Brisket"
+```
+
+### `thermoworks label get <serial> <channel>`
+
+Print the current custom label for a channel (or report that none is set).
+
+### `thermoworks label list`
+
+Show all custom channel labels currently stored in the config.
+
+### `thermoworks label clear <serial> <channel>`
+
+Remove a custom label for a channel, reverting to the cloud or default label.
+
 ### `thermoworks temp <serial>`
 
 Print a single temperature value to stdout, for shell scripts and automation. Without
@@ -391,6 +413,8 @@ npx thermoworks watch --bell
 npx thermoworks watch --json | jq .
 npx thermoworks watch --device M100009168 --record cook.csv
 npx thermoworks watch --until-alarm --timeout 600
+npx thermoworks watch --webhook https://hooks.slack.com/services/T00/B00/xxx
+npx thermoworks watch --webhook https://example.com/hook --webhook-format generic
 ```
 
 Options:
@@ -403,6 +427,24 @@ Options:
 - `--record-format csv|json` — Record file format (default `csv`). CSV writes one row per channel with a header; JSON writes one NDJSON frame per refresh
 - `--until-alarm` — Exit with code 0 when any watched channel enters a high or low alarm state. Prints the device, channel, current temperature, threshold, and alarm type. With `--json`, emits a machine-readable alarm result object. Designed for scripting: the process blocks until an alarm fires (or `--timeout` expires)
 - `--timeout N` — Requires `--until-alarm`. Exit with code 2 if no alarm is detected within `N` seconds. Without this flag, `--until-alarm` waits indefinitely
+- `--webhook URL` — POST a JSON alarm payload to `URL` when any channel enters an alarm state (repeatable for multiple endpoints). Format is auto-detected from the URL (Slack, Discord) or defaults to generic JSON. Set the `THERMOWORKS_WEBHOOK_URL` env var instead to keep secrets out of shell history. Delivery failures retry with exponential backoff and are logged without crashing the watch loop
+- `--webhook-format generic|slack|discord` — Override the auto-detected webhook payload format
+- `--ha-url URL` — Publish temperatures and alarm states to a Home Assistant instance via its REST API. Each enabled channel becomes a `sensor.thermoworks_*` entity. Requires `--ha-token`. Alternatively set the `THERMOWORKS_HA_URL` env var
+- `--ha-token TOKEN` — Long-lived access token for the HA REST API. Requires `--ha-url`. Alternatively set the `THERMOWORKS_HA_TOKEN` env var to keep the token out of shell history
+
+#### Home Assistant Example
+
+```bash
+# Publish to HA with live watch display:
+npx thermoworks watch --ha-url http://homeassistant.local:8123 --ha-token eyJhbGciOiJIUz...
+
+# Via env vars:
+export THERMOWORKS_HA_URL=http://homeassistant.local:8123
+export THERMOWORKS_HA_TOKEN=eyJhbGciOiJIUz...
+npx thermoworks watch
+```
+
+Each poll interval, temperature sensors (`sensor.thermoworks_<serial>_<channel>`) are created or updated in HA. Alarm transitions publish `binary_sensor.thermoworks_*_alarm_high` / `_alarm_low` entities. Stale channels are marked unavailable. No MQTT broker is required (uses the HA REST API with zero additional dependencies).
 
 ### `thermoworks metrics`
 
@@ -471,6 +513,18 @@ Options:
 - `--from DATE` - Only list archives starting on or after DATE
 - `--to DATE` - Only list archives starting on or before DATE
 - `--json` - Emit the list or detail as JSON
+
+### `thermoworks archives compare <serial> <idA> <idB>`
+
+Compare two archived cook sessions side by side. Shows duration, reading count, and per-channel min/max/last/avg with diffs.
+
+```bash
+npx thermoworks archives compare M100009168 arch-001 arch-002
+npx thermoworks archives compare M100009168 arch-001 arch-002 --json
+```
+
+Options:
+- `--json` - Output the comparison as structured JSON
 
 ### `thermoworks stats <serial>`
 

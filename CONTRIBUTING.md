@@ -53,7 +53,15 @@ sudo dnf install -y libsecret-devel gcc-c++ make python3
 
 ## Quick Setup
 
-Run the automated setup verification script to check that all dependencies are installed:
+After cloning, run the contributor environment check to verify your setup matches CI:
+
+```bash
+pnpm dev:doctor
+```
+
+This cross-platform command checks Node/pnpm versions, platform dependencies for native modules, then runs install, build, test, typecheck, lint, and eval:lint. It reports each step as PASS/FAIL/WARN with actionable fix instructions.
+
+You can also run the platform scripts directly:
 
 ```bash
 # PowerShell (Windows)
@@ -63,7 +71,7 @@ pwsh ./scripts/setup-verify.ps1
 ./scripts/setup-verify.sh
 ```
 
-Or manually:
+Or run the steps manually:
 
 ```bash
 git clone https://github.com/jongio/thermoworks.git
@@ -132,7 +140,7 @@ For headless/CI environments where the OS keychain is unavailable, credentials c
 
 1. Fork the repository.
 2. Create a branch for your change.
-3. Run `pnpm build && pnpm test && pnpm typecheck && pnpm lint` to verify.
+3. Run `pnpm dev:doctor` to verify your environment matches CI.
 4. Open a pull request with a clear description.
 
 ## Agent Skills and Evaluation

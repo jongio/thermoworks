@@ -12,6 +12,7 @@ import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import { backup } from "./commands/backup.js";
 import { calibration } from "./commands/calibration.js";
 import { carryover } from "./commands/carryover.js";
+import { compare, parseCompareArgs } from "./commands/compare.js";
 import { completion } from "./commands/completion.js";
 import { config } from "./commands/config.js";
 import { convert } from "./commands/convert.js";
@@ -38,6 +39,7 @@ import { graph } from "./commands/graph.js";
 import { guide } from "./commands/guide.js";
 import { history } from "./commands/history.js";
 import { journal } from "./commands/journal.js";
+import { label } from "./commands/label.js";
 import { mcpStart } from "./commands/mcp.js";
 import { metrics } from "./commands/metrics.js";
 import { notifications } from "./commands/notifications.js";
@@ -111,6 +113,12 @@ Commands:
     --duration N   Minutes the plateau must last to count as a stall (default: 30)
   device rename <SERIAL> --name <TEXT>        Rename a device
   device reset-minmax <SERIAL> --channel <N>  Reset min/max readings for a channel
+
+  label set <SERIAL> <CH> <LABEL>  Set a persistent channel label
+  label get <SERIAL> <CH>          Show the label for a channel
+  label list [SERIAL]              List all labels (optionally for one device)
+  label clear <SERIAL> <CH>        Remove a channel label
+
   mcp start        Start MCP server for AI assistants
   watch            Continuously monitor temperatures (live refresh)
     --device SN    Watch a specific device by serial number
@@ -129,6 +137,7 @@ Commands:
   archives <serial>  List archived sessions for a device
     --from DATE    Only list archives starting on or after DATE
     --to DATE      Only list archives starting on or before DATE
+  archives compare <serial> <idA> <idB>  Compare two archived sessions side by side
   stats <serial>   Show cross-session cook analytics for a device
 
   firmware         Show firmware versions and available updates
@@ -375,6 +384,10 @@ async function main(): Promise<void> {
 			break;
 		}
 
+		case "label":
+			await label(args.slice(1), options);
+			break;
+
 		case "watch":
 			await watch(args.slice(1), options);
 			break;
@@ -398,6 +411,17 @@ async function main(): Promise<void> {
 		}
 
 		case "archives": {
+			if (subcommand === "compare") {
+				const compareArgs = parseCompareArgs(args);
+				if (!compareArgs) {
+					console.error(
+						"Usage: thermoworks archives compare <serial> <archiveA> <archiveB> [--json]",
+					);
+					process.exit(1);
+				}
+				await compare(compareArgs, options);
+				break;
+			}
 			const archivesArgs = parseArchivesArgs(args);
 			if (!archivesArgs) {
 				console.error(

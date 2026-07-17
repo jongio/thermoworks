@@ -130,6 +130,8 @@ describe("parseWatchArgs", () => {
 			alertBefore: undefined,
 			untilAlarm: false,
 			timeout: undefined,
+			webhooks: [],
+			webhookFormat: undefined,
 		});
 	});
 
@@ -272,6 +274,101 @@ describe("parseWatchArgs", () => {
 		parseWatchArgs(["--bell", "--device"]);
 		expect(exitSpy).toHaveBeenCalledWith(1);
 		expect(errorSpy).toHaveBeenCalledWith("Error: --device requires a value");
+	});
+
+	// --- --webhook flag ---
+
+	it("parses a single --webhook URL", () => {
+		const result = parseWatchArgs(["--webhook", "https://example.com/hook"]);
+		expect(result.webhooks).toEqual(["https://example.com/hook"]);
+	});
+
+	it("parses multiple --webhook URLs", () => {
+		const result = parseWatchArgs([
+			"--webhook",
+			"https://example.com/a",
+			"--webhook",
+			"https://example.com/b",
+		]);
+		expect(result.webhooks).toEqual(["https://example.com/a", "https://example.com/b"]);
+	});
+
+	it("exits with error for invalid --webhook URL", () => {
+		parseWatchArgs(["--webhook", "not-a-url"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith(
+			expect.stringContaining("--webhook value is not a valid URL"),
+		);
+	});
+
+	it("exits with error when --webhook is missing its value", () => {
+		parseWatchArgs(["--webhook"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith("Error: --webhook requires a value");
+	});
+
+	it("parses --webhook-format flag", () => {
+		const result = parseWatchArgs([
+			"--webhook",
+			"https://example.com/hook",
+			"--webhook-format",
+			"slack",
+		]);
+		expect(result.webhookFormat).toBe("slack");
+	});
+
+	it("accepts discord as --webhook-format", () => {
+		const result = parseWatchArgs([
+			"--webhook",
+			"https://example.com/hook",
+			"--webhook-format",
+			"discord",
+		]);
+		expect(result.webhookFormat).toBe("discord");
+	});
+
+	it("exits with error for invalid --webhook-format", () => {
+		parseWatchArgs(["--webhook-format", "xml"]);
+		expect(exitSpy).toHaveBeenCalledWith(1);
+		expect(errorSpy).toHaveBeenCalledWith(
+			"Error: --webhook-format must be 'generic', 'slack', or 'discord'",
+		);
+	});
+
+	it("defaults webhooks to empty array and webhookFormat to undefined", () => {
+		const result = parseWatchArgs([]);
+		expect(result.webhooks).toEqual([]);
+		expect(result.webhookFormat).toBeUndefined();
+	});
+
+	it("reads THERMOWORKS_WEBHOOK_URL env var when no --webhook flag given", () => {
+		process.env.THERMOWORKS_WEBHOOK_URL = "https://env.example.com/hook";
+		try {
+			const result = parseWatchArgs([]);
+			expect(result.webhooks).toEqual(["https://env.example.com/hook"]);
+		} finally {
+			delete process.env.THERMOWORKS_WEBHOOK_URL;
+		}
+	});
+
+	it("splits comma-separated env var URLs", () => {
+		process.env.THERMOWORKS_WEBHOOK_URL = "https://a.example.com/hook, https://b.example.com/hook";
+		try {
+			const result = parseWatchArgs([]);
+			expect(result.webhooks).toEqual(["https://a.example.com/hook", "https://b.example.com/hook"]);
+		} finally {
+			delete process.env.THERMOWORKS_WEBHOOK_URL;
+		}
+	});
+
+	it("ignores env var when --webhook flag is present", () => {
+		process.env.THERMOWORKS_WEBHOOK_URL = "https://env.example.com/hook";
+		try {
+			const result = parseWatchArgs(["--webhook", "https://flag.example.com/hook"]);
+			expect(result.webhooks).toEqual(["https://flag.example.com/hook"]);
+		} finally {
+			delete process.env.THERMOWORKS_WEBHOOK_URL;
+		}
 	});
 });
 
@@ -507,7 +604,7 @@ describe("findFirstAlarmingChannel", () => {
 			},
 		];
 		const result = findFirstAlarmingChannel(devices);
-		expect(result?.channel).toBe("2");
+		expect(result?.channel).toBe("Ch 2");
 	});
 
 	it("returns the first alarming channel across multiple devices", () => {
@@ -810,6 +907,7 @@ describe("buildWatchJsonFrame", () => {
 		expect(frame.devices[0]?.channels[0]).toEqual({
 			number: "1",
 			label: "Pit",
+			displayName: "Pit",
 			value: 225,
 			units: "F",
 			alarm: "none",
@@ -928,8 +1026,22 @@ describe("watch recording chunk", () => {
 					status: "online",
 					battery: 80,
 					channels: [
-						{ number: "1", label: "Brisket", value: 165, units: "F", alarm: "normal" },
-						{ number: "2", label: "Pit", value: 250, units: "F", alarm: "high" },
+						{
+							number: "1",
+							label: "Brisket",
+							displayName: "Brisket",
+							value: 165,
+							units: "F",
+							alarm: "normal",
+						},
+						{
+							number: "2",
+							label: "Pit",
+							displayName: "Pit",
+							value: 250,
+							units: "F",
+							alarm: "high",
+						},
 					],
 				},
 			],
@@ -960,7 +1072,7 @@ describe("watch recording chunk", () => {
 
 	it("guards against CSV formula injection in labels", () => {
 		const frame = makeFrame();
-		frame.devices[0]!.channels[0]!.label = "=SUM(A1:A2)";
+		frame.devices[0]!.channels[0]!.displayName = "=SUM(A1:A2)";
 		const rows = buildRecordCsvRows(frame);
 		expect(rows[0]).toContain("'=SUM(A1:A2)");
 	});

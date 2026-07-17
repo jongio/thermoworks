@@ -50,6 +50,11 @@ The package exports:
 **Config types:**
 - `StatuslineConfig`, `DeviceEntry`, `DEFAULT_STATUSLINE_CONFIG`
 - `isValidStatuslineConfig(raw)`, `isValidDeviceEntry(entry)` — validation helpers
+- `ChannelLabelMap`, `channelLabelKey(serial, channel)` — persistent channel label storage
+- `resolveChannelLabel(serial, channel, labels?, index?)` — three-tier label resolution (custom > cloud > "Ch N")
+- `sanitizeLabel(value)` — strips ANSI/control characters and truncates to 50 chars
+- `isValidChannelLabelMap(raw)` — validation for channel label maps
+- `MAX_CHANNEL_LABEL_LENGTH` — max label length constant (50)
 
 **Type interfaces:**
 - `Account`, `Alarm`, `Archive`, `CalibrationRecord`, `Credentials`, `Device`, `DeviceChannel`, `DeviceEvent`, `DeviceFilter`, `EventFilter`, `FirmwareInfo`, `MinMaxReading`, `TemperatureGuide`, `ThermoworksConfig`, `User`, and more

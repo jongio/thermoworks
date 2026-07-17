@@ -106,6 +106,7 @@ let errorSpy: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
 	logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 	errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+	mockLoadConfig.mockResolvedValue({ devices: [], refreshSeconds: 30 });
 });
 
 afterEach(() => {

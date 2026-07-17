@@ -1,20 +1,31 @@
 import { appendFileSync, existsSync, statSync } from "node:fs";
 import {
 	type AlarmState,
+	type ChannelLabelMap,
 	type Device,
 	type DeviceChannel,
 	detectRapidChange,
 	detectStall,
 	getChannelAlarmState,
 	predictDoneTime,
+	resolveChannelLabel,
 	type TemperatureReading,
 	ThermoworksCloud,
 } from "thermoworks-sdk";
 
+import { loadConfig } from "../config.js";
 import { getCredentials } from "../credentials.js";
 import type { OutputOptions } from "../output.js";
 import { loadPreferences } from "../preferences.js";
+import {
+	type AlarmEvent,
+	AlarmNotifier,
+	alarmKey,
+	type WebhookFormat,
+	WebhookSink,
+} from "./alarm-notifier.js";
 import { formatChannelLine } from "./devices.js";
+import { HomeAssistantAlarmSink, HomeAssistantPublisher } from "./home-assistant.js";
 import { formatChannelTrend } from "./sparkline.js";
 
 /** Supported formats for the watch recording log. */
@@ -31,6 +42,10 @@ export interface WatchArgs {
 	alertBefore?: number;
 	untilAlarm: boolean;
 	timeout?: number;
+	webhooks: string[];
+	webhookFormat?: WebhookFormat;
+	haUrl?: string;
+	haToken?: string;
 }
 
 /**
@@ -55,9 +70,12 @@ export interface AlarmTriggerResult {
  * Returns the alarm details when found, or `null` when no channel is alarming.
  * Reuses the SDK's `getChannelAlarmState` to avoid duplicating alarm logic.
  */
-export function findFirstAlarmingChannel(devices: DeviceWithChannels[]): AlarmTriggerResult | null {
+export function findFirstAlarmingChannel(
+	devices: DeviceWithChannels[],
+	channelLabels?: ChannelLabelMap,
+): AlarmTriggerResult | null {
 	for (const { device, channels } of devices) {
-		for (const ch of channels) {
+		for (const [i, ch] of channels.entries()) {
 			if (ch.enabled === false) continue;
 			const state = getChannelAlarmState(ch);
 			if (state === "none") continue;
@@ -65,7 +83,7 @@ export function findFirstAlarmingChannel(devices: DeviceWithChannels[]): AlarmTr
 			const alarm = state === "high" ? ch.alarmHigh : ch.alarmLow;
 			return {
 				device: device.label ?? device.serial,
-				channel: ch.label ?? ch.number ?? "unknown",
+				channel: resolveChannelLabel(device.serial, ch, channelLabels, i),
 				value: ch.value ?? 0,
 				units: ch.units ?? "",
 				threshold: alarm?.value ?? 0,
@@ -106,6 +124,10 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 	let alertBefore: number | undefined;
 	let untilAlarm = false;
 	let timeout: number | undefined;
+	const webhooks: string[] = [];
+	let webhookFormat: WebhookFormat | undefined;
+	let haUrl: string | undefined;
+	let haToken: string | undefined;
 
 	let i = 0;
 	// Consume the value that must follow a value-taking flag, erroring when it is
@@ -161,11 +183,85 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 				process.exit(1);
 			}
 			timeout = parsed;
+		} else if (arg === "--webhook") {
+			const url = nextValue("--webhook");
+			try {
+				new URL(url);
+			} catch {
+				console.error(`Error: --webhook value is not a valid URL: ${url}`);
+				process.exit(1);
+			}
+			webhooks.push(url);
+		} else if (arg === "--webhook-format") {
+			const value = nextValue("--webhook-format");
+			if (value !== "generic" && value !== "slack" && value !== "discord") {
+				console.error("Error: --webhook-format must be 'generic', 'slack', or 'discord'");
+				process.exit(1);
+			}
+			webhookFormat = value;
+		} else if (arg === "--ha-url") {
+			const value = nextValue("--ha-url");
+			try {
+				new URL(value);
+			} catch {
+				console.error(`Error: --ha-url value is not a valid URL: ${value}`);
+				process.exit(1);
+			}
+			haUrl = value;
+		} else if (arg === "--ha-token") {
+			haToken = nextValue("--ha-token");
 		}
 	}
 
 	if (timeout !== undefined && !untilAlarm) {
 		console.error("Error: --timeout requires --until-alarm");
+		process.exit(1);
+	}
+
+	// Merge env-var webhooks (comma-separated) when no --webhook flags given.
+	if (webhooks.length === 0) {
+		const envUrl = process.env.THERMOWORKS_WEBHOOK_URL;
+		if (envUrl) {
+			for (const raw of envUrl.split(",")) {
+				const trimmed = raw.trim();
+				if (trimmed) {
+					try {
+						new URL(trimmed);
+						webhooks.push(trimmed);
+					} catch {
+						console.error(`Warning: ignoring invalid URL in THERMOWORKS_WEBHOOK_URL: ${trimmed}`);
+					}
+				}
+			}
+		}
+	}
+
+	// Fall back to env vars for Home Assistant settings when flags are omitted.
+	if (!haUrl) {
+		const envUrl = process.env.THERMOWORKS_HA_URL;
+		if (envUrl) {
+			try {
+				new URL(envUrl);
+				haUrl = envUrl;
+			} catch {
+				console.error(`Warning: ignoring invalid THERMOWORKS_HA_URL: ${envUrl}`);
+			}
+		}
+	}
+	if (!haToken) {
+		const envToken = process.env.THERMOWORKS_HA_TOKEN;
+		if (envToken) {
+			haToken = envToken;
+		}
+	}
+
+	// Require both URL and token when either is provided.
+	if (haUrl && !haToken) {
+		console.error("Error: --ha-url requires --ha-token (or set THERMOWORKS_HA_TOKEN)");
+		process.exit(1);
+	}
+	if (haToken && !haUrl) {
+		console.error("Error: --ha-token requires --ha-url (or set THERMOWORKS_HA_URL)");
 		process.exit(1);
 	}
 
@@ -179,6 +275,10 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 		alertBefore,
 		untilAlarm,
 		timeout,
+		webhooks,
+		webhookFormat,
+		haUrl,
+		haToken,
 	};
 }
 
@@ -328,6 +428,7 @@ export function formatWatchFrame(
 	history?: ChannelHistory,
 	stallAlert?: boolean,
 	alertBefore?: number,
+	channelLabels?: ChannelLabelMap,
 ): string {
 	const lines: string[] = [];
 
@@ -348,7 +449,7 @@ export function formatWatchFrame(
 			const activeChannels = channels.filter((ch) => ch.enabled !== false && ch.value != null);
 			for (const [i, ch] of activeChannels.entries()) {
 				const trend = formatChannelTrend(ch);
-				const channelLine = formatChannelLine(ch, i);
+				const channelLine = formatChannelLine(ch, i, device.serial, channelLabels);
 				let line = trend ? `${channelLine}  ${trend}` : channelLine;
 
 				// Append stall/rapid indicators when history is available.
@@ -391,6 +492,8 @@ export function formatWatchFrame(
 export interface WatchJsonChannel {
 	number: string | null;
 	label: string | null;
+	/** Resolved display name: custom label > cloud label > "Ch N". */
+	displayName: string;
 	value: number | null;
 	units: string | null;
 	alarm: AlarmState;
@@ -416,6 +519,7 @@ export interface WatchJsonFrame {
 export function buildWatchJsonFrame(
 	devices: DeviceWithChannels[],
 	timestamp: Date,
+	channelLabels?: ChannelLabelMap,
 ): WatchJsonFrame {
 	return {
 		timestamp: timestamp.toISOString(),
@@ -427,9 +531,10 @@ export function buildWatchJsonFrame(
 			battery: device.battery,
 			channels: channels
 				.filter((ch) => ch.enabled !== false)
-				.map((ch) => ({
+				.map((ch, idx) => ({
 					number: ch.number,
 					label: ch.label,
+					displayName: resolveChannelLabel(device.serial, ch, channelLabels, idx),
 					value: ch.value,
 					units: ch.units,
 					alarm: getChannelAlarmState(ch),
@@ -464,7 +569,7 @@ export function buildRecordCsvRows(frame: WatchJsonFrame): string[] {
 	const rows: string[] = [];
 	for (const device of frame.devices) {
 		for (const ch of device.channels) {
-			const channel = ch.label ?? ch.number ?? "unknown";
+			const channel = ch.displayName;
 			const value = ch.value ?? "";
 			const units = ch.units ?? "";
 			rows.push(
@@ -537,6 +642,10 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 		alertBefore,
 		untilAlarm,
 		timeout,
+		webhooks,
+		webhookFormat,
+		haUrl,
+		haToken,
 	} = parseWatchArgs(args, {
 		device: prefs.device,
 		interval: prefs.watchInterval,
@@ -548,6 +657,10 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 		process.exit(1);
 	}
 
+	// Load persisted channel labels for display resolution.
+	const watchConfig = await loadConfig();
+	const channelLabels: ChannelLabelMap | undefined = watchConfig.channelLabels;
+
 	// For CSV, only write the header when starting a fresh (missing or empty) file.
 	let needsCsvHeader =
 		record !== undefined && recordFormat === "csv"
@@ -558,6 +671,23 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 
 	// Accumulate per-channel reading history for stall/rapid detection.
 	const history: ChannelHistory = new Map();
+
+	// Set up webhook alarm notifier when URLs are configured.
+	const notifier = new AlarmNotifier();
+	for (const url of webhooks) {
+		notifier.addSink(new WebhookSink({ url, format: webhookFormat }));
+	}
+
+	// Set up Home Assistant integration when HA URL + token are configured.
+	let haPublisher: HomeAssistantPublisher | undefined;
+	if (haUrl && haToken) {
+		const haOptions = { url: haUrl, token: haToken };
+		haPublisher = new HomeAssistantPublisher(haOptions);
+		notifier.addSink(new HomeAssistantAlarmSink(haOptions));
+	}
+
+	// Track alarm transitions so webhooks fire only on state changes.
+	const activeAlarms = new Set<string>();
 
 	// Register cleanup so the client is closed on process exit (covers SIGINT via global handler)
 	process.on("exit", () => {
@@ -611,7 +741,7 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 			// Record readings into history for stall/rapid detection.
 			recordChannelReadings(history, devicesWithChannels, now);
 
-			const frame = buildWatchJsonFrame(devicesWithChannels, now);
+			const frame = buildWatchJsonFrame(devicesWithChannels, now, channelLabels);
 
 			if (record !== undefined) {
 				const chunk = buildRecordChunk(frame, recordFormat, needsCsvHeader);
@@ -628,12 +758,25 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 				}
 			}
 
+			// Publish temperatures to Home Assistant (errors are logged, never thrown).
+			if (haPublisher) {
+				haPublisher.publishTemperatures(devicesWithChannels);
+			}
+
 			if (options.json) {
 				console.log(JSON.stringify(frame));
 			} else {
 				console.clear();
 				console.log(
-					formatWatchFrame(devicesWithChannels, now, interval, history, stallAlert, alertBefore),
+					formatWatchFrame(
+						devicesWithChannels,
+						now,
+						interval,
+						history,
+						stallAlert,
+						alertBefore,
+						channelLabels,
+					),
 				);
 			}
 
@@ -648,6 +791,48 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 				process.stdout.write("\x07");
 			}
 
+			// Dispatch webhook notifications on alarm transitions (new alarms only).
+			if (notifier.hasSinks) {
+				const currentKeys = new Set<string>();
+
+				for (const { device, channels } of devicesWithChannels) {
+					for (const [chIdx, ch] of channels.entries()) {
+						if (ch.enabled === false) continue;
+						const state = getChannelAlarmState(ch);
+						if (state === "none") continue;
+
+						const key = alarmKey(device.serial, ch.number, state);
+						currentKeys.add(key);
+
+						if (!activeAlarms.has(key)) {
+							const alarm = state === "high" ? ch.alarmHigh : ch.alarmLow;
+							const event: AlarmEvent = {
+								device: device.label ?? device.serial,
+								channel: resolveChannelLabel(device.serial, ch, channelLabels, chIdx),
+								value: ch.value ?? 0,
+								units: ch.units ?? "",
+								threshold: alarm?.value ?? 0,
+								alarmType: state,
+								timestamp: now.toISOString(),
+							};
+							// Fire and forget; errors are logged inside the notifier.
+							notifier.notify(event);
+						}
+					}
+				}
+
+				// Clear keys for alarms that are no longer active so they
+				// retrigger if the channel re-enters an alarm state.
+				for (const key of activeAlarms) {
+					if (!currentKeys.has(key)) {
+						activeAlarms.delete(key);
+					}
+				}
+				for (const key of currentKeys) {
+					activeAlarms.add(key);
+				}
+			}
+
 			fetchedDevices = devicesWithChannels;
 		} catch (err) {
 			console.error(`Error fetching data: ${err instanceof Error ? err.message : String(err)}`);
@@ -656,7 +841,7 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 		// Alarm and timeout checks live outside the try-catch so process.exit
 		// propagates without being swallowed by the fetch error handler.
 		if (untilAlarm && fetchedDevices) {
-			const trigger = findFirstAlarmingChannel(fetchedDevices);
+			const trigger = findFirstAlarmingChannel(fetchedDevices, channelLabels);
 			if (trigger) {
 				if (options.json) {
 					console.log(JSON.stringify({ alarm: trigger }));

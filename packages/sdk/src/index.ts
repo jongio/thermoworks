@@ -4,11 +4,16 @@ export type { AuthSessionOptions } from "./auth.js";
 export type { CarryoverInput, CarryoverResult, CarryoverSize } from "./carryover.js";
 export { assessCarryover, carryoverRiseForSize } from "./carryover.js";
 export { ThermoworksCloud } from "./client.js";
-export type { DeviceEntry, StatuslineConfig } from "./config.js";
+export type { ChannelLabelMap, DeviceEntry, StatuslineConfig } from "./config.js";
 export {
+	channelLabelKey,
 	DEFAULT_STATUSLINE_CONFIG,
+	isValidChannelLabelMap,
 	isValidDeviceEntry,
 	isValidStatuslineConfig,
+	MAX_CHANNEL_LABEL_LENGTH,
+	resolveChannelLabel,
+	sanitizeLabel,
 } from "./config.js";
 export { toCelsius, toFahrenheit } from "./convert.js";
 export type {

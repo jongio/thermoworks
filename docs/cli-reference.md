@@ -235,6 +235,36 @@ npx thermoworks devices --sort health --type signals
 - `--sort health` and `--critical` work alongside all existing filter flags.
 
 
+## `thermoworks label set|get|list|clear`
+
+Manage custom display labels for device channels. Labels persist in `~/.thermoworks/config.json` under the `channelLabels` map (keyed by `"serial:channel"`). All surfaces (CLI, web, VS Code) use a three-tier resolution: custom label > cloud label > "Ch N".
+
+**Subcommands:**
+
+| Subcommand | Usage | Description |
+|---|---|---|
+| `set` | `label set <serial> <channel> <name>` | Assign a custom display label to a channel |
+| `get` | `label get <serial> <channel>` | Print the current custom label for a channel |
+| `list` | `label list` | Show all stored channel labels |
+| `clear` | `label clear <serial> <channel>` | Remove a custom label, reverting to cloud/default |
+
+```bash
+# Assign "Brisket" to channel 1 of device ABC123
+npx thermoworks label set ABC123 1 "Brisket"
+
+# View the label
+npx thermoworks label get ABC123 1
+
+# List all labels
+npx thermoworks label list
+
+# Remove the label
+npx thermoworks label clear ABC123 1
+```
+
+**JSON output** (`devices --json` and `watch --json`): includes an additive `displayName` field alongside the existing `label` field.
+
+
 ## `thermoworks temp <SERIAL>`
 
 Print a single temperature value to stdout for shell scripts and automation. Without
@@ -711,6 +741,55 @@ npx thermoworks archives ABC123 --from 2026-01-01 --to 2026-01-31
 - Date filters use archive start time. Archives without a start time are skipped when `--from` or `--to` is set.
 - With `--id`: shows detailed view including per-channel min/max/last values.
 - Prints `No archives found.` when the device has no archived sessions.
+
+## `thermoworks archives compare`
+
+Compare two archived cook sessions side by side. Shows duration, reading count, channel count, and per-channel min/max/last/avg with computed diffs.
+
+**Usage**
+
+```bash
+npx thermoworks archives compare <SERIAL> <ARCHIVE_A> <ARCHIVE_B>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `<ARCHIVE_A>` - (Required) First archive ID.
+- `<ARCHIVE_B>` - (Required) Second archive ID.
+- `--json` - Output the comparison as structured JSON.
+
+**Examples**
+
+```bash
+npx thermoworks archives compare ABC123 arch-001 arch-002
+# Comparing archives for ABC123
+#
+#                     Weekend Brisket        Pork Shoulder         Diff
+#                     ────────────────────  ────────────────────  ───────────────
+#   Duration          12h 30m               9h 45m                -2h 45m
+#   Start             6/1/2026, 8:00:00 AM  5/28/2026, 7:15 AM
+#   End               6/1/2026, 8:30:00 PM  5/28/2026, 5:00 PM
+#   Readings          750                   585                   -165
+#   Channels          2                     2
+#
+#   Per-channel comparison:
+#
+#     Pit (F)
+#       Min       215°F                 220°F                 +5°F
+#       Max       285°F                 275°F                 -10°F
+#       Last      250°F                 245°F                 -5°F
+#       Avg       248°F                 240°F                 -8°F
+
+npx thermoworks archives compare ABC123 arch-001 arch-002 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Channels are matched by label. If one archive has channels that the other does not, those channels appear with `-` for the missing side.
+- Average is computed from `recentReadings` when available.
+- Errors when either archive ID is not found for the given device.
 
 ## `thermoworks stats`
 
@@ -2128,7 +2207,7 @@ Continuously monitor device temperatures with a live-refreshing display. Clears 
 **Usage**
 
 ```bash
-npx thermoworks watch [--device SERIAL] [--interval N] [--alert-before N] [--bell] [--json] [--record FILE] [--record-format csv|json] [--until-alarm] [--timeout N]
+npx thermoworks watch [--device SERIAL] [--interval N] [--alert-before N] [--bell] [--json] [--record FILE] [--record-format csv|json] [--until-alarm] [--timeout N] [--webhook URL] [--webhook-format generic|slack|discord]
 ```
 
 **Options**
@@ -2142,6 +2221,8 @@ npx thermoworks watch [--device SERIAL] [--interval N] [--alert-before N] [--bel
 - `--record-format csv|json` - Format for the record file. Defaults to `csv`. `csv` writes one row per channel (`timestamp,serial,channel,value,units,alarm`) with a header on a fresh file. `json` writes one NDJSON frame per refresh. CSV fields are guarded against spreadsheet formula injection.
 - `--until-alarm` - Exit with code 0 when any watched channel first enters a high or low alarm state. Prints device, channel, current temperature, threshold, and alarm type. With `--json`, emits a machine-readable `{"alarm": {...}}` object containing the same fields. All existing filters (`--device`, `--interval`) apply. The watch display still refreshes while waiting, so you can monitor progress visually. Designed for scripts that need to block until a temperature event occurs.
 - `--timeout N` - Requires `--until-alarm`. Exit with code 2 if no alarm is detected within `N` seconds. `N` must be a positive number. Without this flag, `--until-alarm` waits indefinitely.
+- `--webhook URL` - POST a JSON alarm payload to `URL` when any channel transitions into a high or low alarm state. Can be repeated to send to multiple endpoints. The payload format is auto-detected from the URL hostname (Slack, Discord) or defaults to generic JSON. To avoid exposing the URL in shell history, set the `THERMOWORKS_WEBHOOK_URL` environment variable instead (comma-separated for multiple URLs). Delivery failures retry with exponential backoff (up to 3 attempts) and are logged without crashing the watch loop.
+- `--webhook-format generic|slack|discord` - Override the auto-detected payload format for all webhook URLs. `generic` sends a flat JSON object with `event`, `device`, `channel`, `value`, `units`, `threshold`, `alarmType`, and `timestamp` fields. `slack` sends a Slack Block Kit message. `discord` sends a Discord embed.
 
 **Examples**
 
@@ -2185,6 +2266,21 @@ npx thermoworks watch --until-alarm --timeout 600
 # Machine-readable alarm result for scripts:
 npx thermoworks watch --until-alarm --json
 # {"alarm":{"device":"Smoker","channel":"Meat","value":205,"units":"F","threshold":203,"alarmType":"high"}}
+
+# POST to a Slack webhook on every alarm transition:
+npx thermoworks watch --webhook https://hooks.slack.com/services/T00/B00/xxx
+
+# POST to a generic URL, auto-detected as generic JSON:
+npx thermoworks watch --webhook https://example.com/hook
+
+# Explicit format override for a Discord webhook:
+npx thermoworks watch --webhook https://discord.com/api/webhooks/123/token --webhook-format discord
+
+# Multiple webhooks (Slack + generic endpoint):
+npx thermoworks watch --webhook https://hooks.slack.com/services/T00/B00/xxx --webhook https://example.com/hook
+
+# Webhook URL via environment variable (keeps secrets out of shell history):
+THERMOWORKS_WEBHOOK_URL=https://hooks.slack.com/services/T00/B00/xxx npx thermoworks watch
 ```
 
 **Notes**
@@ -2199,6 +2295,56 @@ npx thermoworks watch --until-alarm --json
 - When `--device` or `--interval` are omitted, falls back to the `device` and `watchInterval` defaults saved with `thermoworks config`.
 - `--record` appends across refreshes, so pointing at an existing CSV log continues it without repeating the header. Delete the file first to start fresh.
 - `--timeout` without `--until-alarm` is rejected with an error. The timeout exit code (2) is distinct from general errors (1) so scripts can distinguish "no alarm yet" from "something broke."
+- Webhook notifications fire only on alarm transitions (a channel changing from normal to alarming), not on every refresh while the alarm remains active. When the channel returns to normal and alarms again, the webhook fires again.
+- Failed webhook deliveries retry with exponential backoff (up to 3 attempts). Failures are logged to stderr without crashing the watch loop.
+- The generic JSON payload shape: `{ event: "alarm", device, channel, value, units, threshold, alarmType, timestamp }`. Slack and Discord payloads use each platform's native formatting (Block Kit and embeds, respectively).
+
+### Home Assistant Integration
+
+The watch command can publish device temperatures and alarm states to a Home Assistant instance via its REST API. Each enabled channel becomes a `sensor.thermoworks_*` entity; alarm transitions create `binary_sensor.thermoworks_*_alarm_*` entities.
+
+**Flags**
+
+- `--ha-url URL` : Base URL of the Home Assistant instance (e.g. `http://homeassistant.local:8123`). Requires `--ha-token`.
+- `--ha-token TOKEN` : Long-lived access token for the HA REST API. Requires `--ha-url`. To keep the token out of shell history, set the `THERMOWORKS_HA_TOKEN` environment variable instead.
+
+**Environment Variables**
+
+- `THERMOWORKS_HA_URL` : Fallback when `--ha-url` is not passed. Must be a valid URL.
+- `THERMOWORKS_HA_TOKEN` : Fallback when `--ha-token` is not passed.
+
+Both URL and token must be provided together (via flags, env vars, or a mix). Flags take priority over env vars.
+
+**Examples**
+
+```bash
+# Publish temperatures and alarms to a local HA instance:
+npx thermoworks watch --ha-url http://homeassistant.local:8123 --ha-token eyJhbGciOiJIUz...
+
+# Via environment variables (keeps the token out of shell history):
+export THERMOWORKS_HA_URL=http://homeassistant.local:8123
+export THERMOWORKS_HA_TOKEN=eyJhbGciOiJIUz...
+npx thermoworks watch
+
+# Combine with other watch flags:
+npx thermoworks watch --device ABC123 --interval 15 --ha-url http://ha.local:8123 --ha-token $HA_TOKEN
+```
+
+**How It Works**
+
+On each poll interval, the watch loop POSTs to `POST /api/states/<entity_id>` for every enabled channel:
+
+- Temperature sensors: `sensor.thermoworks_<serial>_<channel>` with `state_class: measurement`, `device_class: temperature`, and `unit_of_measurement` (°F or °C).
+- Alarm binary sensors: `binary_sensor.thermoworks_<serial>_<channel>_alarm_<high|low>` with `device_class: heat` and alarm metadata attributes.
+
+Channels that lose their reading (or whose device goes offline) are marked `unavailable` so Home Assistant automations can detect stale data.
+
+**Notes**
+
+- Uses the Home Assistant REST API (zero additional dependencies). No MQTT broker required.
+- All HA API calls have a 10 second timeout. Failures are logged to stderr and never crash the watch loop.
+- Entity IDs are sanitized (lowercased, non-alphanumeric characters replaced with underscores).
+- Create a long-lived access token in Home Assistant at Profile > Security > Long-Lived Access Tokens.
 
 ## `thermoworks config`
 
@@ -2327,7 +2473,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal cost`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `alarm suggest`, `alerts`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `archives compare`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal cost`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `alarm suggest`, `alerts`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

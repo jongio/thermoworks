@@ -4,6 +4,7 @@ import {
 	ChevronUp,
 	Eye,
 	EyeOff,
+	Hourglass,
 	Star,
 	Thermometer,
 	Wifi,
@@ -11,6 +12,7 @@ import {
 import React, { Suspense, useState } from "react";
 import { Link } from "react-router-dom";
 import { useArchiveData } from "../hooks/useArchiveData.ts";
+import { useRestTimer } from "../hooks/useRestTimer.ts";
 import type { DeviceWithChannels, ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { ChannelReading } from "./ChannelReading.tsx";
@@ -73,6 +75,7 @@ export function DeviceCard({
 		isLoading: archiveLoading,
 		error: archiveError,
 	} = useArchiveData(client, device.serial, showChart);
+	const { isResting, remainingFormatted } = useRestTimer(device.serial);
 
 	const archiveChannels = archives[0]?.channels ?? null;
 
@@ -165,6 +168,16 @@ export function DeviceCard({
 						deviceType={device.type ?? device.device}
 						client={client}
 					/>
+				)}
+				{isResting && (
+					<span
+						className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400 font-medium"
+						role="timer"
+						aria-label="Rest time remaining"
+					>
+						<Hourglass className="h-3 w-3" aria-hidden="true" />
+						<span className="font-mono tabular-nums">{remainingFormatted}</span>
+					</span>
 				)}
 			</div>
 

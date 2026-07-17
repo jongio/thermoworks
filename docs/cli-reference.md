@@ -712,6 +712,55 @@ npx thermoworks archives ABC123 --from 2026-01-01 --to 2026-01-31
 - With `--id`: shows detailed view including per-channel min/max/last values.
 - Prints `No archives found.` when the device has no archived sessions.
 
+## `thermoworks archives compare`
+
+Compare two archived cook sessions side by side. Shows duration, reading count, channel count, and per-channel min/max/last/avg with computed diffs.
+
+**Usage**
+
+```bash
+npx thermoworks archives compare <SERIAL> <ARCHIVE_A> <ARCHIVE_B>
+```
+
+**Options**
+
+- `<SERIAL>` - (Required) Device serial number.
+- `<ARCHIVE_A>` - (Required) First archive ID.
+- `<ARCHIVE_B>` - (Required) Second archive ID.
+- `--json` - Output the comparison as structured JSON.
+
+**Examples**
+
+```bash
+npx thermoworks archives compare ABC123 arch-001 arch-002
+# Comparing archives for ABC123
+#
+#                     Weekend Brisket        Pork Shoulder         Diff
+#                     ────────────────────  ────────────────────  ───────────────
+#   Duration          12h 30m               9h 45m                -2h 45m
+#   Start             6/1/2026, 8:00:00 AM  5/28/2026, 7:15 AM
+#   End               6/1/2026, 8:30:00 PM  5/28/2026, 5:00 PM
+#   Readings          750                   585                   -165
+#   Channels          2                     2
+#
+#   Per-channel comparison:
+#
+#     Pit (F)
+#       Min       215°F                 220°F                 +5°F
+#       Max       285°F                 275°F                 -10°F
+#       Last      250°F                 245°F                 -5°F
+#       Avg       248°F                 240°F                 -8°F
+
+npx thermoworks archives compare ABC123 arch-001 arch-002 --json
+```
+
+**Notes**
+
+- Requires valid credentials from environment variables or the OS keychain.
+- Channels are matched by label. If one archive has channels that the other does not, those channels appear with `-` for the missing side.
+- Average is computed from `recentReadings` when available.
+- Errors when either archive ID is not found for the given device.
+
 ## `thermoworks stats`
 
 Summarize a device's archived cook sessions into aggregate metrics.
@@ -2347,7 +2396,7 @@ scrape_configs:
 
 ### `--json`
 
-Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal cost`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `alarm suggest`, `alerts`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
+Output machine-readable JSON instead of human-formatted text. Supported by most commands that display data (`devices`, `temp`, `events`, `archives`, `archives compare`, `stats`, `firmware`, `data-usage`, `notifications`, `account`, `fan`, `calibration`, `guide`, `journal list`, `journal show`, `journal cost`, `journal import`, `plan`, `history`, `backup`, `search`, `config get`, `config list`, `alarm set`, `alarm clear`, `alarm list`, `alarm suggest`, `alerts`, `device rename`, `device reset-minmax`, `session start`, `session end`, `session clear`, `session status`, `auth status`).
 
 When active, commands write a single JSON value (object or array) to stdout with 2-space indentation. This is useful for scripting, piping to `jq`, or integrating with other tools.
 

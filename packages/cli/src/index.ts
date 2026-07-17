@@ -12,6 +12,7 @@ import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import { backup } from "./commands/backup.js";
 import { calibration } from "./commands/calibration.js";
 import { carryover } from "./commands/carryover.js";
+import { compare, parseCompareArgs } from "./commands/compare.js";
 import { completion } from "./commands/completion.js";
 import { config } from "./commands/config.js";
 import { convert } from "./commands/convert.js";
@@ -129,6 +130,7 @@ Commands:
   archives <serial>  List archived sessions for a device
     --from DATE    Only list archives starting on or after DATE
     --to DATE      Only list archives starting on or before DATE
+  archives compare <serial> <idA> <idB>  Compare two archived sessions side by side
   stats <serial>   Show cross-session cook analytics for a device
 
   firmware         Show firmware versions and available updates
@@ -398,6 +400,17 @@ async function main(): Promise<void> {
 		}
 
 		case "archives": {
+			if (subcommand === "compare") {
+				const compareArgs = parseCompareArgs(args);
+				if (!compareArgs) {
+					console.error(
+						"Usage: thermoworks archives compare <serial> <archiveA> <archiveB> [--json]",
+					);
+					process.exit(1);
+				}
+				await compare(compareArgs, options);
+				break;
+			}
 			const archivesArgs = parseArchivesArgs(args);
 			if (!archivesArgs) {
 				console.error(

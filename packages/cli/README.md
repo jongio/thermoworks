@@ -476,6 +476,18 @@ Options:
 - `--to DATE` - Only list archives starting on or before DATE
 - `--json` - Emit the list or detail as JSON
 
+### `thermoworks archives compare <serial> <idA> <idB>`
+
+Compare two archived cook sessions side by side. Shows duration, reading count, and per-channel min/max/last/avg with diffs.
+
+```bash
+npx thermoworks archives compare M100009168 arch-001 arch-002
+npx thermoworks archives compare M100009168 arch-001 arch-002 --json
+```
+
+Options:
+- `--json` - Output the comparison as structured JSON
+
 ### `thermoworks stats <serial>`
 
 Summarize a device's archived cook sessions: session count, total, average, and median cook time, longest and shortest cooks, total readings, and the overall date range. Archives without a recorded start and end are counted but left out of the duration figures.

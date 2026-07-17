@@ -1,8 +1,10 @@
 import { Clock, Square, Timer } from "lucide-react";
 import { useState } from "react";
+import { useRestTimer } from "../hooks/useRestTimer.ts";
 import { useSession } from "../hooks/useSession.ts";
 import type { ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
+import { RestTimerControls } from "./RestTimerControls.tsx";
 
 interface SessionControlsProps {
 	client: ThermoworksWebClient;
@@ -23,6 +25,7 @@ export function SessionControls({
 		sessionStart,
 		sessionLabel,
 	);
+	const restTimer = useRestTimer(serial);
 	const [inputLabel, setInputLabel] = useState("");
 	const [showConfirm, setShowConfirm] = useState(false);
 
@@ -110,6 +113,7 @@ export function SessionControls({
 					</div>
 				)}
 				{error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
+				<RestTimerControls timer={restTimer} />
 			</div>
 		);
 	}
@@ -146,6 +150,7 @@ export function SessionControls({
 				</button>
 			</div>
 			{error && <p className="mt-1.5 text-xs text-destructive">{error}</p>}
+			<RestTimerControls timer={restTimer} />
 		</div>
 	);
 }

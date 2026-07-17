@@ -2220,6 +2220,53 @@ THERMOWORKS_WEBHOOK_URL=https://hooks.slack.com/services/T00/B00/xxx npx thermow
 - Failed webhook deliveries retry with exponential backoff (up to 3 attempts). Failures are logged to stderr without crashing the watch loop.
 - The generic JSON payload shape: `{ event: "alarm", device, channel, value, units, threshold, alarmType, timestamp }`. Slack and Discord payloads use each platform's native formatting (Block Kit and embeds, respectively).
 
+### Home Assistant Integration
+
+The watch command can publish device temperatures and alarm states to a Home Assistant instance via its REST API. Each enabled channel becomes a `sensor.thermoworks_*` entity; alarm transitions create `binary_sensor.thermoworks_*_alarm_*` entities.
+
+**Flags**
+
+- `--ha-url URL` : Base URL of the Home Assistant instance (e.g. `http://homeassistant.local:8123`). Requires `--ha-token`.
+- `--ha-token TOKEN` : Long-lived access token for the HA REST API. Requires `--ha-url`. To keep the token out of shell history, set the `THERMOWORKS_HA_TOKEN` environment variable instead.
+
+**Environment Variables**
+
+- `THERMOWORKS_HA_URL` : Fallback when `--ha-url` is not passed. Must be a valid URL.
+- `THERMOWORKS_HA_TOKEN` : Fallback when `--ha-token` is not passed.
+
+Both URL and token must be provided together (via flags, env vars, or a mix). Flags take priority over env vars.
+
+**Examples**
+
+```bash
+# Publish temperatures and alarms to a local HA instance:
+npx thermoworks watch --ha-url http://homeassistant.local:8123 --ha-token eyJhbGciOiJIUz...
+
+# Via environment variables (keeps the token out of shell history):
+export THERMOWORKS_HA_URL=http://homeassistant.local:8123
+export THERMOWORKS_HA_TOKEN=eyJhbGciOiJIUz...
+npx thermoworks watch
+
+# Combine with other watch flags:
+npx thermoworks watch --device ABC123 --interval 15 --ha-url http://ha.local:8123 --ha-token $HA_TOKEN
+```
+
+**How It Works**
+
+On each poll interval, the watch loop POSTs to `POST /api/states/<entity_id>` for every enabled channel:
+
+- Temperature sensors: `sensor.thermoworks_<serial>_<channel>` with `state_class: measurement`, `device_class: temperature`, and `unit_of_measurement` (°F or °C).
+- Alarm binary sensors: `binary_sensor.thermoworks_<serial>_<channel>_alarm_<high|low>` with `device_class: heat` and alarm metadata attributes.
+
+Channels that lose their reading (or whose device goes offline) are marked `unavailable` so Home Assistant automations can detect stale data.
+
+**Notes**
+
+- Uses the Home Assistant REST API (zero additional dependencies). No MQTT broker required.
+- All HA API calls have a 10 second timeout. Failures are logged to stderr and never crash the watch loop.
+- Entity IDs are sanitized (lowercased, non-alphanumeric characters replaced with underscores).
+- Create a long-lived access token in Home Assistant at Profile > Security > Long-Lived Access Tokens.
+
 ## `thermoworks config`
 
 Store local default preferences so common options do not have to be passed on every command. Preferences are saved to `~/.thermoworks/preferences.json` with owner-only permissions, separate from the statusline config in `config.json`.

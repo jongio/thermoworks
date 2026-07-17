@@ -22,6 +22,7 @@ import {
 	WebhookSink,
 } from "./alarm-notifier.js";
 import { formatChannelLine } from "./devices.js";
+import { HomeAssistantAlarmSink, HomeAssistantPublisher } from "./home-assistant.js";
 import { formatChannelTrend } from "./sparkline.js";
 
 /** Supported formats for the watch recording log. */
@@ -40,6 +41,8 @@ export interface WatchArgs {
 	timeout?: number;
 	webhooks: string[];
 	webhookFormat?: WebhookFormat;
+	haUrl?: string;
+	haToken?: string;
 }
 
 /**
@@ -117,6 +120,8 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 	let timeout: number | undefined;
 	const webhooks: string[] = [];
 	let webhookFormat: WebhookFormat | undefined;
+	let haUrl: string | undefined;
+	let haToken: string | undefined;
 
 	let i = 0;
 	// Consume the value that must follow a value-taking flag, erroring when it is
@@ -188,6 +193,17 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 				process.exit(1);
 			}
 			webhookFormat = value;
+		} else if (arg === "--ha-url") {
+			const value = nextValue("--ha-url");
+			try {
+				new URL(value);
+			} catch {
+				console.error(`Error: --ha-url value is not a valid URL: ${value}`);
+				process.exit(1);
+			}
+			haUrl = value;
+		} else if (arg === "--ha-token") {
+			haToken = nextValue("--ha-token");
 		}
 	}
 
@@ -214,6 +230,35 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 		}
 	}
 
+	// Fall back to env vars for Home Assistant settings when flags are omitted.
+	if (!haUrl) {
+		const envUrl = process.env.THERMOWORKS_HA_URL;
+		if (envUrl) {
+			try {
+				new URL(envUrl);
+				haUrl = envUrl;
+			} catch {
+				console.error(`Warning: ignoring invalid THERMOWORKS_HA_URL: ${envUrl}`);
+			}
+		}
+	}
+	if (!haToken) {
+		const envToken = process.env.THERMOWORKS_HA_TOKEN;
+		if (envToken) {
+			haToken = envToken;
+		}
+	}
+
+	// Require both URL and token when either is provided.
+	if (haUrl && !haToken) {
+		console.error("Error: --ha-url requires --ha-token (or set THERMOWORKS_HA_TOKEN)");
+		process.exit(1);
+	}
+	if (haToken && !haUrl) {
+		console.error("Error: --ha-token requires --ha-url (or set THERMOWORKS_HA_URL)");
+		process.exit(1);
+	}
+
 	return {
 		device,
 		interval,
@@ -226,6 +271,8 @@ export function parseWatchArgs(args: string[], defaults: WatchDefaults = {}): Wa
 		timeout,
 		webhooks,
 		webhookFormat,
+		haUrl,
+		haToken,
 	};
 }
 
@@ -586,6 +633,8 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 		timeout,
 		webhooks,
 		webhookFormat,
+		haUrl,
+		haToken,
 	} = parseWatchArgs(args, {
 		device: prefs.device,
 		interval: prefs.watchInterval,
@@ -613,6 +662,15 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 	for (const url of webhooks) {
 		notifier.addSink(new WebhookSink({ url, format: webhookFormat }));
 	}
+
+	// Set up Home Assistant integration when HA URL + token are configured.
+	let haPublisher: HomeAssistantPublisher | undefined;
+	if (haUrl && haToken) {
+		const haOptions = { url: haUrl, token: haToken };
+		haPublisher = new HomeAssistantPublisher(haOptions);
+		notifier.addSink(new HomeAssistantAlarmSink(haOptions));
+	}
+
 	// Track alarm transitions so webhooks fire only on state changes.
 	const activeAlarms = new Set<string>();
 
@@ -683,6 +741,11 @@ export async function watch(args: string[], options: OutputOptions): Promise<voi
 						process.exit(1);
 					}
 				}
+			}
+
+			// Publish temperatures to Home Assistant (errors are logged, never thrown).
+			if (haPublisher) {
+				haPublisher.publishTemperatures(devicesWithChannels);
 			}
 
 			if (options.json) {

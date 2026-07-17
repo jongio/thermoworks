@@ -407,6 +407,22 @@ Options:
 - `--timeout N` — Requires `--until-alarm`. Exit with code 2 if no alarm is detected within `N` seconds. Without this flag, `--until-alarm` waits indefinitely
 - `--webhook URL` — POST a JSON alarm payload to `URL` when any channel enters an alarm state (repeatable for multiple endpoints). Format is auto-detected from the URL (Slack, Discord) or defaults to generic JSON. Set the `THERMOWORKS_WEBHOOK_URL` env var instead to keep secrets out of shell history. Delivery failures retry with exponential backoff and are logged without crashing the watch loop
 - `--webhook-format generic|slack|discord` — Override the auto-detected webhook payload format
+- `--ha-url URL` — Publish temperatures and alarm states to a Home Assistant instance via its REST API. Each enabled channel becomes a `sensor.thermoworks_*` entity. Requires `--ha-token`. Alternatively set the `THERMOWORKS_HA_URL` env var
+- `--ha-token TOKEN` — Long-lived access token for the HA REST API. Requires `--ha-url`. Alternatively set the `THERMOWORKS_HA_TOKEN` env var to keep the token out of shell history
+
+#### Home Assistant Example
+
+```bash
+# Publish to HA with live watch display:
+npx thermoworks watch --ha-url http://homeassistant.local:8123 --ha-token eyJhbGciOiJIUz...
+
+# Via env vars:
+export THERMOWORKS_HA_URL=http://homeassistant.local:8123
+export THERMOWORKS_HA_TOKEN=eyJhbGciOiJIUz...
+npx thermoworks watch
+```
+
+Each poll interval, temperature sensors (`sensor.thermoworks_<serial>_<channel>`) are created or updated in HA. Alarm transitions publish `binary_sensor.thermoworks_*_alarm_high` / `_alarm_low` entities. Stale channels are marked unavailable. No MQTT broker is required (uses the HA REST API with zero additional dependencies).
 
 ### `thermoworks metrics`
 

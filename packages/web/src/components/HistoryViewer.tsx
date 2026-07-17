@@ -1,7 +1,7 @@
 import { Calendar, Clock } from "lucide-react";
 import React, { Suspense, useMemo, useState } from "react";
 import type { ArchiveChannel, TemperatureReading } from "thermoworks-sdk";
-import type { DeviceHistory } from "../lib/api.ts";
+import type { DeviceHistory, ThermoworksWebClient } from "../lib/api.ts";
 import { ChartSkeleton } from "./Skeleton.tsx";
 
 const TemperatureChart = React.lazy(() => import("./TemperatureChart"));
@@ -29,6 +29,8 @@ const TIME_RANGES: TimeRangeOption[] = [
 
 export interface HistoryViewerProps {
 	history: DeviceHistory;
+	client?: ThermoworksWebClient | null;
+	deviceId?: string | null;
 }
 
 /**
@@ -36,7 +38,7 @@ export interface HistoryViewerProps {
  * Transforms flat HistoricalReading[] (value/timestamp/units per reading)
  * into ArchiveChannel format for display via TemperatureChart.
  */
-export function HistoryViewer({ history }: HistoryViewerProps) {
+export function HistoryViewer({ history, client, deviceId }: HistoryViewerProps) {
 	const [timeRange, setTimeRange] = useState<TimeRange>("1d");
 
 	const { channels, pointCount, dateRange } = useMemo(() => {
@@ -160,7 +162,7 @@ export function HistoryViewer({ history }: HistoryViewerProps) {
 			{/* Chart or empty state */}
 			{channels ? (
 				<Suspense fallback={<ChartSkeleton />}>
-					<TemperatureChart channels={channels} />
+					<TemperatureChart channels={channels} client={client} deviceId={deviceId} />
 				</Suspense>
 			) : (
 				<div className="text-sm text-muted-foreground text-center py-8 border border-border rounded-md">

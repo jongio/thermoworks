@@ -219,7 +219,7 @@ export function DeviceDetail() {
 				{historyLoading && <ChartSkeleton />}
 				{historyError && <div className="text-sm text-destructive py-2">{historyError}</div>}
 				{!historyLoading && !historyError && history && history.readings.length > 0 && (
-					<HistoryViewer history={history} />
+					<HistoryViewer history={history} client={client} deviceId={serial} />
 				)}
 				{!historyLoading && !historyError && (!history || history.readings.length === 0) && (
 					<div className="text-sm text-muted-foreground text-center py-8 border border-border rounded-md">
@@ -237,7 +237,7 @@ export function DeviceDetail() {
 				{archiveError && <div className="text-sm text-destructive py-2">{archiveError}</div>}
 				{!archiveLoading && !archiveError && archiveChannels && (
 					<Suspense fallback={<ChartSkeleton />}>
-						<TemperatureChart channels={archiveChannels} />
+						<TemperatureChart channels={archiveChannels} client={client} deviceId={serial} />
 					</Suspense>
 				)}
 				{!archiveLoading && !archiveError && archives.length > 0 && !archiveChannels && (

@@ -207,6 +207,10 @@ export interface EventFilter {
 	deviceId?: string;
 	/** Filter by event type (e.g., "Low Battery Alert"). */
 	eventType?: string;
+	/** Include events at or after this time. */
+	startTime?: Date;
+	/** Include events at or before this time. */
+	endTime?: Date;
 	/** Maximum number of events to return (default 50). */
 	limit?: number;
 }

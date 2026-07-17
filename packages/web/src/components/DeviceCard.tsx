@@ -255,7 +255,11 @@ export function DeviceCard({
 					{archiveError && <div className="text-xs text-destructive py-2">{archiveError}</div>}
 					{!archiveLoading && !archiveError && archiveChannels && (
 						<Suspense fallback={<ChartSkeleton />}>
-							<TemperatureChart channels={archiveChannels} />
+							<TemperatureChart
+								channels={archiveChannels}
+								client={client}
+								deviceId={device.serial}
+							/>
 						</Suspense>
 					)}
 					{!archiveLoading && !archiveError && !archiveChannels && (

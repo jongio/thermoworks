@@ -38,6 +38,8 @@ export function useEvents(
 	const baseLimit = filter?.limit ?? PAGE_SIZE_STEP;
 	const filterDeviceId = filter?.deviceId;
 	const filterEventType = filter?.eventType;
+	const filterStartTime = filter?.startTime?.getTime();
+	const filterEndTime = filter?.endTime?.getTime();
 	const [data, setData] = useState<DeviceEvent[]>([]);
 	const [isLoading, setIsLoading] = useState(false);
 	const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -72,6 +74,8 @@ export function useEvents(
 			const nextFilter: EventFilter = { limit };
 			if (filterDeviceId) nextFilter.deviceId = filterDeviceId;
 			if (filterEventType) nextFilter.eventType = filterEventType;
+			if (filterStartTime != null) nextFilter.startTime = new Date(filterStartTime);
+			if (filterEndTime != null) nextFilter.endTime = new Date(filterEndTime);
 
 			setError(null);
 
@@ -93,7 +97,7 @@ export function useEvents(
 				}
 			}
 		},
-		[client, filterDeviceId, filterEventType],
+		[client, filterDeviceId, filterEventType, filterStartTime, filterEndTime],
 	);
 
 	const refresh = useCallback(() => fetchEvents({ merge: true }), [fetchEvents]);
@@ -120,7 +124,7 @@ export function useEvents(
 		setHasMore(true);
 		setIsLoading(false);
 		setIsLoadingMore(false);
-	}, [baseLimit, client, filterDeviceId, filterEventType]);
+	}, [baseLimit, client, filterDeviceId, filterEventType, filterStartTime, filterEndTime]);
 
 	useEffect(() => {
 		if (!client?.isAuthenticated) {

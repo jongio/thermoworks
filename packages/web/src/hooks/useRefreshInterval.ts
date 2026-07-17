@@ -4,6 +4,12 @@ const STORAGE_KEY = "thermoworks-refresh-interval";
 const DEFAULT_INTERVAL = 10_000;
 const INTERVALS = [5_000, 10_000, 30_000, 60_000] as const;
 
+/**
+ * Minimum polling interval enforced when low-data mode is active.
+ * Re-exported from useLowDataMode for convenience.
+ */
+export { LOW_DATA_INTERVAL_MS } from "./useLowDataMode.ts";
+
 export type RefreshInterval = (typeof INTERVALS)[number];
 
 function getInitialInterval(): RefreshInterval {

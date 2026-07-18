@@ -11,6 +11,8 @@ export interface UseSessionResult {
 	label: string;
 	startSession: (label?: string) => Promise<void>;
 	endSession: () => Promise<void>;
+	recordStartedSession: (label: string, startedAt: Date) => void;
+	recordSessionLabel: (label: string) => void;
 	error: string | null;
 }
 
@@ -126,5 +128,25 @@ export function useSession(
 		}
 	}, [client, isActive, serial]);
 
-	return { isActive, elapsed, label, startSession, endSession, error };
+	const recordStartedSession = useCallback((newLabel: string, startedAt: Date) => {
+		optimisticOverrideRef.current = true;
+		setIsActive(true);
+		setStartTime(startedAt);
+		setLabel(newLabel);
+	}, []);
+
+	const recordSessionLabel = useCallback((newLabel: string) => {
+		setLabel(newLabel);
+	}, []);
+
+	return {
+		isActive,
+		elapsed,
+		label,
+		startSession,
+		endSession,
+		recordStartedSession,
+		recordSessionLabel,
+		error,
+	};
 }

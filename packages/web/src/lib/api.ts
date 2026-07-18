@@ -1019,6 +1019,12 @@ export class ThermoworksWebClient {
 		return devices;
 	}
 
+	async getDevice(serial: string): Promise<Device | null> {
+		const fields = await this.fetchDocFields(`documents/devices/${encodeURIComponent(serial)}`);
+		if (!fields) return null;
+		return parseDevice(fields);
+	}
+
 	async getDeviceChannel(serial: string, channel: number): Promise<DeviceChannel | null> {
 		const path = `documents/devices/${encodeURIComponent(serial)}/channels/${channel}`;
 		const fields = await this.fetchDocFields(path);
@@ -1268,7 +1274,11 @@ export class ThermoworksWebClient {
 		const limit = Math.min(Math.max(1, filter?.limit ?? 50), 500);
 
 		const filters: Array<{
-			fieldFilter: { field: { fieldPath: string }; op: string; value: { stringValue: string } };
+			fieldFilter: {
+				field: { fieldPath: string };
+				op: string;
+				value: { stringValue: string } | { timestampValue: string };
+			};
 		}> = [
 			{
 				fieldFilter: {
@@ -1295,6 +1305,26 @@ export class ThermoworksWebClient {
 					field: { fieldPath: "EventType" },
 					op: "EQUAL",
 					value: { stringValue: filter.eventType },
+				},
+			});
+		}
+
+		if (filter?.startTime) {
+			filters.push({
+				fieldFilter: {
+					field: { fieldPath: "EventTime" },
+					op: "GREATER_THAN_OR_EQUAL",
+					value: { timestampValue: filter.startTime.toISOString() },
+				},
+			});
+		}
+
+		if (filter?.endTime) {
+			filters.push({
+				fieldFilter: {
+					field: { fieldPath: "EventTime" },
+					op: "LESS_THAN_OR_EQUAL",
+					value: { timestampValue: filter.endTime.toISOString() },
 				},
 			});
 		}

@@ -1,10 +1,22 @@
 import { useEffect, useRef } from "react";
-import type { DeviceChannel } from "thermoworks-sdk";
+import type { DeviceChannel, NotificationSettings } from "thermoworks-sdk";
 import type { DeviceWithChannels } from "../lib/api.ts";
 import { getChannelAlarmState } from "../lib/api.ts";
+import {
+	getNotificationsEnabled,
+	hasStoredNotificationPreference,
+	NOTIFICATION_PREFERENCE_STORAGE_KEY,
+	sanitizeNotificationText,
+	setNotificationsEnabled,
+} from "../lib/browser-notifications.ts";
 import { isAlarmSnoozed, snoozeKey } from "./useAlarmSnooze.ts";
 
-export const NOTIFICATION_PREFERENCE_STORAGE_KEY = "thermoworks-notifications-enabled";
+export {
+	getNotificationsEnabled,
+	hasStoredNotificationPreference,
+	NOTIFICATION_PREFERENCE_STORAGE_KEY,
+	setNotificationsEnabled,
+};
 
 /** Composite key for a specific channel alarm occurrence. */
 function alarmKey(serial: string, channelIndex: number, state: "low" | "high"): string {
@@ -13,9 +25,9 @@ function alarmKey(serial: string, channelIndex: number, state: "low" | "high"): 
 
 /** Build the notification body from channel data and alarm direction. */
 function buildBody(channel: DeviceChannel, index: number, state: "low" | "high"): string {
-	const label = channel.label ?? `Channel ${index + 1}`;
+	const label = sanitizeNotificationText(channel.label, `Channel ${index + 1}`);
 	const temp = channel.value != null ? channel.value.toFixed(1) : "??";
-	const units = channel.units ?? "F";
+	const units = sanitizeNotificationText(channel.units, "F");
 	const alarm = state === "high" ? channel.alarmHigh : channel.alarmLow;
 	const threshold = alarm?.value != null ? alarm.value.toFixed(1) : "??";
 	const direction = state === "high" ? "above" : "below";
@@ -23,30 +35,10 @@ function buildBody(channel: DeviceChannel, index: number, state: "low" | "high")
 	return `${label}: ${temp}°${units} - ${direction} ${threshold}°${units}`;
 }
 
-/** Read the user's notification preference from localStorage. */
-export function getNotificationsEnabled(): boolean {
-	try {
-		return localStorage.getItem(NOTIFICATION_PREFERENCE_STORAGE_KEY) !== "false";
-	} catch {
-		return true;
-	}
-}
-
-export function hasStoredNotificationPreference(): boolean {
-	try {
-		return localStorage.getItem(NOTIFICATION_PREFERENCE_STORAGE_KEY) !== null;
-	} catch {
-		return false;
-	}
-}
-
-/** Persist the user's notification preference to localStorage. */
-export function setNotificationsEnabled(enabled: boolean): void {
-	try {
-		localStorage.setItem(NOTIFICATION_PREFERENCE_STORAGE_KEY, String(enabled));
-	} catch {
-		// Storage unavailable - ignore.
-	}
+function allowsAlarmNotification(settings: NotificationSettings | null | undefined): boolean {
+	if (!getNotificationsEnabled()) return false;
+	if (!settings) return true;
+	return settings.enabled && settings.deviceNotification;
 }
 
 /**
@@ -56,13 +48,16 @@ export function setNotificationsEnabled(enabled: boolean): void {
  * previous poll cycle. Respects the user's localStorage toggle and the
  * browser Notification API permission.
  */
-export function useAlarmNotifications(data: DeviceWithChannels[]): void {
+export function useAlarmNotifications(
+	data: DeviceWithChannels[],
+	settings?: NotificationSettings | null,
+): void {
 	const previousAlarmsRef = useRef<Set<string>>(new Set());
 
 	useEffect(() => {
-		if (!getNotificationsEnabled()) return;
+		if (!allowsAlarmNotification(settings)) return;
 		if (typeof Notification === "undefined") return;
-		if (Notification.permission === "denied") return;
+		if (Notification.permission !== "granted") return;
 
 		const currentAlarms = new Set<string>();
 
@@ -87,32 +82,18 @@ export function useAlarmNotifications(data: DeviceWithChannels[]): void {
 					continue;
 				}
 
-				// New alarm - fire notification (requesting permission if needed).
-				const title = device.label ?? device.serial;
+				// New alarm - fire notification.
+				const title = sanitizeNotificationText(device.label, device.serial);
 				const body = buildBody(channel, i, state);
 
-				if (Notification.permission === "granted") {
-					const n = new Notification(title, { body, tag: key, icon: "/favicon.svg" });
-					n.onclick = () => {
-						window.focus();
-						n.close();
-					};
-				} else if (Notification.permission === "default") {
-					Notification.requestPermission()
-						.then((perm) => {
-							if (perm === "granted") {
-								const n = new Notification(title, { body, tag: key, icon: "/favicon.svg" });
-								n.onclick = () => {
-									window.focus();
-									n.close();
-								};
-							}
-						})
-						.catch(() => {});
-				}
+				const n = new Notification(title, { body, tag: key, icon: "/favicon.svg" });
+				n.onclick = () => {
+					window.focus();
+					n.close();
+				};
 			}
 		}
 
 		previousAlarmsRef.current = currentAlarms;
-	}, [data]);
+	}, [data, settings]);
 }

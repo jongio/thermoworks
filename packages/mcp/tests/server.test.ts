@@ -8,7 +8,9 @@ function unfence(value: unknown): unknown {
 		: value;
 }
 
-vi.mock("thermoworks-sdk", () => {
+vi.mock("thermoworks-sdk", async () => {
+	const { FakeThermoworksCloud } =
+		await vi.importActual<typeof import("thermoworks-sdk/testing")>("thermoworks-sdk/testing");
 	const mockClose = vi.fn();
 	const mockGetDevices = vi.fn();
 	const mockGetDevice = vi.fn();
@@ -32,7 +34,7 @@ vi.mock("thermoworks-sdk", () => {
 	const mockSetFanEnabled = vi.fn();
 	const mockPlanCook = vi.fn();
 
-	class MockThermoworksCloud {
+	class MockThermoworksCloud extends FakeThermoworksCloud {
 		close = mockClose;
 		getDevices = mockGetDevices;
 		getDevice = mockGetDevice;
@@ -174,6 +176,7 @@ import {
 	mockSetFanTarget,
 	mockStartSession,
 } from "thermoworks-sdk";
+import { getFixtureChannels, makeArchive, makeChannel, makeDevice } from "thermoworks-sdk/testing";
 
 import { createServer } from "../src/server.js";
 
@@ -234,8 +237,8 @@ describe("MCP Server", () => {
 			setupEnv();
 			try {
 				const devices = [
-					{ serial: "ABC123", label: "Smoker", status: "online", battery: 85 },
-					{ serial: "DEF456", label: "Grill", status: "offline", battery: 42 },
+					makeDevice({ serial: "ABC123", label: "Smoker", status: "online", battery: 85 }),
+					makeDevice({ serial: "DEF456", label: "Grill", status: "offline", battery: 42 }),
 				];
 				(mockGetDevices as any).mockResolvedValueOnce(devices);
 
@@ -257,7 +260,12 @@ describe("MCP Server", () => {
 		it("returns device details for serial", async () => {
 			setupEnv();
 			try {
-				const device = { serial: "ABC123", label: "Smoker", status: "online", battery: 85 };
+				const device = makeDevice({
+					serial: "ABC123",
+					label: "Smoker",
+					status: "online",
+					battery: 85,
+				});
 				(mockGetDevice as any).mockResolvedValueOnce(device);
 
 				const server = createServer();
@@ -307,8 +315,8 @@ describe("MCP Server", () => {
 			setupEnv();
 			try {
 				const channels = [
-					{ value: 225.5, units: "F", label: "Probe 1", number: "1" },
-					{ value: 185.0, units: "F", label: "Probe 2", number: "2" },
+					makeChannel({ value: 225.5, units: "F", label: "Probe 1", number: "1" }),
+					makeChannel({ value: 185.0, units: "F", label: "Probe 2", number: "2" }),
 				];
 				(mockGetAllDeviceChannels as any).mockResolvedValueOnce(channels);
 
@@ -364,7 +372,7 @@ describe("MCP Server", () => {
 			setupEnv();
 			try {
 				(mockGetDevices as any).mockResolvedValueOnce([
-					{
+					makeDevice({
 						serial: "ABC123",
 						label: "Smoker",
 						type: "signals",
@@ -376,49 +384,28 @@ describe("MCP Server", () => {
 						firmware: "1.2.3",
 						sessionStart: new Date("2026-06-01T10:00:00Z"),
 						sessionLabel: "Brisket",
-					},
+					}),
 				]);
 				(mockGetAllDeviceChannels as any).mockResolvedValueOnce([
-					{
+					makeChannel({
 						value: 225,
 						units: "F",
 						label: "Pit",
 						number: "1",
-						type: "temperature",
-						status: "normal",
-						enabled: true,
-						alarmHigh: null,
-						alarmLow: null,
 						minimum: { value: 220, units: "F", date: new Date("2026-06-01T10:30:00Z") },
 						maximum: { value: 235, units: "F", date: new Date("2026-06-01T11:30:00Z") },
 						rateOfChange: 1.2,
 						rateOfChangeUnit: "F/min",
 						lastSeen: new Date("2026-06-01T12:00:00Z"),
-					},
-					{
-						value: 203,
-						units: "F",
+					}),
+					makeChannel({
+						...getFixtureChannels("DEMO-SIGNALS-4CH", "high")[1]!,
 						label: "Meat",
 						number: "2",
-						type: "temperature",
 						status: "high",
-						enabled: true,
-						alarmHigh: {
-							enabled: true,
-							alarming: true,
-							muted: null,
-							value: 200,
-							units: "F",
-							lastNotified: null,
-						},
-						alarmLow: null,
-						minimum: null,
-						maximum: null,
-						rateOfChange: null,
-						rateOfChangeUnit: null,
-						lastSeen: null,
-					},
-					{ value: null, units: "F", label: "Disabled", number: "3", enabled: false },
+						value: 203,
+					}),
+					makeChannel({ value: null, units: "F", label: "Disabled", number: "3", enabled: false }),
 				]);
 
 				const server = createServer();
@@ -678,7 +665,9 @@ describe("MCP Server", () => {
 		it("returns archives for device", async () => {
 			setupEnv();
 			try {
-				const archives = [{ id: "arch1", label: "Cook Session 1", start: new Date("2024-01-01") }];
+				const archives = [
+					makeArchive({ id: "arch1", label: "Cook Session 1", start: new Date("2024-01-01") }),
+				];
 				(mockGetArchives as any).mockResolvedValueOnce(archives);
 
 				const server = createServer();

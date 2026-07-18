@@ -38,6 +38,7 @@
 	},
 	"scripts": {
 		"build": "tsup",
+		"generate:cli-docs": "pnpm build && pnpm exec tsup src/command-registry.ts --format esm --target node18 --out-dir dist --no-clean --config=false && node scripts/generate-cli-docs.mjs",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit",
 		"prepack": "pnpm build",

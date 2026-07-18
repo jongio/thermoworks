@@ -14,6 +14,7 @@ const DeviceDetail = lazy(() =>
 	import("./pages/DeviceDetail.tsx").then((m) => ({ default: m.DeviceDetail })),
 );
 const Devices = lazy(() => import("./pages/Devices.tsx").then((m) => ({ default: m.Devices })));
+const Compare = lazy(() => import("./pages/Compare.tsx").then((m) => ({ default: m.Compare })));
 const DataUsagePage = lazy(() =>
 	import("./pages/DataUsage.tsx").then((m) => ({ default: m.DataUsage })),
 );
@@ -31,6 +32,9 @@ const SharedArchiveView = lazy(() =>
 );
 const SharedDeviceView = lazy(() =>
 	import("./pages/SharedDeviceView.tsx").then((m) => ({ default: m.SharedDeviceView })),
+);
+const SharedReportView = lazy(() =>
+	import("./pages/SharedReportView.tsx").then((m) => ({ default: m.SharedReportView })),
 );
 
 function PageSkeleton() {
@@ -98,6 +102,14 @@ createRoot(root).render(
 							</RouteGuard>
 						}
 					/>
+					<Route
+						path="/share/report"
+						element={
+							<RouteGuard>
+								<SharedReportView />
+							</RouteGuard>
+						}
+					/>
 					<Route element={<App />}>
 						<Route
 							index
@@ -112,6 +124,14 @@ createRoot(root).render(
 							element={
 								<RouteGuard>
 									<Devices />
+								</RouteGuard>
+							}
+						/>
+						<Route
+							path="compare"
+							element={
+								<RouteGuard>
+									<Compare />
 								</RouteGuard>
 							}
 						/>

@@ -209,6 +209,13 @@ export function DeviceCard({
 				serial={device.serial}
 				sessionStart={device.sessionStart}
 				sessionLabel={device.sessionLabel}
+				channels={enabledChannels
+					.map((channel, idx) => ({
+						number: Number(channel.number ?? idx + 1),
+						label: resolveChannelLabel(device.serial, channel, channelLabels, idx),
+						units: channel.units ?? "F",
+					}))
+					.filter((channel) => Number.isFinite(channel.number))}
 			/>
 
 			{/* View details link */}
@@ -255,7 +262,11 @@ export function DeviceCard({
 					{archiveError && <div className="text-xs text-destructive py-2">{archiveError}</div>}
 					{!archiveLoading && !archiveError && archiveChannels && (
 						<Suspense fallback={<ChartSkeleton />}>
-							<TemperatureChart channels={archiveChannels} />
+							<TemperatureChart
+								channels={archiveChannels}
+								client={client}
+								deviceId={device.serial}
+							/>
 						</Suspense>
 					)}
 					{!archiveLoading && !archiveError && !archiveChannels && (

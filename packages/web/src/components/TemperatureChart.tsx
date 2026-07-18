@@ -17,19 +17,36 @@ import {
 } from "recharts";
 import type { ArchiveChannel } from "thermoworks-sdk";
 import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";
+import type { ThermoworksWebClient } from "../lib/api.ts";
+import type { CookAnnotation } from "../lib/cook-report.ts";
 import { downsampleLTTB } from "../lib/downsample.ts";
 import type { ChartDataPoint } from "../lib/export.ts";
 import { ChartExport } from "./ChartExport.tsx";
+import {
+	AnnotationMarkerLegend,
+	TemperatureAnnotationMarkers,
+} from "./TemperatureAnnotationMarkers.tsx";
+import {
+	EventMarkerLegend,
+	TemperatureEventMarkers,
+	type VisibleTimeRange,
+} from "./TemperatureEventMarkers.tsx";
 
 export interface TemperatureChartProps {
 	/** Primary session channels. */
 	channels: ArchiveChannel[];
 	/** Additional sessions to overlay (each entry is one session's channels). */
 	overlayArchives?: ArchiveChannel[][];
+	/** Client used to fetch optional event markers. */
+	client?: ThermoworksWebClient | null;
+	/** Device serial used to fetch optional event markers. */
+	deviceId?: string | null;
+	/** User-entered cook annotations to overlay on the chart. */
+	annotations?: readonly CookAnnotation[];
 }
 
 /** Default channel colors when the API doesn't provide one. */
-const FALLBACK_COLORS = [
+export const TEMPERATURE_CHART_FALLBACK_COLORS = [
 	"#ef4444", // red
 	"#3b82f6", // blue
 	"#22c55e", // green
@@ -114,7 +131,13 @@ function clampBrushWindow(window: BrushWindow | null, dataLength: number): Brush
  * Renders a line per channel with alarm threshold reference lines.
  * Supports overlaying multiple sessions for comparison.
  */
-export function TemperatureChart({ channels, overlayArchives = [] }: TemperatureChartProps) {
+export function TemperatureChart({
+	channels,
+	overlayArchives = [],
+	client,
+	deviceId,
+	annotations = [],
+}: TemperatureChartProps) {
 	const { unit, convert } = useTemperatureUnit();
 	const chartContainerRef = useRef<HTMLDivElement>(null);
 
@@ -125,6 +148,7 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 
 	// Session visibility toggles
 	const [visibleOverlays, setVisibleOverlays] = useState<Set<number>>(() => new Set());
+	const [showEventMarkers, setShowEventMarkers] = useState(true);
 
 	const enabledChannels = useMemo(
 		() => channels.filter((ch) => ch.enabled !== false && ch.recentReadings.length > 0),
@@ -234,9 +258,20 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 	}, [data, zoomDomain, clampedBrushWindow]);
 
 	const chartData = useMemo(() => downsampleLTTB(displayData, MAX_VISIBLE_POINTS), [displayData]);
+	const visibleTimeRange: VisibleTimeRange | null = useMemo(() => {
+		if (displayData.length === 0) return null;
+		let start = Number.POSITIVE_INFINITY;
+		let end = Number.NEGATIVE_INFINITY;
+		for (const point of displayData) {
+			start = Math.min(start, point.time);
+			end = Math.max(end, point.time);
+		}
+		return Number.isFinite(start) && Number.isFinite(end) ? { start, end } : null;
+	}, [displayData]);
 
 	const brushPreviewKey = useMemo(() => getPreviewDataKey(data), [data]);
-	const brushPreviewColor = enabledChannels[0]?.color ?? FALLBACK_COLORS[0] ?? "#6b7280";
+	const brushPreviewColor =
+		enabledChannels[0]?.color ?? TEMPERATURE_CHART_FALLBACK_COLORS[0] ?? "#6b7280";
 	const isDownsampled = chartData.length < displayData.length;
 
 	const handleMouseDown = useCallback((e: { activeLabel?: string | number }) => {
@@ -285,6 +320,8 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 		});
 	}, []);
 
+	const hasEventMarkerContext = Boolean(client && deviceId && visibleTimeRange);
+
 	if (enabledChannels.length === 0 || data.length === 0) {
 		return (
 			<div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
@@ -315,6 +352,19 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 				</div>
 
 				<div className="flex items-center gap-2">
+					{hasEventMarkerContext && (
+						<label className="inline-flex cursor-pointer items-center gap-1 text-xs text-muted-foreground">
+							<input
+								type="checkbox"
+								checked={showEventMarkers}
+								onChange={() => setShowEventMarkers((current) => !current)}
+								className="rounded border-border"
+								aria-label="Show event markers"
+							/>
+							<span>Event markers</span>
+						</label>
+					)}
+
 					{/* Session overlay selector */}
 					{overlayArchives.length > 0 && (
 						<div className="flex items-center gap-1 text-xs">
@@ -347,9 +397,13 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 					Showing {chartData.length} of {displayData.length} points (downsampled)
 				</div>
 			)}
+			<div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+				{annotations.length > 0 && <AnnotationMarkerLegend />}
+				{hasEventMarkerContext && showEventMarkers && <EventMarkerLegend />}
+			</div>
 
 			{/* Chart */}
-			<div className="w-full h-64 sm:h-72" ref={chartContainerRef}>
+			<div className="relative w-full h-64 sm:h-72" ref={chartContainerRef}>
 				<ResponsiveContainer width="100%" height="100%">
 					<LineChart
 						data={chartData}
@@ -412,7 +466,9 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 							const color =
 								rawColor && rawColor !== "none" && rawColor !== "transparent"
 									? rawColor
-									: FALLBACK_COLORS[idx % FALLBACK_COLORS.length] || "#6b7280";
+									: TEMPERATURE_CHART_FALLBACK_COLORS[
+											idx % TEMPERATURE_CHART_FALLBACK_COLORS.length
+										] || "#6b7280";
 							const name = ch.label ?? `Ch ${ch.number ?? idx + 1}`;
 
 							return (
@@ -446,7 +502,9 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 									const color =
 										rawOvColor && rawOvColor !== "none" && rawOvColor !== "transparent"
 											? rawOvColor
-											: FALLBACK_COLORS[chIdx % FALLBACK_COLORS.length] || "#6b7280";
+											: TEMPERATURE_CHART_FALLBACK_COLORS[
+													chIdx % TEMPERATURE_CHART_FALLBACK_COLORS.length
+												] || "#6b7280";
 									const name = `S${sessionIdx + 1}: ${ch.label ?? `Ch ${ch.number ?? chIdx + 1}`}`;
 
 									return (
@@ -480,6 +538,13 @@ export function TemperatureChart({ channels, overlayArchives = [] }: Temperature
 						)}
 					</LineChart>
 				</ResponsiveContainer>
+				<TemperatureEventMarkers
+					client={client}
+					deviceId={deviceId}
+					timeRange={visibleTimeRange}
+					visible={showEventMarkers}
+				/>
+				<TemperatureAnnotationMarkers annotations={annotations} timeRange={visibleTimeRange} />
 			</div>
 
 			{/* Brush overview - only shown for larger datasets where navigation helps */}

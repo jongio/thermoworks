@@ -1,3 +1,4 @@
+import { commandDefinitions, globalOptions } from "../command-registry.js";
 import type { OutputOptions } from "../output.js";
 
 /** A top-level command and its subcommands for completion. */
@@ -7,35 +8,21 @@ export interface CommandSpec {
 }
 
 /**
- * Source-of-truth list of commands and subcommands used to generate shell
- * completion scripts. Keep this in sync with the router in `index.ts` and the
- * usage text in `printUsage`.
+ * Completion view derived from the typed command registry.
  */
-export const COMMANDS: CommandSpec[] = [
-	{ name: "auth", subcommands: ["login", "logout", "status"] },
-	{ name: "alarm", subcommands: ["set", "clear"] },
-	{ name: "calibration", subcommands: [] },
-	{ name: "copilot", subcommands: ["setup", "status", "remove"] },
-	{ name: "data-usage", subcommands: [] },
-	{ name: "devices", subcommands: ["--sort", "--critical"] },
-	{ name: "device", subcommands: ["rename", "reset-minmax"] },
-	{ name: "mcp", subcommands: ["start"] },
-	{ name: "watch", subcommands: ["--until-alarm", "--timeout"] },
-	{ name: "events", subcommands: [] },
-	{ name: "archives", subcommands: [] },
-	{ name: "firmware", subcommands: [] },
-	{ name: "fan", subcommands: ["set", "enable", "disable"] },
-	{ name: "search", subcommands: [] },
-	{ name: "session", subcommands: ["start", "end", "clear"] },
-	{ name: "export", subcommands: [] },
-	{ name: "history", subcommands: [] },
-	{ name: "guide", subcommands: [] },
-	{ name: "demo", subcommands: ["high", "low", "normal"] },
-	{ name: "completion", subcommands: ["bash", "zsh", "fish", "powershell"] },
-];
+export const COMMANDS: CommandSpec[] = commandDefinitions.map((command) => ({
+	name: command.name,
+	subcommands: [
+		...(command.completion ?? command.subcommands?.map((subcommand) => subcommand.name) ?? []),
+	],
+}));
 
 /** Global flags offered on every command. */
-export const GLOBAL_FLAGS = ["--json", "--help", "-h", "--version", "-v"];
+export const GLOBAL_FLAGS = [
+	...globalOptions.flatMap((option) => option.name.split(", ")),
+	"-h",
+	"-v",
+].filter((value, index, values) => values.indexOf(value) === index);
 
 /** Shells with a supported completion generator. */
 export const SUPPORTED_SHELLS = ["bash", "zsh", "fish", "powershell"] as const;

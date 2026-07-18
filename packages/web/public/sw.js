@@ -8,6 +8,35 @@
 
 const CACHE_NAME = "thermoworks-v1";
 const SHELL_ASSETS = ["./", "./index.html"];
+const DEFAULT_PUSH_TITLE = "ThermoWorks alarm";
+
+function sanitizeNotificationText(value, fallback) {
+	const text = typeof value === "string" && value.trim() ? value.trim() : fallback;
+	return text.replace(/[<>{}[\]\\]/g, "").replace(/\s+/g, " ").slice(0, 240);
+}
+
+function getPushNotification(event) {
+	if (!event.data) {
+		return { title: DEFAULT_PUSH_TITLE, options: { icon: "./favicon.svg" } };
+	}
+
+	try {
+		const payload = event.data.json();
+		const title = sanitizeNotificationText(payload.title, DEFAULT_PUSH_TITLE);
+		const body = sanitizeNotificationText(payload.body, "");
+		const tag = sanitizeNotificationText(payload.tag, "thermoworks-alarm");
+		return { title, options: { body, tag, icon: "./favicon.svg" } };
+	} catch {
+		return {
+			title: DEFAULT_PUSH_TITLE,
+			options: {
+				body: sanitizeNotificationText(event.data.text(), ""),
+				icon: "./favicon.svg",
+				tag: "thermoworks-alarm",
+			},
+		};
+	}
+}
 
 self.addEventListener("install", (event) => {
 	event.waitUntil(
@@ -54,4 +83,9 @@ self.addEventListener("fetch", (event) => {
 			})
 			.catch(() => caches.match(request)),
 	);
+});
+
+self.addEventListener("push", (event) => {
+	const { title, options } = getPushNotification(event);
+	event.waitUntil(self.registration.showNotification(title, options));
 });

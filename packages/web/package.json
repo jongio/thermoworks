@@ -8,7 +8,10 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"typecheck": "tsc --noEmit",
-		"test": "vitest run"
+		"test": "vitest run",
+		"e2e": "playwright test",
+		"a11y": "playwright test accessibility",
+		"visual": "playwright test visual"
 	},
 	"dependencies": {
 		"@dnd-kit/core": "^6.3.1",
@@ -25,6 +28,8 @@
 		"thermoworks-sdk": "workspace:^"
 	},
 	"devDependencies": {
+		"@axe-core/playwright": "^4.12.1",
+		"@playwright/test": "^1.61.1",
 		"@tailwindcss/vite": "^4.3.2",
 		"@testing-library/jest-dom": "^6.9.1",
 		"@testing-library/react": "^16.3.2",

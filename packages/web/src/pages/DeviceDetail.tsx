@@ -3,6 +3,7 @@ import React, { Suspense, useCallback } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { ChannelReading } from "../components/ChannelReading.tsx";
+import { CookReport } from "../components/CookReport.tsx";
 import { DeviceSettings } from "../components/DeviceSettings.tsx";
 import { EtaBadge } from "../components/EtaBadge.tsx";
 import { FanController } from "../components/FanController.tsx";
@@ -43,6 +44,7 @@ export function DeviceDetail() {
 	} = useArchiveData(client, serial ?? "", !!data);
 
 	const archiveChannels = archives[0]?.channels ?? null;
+	const latestArchive = archives[0] ?? null;
 
 	const handleRename = useCallback(
 		async (newName: string) => {
@@ -125,6 +127,7 @@ export function DeviceDetail() {
 			<header className="space-y-2">
 				<div className="flex items-start justify-between gap-4">
 					<div className="min-w-0">
+						<h1 className="sr-only" aria-label={name} />
 						<InlineEdit value={name} onSave={handleRename} />
 						<p className="text-sm text-muted-foreground mt-0.5">
 							{device.type ?? device.device ?? "Device"} -{" "}
@@ -219,7 +222,7 @@ export function DeviceDetail() {
 				{historyLoading && <ChartSkeleton />}
 				{historyError && <div className="text-sm text-destructive py-2">{historyError}</div>}
 				{!historyLoading && !historyError && history && history.readings.length > 0 && (
-					<HistoryViewer history={history} />
+					<HistoryViewer history={history} client={client} deviceId={serial} />
 				)}
 				{!historyLoading && !historyError && (!history || history.readings.length === 0) && (
 					<div className="text-sm text-muted-foreground text-center py-8 border border-border rounded-md">
@@ -237,8 +240,13 @@ export function DeviceDetail() {
 				{archiveError && <div className="text-sm text-destructive py-2">{archiveError}</div>}
 				{!archiveLoading && !archiveError && archiveChannels && (
 					<Suspense fallback={<ChartSkeleton />}>
-						<TemperatureChart channels={archiveChannels} />
+						<TemperatureChart channels={archiveChannels} client={client} deviceId={serial} />
 					</Suspense>
+				)}
+				{!archiveLoading && !archiveError && latestArchive && (
+					<div className="mt-4">
+						<CookReport archive={latestArchive} serial={serial} client={client} />
+					</div>
 				)}
 				{!archiveLoading && !archiveError && archives.length > 0 && !archiveChannels && (
 					<div className="text-sm text-muted-foreground text-center py-4 border border-border rounded-md">

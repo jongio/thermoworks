@@ -35,7 +35,7 @@ describe("bashCompletion", () => {
 	it("includes subcommands for grouped commands", () => {
 		expect(script).toContain("login logout status");
 		expect(script).toContain("set enable disable");
-		expect(script).toContain("start end clear");
+		expect(script).toContain("start end status clear");
 	});
 });
 

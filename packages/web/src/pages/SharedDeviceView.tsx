@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import type { Device, DeviceChannel } from "thermoworks-sdk";
 import { ChannelReading } from "../components/ChannelReading.tsx";
 import { ShareError, ShareHeader, ShareLoading } from "../components/ShareLayout.tsx";
+import { TemperatureUnitProvider } from "../context/TemperatureUnitContext.tsx";
 import { getPublicDevice, getPublicDeviceChannels } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 
@@ -72,72 +73,74 @@ export function SharedDeviceView() {
 	const enabledChannels = channels.filter((ch) => ch.enabled !== false);
 
 	return (
-		<div className="min-h-screen">
-			<ShareHeader />
-			<main className="mx-auto max-w-2xl px-4 py-6">
-				{/* Device info card */}
-				<article className="rounded-lg border border-border bg-card p-5 shadow-sm">
-					{/* Badge + status */}
-					<div className="flex items-center justify-between mb-4">
-						<span
-							className={cn(
-								"inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5",
-								"bg-muted text-xs font-medium text-muted-foreground",
+		<TemperatureUnitProvider>
+			<div className="min-h-screen">
+				<ShareHeader />
+				<main className="mx-auto max-w-2xl px-4 py-6">
+					{/* Device info card */}
+					<article className="rounded-lg border border-border bg-card p-5 shadow-sm">
+						{/* Badge + status */}
+						<div className="flex items-center justify-between mb-4">
+							<span
+								className={cn(
+									"inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5",
+									"bg-muted text-xs font-medium text-muted-foreground",
+								)}
+							>
+								<Globe className="h-3 w-3" />
+								Shared device
+							</span>
+							{device.status && (
+								<div className="flex items-center gap-1.5" role="status">
+									<span
+										className={cn(
+											"h-2 w-2 rounded-full",
+											device.status === "online" ? "bg-green-500" : "bg-neutral-400",
+										)}
+									/>
+									<span className="text-xs text-muted-foreground capitalize">{device.status}</span>
+								</div>
 							)}
-						>
-							<Globe className="h-3 w-3" />
-							Shared device
-						</span>
-						{device.status && (
-							<div className="flex items-center gap-1.5" role="status">
-								<span
-									className={cn(
-										"h-2 w-2 rounded-full",
-										device.status === "online" ? "bg-green-500" : "bg-neutral-400",
-									)}
-								/>
-								<span className="text-xs text-muted-foreground capitalize">{device.status}</span>
-							</div>
-						)}
-					</div>
-
-					{/* Device name and type */}
-					<h2 className="text-xl font-semibold tracking-tight mb-1">{name}</h2>
-					<p className="text-sm text-muted-foreground mb-4">
-						{device.type ?? device.device ?? "Device"}{" "}
-						<span className="font-mono">{device.serial}</span>
-					</p>
-
-					{/* Channel readings */}
-					{enabledChannels.length > 0 ? (
-						<div className="space-y-2">
-							{enabledChannels.map((channel, idx) => (
-								<ChannelReading key={channel.number ?? idx} channel={channel} />
-							))}
 						</div>
-					) : (
-						<p className="text-sm text-muted-foreground italic">No active channels</p>
-					)}
 
-					{/* Refresh info */}
-					<div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
-						{lastUpdated && <span>Updated {lastUpdated.toLocaleTimeString()}</span>}
-						<button
-							type="button"
-							onClick={fetchData}
-							disabled={isLoading}
-							className={cn(
-								"inline-flex items-center gap-1 rounded-md px-2 py-1",
-								"hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-								"disabled:opacity-50",
-							)}
-						>
-							<RefreshCw className={cn("h-3 w-3", isLoading && "animate-spin")} />
-							Refresh
-						</button>
-					</div>
-				</article>
-			</main>
-		</div>
+						{/* Device name and type */}
+						<h1 className="text-xl font-semibold tracking-tight mb-1">{name}</h1>
+						<p className="text-sm text-muted-foreground mb-4">
+							{device.type ?? device.device ?? "Device"}{" "}
+							<span className="font-mono">{device.serial}</span>
+						</p>
+
+						{/* Channel readings */}
+						{enabledChannels.length > 0 ? (
+							<div className="space-y-2">
+								{enabledChannels.map((channel, idx) => (
+									<ChannelReading key={channel.number ?? idx} channel={channel} />
+								))}
+							</div>
+						) : (
+							<p className="text-sm text-muted-foreground italic">No active channels</p>
+						)}
+
+						{/* Refresh info */}
+						<div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+							{lastUpdated && <span>Updated {lastUpdated.toLocaleTimeString()}</span>}
+							<button
+								type="button"
+								onClick={fetchData}
+								disabled={isLoading}
+								className={cn(
+									"inline-flex items-center gap-1 rounded-md px-2 py-1",
+									"hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+									"disabled:opacity-50",
+								)}
+							>
+								<RefreshCw className={cn("h-3 w-3", isLoading && "animate-spin")} />
+								Refresh
+							</button>
+						</div>
+					</article>
+				</main>
+			</div>
+		</TemperatureUnitProvider>
 	);
 }

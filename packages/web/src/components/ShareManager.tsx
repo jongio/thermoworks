@@ -1,6 +1,8 @@
 import { Check, Copy, Loader2, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ThermoworksWebClient } from "../lib/api.ts";
+import type { CookReportSharePayload } from "../lib/cook-annotations.ts";
+import { encodeCookReportPayload } from "../lib/cook-annotations.ts";
 import { generateQrCodeSvgDataUrl } from "../lib/qr.ts";
 import { cn } from "../lib/utils.ts";
 
@@ -8,15 +10,30 @@ interface ShareManagerProps {
 	serial: string;
 	archiveId?: string;
 	client: ThermoworksWebClient;
+	reportPayload?: CookReportSharePayload;
 	onClose: () => void;
 }
 
-export function ShareManager({ serial, archiveId, client, onClose }: ShareManagerProps) {
+export function ShareManager({
+	serial,
+	archiveId,
+	client,
+	reportPayload,
+	onClose,
+}: ShareManagerProps) {
 	const [shareUrl, setShareUrl] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const [copied, setCopied] = useState(false);
 	const dialogRef = useRef<HTMLDivElement>(null);
+	const qrCodeUrl = useMemo(() => {
+		if (!shareUrl) return null;
+		try {
+			return generateQrCodeSvgDataUrl(shareUrl);
+		} catch {
+			return null;
+		}
+	}, [shareUrl]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -25,9 +42,13 @@ export function ShareManager({ serial, archiveId, client, onClose }: ShareManage
 			setIsLoading(true);
 			setError(null);
 			try {
-				const result = archiveId
-					? await client.shareArchive(serial, archiveId)
-					: await client.shareDevice(serial);
+				const result = reportPayload
+					? {
+							shareUrl: `${window.location.origin}${window.location.pathname}#/share/report?data=${encodeCookReportPayload(reportPayload)}`,
+						}
+					: archiveId
+						? await client.shareArchive(serial, archiveId)
+						: await client.shareDevice(serial);
 				if (!cancelled) {
 					setShareUrl(result.shareUrl);
 				}
@@ -46,7 +67,7 @@ export function ShareManager({ serial, archiveId, client, onClose }: ShareManage
 		return () => {
 			cancelled = true;
 		};
-	}, [client, serial, archiveId]);
+	}, [client, serial, archiveId, reportPayload]);
 
 	// Close on Escape key
 	useEffect(() => {
@@ -87,7 +108,7 @@ export function ShareManager({ serial, archiveId, client, onClose }: ShareManage
 			onClick={handleBackdropClick}
 			role="dialog"
 			aria-modal="true"
-			aria-label="Share device"
+			aria-label={`Share ${reportPayload ? "report" : archiveId ? "archive" : "device"}`}
 		>
 			<div
 				ref={dialogRef}
@@ -98,7 +119,9 @@ export function ShareManager({ serial, archiveId, client, onClose }: ShareManage
 			>
 				{/* Header */}
 				<div className="flex items-center justify-between mb-4">
-					<h2 className="text-sm font-semibold">Share {archiveId ? "Archive" : "Device"}</h2>
+					<h2 className="text-sm font-semibold">
+						Share {reportPayload ? "Report" : archiveId ? "Archive" : "Device"}
+					</h2>
 					<button
 						type="button"
 						onClick={onClose}
@@ -125,15 +148,22 @@ export function ShareManager({ serial, archiveId, client, onClose }: ShareManage
 				{shareUrl && !isLoading && (
 					<div className="space-y-3">
 						<p className="text-xs text-muted-foreground">
-							Anyone with this link can view the {archiveId ? "archive" : "device"} readings.
+							Anyone with this link can view the{" "}
+							{reportPayload ? "cook report" : archiveId ? "archive" : "device"} readings.
 						</p>
-						<div className="flex justify-center rounded-lg border border-border bg-white p-3">
-							<img
-								src={generateQrCodeSvgDataUrl(shareUrl)}
-								alt={`QR code for shared ${archiveId ? "archive" : "device"} link`}
-								className="h-40 w-40"
-							/>
-						</div>
+						{qrCodeUrl ? (
+							<div className="flex justify-center rounded-lg border border-border bg-white p-3">
+								<img
+									src={qrCodeUrl}
+									alt={`QR code for shared ${reportPayload ? "report" : archiveId ? "archive" : "device"} link`}
+									className="h-40 w-40"
+								/>
+							</div>
+						) : (
+							<p className="rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground">
+								This share link is too long for QR code generation. Use copy instead.
+							</p>
+						)}
 						<div className="flex items-center gap-2">
 							<input
 								type="text"

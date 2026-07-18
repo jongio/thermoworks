@@ -1,0 +1,1628 @@
+{
+  "archives": {
+    "DEMO-NODE-1CH": [
+      {
+        "id": "demo-DEMO-NODE-1CH-0",
+        "start": "2026-06-01T10:00:00.000Z",
+        "end": "2026-06-01T12:00:00.000Z",
+        "count": 5,
+        "type": "session",
+        "label": "Garage Fridge",
+        "deviceLabel": "Garage Fridge",
+        "notes": "Synthetic offline fixture session",
+        "createdOn": "2026-06-01T12:00:00.000Z",
+        "public": false,
+        "publicLink": null,
+        "filename": null,
+        "channels": [
+          {
+            "number": "1",
+            "label": "Internal",
+            "units": "F",
+            "value": 38,
+            "status": "normal",
+            "enabled": true,
+            "color": "#6C5CE7",
+            "type": "temperature",
+            "alarmHigh": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 45,
+              "units": "F",
+              "lastNotified": null
+            },
+            "alarmLow": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 32,
+              "units": "F",
+              "lastNotified": null
+            },
+            "minimum": {
+              "value": 30,
+              "units": "F",
+              "date": "2026-05-31T12:00:00.000Z"
+            },
+            "maximum": {
+              "value": 38,
+              "units": "F",
+              "date": "2026-06-01T12:00:00.000Z"
+            },
+            "recentReadings": [
+              {
+                "value": 30,
+                "timestamp": "2026-06-01T10:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 35,
+                "timestamp": "2026-06-01T11:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 38,
+                "timestamp": "2026-06-01T12:00:00.000Z",
+                "units": "F"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "DEMO-OFFLINE-NODE": [
+      {
+        "id": "demo-DEMO-OFFLINE-NODE-0",
+        "start": "2026-06-01T10:00:00.000Z",
+        "end": "2026-06-01T12:00:00.000Z",
+        "count": 5,
+        "type": "session",
+        "label": "Freezer Check",
+        "deviceLabel": "Basement Freezer",
+        "notes": "Synthetic offline fixture session",
+        "createdOn": "2026-06-01T12:00:00.000Z",
+        "public": false,
+        "publicLink": null,
+        "filename": null,
+        "channels": [
+          {
+            "number": "1",
+            "label": "Internal",
+            "units": "F",
+            "value": 2,
+            "status": "normal",
+            "enabled": true,
+            "color": "#A29BFE",
+            "type": "temperature",
+            "alarmHigh": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 45,
+              "units": "F",
+              "lastNotified": null
+            },
+            "alarmLow": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 0,
+              "units": "F",
+              "lastNotified": null
+            },
+            "minimum": {
+              "value": -6,
+              "units": "F",
+              "date": "2026-05-31T12:00:00.000Z"
+            },
+            "maximum": {
+              "value": 2,
+              "units": "F",
+              "date": "2026-06-01T12:00:00.000Z"
+            },
+            "recentReadings": [
+              {
+                "value": -6,
+                "timestamp": "2026-06-01T10:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": -1,
+                "timestamp": "2026-06-01T11:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 2,
+                "timestamp": "2026-06-01T12:00:00.000Z",
+                "units": "F"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "DEMO-SIGNALS-4CH": [
+      {
+        "id": "demo-DEMO-SIGNALS-4CH-0",
+        "start": "2026-06-01T10:00:00.000Z",
+        "end": "2026-06-01T12:00:00.000Z",
+        "count": 5,
+        "type": "session",
+        "label": "Sunday Brisket",
+        "deviceLabel": "Backyard Smoker",
+        "notes": "Synthetic offline fixture session",
+        "createdOn": "2026-06-01T12:00:00.000Z",
+        "public": false,
+        "publicLink": null,
+        "filename": null,
+        "channels": [
+          {
+            "number": "1",
+            "label": "Pit",
+            "units": "F",
+            "value": 225,
+            "status": "normal",
+            "enabled": true,
+            "color": "#FF6B35",
+            "type": "temperature",
+            "alarmHigh": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 275,
+              "units": "F",
+              "lastNotified": null
+            },
+            "alarmLow": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 200,
+              "units": "F",
+              "lastNotified": null
+            },
+            "minimum": {
+              "value": 217,
+              "units": "F",
+              "date": "2026-05-31T12:00:00.000Z"
+            },
+            "maximum": {
+              "value": 225,
+              "units": "F",
+              "date": "2026-06-01T12:00:00.000Z"
+            },
+            "recentReadings": [
+              {
+                "value": 217,
+                "timestamp": "2026-06-01T10:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 222,
+                "timestamp": "2026-06-01T11:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 225,
+                "timestamp": "2026-06-01T12:00:00.000Z",
+                "units": "F"
+              }
+            ]
+          },
+          {
+            "number": "2",
+            "label": "Brisket",
+            "units": "F",
+            "value": 168,
+            "status": "normal",
+            "enabled": true,
+            "color": "#4ECDC4",
+            "type": "temperature",
+            "alarmHigh": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 203,
+              "units": "F",
+              "lastNotified": null
+            },
+            "alarmLow": {
+              "enabled": false,
+              "alarming": false,
+              "muted": false,
+              "value": null,
+              "units": "F",
+              "lastNotified": null
+            },
+            "minimum": {
+              "value": 160,
+              "units": "F",
+              "date": "2026-05-31T12:00:00.000Z"
+            },
+            "maximum": {
+              "value": 168,
+              "units": "F",
+              "date": "2026-06-01T12:00:00.000Z"
+            },
+            "recentReadings": [
+              {
+                "value": 160,
+                "timestamp": "2026-06-01T10:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 165,
+                "timestamp": "2026-06-01T11:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 168,
+                "timestamp": "2026-06-01T12:00:00.000Z",
+                "units": "F"
+              }
+            ]
+          },
+          {
+            "number": "3",
+            "label": "Ribs",
+            "units": "F",
+            "value": 175,
+            "status": "normal",
+            "enabled": true,
+            "color": "#FFE66D",
+            "type": "temperature",
+            "alarmHigh": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 200,
+              "units": "F",
+              "lastNotified": null
+            },
+            "alarmLow": {
+              "enabled": false,
+              "alarming": false,
+              "muted": false,
+              "value": null,
+              "units": "F",
+              "lastNotified": null
+            },
+            "minimum": {
+              "value": 167,
+              "units": "F",
+              "date": "2026-05-31T12:00:00.000Z"
+            },
+            "maximum": {
+              "value": 175,
+              "units": "F",
+              "date": "2026-06-01T12:00:00.000Z"
+            },
+            "recentReadings": [
+              {
+                "value": 167,
+                "timestamp": "2026-06-01T10:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 172,
+                "timestamp": "2026-06-01T11:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 175,
+                "timestamp": "2026-06-01T12:00:00.000Z",
+                "units": "F"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "demo-DEMO-SIGNALS-4CH-1",
+        "start": "2026-05-30T18:00:00.000Z",
+        "end": "2026-05-30T18:24:00.000Z",
+        "count": 5,
+        "type": "session",
+        "label": "Grilled Steak",
+        "deviceLabel": "Backyard Smoker",
+        "notes": "Synthetic offline fixture session",
+        "createdOn": "2026-06-01T12:00:00.000Z",
+        "public": false,
+        "publicLink": null,
+        "filename": null,
+        "channels": [
+          {
+            "number": "1",
+            "label": "Grill",
+            "units": "F",
+            "value": 515,
+            "status": "normal",
+            "enabled": true,
+            "color": "#FF6B35",
+            "type": "temperature",
+            "alarmHigh": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 525,
+              "units": "F",
+              "lastNotified": null
+            },
+            "alarmLow": null,
+            "minimum": {
+              "value": 507,
+              "units": "F",
+              "date": "2026-05-31T12:00:00.000Z"
+            },
+            "maximum": {
+              "value": 515,
+              "units": "F",
+              "date": "2026-06-01T12:00:00.000Z"
+            },
+            "recentReadings": [
+              {
+                "value": 507,
+                "timestamp": "2026-06-01T10:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 512,
+                "timestamp": "2026-06-01T11:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 515,
+                "timestamp": "2026-06-01T12:00:00.000Z",
+                "units": "F"
+              }
+            ]
+          },
+          {
+            "number": "2",
+            "label": "Steak",
+            "units": "F",
+            "value": 125,
+            "status": "normal",
+            "enabled": true,
+            "color": "#E84855",
+            "type": "temperature",
+            "alarmHigh": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 125,
+              "units": "F",
+              "lastNotified": null
+            },
+            "alarmLow": null,
+            "minimum": {
+              "value": 117,
+              "units": "F",
+              "date": "2026-05-31T12:00:00.000Z"
+            },
+            "maximum": {
+              "value": 125,
+              "units": "F",
+              "date": "2026-06-01T12:00:00.000Z"
+            },
+            "recentReadings": [
+              {
+                "value": 117,
+                "timestamp": "2026-06-01T10:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 122,
+                "timestamp": "2026-06-01T11:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 125,
+                "timestamp": "2026-06-01T12:00:00.000Z",
+                "units": "F"
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "DEMO-SMOKE-2CH": [
+      {
+        "id": "demo-DEMO-SMOKE-2CH-0",
+        "start": "2026-06-01T10:00:00.000Z",
+        "end": "2026-06-01T12:00:00.000Z",
+        "count": 5,
+        "type": "session",
+        "label": "Easter Brisket",
+        "deviceLabel": "Easter Brisket",
+        "notes": "Synthetic offline fixture session",
+        "createdOn": "2026-06-01T12:00:00.000Z",
+        "public": false,
+        "publicLink": null,
+        "filename": null,
+        "channels": [
+          {
+            "number": "1",
+            "label": "Pit",
+            "units": "F",
+            "value": 250,
+            "status": "normal",
+            "enabled": true,
+            "color": "#4ECDC4",
+            "type": "temperature",
+            "alarmHigh": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 285,
+              "units": "F",
+              "lastNotified": null
+            },
+            "alarmLow": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 220,
+              "units": "F",
+              "lastNotified": null
+            },
+            "minimum": {
+              "value": 242,
+              "units": "F",
+              "date": "2026-05-31T12:00:00.000Z"
+            },
+            "maximum": {
+              "value": 250,
+              "units": "F",
+              "date": "2026-06-01T12:00:00.000Z"
+            },
+            "recentReadings": [
+              {
+                "value": 242,
+                "timestamp": "2026-06-01T10:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 247,
+                "timestamp": "2026-06-01T11:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 250,
+                "timestamp": "2026-06-01T12:00:00.000Z",
+                "units": "F"
+              }
+            ]
+          },
+          {
+            "number": "2",
+            "label": "Brisket",
+            "units": "F",
+            "value": 168,
+            "status": "normal",
+            "enabled": true,
+            "color": "#FFE66D",
+            "type": "temperature",
+            "alarmHigh": {
+              "enabled": true,
+              "alarming": false,
+              "muted": false,
+              "value": 203,
+              "units": "F",
+              "lastNotified": null
+            },
+            "alarmLow": {
+              "enabled": false,
+              "alarming": false,
+              "muted": false,
+              "value": null,
+              "units": "F",
+              "lastNotified": null
+            },
+            "minimum": {
+              "value": 160,
+              "units": "F",
+              "date": "2026-05-31T12:00:00.000Z"
+            },
+            "maximum": {
+              "value": 168,
+              "units": "F",
+              "date": "2026-06-01T12:00:00.000Z"
+            },
+            "recentReadings": [
+              {
+                "value": 160,
+                "timestamp": "2026-06-01T10:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 165,
+                "timestamp": "2026-06-01T11:00:00.000Z",
+                "units": "F"
+              },
+              {
+                "value": 168,
+                "timestamp": "2026-06-01T12:00:00.000Z",
+                "units": "F"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "channels": {
+    "DEMO-NODE-1CH": {
+      "high": [
+        {
+          "value": 48,
+          "units": "F",
+          "label": "Internal",
+          "status": "normal",
+          "type": "temperature",
+          "number": "1",
+          "enabled": true,
+          "color": "#6C5CE7",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": true,
+            "muted": false,
+            "value": 45,
+            "units": "F",
+            "lastNotified": "2026-06-01T12:00:00.000Z"
+          },
+          "alarmLow": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 32,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        }
+      ],
+      "low": [
+        {
+          "value": 28,
+          "units": "F",
+          "label": "Internal",
+          "status": "normal",
+          "type": "temperature",
+          "number": "1",
+          "enabled": true,
+          "color": "#6C5CE7",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 45,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": true,
+            "alarming": true,
+            "muted": false,
+            "value": 32,
+            "units": "F",
+            "lastNotified": "2026-06-01T12:00:00.000Z"
+          },
+          "minimum": null,
+          "maximum": null
+        }
+      ],
+      "normal": [
+        {
+          "value": 38,
+          "units": "F",
+          "label": "Internal",
+          "status": "normal",
+          "type": "temperature",
+          "number": "1",
+          "enabled": true,
+          "color": "#6C5CE7",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 45,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 32,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        }
+      ]
+    },
+    "DEMO-OFFLINE-NODE": {
+      "high": [
+        {
+          "value": null,
+          "units": "F",
+          "label": "Internal",
+          "status": "offline",
+          "type": "temperature",
+          "number": "1",
+          "enabled": true,
+          "color": "#A29BFE",
+          "lastSeen": "2026-05-31T12:00:00.000Z",
+          "lastTelemetrySaved": "2026-05-31T12:00:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 45,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 0,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        }
+      ],
+      "low": [
+        {
+          "value": null,
+          "units": "F",
+          "label": "Internal",
+          "status": "offline",
+          "type": "temperature",
+          "number": "1",
+          "enabled": true,
+          "color": "#A29BFE",
+          "lastSeen": "2026-05-31T12:00:00.000Z",
+          "lastTelemetrySaved": "2026-05-31T12:00:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 45,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 0,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        }
+      ],
+      "normal": [
+        {
+          "value": null,
+          "units": "F",
+          "label": "Internal",
+          "status": "offline",
+          "type": "temperature",
+          "number": "1",
+          "enabled": true,
+          "color": "#A29BFE",
+          "lastSeen": "2026-05-31T12:00:00.000Z",
+          "lastTelemetrySaved": "2026-05-31T12:00:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 45,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 0,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        }
+      ]
+    },
+    "DEMO-SIGNALS-4CH": {
+      "high": [
+        {
+          "value": 285,
+          "units": "F",
+          "label": "Pit",
+          "status": "normal",
+          "type": "temperature",
+          "number": "1",
+          "enabled": true,
+          "color": "#FF6B35",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": true,
+            "muted": false,
+            "value": 275,
+            "units": "F",
+            "lastNotified": "2026-06-01T12:00:00.000Z"
+          },
+          "alarmLow": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 200,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        },
+        {
+          "value": 205,
+          "units": "F",
+          "label": "Brisket",
+          "status": "normal",
+          "type": "temperature",
+          "number": "2",
+          "enabled": true,
+          "color": "#4ECDC4",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": true,
+            "muted": false,
+            "value": 203,
+            "units": "F",
+            "lastNotified": "2026-06-01T12:00:00.000Z"
+          },
+          "alarmLow": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        },
+        {
+          "value": 198,
+          "units": "F",
+          "label": "Ribs",
+          "status": "normal",
+          "type": "temperature",
+          "number": "3",
+          "enabled": true,
+          "color": "#FFE66D",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 200,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        },
+        {
+          "value": 72,
+          "units": "F",
+          "label": "Ambient",
+          "status": "normal",
+          "type": "temperature",
+          "number": "4",
+          "enabled": true,
+          "color": "#95E1D3",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        }
+      ],
+      "low": [
+        {
+          "value": 180,
+          "units": "F",
+          "label": "Pit",
+          "status": "normal",
+          "type": "temperature",
+          "number": "1",
+          "enabled": true,
+          "color": "#FF6B35",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 275,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": true,
+            "alarming": true,
+            "muted": false,
+            "value": 200,
+            "units": "F",
+            "lastNotified": "2026-06-01T12:00:00.000Z"
+          },
+          "minimum": null,
+          "maximum": null
+        },
+        {
+          "value": 120,
+          "units": "F",
+          "label": "Brisket",
+          "status": "normal",
+          "type": "temperature",
+          "number": "2",
+          "enabled": true,
+          "color": "#4ECDC4",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 203,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        },
+        {
+          "value": 175,
+          "units": "F",
+          "label": "Ribs",
+          "status": "normal",
+          "type": "temperature",
+          "number": "3",
+          "enabled": true,
+          "color": "#FFE66D",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 200,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        },
+        {
+          "value": 72,
+          "units": "F",
+          "label": "Ambient",
+          "status": "normal",
+          "type": "temperature",
+          "number": "4",
+          "enabled": true,
+          "color": "#95E1D3",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        }
+      ],
+      "normal": [
+        {
+          "value": 225,
+          "units": "F",
+          "label": "Pit",
+          "status": "normal",
+          "type": "temperature",
+          "number": "1",
+          "enabled": true,
+          "color": "#FF6B35",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": 1.2,
+          "rateOfChangeUnit": "F/min",
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 275,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 200,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": {
+            "value": 220,
+            "units": "F",
+            "date": "2026-06-01T11:30:00.000Z"
+          },
+          "maximum": {
+            "value": 235,
+            "units": "F",
+            "date": "2026-06-01T11:50:00.000Z"
+          }
+        },
+        {
+          "value": 168,
+          "units": "F",
+          "label": "Brisket",
+          "status": "normal",
+          "type": "temperature",
+          "number": "2",
+          "enabled": true,
+          "color": "#4ECDC4",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 203,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        },
+        {
+          "value": 175,
+          "units": "F",
+          "label": "Ribs",
+          "status": "normal",
+          "type": "temperature",
+          "number": "3",
+          "enabled": true,
+          "color": "#FFE66D",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 200,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        },
+        {
+          "value": 72,
+          "units": "F",
+          "label": "Ambient",
+          "status": "normal",
+          "type": "temperature",
+          "number": "4",
+          "enabled": true,
+          "color": "#95E1D3",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        }
+      ]
+    },
+    "DEMO-SMOKE-2CH": {
+      "high": [
+        {
+          "value": 292,
+          "units": "F",
+          "label": "Pit",
+          "status": "normal",
+          "type": "temperature",
+          "number": "1",
+          "enabled": true,
+          "color": "#4ECDC4",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": true,
+            "muted": false,
+            "value": 285,
+            "units": "F",
+            "lastNotified": "2026-06-01T12:00:00.000Z"
+          },
+          "alarmLow": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 220,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        },
+        {
+          "value": 207,
+          "units": "F",
+          "label": "Brisket",
+          "status": "normal",
+          "type": "temperature",
+          "number": "2",
+          "enabled": true,
+          "color": "#FFE66D",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": true,
+            "muted": false,
+            "value": 203,
+            "units": "F",
+            "lastNotified": "2026-06-01T12:00:00.000Z"
+          },
+          "alarmLow": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        }
+      ],
+      "low": [
+        {
+          "value": 208,
+          "units": "F",
+          "label": "Pit",
+          "status": "normal",
+          "type": "temperature",
+          "number": "1",
+          "enabled": true,
+          "color": "#4ECDC4",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 285,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": true,
+            "alarming": true,
+            "muted": false,
+            "value": 220,
+            "units": "F",
+            "lastNotified": "2026-06-01T12:00:00.000Z"
+          },
+          "minimum": null,
+          "maximum": null
+        },
+        {
+          "value": 168,
+          "units": "F",
+          "label": "Brisket",
+          "status": "normal",
+          "type": "temperature",
+          "number": "2",
+          "enabled": true,
+          "color": "#FFE66D",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 203,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        }
+      ],
+      "normal": [
+        {
+          "value": 250,
+          "units": "F",
+          "label": "Pit",
+          "status": "normal",
+          "type": "temperature",
+          "number": "1",
+          "enabled": true,
+          "color": "#4ECDC4",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 285,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 220,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        },
+        {
+          "value": 168,
+          "units": "F",
+          "label": "Brisket",
+          "status": "normal",
+          "type": "temperature",
+          "number": "2",
+          "enabled": true,
+          "color": "#FFE66D",
+          "lastSeen": "2026-06-01T11:55:00.000Z",
+          "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+          "lastEventId": null,
+          "showAvgTemp": false,
+          "estimatedAlarmStatus": null,
+          "rateOfChange": null,
+          "rateOfChangeUnit": null,
+          "alarmHigh": {
+            "enabled": true,
+            "alarming": false,
+            "muted": false,
+            "value": 203,
+            "units": "F",
+            "lastNotified": null
+          },
+          "alarmLow": {
+            "enabled": false,
+            "alarming": false,
+            "muted": false,
+            "value": null,
+            "units": "F",
+            "lastNotified": null
+          },
+          "minimum": null,
+          "maximum": null
+        }
+      ]
+    }
+  },
+  "devices": [
+    {
+      "serial": "DEMO-SIGNALS-4CH",
+      "deviceId": "signals-001",
+      "label": "Backyard Smoker",
+      "type": "signals",
+      "device": "Signals 4-Channel",
+      "status": "online",
+      "battery": 87,
+      "batteryState": "normal",
+      "wifiStrength": -42,
+      "firmware": "2.4.1",
+      "color": "#FF6B35",
+      "thumbnail": null,
+      "deviceDisplayUnits": "F",
+      "iotDeviceId": "iot-signals-001",
+      "iotCoreDeviceBlocked": false,
+      "recordingIntervalInSeconds": 2,
+      "transmitIntervalInSeconds": 10,
+      "readInterval": 2,
+      "heartbeatInterval": 60,
+      "temperatureDeltaTrigger": 1,
+      "pendingLoad": false,
+      "batteryAlertSent": false,
+      "lastSeen": "2026-06-01T11:55:00.000Z",
+      "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+      "latestReading": "2026-06-01T11:55:00.000Z",
+      "lastWifiConnection": "2026-06-01T11:55:00.000Z",
+      "lastBluetoothConnection": null,
+      "sessionStart": "2026-06-01T10:00:00.000Z",
+      "sessionLabel": "Sunday Brisket",
+      "lastArchive": null,
+      "lastPurged": null,
+      "assignedToAccountOn": "2024-03-15T00:00:00.000Z",
+      "accountId": "demo-account-001",
+      "notes": null,
+      "public": false,
+      "publicLink": null,
+      "searModeEnabled": false,
+      "showSensorChannels": true,
+      "ringColors": [
+        "#FF6B35",
+        "#4ECDC4",
+        "#FFE66D",
+        "#95E1D3"
+      ],
+      "gateway": null,
+      "fan": null,
+      "bigQuery": null
+    },
+    {
+      "serial": "DEMO-SMOKE-2CH",
+      "deviceId": "smoke-001",
+      "label": "Easter Brisket",
+      "type": "smoke",
+      "device": "Smoke 2-Channel",
+      "status": "online",
+      "battery": 62,
+      "batteryState": "normal",
+      "wifiStrength": -55,
+      "firmware": "1.5.0",
+      "color": "#4ECDC4",
+      "thumbnail": null,
+      "deviceDisplayUnits": "F",
+      "iotDeviceId": "iot-smoke-001",
+      "iotCoreDeviceBlocked": false,
+      "recordingIntervalInSeconds": 3,
+      "transmitIntervalInSeconds": 15,
+      "readInterval": 3,
+      "heartbeatInterval": 60,
+      "temperatureDeltaTrigger": 1,
+      "pendingLoad": false,
+      "batteryAlertSent": false,
+      "lastSeen": "2026-06-01T11:50:00.000Z",
+      "lastTelemetrySaved": "2026-06-01T11:50:00.000Z",
+      "latestReading": "2026-06-01T11:50:00.000Z",
+      "lastWifiConnection": "2026-06-01T11:50:00.000Z",
+      "lastBluetoothConnection": null,
+      "sessionStart": "2026-06-01T10:00:00.000Z",
+      "sessionLabel": "Easter Brisket",
+      "lastArchive": null,
+      "lastPurged": null,
+      "assignedToAccountOn": "2023-11-20T00:00:00.000Z",
+      "accountId": "demo-account-001",
+      "notes": null,
+      "public": false,
+      "publicLink": null,
+      "searModeEnabled": false,
+      "showSensorChannels": true,
+      "ringColors": [
+        "#4ECDC4",
+        "#FFE66D"
+      ],
+      "gateway": null,
+      "fan": null,
+      "bigQuery": null
+    },
+    {
+      "serial": "DEMO-NODE-1CH",
+      "deviceId": "node-001",
+      "label": "Garage Fridge",
+      "type": "node",
+      "device": "ThermoWorks Node",
+      "status": "online",
+      "battery": 94,
+      "batteryState": "normal",
+      "wifiStrength": -38,
+      "firmware": "3.1.0",
+      "color": "#6C5CE7",
+      "thumbnail": null,
+      "deviceDisplayUnits": "F",
+      "iotDeviceId": "iot-node-001",
+      "iotCoreDeviceBlocked": false,
+      "recordingIntervalInSeconds": 30,
+      "transmitIntervalInSeconds": 60,
+      "readInterval": 30,
+      "heartbeatInterval": 300,
+      "temperatureDeltaTrigger": 2,
+      "pendingLoad": false,
+      "batteryAlertSent": false,
+      "lastSeen": "2026-06-01T11:55:00.000Z",
+      "lastTelemetrySaved": "2026-06-01T11:55:00.000Z",
+      "latestReading": "2026-06-01T11:55:00.000Z",
+      "lastWifiConnection": "2026-06-01T11:55:00.000Z",
+      "lastBluetoothConnection": null,
+      "sessionStart": null,
+      "sessionLabel": null,
+      "lastArchive": null,
+      "lastPurged": null,
+      "assignedToAccountOn": "2024-06-01T00:00:00.000Z",
+      "accountId": "demo-account-001",
+      "notes": "Monitoring garage fridge temp",
+      "public": false,
+      "publicLink": null,
+      "searModeEnabled": false,
+      "showSensorChannels": false,
+      "ringColors": null,
+      "gateway": null,
+      "fan": null,
+      "bigQuery": null
+    },
+    {
+      "serial": "DEMO-OFFLINE-NODE",
+      "deviceId": "node-offline-001",
+      "label": "Basement Freezer",
+      "type": "node",
+      "device": "ThermoWorks Node",
+      "status": "offline",
+      "battery": 18,
+      "batteryState": "low",
+      "wifiStrength": -85,
+      "firmware": "3.0.0",
+      "color": "#A29BFE",
+      "thumbnail": null,
+      "deviceDisplayUnits": "F",
+      "iotDeviceId": null,
+      "iotCoreDeviceBlocked": false,
+      "recordingIntervalInSeconds": null,
+      "transmitIntervalInSeconds": null,
+      "readInterval": null,
+      "heartbeatInterval": null,
+      "temperatureDeltaTrigger": null,
+      "pendingLoad": false,
+      "batteryAlertSent": false,
+      "lastSeen": "2026-05-31T12:00:00.000Z",
+      "lastTelemetrySaved": "2026-05-31T12:00:00.000Z",
+      "latestReading": "2026-05-31T12:00:00.000Z",
+      "lastWifiConnection": "2026-05-31T12:00:00.000Z",
+      "lastBluetoothConnection": null,
+      "sessionStart": null,
+      "sessionLabel": null,
+      "lastArchive": null,
+      "lastPurged": null,
+      "assignedToAccountOn": "2024-07-01T00:00:00.000Z",
+      "accountId": "demo-account-001",
+      "notes": "Offline fixture for stale device states",
+      "public": false,
+      "publicLink": null,
+      "searModeEnabled": false,
+      "showSensorChannels": false,
+      "ringColors": null,
+      "gateway": null,
+      "fan": null,
+      "bigQuery": null
+    }
+  ],
+  "latestFirmware": {
+    "node": "3.1.0",
+    "signals": "2.4.1",
+    "smoke": "1.8.3"
+  }
+}

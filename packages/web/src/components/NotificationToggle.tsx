@@ -1,16 +1,17 @@
 import { Bell, BellOff } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
+	getNotificationPermission,
 	getNotificationsEnabled,
+	requestBrowserNotificationPermission,
 	setNotificationsEnabled,
-} from "../hooks/useAlarmNotifications.ts";
+} from "../lib/browser-notifications.ts";
 import { cn } from "../lib/utils.ts";
 
 type PermissionState = "default" | "granted" | "denied";
 
 function getPermission(): PermissionState {
-	if (typeof Notification === "undefined") return "denied";
-	return Notification.permission;
+	return getNotificationPermission();
 }
 
 export function NotificationToggle() {
@@ -42,7 +43,7 @@ export function NotificationToggle() {
 		if (permission === "denied") return;
 
 		if (permission === "default") {
-			Notification.requestPermission()
+			requestBrowserNotificationPermission()
 				.then((result) => {
 					setPermission(result);
 					if (result === "granted") {

@@ -1,7 +1,13 @@
 import { Bell, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import type { NotificationSettings } from "thermoworks-sdk";
 import { useNotificationSettings } from "../hooks/useNotificationSettings.ts";
 import type { ThermoworksWebClient } from "../lib/api.ts";
+import {
+	getNotificationPermission,
+	requestBrowserNotificationPermission,
+	setNotificationsEnabled,
+} from "../lib/browser-notifications.ts";
 import { cn } from "../lib/utils.ts";
 
 type SettingKey = keyof NotificationSettings;
@@ -13,7 +19,7 @@ interface ToggleRowProps {
 	disabled: boolean;
 	saving: boolean;
 	field: SettingKey;
-	onToggle: (field: SettingKey) => void;
+	onToggle: (field: SettingKey) => void | Promise<void>;
 }
 
 function ToggleRow({
@@ -103,6 +109,47 @@ interface NotificationPrefsProps {
 export function NotificationPrefs({ client }: NotificationPrefsProps) {
 	const { settings, isLoading, error, savingField, saveError, toggle } =
 		useNotificationSettings(client);
+	const [permission, setPermission] = useState<NotificationPermission>(getNotificationPermission);
+	const [permissionError, setPermissionError] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (typeof navigator === "undefined" || !navigator.permissions) return;
+
+		let cleanupRef: (() => void) | null = null;
+		let cancelled = false;
+		navigator.permissions.query({ name: "notifications" as PermissionName }).then((status) => {
+			if (cancelled) return;
+			setPermission(status.state as NotificationPermission);
+			const onChange = () => setPermission(status.state as NotificationPermission);
+			status.addEventListener("change", onChange);
+			cleanupRef = () => status.removeEventListener("change", onChange);
+		});
+
+		return () => {
+			cancelled = true;
+			cleanupRef?.();
+		};
+	}, []);
+
+	const handleToggle = async (field: SettingKey) => {
+		setPermissionError(null);
+
+		if (field === "deviceNotification" && !settings.deviceNotification) {
+			const result =
+				permission === "default" ? await requestBrowserNotificationPermission() : permission;
+			setPermission(result);
+			if (result !== "granted") {
+				setNotificationsEnabled(false);
+				setPermissionError(
+					"Browser notifications are blocked. Enable them in your browser settings.",
+				);
+				return;
+			}
+			setNotificationsEnabled(true);
+		}
+
+		await toggle(field);
+	};
 
 	if (isLoading) {
 		return (
@@ -135,10 +182,16 @@ export function NotificationPrefs({ client }: NotificationPrefsProps) {
 						checked={settings[key]}
 						disabled={savingField !== null}
 						saving={savingField === key}
-						onToggle={toggle}
+						onToggle={handleToggle}
 					/>
 				))}
 			</div>
+			<p className="mt-2 text-xs text-muted-foreground">
+				Browser push delivery while the app is closed requires a push backend, which this static SPA
+				does not provide. When enabled, alarm changes can still show browser notifications while the
+				app is running.
+			</p>
+			{permissionError && <p className="mt-2 text-xs text-destructive">{permissionError}</p>}
 			{saveError && <p className="mt-2 text-xs text-destructive">{saveError}</p>}
 		</section>
 	);

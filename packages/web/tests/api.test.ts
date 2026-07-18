@@ -1304,6 +1304,34 @@ describe("ThermoworksWebClient", () => {
 			expect(body.structuredQuery.limit).toBe(10);
 		});
 
+		it("builds timestamp filters for event time ranges", async () => {
+			const client = await createAuthenticatedClient();
+			mockFetch.mockResolvedValueOnce(
+				jsonResponse({
+					fields: { accountId: { stringValue: "acc-1" } },
+				}),
+			);
+			mockFetch.mockResolvedValueOnce(jsonResponse([]));
+
+			const startTime = new Date("2026-01-01T00:00:00.000Z");
+			const endTime = new Date("2026-01-01T01:00:00.000Z");
+			await client.getEvents({ deviceId: "SN-001", startTime, endTime, limit: 10 });
+
+			const queryCall = mockFetch.mock.calls[3];
+			const body = JSON.parse(queryCall[1].body);
+			const filters = body.structuredQuery.where.compositeFilter.filters;
+			expect(filters.map((filter) => filter.fieldFilter.field.fieldPath)).toEqual([
+				"accountId",
+				"deviceId",
+				"EventTime",
+				"EventTime",
+			]);
+			expect(filters[2].fieldFilter.op).toBe("GREATER_THAN_OR_EQUAL");
+			expect(filters[2].fieldFilter.value.timestampValue).toBe(startTime.toISOString());
+			expect(filters[3].fieldFilter.op).toBe("LESS_THAN_OR_EQUAL");
+			expect(filters[3].fieldFilter.value.timestampValue).toBe(endTime.toISOString());
+		});
+
 		it("respects limit clamping (1-500)", async () => {
 			const client = await createAuthenticatedClient();
 			mockFetch.mockResolvedValueOnce(

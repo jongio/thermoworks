@@ -77,7 +77,7 @@ export function SharedArchiveView() {
 					</div>
 
 					{/* Session info */}
-					<h2 className="text-xl font-semibold tracking-tight mb-1">{sessionLabel}</h2>
+					<h1 className="text-xl font-semibold tracking-tight mb-1">{sessionLabel}</h1>
 
 					{/* Metadata row */}
 					<div className="flex flex-wrap gap-3 mb-4 text-sm text-muted-foreground">

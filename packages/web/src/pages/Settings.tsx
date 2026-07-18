@@ -28,7 +28,7 @@ export function Settings() {
 						onClick={() => {
 							if (unit !== "F") toggleUnit();
 						}}
-						className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${unit === "F" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+						className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${unit === "F" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/80"}`}
 						aria-pressed={unit === "F"}
 					>
 						°F Fahrenheit
@@ -38,7 +38,7 @@ export function Settings() {
 						onClick={() => {
 							if (unit !== "C") toggleUnit();
 						}}
-						className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${unit === "C" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}
+						className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${unit === "C" ? "bg-primary text-primary-foreground" : "bg-muted text-foreground hover:bg-muted/80"}`}
 						aria-pressed={unit === "C"}
 					>
 						°C Celsius

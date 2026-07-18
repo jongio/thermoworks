@@ -58,6 +58,47 @@ describe("ShareManager", () => {
 		);
 	});
 
+	it("generates an encoded report share link without calling the archive API", async () => {
+		const client = makeMockClient();
+		const onClose = vi.fn();
+
+		render(
+			<ShareManager
+				serial="TW-001"
+				archiveId="arc-1"
+				client={client}
+				reportPayload={{
+					archive: {
+						id: "arc-1",
+						start: "2026-01-01T00:00:00.000Z",
+						end: "2026-01-01T01:00:00.000Z",
+						count: 1,
+						type: "session",
+						label: "Brisket",
+						deviceLabel: "Smoker",
+						notes: null,
+						createdOn: null,
+						public: null,
+						publicLink: null,
+						filename: null,
+						channels: null,
+					},
+					annotations: [{ id: "ann-1", timestamp: "2026-01-01T00:30:00.000Z", label: "Wrap" }],
+					targetTemp: 225,
+					targetTolerance: 5,
+				}}
+				onClose={onClose}
+			/>,
+		);
+
+		await waitFor(() => {
+			const input = screen.getByDisplayValue(/#\/share\/report\?data=/);
+			expect(input).toBeInTheDocument();
+		});
+		expect(client.shareArchive).not.toHaveBeenCalled();
+		expect(screen.getByText(/too long for QR code generation/i)).toBeInTheDocument();
+	});
+
 	it("shows error when share fails", async () => {
 		const client = makeMockClient({
 			shareDevice: vi.fn().mockRejectedValue(new Error("Network error")),

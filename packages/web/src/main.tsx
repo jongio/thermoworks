@@ -33,6 +33,9 @@ const SharedArchiveView = lazy(() =>
 const SharedDeviceView = lazy(() =>
 	import("./pages/SharedDeviceView.tsx").then((m) => ({ default: m.SharedDeviceView })),
 );
+const SharedReportView = lazy(() =>
+	import("./pages/SharedReportView.tsx").then((m) => ({ default: m.SharedReportView })),
+);
 
 function PageSkeleton() {
 	return (
@@ -96,6 +99,14 @@ createRoot(root).render(
 						element={
 							<RouteGuard>
 								<SharedArchiveView />
+							</RouteGuard>
+						}
+					/>
+					<Route
+						path="/share/report"
+						element={
+							<RouteGuard>
+								<SharedReportView />
 							</RouteGuard>
 						}
 					/>

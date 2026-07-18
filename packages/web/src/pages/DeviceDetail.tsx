@@ -3,6 +3,7 @@ import React, { Suspense, useCallback } from "react";
 import { Link, useOutletContext, useParams } from "react-router-dom";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { ChannelReading } from "../components/ChannelReading.tsx";
+import { CookReport } from "../components/CookReport.tsx";
 import { DeviceSettings } from "../components/DeviceSettings.tsx";
 import { EtaBadge } from "../components/EtaBadge.tsx";
 import { FanController } from "../components/FanController.tsx";
@@ -43,6 +44,7 @@ export function DeviceDetail() {
 	} = useArchiveData(client, serial ?? "", !!data);
 
 	const archiveChannels = archives[0]?.channels ?? null;
+	const latestArchive = archives[0] ?? null;
 
 	const handleRename = useCallback(
 		async (newName: string) => {
@@ -239,6 +241,11 @@ export function DeviceDetail() {
 					<Suspense fallback={<ChartSkeleton />}>
 						<TemperatureChart channels={archiveChannels} client={client} deviceId={serial} />
 					</Suspense>
+				)}
+				{!archiveLoading && !archiveError && latestArchive && (
+					<div className="mt-4">
+						<CookReport archive={latestArchive} serial={serial} client={client} />
+					</div>
 				)}
 				{!archiveLoading && !archiveError && archives.length > 0 && !archiveChannels && (
 					<div className="text-sm text-muted-foreground text-center py-4 border border-border rounded-md">

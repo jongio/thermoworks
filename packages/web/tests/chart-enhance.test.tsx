@@ -343,4 +343,28 @@ describe("TemperatureChart", () => {
 		expect(screen.queryByTestId("event-marker-layer")).not.toBeInTheDocument();
 		expect(screen.queryByText("Events:")).not.toBeInTheDocument();
 	});
+
+	it("renders annotation markers on the chart overlay", () => {
+		const channels = makeChannels();
+		const annotationTime = channels[0]?.recentReadings[1]?.timestamp ?? new Date();
+		renderWithProvider(
+			<TemperatureChart
+				channels={channels as never}
+				annotations={[
+					{
+						id: "ann-1",
+						timestamp: annotationTime,
+						label: "Wrapped brisket",
+						note: "Butcher paper",
+					},
+				]}
+			/>,
+		);
+
+		expect(screen.getByText("Annotations:")).toBeInTheDocument();
+		const marker = screen.getByTestId("annotation-marker");
+		expect(marker).toHaveAccessibleName(/Wrapped brisket/);
+		fireEvent.focus(marker);
+		expect(screen.getByRole("tooltip")).toHaveTextContent("Butcher paper");
+	});
 });

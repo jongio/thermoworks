@@ -18,9 +18,14 @@ import {
 import type { ArchiveChannel } from "thermoworks-sdk";
 import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";
 import type { ThermoworksWebClient } from "../lib/api.ts";
+import type { CookAnnotation } from "../lib/cook-report.ts";
 import { downsampleLTTB } from "../lib/downsample.ts";
 import type { ChartDataPoint } from "../lib/export.ts";
 import { ChartExport } from "./ChartExport.tsx";
+import {
+	AnnotationMarkerLegend,
+	TemperatureAnnotationMarkers,
+} from "./TemperatureAnnotationMarkers.tsx";
 import {
 	EventMarkerLegend,
 	TemperatureEventMarkers,
@@ -36,6 +41,8 @@ export interface TemperatureChartProps {
 	client?: ThermoworksWebClient | null;
 	/** Device serial used to fetch optional event markers. */
 	deviceId?: string | null;
+	/** User-entered cook annotations to overlay on the chart. */
+	annotations?: readonly CookAnnotation[];
 }
 
 /** Default channel colors when the API doesn't provide one. */
@@ -129,6 +136,7 @@ export function TemperatureChart({
 	overlayArchives = [],
 	client,
 	deviceId,
+	annotations = [],
 }: TemperatureChartProps) {
 	const { unit, convert } = useTemperatureUnit();
 	const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -389,7 +397,10 @@ export function TemperatureChart({
 					Showing {chartData.length} of {displayData.length} points (downsampled)
 				</div>
 			)}
-			{hasEventMarkerContext && showEventMarkers && <EventMarkerLegend />}
+			<div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+				{annotations.length > 0 && <AnnotationMarkerLegend />}
+				{hasEventMarkerContext && showEventMarkers && <EventMarkerLegend />}
+			</div>
 
 			{/* Chart */}
 			<div className="relative w-full h-64 sm:h-72" ref={chartContainerRef}>
@@ -533,6 +544,7 @@ export function TemperatureChart({
 					timeRange={visibleTimeRange}
 					visible={showEventMarkers}
 				/>
+				<TemperatureAnnotationMarkers annotations={annotations} timeRange={visibleTimeRange} />
 			</div>
 
 			{/* Brush overview - only shown for larger datasets where navigation helps */}

@@ -8,7 +8,7 @@
 	--color-card: oklch(1 0 0);
 	--color-card-foreground: oklch(0.145 0 0);
 	--color-muted: oklch(0.965 0 0);
-	--color-muted-foreground: oklch(0.556 0 0);
+	--color-muted-foreground: oklch(0.45 0 0);
 	--color-border: oklch(0.922 0 0);
 	--color-input: oklch(0.922 0 0);
 	--color-ring: oklch(0.708 0 0);

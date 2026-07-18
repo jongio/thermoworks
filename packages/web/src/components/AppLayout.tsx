@@ -1,4 +1,5 @@
-import { Outlet } from "react-router-dom";
+import { type MouseEvent, useEffect, useRef } from "react";
+import { Outlet, useLocation } from "react-router-dom";
 import type { StoredAccount } from "../hooks/useAccounts.ts";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts.ts";
 import { useOfflineMutationReplay } from "../hooks/useOfflineMutations.ts";
@@ -36,12 +37,25 @@ export function AppLayout({
 }: AppLayoutProps) {
 	const context: AppOutletContext = { client };
 	const { shortcuts, showHelp, setShowHelp } = useKeyboardShortcuts();
+	const { pathname } = useLocation();
+	const mainRef = useRef<HTMLElement>(null);
 	useOfflineMutationReplay(client);
+
+	useEffect(() => {
+		if (pathname) mainRef.current?.focus();
+	}, [pathname]);
+
+	function handleSkipToMain(event: MouseEvent<HTMLAnchorElement>) {
+		event.preventDefault();
+		mainRef.current?.focus();
+	}
 
 	return (
 		<div className="flex h-screen overflow-hidden">
+			{/* biome-ignore lint/a11y/useValidAnchor: skip link focus is handled manually because HashRouter owns URL fragments. */}
 			<a
 				href="#main-content"
+				onClick={handleSkipToMain}
 				className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-md"
 			>
 				Skip to main content
@@ -56,7 +70,12 @@ export function AppLayout({
 				onSignOutAll={onSignOutAll}
 			/>
 
-			<main id="main-content" className="flex-1 overflow-y-auto pb-20 md:pb-0">
+			<main
+				id="main-content"
+				ref={mainRef}
+				tabIndex={-1}
+				className="flex-1 overflow-y-auto pb-20 focus:outline-none md:pb-0"
+			>
 				<div className="mx-auto max-w-7xl px-4 py-6">
 					<OfflineBanner />
 					<Outlet context={context} />

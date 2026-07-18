@@ -5,7 +5,10 @@ test("temperature history can be exported as a CSV download", async ({ page }) =
 	await openAuthenticatedDashboard(page);
 	await page.getByRole("link", { name: DEVICE_LABEL }).click();
 
-	const csvButton = page.getByRole("region", { name: "Sessions" }).getByRole("button", { name: "CSV" });
+	const csvButton = page
+		.getByRole("region", { name: "Sessions" })
+		.getByRole("button", { name: "CSV" })
+		.first();
 	await expect(csvButton).toBeEnabled();
 
 	const downloadPromise = page.waitForEvent("download");

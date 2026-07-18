@@ -67,6 +67,9 @@ jobs:
 
       - run: pnpm --dir packages/web e2e
 
+      - name: Run web accessibility checks
+        run: pnpm --dir packages/web a11y
+
   skill-lint:
     runs-on: ubuntu-latest
     timeout-minutes: 5

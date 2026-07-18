@@ -136,7 +136,7 @@ export function HistoryViewer({ history, client, deviceId }: HistoryViewerProps)
 							className={`px-2.5 py-1 text-xs rounded-md transition-colors ${
 								timeRange === option.value
 									? "bg-primary text-primary-foreground"
-									: "bg-muted text-muted-foreground hover:bg-muted/80"
+									: "bg-muted text-foreground hover:bg-muted/80"
 							}`}
 							aria-pressed={timeRange === option.value}
 						>

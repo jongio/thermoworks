@@ -48,7 +48,7 @@ export function SortableDeviceCard({
 	};
 
 	return (
-		<div ref={setNodeRef} style={style} {...attributes} className="flex">
+		<div ref={setNodeRef} style={style} className="flex">
 			{/* Drag handle */}
 			<button
 				ref={setActivatorNodeRef}
@@ -61,6 +61,7 @@ export function SortableDeviceCard({
 					"focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 					"touch-none",
 				)}
+				{...attributes}
 				{...listeners}
 			>
 				<GripVertical className="h-4 w-4" />

@@ -10,7 +10,8 @@
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
 		"e2e": "playwright test",
-		"a11y": "playwright test accessibility"
+		"a11y": "playwright test accessibility",
+		"visual": "playwright test visual"
 	},
 	"dependencies": {
 		"@dnd-kit/core": "^6.3.1",

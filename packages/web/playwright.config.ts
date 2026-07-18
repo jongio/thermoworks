@@ -1,7 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 
+declare const process: { readonly argv: readonly string[] };
+
+const visualOnly = process.argv.slice(2).some((arg) => arg === "visual");
+
 export default defineConfig({
 	testDir: "./e2e",
+	testMatch: visualOnly ? /visual\.spec\.ts/ : undefined,
+	testIgnore: visualOnly ? undefined : /visual\.spec\.ts/,
 	fullyParallel: true,
 	reporter: "list",
 	use: {

@@ -55,6 +55,7 @@ export function Dashboard() {
 
 	return (
 		<div className="space-y-4">
+			<h1 className="sr-only">Dashboard</h1>
 			{data.length > 0 && (
 				<div className="flex items-center justify-between gap-2">
 					<DeviceGroups

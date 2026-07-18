@@ -82,7 +82,7 @@ export function ChannelReading({
 							className={cn(
 								"text-lg tabular-nums font-mono",
 								alarmColorClass(alarmState),
-								stale && "opacity-50",
+								stale && "text-muted-foreground",
 							)}
 						>
 							{formatTemp(channel.value, channel.units)}

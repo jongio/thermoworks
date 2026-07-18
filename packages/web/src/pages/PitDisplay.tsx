@@ -161,7 +161,7 @@ function ChannelTile({ channel, large }: { channel: ChannelDisplay; large?: bool
 					{formatTemp(channel.value as number, channel.units as string)}
 				</span>
 			) : (
-				<span className="text-neutral-500 text-5xl mt-3 font-mono">--</span>
+				<span className="text-neutral-400 text-5xl mt-3 font-mono">--</span>
 			)}
 			{hasReading && channel.targets.length > 0 && (
 				<div className="mt-3 flex flex-col items-center gap-1 text-neutral-300 text-sm">
@@ -250,7 +250,7 @@ function ChannelCarousel({ channels }: { channels: ChannelDisplay[] }) {
 							aria-label={`${ch.channelLabel} on ${ch.deviceName}`}
 							className={cn(
 								"h-3 w-3 rounded-full transition-colors",
-								idx === safeIndex ? "bg-neutral-100" : "bg-neutral-600",
+								idx === safeIndex ? "bg-neutral-100" : "bg-neutral-500",
 							)}
 							onClick={() => setActiveIndex(idx)}
 						/>
@@ -348,7 +348,7 @@ function PitDisplayContent({ client }: { client: ThermoworksWebClient }) {
 					<X className="h-4 w-4" />
 					<span className="hidden sm:inline">Exit</span>
 				</Link>
-				<span className="text-neutral-500 text-xs">
+				<span className="text-neutral-400 text-xs">
 					{channels.length} channel{channels.length !== 1 ? "s" : ""} active
 				</span>
 				<button
@@ -362,9 +362,10 @@ function PitDisplayContent({ client }: { client: ThermoworksWebClient }) {
 			</div>
 
 			{/* Main content */}
-			<div className="flex-1 min-h-0">
+			<main className="flex-1 min-h-0" aria-live="polite" aria-label="Live pit temperature display">
+				<h1 className="sr-only">Pit display</h1>
 				{useGrid ? <ChannelGrid channels={channels} /> : <ChannelCarousel channels={channels} />}
-			</div>
+			</main>
 		</div>
 	);
 }

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CookReport } from "../components/CookReport.tsx";
 import { ShareError, ShareHeader } from "../components/ShareLayout.tsx";
+import { TemperatureUnitProvider } from "../context/TemperatureUnitContext.tsx";
 import { decodeCookReportPayload, parseCookReportSharePayload } from "../lib/cook-annotations.ts";
 
 export function SharedReportView() {
@@ -25,17 +26,19 @@ export function SharedReportView() {
 	}
 
 	return (
-		<div className="min-h-screen">
-			<ShareHeader />
-			<main className="mx-auto max-w-4xl px-4 py-6">
-				<CookReport
-					archive={decoded.archive}
-					readOnly
-					initialAnnotations={decoded.annotations}
-					initialTargetTemp={decoded.targetTemp}
-					initialTargetTolerance={decoded.targetTolerance}
-				/>
-			</main>
-		</div>
+		<TemperatureUnitProvider>
+			<div className="min-h-screen">
+				<ShareHeader />
+				<main className="mx-auto max-w-4xl px-4 py-6">
+					<CookReport
+						archive={decoded.archive}
+						readOnly
+						initialAnnotations={decoded.annotations}
+						initialTargetTemp={decoded.targetTemp}
+						initialTargetTolerance={decoded.targetTolerance}
+					/>
+				</main>
+			</div>
+		</TemperatureUnitProvider>
 	);
 }

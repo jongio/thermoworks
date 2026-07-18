@@ -73,7 +73,7 @@ export function AccountSwitcher({
 			>
 				<span
 					className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-medium text-white"
-					style={{ backgroundColor: `hsl(${hue}, 55%, 45%)` }}
+					style={{ backgroundColor: `hsl(${hue}, 55%, 35%)` }}
 					aria-hidden="true"
 				>
 					{emailInitials(displayAccount.email)}
@@ -137,7 +137,7 @@ export function AccountSwitcher({
 												<span
 													className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-medium text-white"
 													style={{
-														backgroundColor: `hsl(${accountHue}, 55%, 45%)`,
+														backgroundColor: `hsl(${accountHue}, 55%, 35%)`,
 													}}
 													aria-hidden="true"
 												>

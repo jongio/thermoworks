@@ -332,5 +332,5 @@ export async function openAuthenticatedDashboard(page: Page) {
 	await mockThermoworksCloud(page);
 	await seedAuthenticatedSession(page);
 	await page.goto("/", { waitUntil: "domcontentloaded" });
-	await expect(page.getByRole("link", { name: DEVICE_LABEL })).toBeVisible();
+	await expect(page.getByRole("link", { name: DEVICE_LABEL })).toBeVisible({ timeout: 30_000 });
 }

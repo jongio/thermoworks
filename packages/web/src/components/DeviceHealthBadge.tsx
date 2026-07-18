@@ -95,8 +95,8 @@ interface DeviceHealthBadgeProps {
 
 const HEALTH_COLORS: Record<DeviceHealth["overall"], string> = {
 	good: "bg-green-500",
-	warning: "bg-amber-500",
-	critical: "bg-red-500",
+	warning: "bg-amber-700",
+	critical: "bg-red-700",
 };
 
 const HEALTH_LABELS: Record<DeviceHealth["overall"], string> = {

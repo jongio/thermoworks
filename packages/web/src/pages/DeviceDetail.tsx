@@ -127,6 +127,7 @@ export function DeviceDetail() {
 			<header className="space-y-2">
 				<div className="flex items-start justify-between gap-4">
 					<div className="min-w-0">
+						<h1 className="sr-only" aria-label={name} />
 						<InlineEdit value={name} onSave={handleRename} />
 						<p className="text-sm text-muted-foreground mt-0.5">
 							{device.type ?? device.device ?? "Device"} -{" "}

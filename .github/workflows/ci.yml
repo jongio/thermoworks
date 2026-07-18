@@ -71,11 +71,15 @@ jobs:
         run: pnpm --dir packages/web a11y
 
   web-visual:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     continue-on-error: true
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -94,7 +98,7 @@ jobs:
 
       - run: pnpm --dir packages/web exec playwright install --with-deps chromium
 
-      # Non-blocking until Linux snapshot baselines are regenerated on the CI platform.
+      # Temporarily non-blocking for one run while the per-platform (ubuntu + windows) baselines are verified in CI.
       - name: Run web visual regression checks
         run: pnpm --dir packages/web visual
 

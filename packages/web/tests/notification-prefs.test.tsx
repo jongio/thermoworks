@@ -1,5 +1,5 @@
 import { act, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { NotificationPrefs } from "../src/components/NotificationPrefs.tsx";
 import type { ThermoworksWebClient } from "../src/lib/api.ts";
 
@@ -18,7 +18,23 @@ function makeMockClient(overrides: Partial<ThermoworksWebClient> = {}): Thermowo
 	} as unknown as ThermoworksWebClient;
 }
 
+function mockNotification(
+	permission: NotificationPermission,
+	requestResult: NotificationPermission,
+) {
+	const requestPermission = vi.fn().mockResolvedValue(requestResult);
+	vi.stubGlobal("Notification", {
+		permission,
+		requestPermission,
+	});
+	return requestPermission;
+}
+
 describe("NotificationPrefs", () => {
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
 	describe("rendering", () => {
 		it("shows loading state initially", () => {
 			const client = makeMockClient({
@@ -176,6 +192,43 @@ describe("NotificationPrefs", () => {
 			});
 
 			expect(screen.getByText("Network error")).toBeInTheDocument();
+		});
+
+		it("requests browser notification permission before enabling push notifications", async () => {
+			const requestPermission = mockNotification("default", "granted");
+			const client = makeMockClient();
+			localStorage.clear();
+
+			await act(async () => {
+				render(<NotificationPrefs client={client} />);
+			});
+
+			await act(async () => {
+				screen.getByRole("switch", { name: /push notifications/i }).click();
+			});
+
+			expect(requestPermission).toHaveBeenCalledOnce();
+			expect(client.updateNotificationSettings).toHaveBeenCalledWith({ deviceNotification: true });
+			expect(localStorage.getItem("thermoworks-notifications-enabled")).toBe("true");
+		});
+
+		it("handles denied browser notification permission without saving push enabled", async () => {
+			const requestPermission = mockNotification("default", "denied");
+			const client = makeMockClient();
+			localStorage.clear();
+
+			await act(async () => {
+				render(<NotificationPrefs client={client} />);
+			});
+
+			await act(async () => {
+				screen.getByRole("switch", { name: /push notifications/i }).click();
+			});
+
+			expect(requestPermission).toHaveBeenCalledOnce();
+			expect(client.updateNotificationSettings).not.toHaveBeenCalled();
+			expect(localStorage.getItem("thermoworks-notifications-enabled")).toBe("false");
+			expect(screen.getByText(/browser notifications are blocked/i)).toBeInTheDocument();
 		});
 	});
 

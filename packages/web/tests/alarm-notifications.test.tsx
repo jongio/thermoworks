@@ -1,5 +1,5 @@
 import { fireEvent, render, renderHook, screen } from "@testing-library/react";
-import type { Device, DeviceChannel } from "thermoworks-sdk";
+import type { Device, DeviceChannel, NotificationSettings } from "thermoworks-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotificationToggle } from "../src/components/NotificationToggle.tsx";
 import {
@@ -102,6 +102,17 @@ function alarmingChannel(
 		alarmHigh: direction === "high" ? alarm : null,
 		alarmLow: direction === "low" ? alarm : null,
 	});
+}
+
+function notificationSettings(overrides: Partial<NotificationSettings> = {}): NotificationSettings {
+	return {
+		enabled: true,
+		continuousAlerts: false,
+		emailNotification: false,
+		smsNotification: false,
+		deviceNotification: true,
+		...overrides,
+	};
 }
 
 // ─── Notification API mock ───────────────────────────────────────────────────
@@ -237,6 +248,39 @@ describe("useAlarmNotifications", () => {
 		expect(notificationInstances).toHaveLength(0);
 	});
 
+	it("does not fire notifications when account notification preferences are disabled", () => {
+		const data: DeviceWithChannels[] = [
+			{ device: makeDevice("S1"), channels: [alarmingChannel("high")] },
+		];
+
+		renderHook(() => useAlarmNotifications(data, notificationSettings({ enabled: false })));
+
+		expect(notificationInstances).toHaveLength(0);
+	});
+
+	it("does not fire notifications when push notifications are disabled in preferences", () => {
+		const data: DeviceWithChannels[] = [
+			{ device: makeDevice("S1"), channels: [alarmingChannel("high")] },
+		];
+
+		renderHook(() =>
+			useAlarmNotifications(data, notificationSettings({ deviceNotification: false })),
+		);
+
+		expect(notificationInstances).toHaveLength(0);
+	});
+
+	it("fires notifications when account and push notification preferences are enabled", () => {
+		const data: DeviceWithChannels[] = [
+			{ device: makeDevice("S1", "My Smoker"), channels: [alarmingChannel("high")] },
+		];
+
+		renderHook(() => useAlarmNotifications(data, notificationSettings()));
+
+		expect(notificationInstances).toHaveLength(1);
+		expect(notificationInstances[0].title).toBe("My Smoker");
+	});
+
 	it("does not fire notifications when permission is denied", () => {
 		mockPermission = "denied";
 
@@ -249,7 +293,7 @@ describe("useAlarmNotifications", () => {
 		expect(notificationInstances).toHaveLength(0);
 	});
 
-	it("requests permission when permission is default", async () => {
+	it("does not request permission when permission is default", () => {
 		mockPermission = "default";
 		MockNotification.requestPermission.mockResolvedValue("granted");
 
@@ -259,7 +303,8 @@ describe("useAlarmNotifications", () => {
 
 		renderHook(() => useAlarmNotifications(data));
 
-		expect(MockNotification.requestPermission).toHaveBeenCalled();
+		expect(MockNotification.requestPermission).not.toHaveBeenCalled();
+		expect(notificationInstances).toHaveLength(0);
 	});
 
 	it("uses serial as title when device label is null", () => {

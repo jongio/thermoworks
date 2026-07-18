@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import vm from "node:vm";
+import { describe, expect, it, vi } from "vitest";
 
 const WEB_ROOT = resolve(__dirname, "..");
 const PUBLIC_DIR = resolve(WEB_ROOT, "public");
@@ -115,6 +116,52 @@ describe("service worker", () => {
 
 	it("defines a versioned cache name", () => {
 		expect(sw).toMatch(/CACHE_NAME\s*=\s*["']thermoworks-v\d+["']/);
+	});
+
+	it("shows a notification with push payload data", async () => {
+		interface PushEvent {
+			readonly data: {
+				json: () => unknown;
+				text: () => string;
+			};
+			waitUntil: (promise: Promise<void>) => void;
+		}
+
+		type ServiceWorkerListener = (event: PushEvent) => void;
+		const listeners: Partial<Record<string, ServiceWorkerListener>> = {};
+		const showNotification = vi.fn().mockResolvedValue(undefined);
+		const pending: Array<Promise<void>> = [];
+
+		vm.runInNewContext(sw, {
+			self: {
+				addEventListener: (type: string, listener: ServiceWorkerListener) => {
+					listeners[type] = listener;
+				},
+				clients: { claim: vi.fn() },
+				registration: { showNotification },
+				skipWaiting: vi.fn(),
+			},
+			caches: {},
+			fetch: vi.fn(),
+		});
+
+		listeners.push?.({
+			data: {
+				json: () => ({ title: "High alarm", body: "Probe is above 200°F", tag: "alarm-1" }),
+				text: () => "",
+			},
+			waitUntil: (promise: Promise<void>) => pending.push(promise),
+		});
+		await Promise.all(pending);
+
+		expect(showNotification).toHaveBeenCalledWith(
+			"High alarm",
+			expect.objectContaining({
+				body: "Probe is above 200°F",
+				icon: "./favicon.svg",
+				tag: "alarm-1",
+			}),
+		);
 	});
 });
 

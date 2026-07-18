@@ -39,7 +39,7 @@ export interface TemperatureChartProps {
 }
 
 /** Default channel colors when the API doesn't provide one. */
-const FALLBACK_COLORS = [
+export const TEMPERATURE_CHART_FALLBACK_COLORS = [
 	"#ef4444", // red
 	"#3b82f6", // blue
 	"#22c55e", // green
@@ -262,7 +262,8 @@ export function TemperatureChart({
 	}, [displayData]);
 
 	const brushPreviewKey = useMemo(() => getPreviewDataKey(data), [data]);
-	const brushPreviewColor = enabledChannels[0]?.color ?? FALLBACK_COLORS[0] ?? "#6b7280";
+	const brushPreviewColor =
+		enabledChannels[0]?.color ?? TEMPERATURE_CHART_FALLBACK_COLORS[0] ?? "#6b7280";
 	const isDownsampled = chartData.length < displayData.length;
 
 	const handleMouseDown = useCallback((e: { activeLabel?: string | number }) => {
@@ -454,7 +455,9 @@ export function TemperatureChart({
 							const color =
 								rawColor && rawColor !== "none" && rawColor !== "transparent"
 									? rawColor
-									: FALLBACK_COLORS[idx % FALLBACK_COLORS.length] || "#6b7280";
+									: TEMPERATURE_CHART_FALLBACK_COLORS[
+											idx % TEMPERATURE_CHART_FALLBACK_COLORS.length
+										] || "#6b7280";
 							const name = ch.label ?? `Ch ${ch.number ?? idx + 1}`;
 
 							return (
@@ -488,7 +491,9 @@ export function TemperatureChart({
 									const color =
 										rawOvColor && rawOvColor !== "none" && rawOvColor !== "transparent"
 											? rawOvColor
-											: FALLBACK_COLORS[chIdx % FALLBACK_COLORS.length] || "#6b7280";
+											: TEMPERATURE_CHART_FALLBACK_COLORS[
+													chIdx % TEMPERATURE_CHART_FALLBACK_COLORS.length
+												] || "#6b7280";
 									const name = `S${sessionIdx + 1}: ${ch.label ?? `Ch ${ch.number ?? chIdx + 1}`}`;
 
 									return (

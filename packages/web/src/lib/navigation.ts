@@ -4,6 +4,7 @@ import {
 	BookOpen,
 	Calendar,
 	Database,
+	GitCompare,
 	LayoutDashboard,
 	Settings,
 	ThermometerSun,
@@ -20,6 +21,7 @@ export interface NavItem {
 export const navigationItems: NavItem[] = [
 	{ label: "Dashboard", path: "/", icon: LayoutDashboard },
 	{ label: "Devices", path: "/devices", icon: ThermometerSun },
+	{ label: "Compare", path: "/compare", icon: GitCompare },
 	{ label: "Activity", path: "/events", icon: Activity },
 	{ label: "Exports", path: "/exports", icon: Calendar },
 	{ label: "Usage", path: "/usage", icon: Database },

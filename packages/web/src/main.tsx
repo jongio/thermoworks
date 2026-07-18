@@ -14,6 +14,7 @@ const DeviceDetail = lazy(() =>
 	import("./pages/DeviceDetail.tsx").then((m) => ({ default: m.DeviceDetail })),
 );
 const Devices = lazy(() => import("./pages/Devices.tsx").then((m) => ({ default: m.Devices })));
+const Compare = lazy(() => import("./pages/Compare.tsx").then((m) => ({ default: m.Compare })));
 const DataUsagePage = lazy(() =>
 	import("./pages/DataUsage.tsx").then((m) => ({ default: m.DataUsage })),
 );
@@ -112,6 +113,14 @@ createRoot(root).render(
 							element={
 								<RouteGuard>
 									<Devices />
+								</RouteGuard>
+							}
+						/>
+						<Route
+							path="compare"
+							element={
+								<RouteGuard>
+									<Compare />
 								</RouteGuard>
 							}
 						/>

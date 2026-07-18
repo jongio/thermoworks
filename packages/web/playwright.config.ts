@@ -10,6 +10,11 @@ export default defineConfig({
 	testIgnore: visualOnly ? undefined : /visual\.spec\.ts/,
 	fullyParallel: true,
 	reporter: "list",
+	// Absorb trivial anti-aliasing noise between CI runs (observed ~16px) while
+	// still catching real UI changes, which shift thousands of pixels.
+	expect: {
+		toHaveScreenshot: { maxDiffPixels: 500 },
+	},
 	use: {
 		baseURL: "http://127.0.0.1:4200",
 		trace: "on-first-retry",

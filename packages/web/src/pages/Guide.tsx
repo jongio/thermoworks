@@ -4,46 +4,8 @@ import { useOutletContext } from "react-router-dom";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { useTemperatureGuide } from "../hooks/useTemperatureGuide.ts";
 import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";
-import type { TemperatureCategory, TemperatureGuide } from "../lib/api.ts";
-
-// ─── Fallback guide (shown when API returns empty) ───────────────────────────
-
-const FALLBACK_GUIDE: TemperatureGuide = {
-	categories: [
-		{
-			name: "Beef",
-			items: [
-				{ name: "Rare", temp: 125, units: "F" },
-				{ name: "Medium Rare", temp: 135, units: "F" },
-				{ name: "Medium", temp: 145, units: "F" },
-				{ name: "Well Done", temp: 160, units: "F" },
-			],
-		},
-		{
-			name: "Poultry",
-			items: [
-				{ name: "Chicken Breast", temp: 165, units: "F" },
-				{ name: "Chicken Thigh", temp: 175, units: "F" },
-				{ name: "Turkey", temp: 165, units: "F" },
-			],
-		},
-		{
-			name: "Pork",
-			items: [
-				{ name: "Pork Chop", temp: 145, units: "F" },
-				{ name: "Pulled Pork", temp: 203, units: "F" },
-				{ name: "Pork Tenderloin", temp: 145, units: "F" },
-			],
-		},
-		{
-			name: "Fish",
-			items: [
-				{ name: "Salmon", temp: 125, units: "F" },
-				{ name: "Tuna (rare)", temp: 115, units: "F" },
-			],
-		},
-	],
-};
+import type { TemperatureCategory } from "../lib/api.ts";
+import { guideWithFallback } from "../lib/temperatureGuide.ts";
 
 // ─── Category icon mapping ───────────────────────────────────────────────────
 
@@ -100,7 +62,7 @@ export function Guide() {
 	const [search, setSearch] = useState("");
 
 	// Use API data if it has categories, otherwise fall back to hardcoded guide
-	const guide = data && data.categories.length > 0 ? data : FALLBACK_GUIDE;
+	const guide = guideWithFallback(data);
 
 	const filteredCategories = useMemo(() => {
 		if (!search.trim()) return guide.categories;

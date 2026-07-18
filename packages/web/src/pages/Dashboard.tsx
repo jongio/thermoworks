@@ -10,6 +10,7 @@ import { useAlarmNotifications } from "../hooks/useAlarmNotifications.ts";
 import { useDeviceGroups } from "../hooks/useDeviceGroups.ts";
 import { useDevices } from "../hooks/useDevices.ts";
 import { LOW_DATA_INTERVAL_MS, useLowDataMode } from "../hooks/useLowDataMode.ts";
+import { useNotificationSettings } from "../hooks/useNotificationSettings.ts";
 import { useSearch } from "../hooks/useSearch.ts";
 import type { DeviceWithChannels } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
@@ -32,7 +33,8 @@ export function Dashboard() {
 		pollingInterval,
 	});
 	const { groups, createGroup, deleteGroup } = useDeviceGroups(client);
-	useAlarmNotifications(data);
+	const notificationPrefs = useNotificationSettings(client);
+	useAlarmNotifications(data, notificationPrefs.settings);
 	const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
 
 	const groupFilteredData = useMemo(() => {

@@ -73,7 +73,6 @@ jobs:
   web-visual:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
-    continue-on-error: true
     permissions:
       contents: read
     strategy:
@@ -98,7 +97,9 @@ jobs:
 
       - run: pnpm --dir packages/web exec playwright install --with-deps chromium
 
-      # Temporarily non-blocking for one run while the per-platform (ubuntu + windows) baselines are verified in CI.
+      # Blocking gate: compares against per-platform baselines in
+      # packages/web/e2e/visual.spec.ts-snapshots (-chromium-linux.png / -chromium-win32.png).
+      # Regenerate them via the "Visual Baselines" workflow_dispatch when the UI changes intentionally.
       - name: Run web visual regression checks
         run: pnpm --dir packages/web visual
 

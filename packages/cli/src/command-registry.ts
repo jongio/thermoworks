@@ -11,6 +11,7 @@ import { authLogin, authLogout, authStatus } from "./commands/auth.js";
 import { backup } from "./commands/backup.js";
 import { calibration } from "./commands/calibration.js";
 import { carryover } from "./commands/carryover.js";
+import { checklist } from "./commands/checklist.js";
 import { compare, parseCompareArgs } from "./commands/compare.js";
 import { config } from "./commands/config.js";
 import { convert } from "./commands/convert.js";
@@ -846,6 +847,25 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 		],
 		supportsJson: true,
 		handler: ({ args, options }: CommandContext) => plan(args.slice(1), options),
+	},
+	{
+		name: "checklist",
+		summary: "Print a cook-day task checklist",
+		usage: 'checklist <meat> [--weight LB] [--ready "TIME"] [--json]',
+		usageLines: [
+			"checklist <meat> Print a cook-day task checklist",
+			"  --weight LB    Weight of the meat in pounds",
+			'  --ready TIME   Target serve time, e.g. "6:00 PM"',
+			"  --list-meats   Show built-in checklist meats",
+		],
+		arguments: [{ name: "meat", description: "Meat name or alias.", required: true }],
+		options: [
+			{ name: "--weight LB", description: "Weight of the meat in pounds." },
+			{ name: "--ready TIME", description: "Target serve time." },
+			{ name: "--list-meats", description: "Show built-in checklist meats." },
+		],
+		supportsJson: true,
+		handler: ({ args, options }: CommandContext) => checklist(args.slice(1), options),
 	},
 	{
 		name: "completion",

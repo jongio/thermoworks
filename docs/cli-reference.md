@@ -1130,6 +1130,27 @@ npx thermoworks plan --ready TIME --item SPEC [--list-meats] [--json]
 
 - `--json` - Output machine-readable JSON.
 
+### `thermoworks checklist <meat> [--weight LB] [--ready "TIME"] [--json]`
+
+Print a cook-day task checklist
+
+**Usage**
+
+```bash
+npx thermoworks checklist <meat> [--weight LB] [--ready "TIME"] [--json]
+```
+
+**Arguments**
+
+- `meat` (required) - Meat name or alias.
+
+**Options**
+
+- `--weight LB` - Weight of the meat in pounds.
+- `--ready TIME` - Target serve time.
+- `--list-meats` - Show built-in checklist meats.
+- `--json` - Output machine-readable JSON.
+
 ### `thermoworks completion <bash|zsh|fish|powershell>`
 
 Print a shell completion script

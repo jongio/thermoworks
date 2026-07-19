@@ -944,6 +944,20 @@ npx thermoworks season --weight LB [--recipe NAME] [--brine] [--dry-brine] [--li
 
 - `--json` - Output machine-readable JSON.
 
+### `thermoworks fuel --temp F --hours H [--fuel pellet|charcoal|wood] [--hopper LB] [--list] [--json]`
+
+Estimate how much fuel a cook will burn
+
+**Usage**
+
+```bash
+npx thermoworks fuel --temp F --hours H [--fuel pellet|charcoal|wood] [--hopper LB] [--list] [--json]
+```
+
+**Options**
+
+- `--json` - Output machine-readable JSON.
+
 ### `thermoworks wrap <SERIAL> --target F [--wrap-at F] [--limit N] [--json]`
 
 Advise whether to wrap the cook now

@@ -866,6 +866,28 @@ Options:
 - `--dry-brine` — Dry brine plan (salt and a fridge-rest range) instead of a rub
 - `--list` — Show the built-in rub recipes
 - `--json` — Print the plan as JSON
+
+### `thermoworks fuel`
+
+Estimate how much fuel a cook will burn before you light it. Runs fully offline: no login, no network, just built-in burn-rate tiers keyed to pit temperature and fuel type. Handy for packing enough pellets, charcoal, or splits for a long cook and knowing when the hopper needs a top-up.
+
+```bash
+npx thermoworks fuel --temp 225 --hours 12
+npx thermoworks fuel --temp 250 --hours 8 --fuel charcoal
+npx thermoworks fuel --temp 225 --hours 14 --hopper 20
+npx thermoworks fuel --list
+```
+
+Options:
+- `--temp F` — Pit temperature in Fahrenheit (required)
+- `--hours H` — Cook length in hours (required)
+- `--fuel TYPE` — Fuel type: `pellet` (default), `charcoal`, or `wood`
+- `--hopper LB` — Usable pounds per load, to report runtime and plan refills
+- `--list` — Show the supported fuel types
+- `--json` — Print the estimate as JSON
+
+Burn rates rise with pit temperature and are working approximations, so the recommended amount adds a buffer over the raw estimate.
+
 ### `thermoworks wrap <serial>`
 
 Advise whether to wrap the cook now (the Texas crutch). Wrapping in foil or paper pushes meat through the stall faster and protects the bark, but wrap too early and the bark never sets. This reads the trailing probe history, then combines the current temperature, the wrap window, stall detection, and rate of climb into a single call: wrap now, hold, too early, or done.

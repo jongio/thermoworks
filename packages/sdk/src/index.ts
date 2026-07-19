@@ -40,6 +40,8 @@ export {
 } from "./credentials.js";
 export { assessDeviceHealth, isChannelStale } from "./device-health.js";
 export { formatTimeAgo } from "./format.js";
+export type { FuelEstimate, FuelOptions, FuelType } from "./fuel.js";
+export { estimateFuel, listFuelTypes } from "./fuel.js";
 export type {
 	PasteurizationInput,
 	PasteurizationResult,

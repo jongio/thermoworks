@@ -45,6 +45,7 @@ const expectedCommands = [
 	"carryover",
 	"cooldown",
 	"season",
+	"fuel",
 	"wrap",
 	"open",
 	"convert",

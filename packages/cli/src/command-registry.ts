@@ -33,6 +33,7 @@ import { events, parseEventsArgs } from "./commands/events.js";
 import { exportData } from "./commands/export.js";
 import { fan } from "./commands/fan.js";
 import { firmware } from "./commands/firmware.js";
+import { fuel } from "./commands/fuel.js";
 import { graph } from "./commands/graph.js";
 import { guide } from "./commands/guide.js";
 import { history } from "./commands/history.js";
@@ -774,6 +775,21 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 		],
 		supportsJson: true,
 		handler: ({ args, options }: CommandContext) => season(args.slice(1), options),
+	},
+	{
+		name: "fuel",
+		summary: "Estimate how much fuel a cook will burn",
+		usage: "fuel --temp F --hours H [--fuel pellet|charcoal|wood] [--hopper LB] [--list] [--json]",
+		usageLines: [
+			"fuel             Estimate how much fuel a cook will burn (offline)",
+			"  --temp F       Pit temperature in Fahrenheit (required)",
+			"  --hours H      Cook length in hours (required)",
+			"  --fuel TYPE    Fuel type: pellet (default), charcoal, or wood",
+			"  --hopper LB    Usable pounds per load, to plan refills",
+			"  --list         Show the supported fuel types",
+		],
+		supportsJson: true,
+		handler: ({ args, options }: CommandContext) => fuel(args.slice(1), options),
 	},
 	{
 		name: "wrap",

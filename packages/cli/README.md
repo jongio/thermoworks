@@ -952,6 +952,25 @@ Options:
 - `--list-meats` — Show the built-in meat profiles (cook time, rest, pit temperature).
 - `--ics [PATH]` — Export the plan as an iCalendar (`.ics`) file for import into any calendar app. Writes to `PATH`, or stdout when no path is given. Each item becomes a timed event with a 15-minute start reminder, plus a serve event at the ready time.
 
+### `thermoworks portions <meat> --guests <n>`
+
+Estimate how much raw meat to buy for a headcount. Cuts lose weight to trim and rendering, so this divides the cooked weight you want to serve by the cut's yield and rounds up to the next quarter pound. No credentials required.
+
+```bash
+npx thermoworks portions brisket --guests 12
+npx thermoworks portions "pork butt" --guests 20 --appetite hearty
+npx thermoworks portions salmon --guests 8 --per-person 5 --json
+npx thermoworks portions --list
+```
+
+Options:
+- `--guests N` — Number of people to serve. Required for a plan.
+- `--appetite light|standard|hearty` — Serving size per person: 4, 6, or 8 cooked ounces. Defaults to standard.
+- `--per-person OZ` — Set an explicit cooked serving in ounces, overriding `--appetite`.
+- `--list` — Show the per-cut yields and appetite presets.
+
+Yields are working averages, so round up if you want leftovers. Unknown cuts and bad guest counts exit non-zero.
+
 ### `thermoworks config`
 
 Store local default preferences so common options do not have to be passed on every command. Preferences are saved to `~/.thermoworks/preferences.json`, separate from the statusline config.

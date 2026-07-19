@@ -59,6 +59,8 @@ export type {
 	PlanCookOptions,
 } from "./plan.js";
 export { getMeatProfiles, planCook, resolveMeatProfile } from "./plan.js";
+export type { Appetite, PortionOptions, PortionPlan, PortionYield } from "./portions.js";
+export { calculatePortions, listAppetites, listPortionYields } from "./portions.js";
 export type { PredictionOptions, PredictionResult } from "./prediction.js";
 export { predictDoneTime } from "./prediction.js";
 export type { ReplayFrame, ReplayOptions, ReplayReading } from "./replay.js";

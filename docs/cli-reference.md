@@ -1130,6 +1130,20 @@ npx thermoworks plan --ready TIME --item SPEC [--list-meats] [--json]
 
 - `--json` - Output machine-readable JSON.
 
+### `thermoworks portions <meat> --guests N [--appetite light|standard|hearty] [--per-person OZ] [--list] [--json]`
+
+Estimate how much raw meat to buy for a headcount
+
+**Usage**
+
+```bash
+npx thermoworks portions <meat> --guests N [--appetite light|standard|hearty] [--per-person OZ] [--list] [--json]
+```
+
+**Options**
+
+- `--json` - Output machine-readable JSON.
+
 ### `thermoworks completion <bash|zsh|fish|powershell>`
 
 Print a shell completion script

@@ -43,6 +43,7 @@ import { metrics } from "./commands/metrics.js";
 import { notifications } from "./commands/notifications.js";
 import { open } from "./commands/open.js";
 import { plan } from "./commands/plan.js";
+import { portions } from "./commands/portions.js";
 import { replay } from "./commands/replay.js";
 import { safe } from "./commands/safe.js";
 import { search } from "./commands/search.js";
@@ -846,6 +847,22 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 		],
 		supportsJson: true,
 		handler: ({ args, options }: CommandContext) => plan(args.slice(1), options),
+	},
+	{
+		name: "portions",
+		summary: "Estimate how much raw meat to buy for a headcount",
+		usage:
+			"portions <meat> --guests N [--appetite light|standard|hearty] [--per-person OZ] [--list] [--json]",
+		usageLines: [
+			"portions         Estimate how much raw meat to buy for a headcount (offline)",
+			"  <meat>         Cut to buy (e.g. brisket, pork butt)",
+			"  --guests N     Number of people to serve (required)",
+			"  --appetite A   Serving size: light, standard, or hearty (default standard)",
+			"  --per-person OZ  Cooked ounces per person, overriding --appetite",
+			"  --list         Show the per-cut yields and appetite presets",
+		],
+		supportsJson: true,
+		handler: ({ args, options }: CommandContext) => portions(args.slice(1), options),
 	},
 	{
 		name: "completion",

@@ -1,5 +1,6 @@
 import { toCelsius, toFahrenheit } from "thermoworks-sdk";
 
+import { firstPositional } from "../args.js";
 import { type OutputOptions, outputJson } from "../output.js";
 
 /** A parsed and computed temperature conversion. */
@@ -53,7 +54,7 @@ export function parseConversion(raw: string | undefined, to?: string): Conversio
  * 107c` prints the Fahrenheit value. A bare number needs `--to c|f`.
  */
 export function convert(args: string[], options: OutputOptions): void {
-	const value = args.find((a) => !a.startsWith("--"));
+	const value = firstPositional(args, ["--to"]);
 	const toIdx = args.indexOf("--to");
 	const to = toIdx !== -1 && toIdx + 1 < args.length ? args[toIdx + 1] : undefined;
 

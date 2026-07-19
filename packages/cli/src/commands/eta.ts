@@ -1,5 +1,6 @@
 import { predictDoneTime, ThermoworksCloud } from "thermoworks-sdk";
 
+import { firstPositional } from "../args.js";
 import { getCredentials } from "../credentials.js";
 import { type OutputOptions, outputJson } from "../output.js";
 
@@ -45,7 +46,7 @@ export interface EtaArgs {
  * Channel defaults to 1. Returns null when the serial is missing.
  */
 export function parseEtaArgs(args: string[]): EtaArgs | null {
-	const serial = args.find((a) => !a.startsWith("--"));
+	const serial = firstPositional(args, ["--channel", "--target"]);
 	if (!serial) return null;
 
 	const channel = parseChannelFlag(getFlagValue(args, "--channel")) ?? 1;

@@ -1,5 +1,6 @@
 import { ThermoworksCloud, toCelsius, toFahrenheit } from "thermoworks-sdk";
 
+import { firstPositional } from "../args.js";
 import { getCredentials } from "../credentials.js";
 import { type OutputOptions, outputJson } from "../output.js";
 
@@ -56,7 +57,7 @@ function convertReading(value: number, sourceUnits: string | null, unit: TempUni
  * for `{ serial, channel, value, units }`.
  */
 export async function temp(args: string[], options: OutputOptions): Promise<void> {
-	const serial = args.find((a) => !a.startsWith("--"));
+	const serial = firstPositional(args, ["--channel", "--unit"]);
 	if (!serial) {
 		console.error("Usage: thermoworks temp <SERIAL> [--channel <1-9>] [--unit auto|f|c] [--json]");
 		process.exit(1);

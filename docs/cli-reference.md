@@ -598,6 +598,26 @@ npx thermoworks archives <serial> [--id ID] [--limit N] [--from DATE] [--to DATE
 
 - `--json` - Output machine-readable JSON.
 
+### `thermoworks archives compare <serial> <archiveA> <archiveB> [--json]`
+
+Compare two archived cook sessions side by side. Shows duration, reading count, and per-channel min/max/last/avg with diffs.
+
+**Usage**
+
+```bash
+npx thermoworks archives compare <serial> <archiveA> <archiveB> [--json]
+```
+
+**Arguments**
+
+- `SERIAL` (required) - Device serial number.
+- `archiveA` (required) - First archive ID.
+- `archiveB` (required) - Second archive ID.
+
+**Options**
+
+- `--json` - Output machine-readable JSON.
+
 ### `thermoworks stats <serial> [--limit N] [--json]`
 
 Show cross-session cook analytics for a device

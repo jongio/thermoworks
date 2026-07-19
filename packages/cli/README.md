@@ -795,6 +795,21 @@ npx thermoworks doneness brisket
 npx thermoworks doneness --json
 ```
 
+### `thermoworks smoke [meat]`
+
+Show recommended smoking woods for common cuts. Reads a built-in reference table, so it needs no network access or login. Without an argument it prints a wood pairing for every built-in cut. Give it a meat name or alias for that cut's woods, or pass `--woods` to list what each wood tastes like, lightest to boldest. Pairings are common starting points, not hard rules, so treat them as a place to begin.
+
+```bash
+npx thermoworks smoke
+npx thermoworks smoke brisket
+npx thermoworks smoke --woods
+npx thermoworks smoke salmon --json
+```
+
+Options:
+- `--woods` - List each wood's flavor profile instead of the per-cut pairings
+- `--json` - Print the pairings, a single cut, or the wood list as JSON
+
 ### `thermoworks safe <serial>|--temp <value>`
 
 Show food-safety pasteurization progress for a probe. Reads the current channel temperature and, using USDA time-at-temperature data (7.0-log10 Salmonella for poultry, 6.5-log10 for beef and pork), reports whether the food is safe now or how long it must hold at this temperature. Pulling poultry, beef, or pork at a lower temperature is safe when the core holds long enough, and this tells you when that point is reached. Estimates only, not a replacement for official food-safety guidance.

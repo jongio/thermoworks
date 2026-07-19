@@ -79,6 +79,8 @@ export type {
 	WetBrinePlan,
 } from "./season.js";
 export { calculateSeasoning, listRubRecipes, resolveRubRecipe } from "./season.js";
+export type { SmokeStrength, WoodPairing, WoodProfile } from "./smoke.js";
+export { getSmokePairings, getWoodProfiles, resolveSmokePairing } from "./smoke.js";
 export type {
 	RapidChangeOptions,
 	RapidChangeResult,

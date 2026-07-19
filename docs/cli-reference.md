@@ -884,6 +884,20 @@ npx thermoworks doneness [meat] [--json]
 
 - `--json` - Output machine-readable JSON.
 
+### `thermoworks smoke [meat] [--woods] [--json]`
+
+Show recommended smoking woods for common cuts
+
+**Usage**
+
+```bash
+npx thermoworks smoke [meat] [--woods] [--json]
+```
+
+**Options**
+
+- `--json` - Output machine-readable JSON.
+
 ### `thermoworks safe <SERIAL> [--channel N] [--temp T] [--protein P] [--held N] [--json]`
 
 Show food-safety pasteurization progress

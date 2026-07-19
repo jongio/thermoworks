@@ -48,6 +48,7 @@ import { safe } from "./commands/safe.js";
 import { search } from "./commands/search.js";
 import { season } from "./commands/season.js";
 import { session } from "./commands/session.js";
+import { smoke } from "./commands/smoke.js";
 import { stall } from "./commands/stall.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
 import { temp } from "./commands/temp.js";
@@ -717,6 +718,17 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 		usageLines: ["doneness [meat]  Show recommended internal pull temperatures for common cuts"],
 		supportsJson: true,
 		handler: ({ args, options }: CommandContext) => doneness(args[1], options),
+	},
+	{
+		name: "smoke",
+		summary: "Show recommended smoking woods for common cuts",
+		usage: "smoke [meat] [--woods] [--json]",
+		usageLines: [
+			"smoke [meat]     Show recommended smoking woods for common cuts",
+			"  --woods        List each wood's flavor profile, lightest to boldest",
+		],
+		supportsJson: true,
+		handler: ({ args, options }: CommandContext) => smoke(args.slice(1), options),
 	},
 	{
 		name: "safe",

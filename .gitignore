@@ -13,3 +13,5 @@ coverage
 *token-cache*
 results/
 vally-results/
+test-results/
+playwright-report/

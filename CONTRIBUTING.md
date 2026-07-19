@@ -9,7 +9,7 @@ The following tools must be installed on your machine to build and run the full 
 | Tool | Version | Purpose | Install |
 |------|---------|---------|---------|
 | **Node.js** | ≥ 18.0.0 | JavaScript runtime | [nodejs.org](https://nodejs.org) or `nvm install 22` |
-| **pnpm** | 11.9.0+ | Package manager (monorepo workspaces) | `corepack enable && corepack prepare pnpm@latest --activate` |
+| **pnpm** | 11.14.0+ | Package manager (monorepo workspaces) | `corepack enable && corepack prepare pnpm@latest --activate` |
 | **Git** | Any recent | Source control | [git-scm.com](https://git-scm.com) |
 
 ### Platform-Specific Dependencies

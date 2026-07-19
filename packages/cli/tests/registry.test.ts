@@ -31,6 +31,7 @@ const expectedCommands = [
 	"events",
 	"archives",
 	"stats",
+	"stability",
 	"firmware",
 	"fan",
 	"search",

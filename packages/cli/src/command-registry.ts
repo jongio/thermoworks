@@ -48,6 +48,7 @@ import { safe } from "./commands/safe.js";
 import { search } from "./commands/search.js";
 import { season } from "./commands/season.js";
 import { session } from "./commands/session.js";
+import { stability } from "./commands/stability.js";
 import { stall } from "./commands/stall.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
 import { temp } from "./commands/temp.js";
@@ -592,6 +593,27 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 			}
 			return stats(statsArgs, options);
 		},
+	},
+	{
+		name: "stability",
+		summary: "Measure pit temperature time-in-band for an archived cook",
+		usage: "stability <SERIAL> --target F [--band F] [--archive ID] [--channel N] [--json]",
+		usageLines: [
+			"stability <SERIAL>  Measure pit temperature time-in-band for an archived cook",
+			"  --target F     Desired pit temperature in Fahrenheit (required)",
+			"  --band F       Allowed degrees above or below target (default: 15)",
+			"  --archive ID   Analyze a specific archive instead of the latest",
+			"  --channel N    Archive channel to analyze (default: first with readings)",
+		],
+		arguments: [serial],
+		options: [
+			{ name: "--target F", description: "Desired pit temperature in Fahrenheit.", required: true },
+			{ name: "--band F", description: "Allowed degrees above or below target." },
+			{ name: "--archive ID", description: "Analyze a specific archive." },
+			{ name: "--channel N", description: "Archive channel to analyze." },
+		],
+		supportsJson: true,
+		handler: ({ args, options }: CommandContext) => stability(args.slice(1), options),
 	},
 	{
 		name: "firmware",

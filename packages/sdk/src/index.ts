@@ -80,6 +80,12 @@ export type {
 } from "./season.js";
 export { calculateSeasoning, listRubRecipes, resolveRubRecipe } from "./season.js";
 export type {
+	PitStabilityExcursion,
+	PitStabilityOptions,
+	PitStabilityResult,
+} from "./stability.js";
+export { analyzePitStability } from "./stability.js";
+export type {
 	RapidChangeOptions,
 	RapidChangeResult,
 	StallOptions,

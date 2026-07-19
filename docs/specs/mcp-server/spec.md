@@ -1,6 +1,11 @@
 # ThermoWorks MCP Server
 
-## Status: BUILDING
+## Status: shipped
+
+Shipped in PR #49 (initial package) and PR #291 (guided cook prompts). The
+server now exposes 24 tools + 3 prompts (a superset of the AC-2 list), launched
+via `thermoworks mcp start`, with mocked-SDK handler tests. All acceptance
+criteria below are satisfied.
 
 ## Overview
 

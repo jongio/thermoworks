@@ -102,6 +102,42 @@ describe("ThermoworksCloud", () => {
 			client.close();
 		});
 
+		it("sanitizes ANSI/control characters from untrusted device fields", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, { fields: { accountId: { stringValue: "acct-123" } } }) as any,
+			);
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, [
+					{
+						document: {
+							fields: {
+								serial: { stringValue: "ABC123" },
+								label: { stringValue: "\x1b[31mPit\x1b[0m" },
+								type: { stringValue: "no\x1bde" },
+								status: { stringValue: "on\x07line" },
+								firmware: { stringValue: "1.2.3\x1b[2J" },
+								sessionLabel: { stringValue: "Bris\x1b[Aket" },
+								notes: { stringValue: "line1\x00line2" },
+								accountId: { stringValue: "acct-123" },
+							},
+						},
+					},
+				]) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const device = (await client.getDevices())[0];
+			// Untrusted cloud free-text must not carry terminal escape/control sequences.
+			expect(device?.label).toBe("Pit");
+			expect(device?.type).toBe("node");
+			expect(device?.status).toBe("online");
+			expect(device?.firmware).toBe("1.2.3");
+			expect(device?.sessionLabel).toBe("Brisket");
+			expect(device?.notes).toBe("line1line2");
+			client.close();
+		});
+
 		it("filters devices by serial", async () => {
 			setupAuth();
 			mockRequest.mockResolvedValueOnce(

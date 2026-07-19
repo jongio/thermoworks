@@ -42,6 +42,7 @@ import { mcpStart } from "./commands/mcp.js";
 import { metrics } from "./commands/metrics.js";
 import { notifications } from "./commands/notifications.js";
 import { open } from "./commands/open.js";
+import { placement } from "./commands/placement.js";
 import { plan } from "./commands/plan.js";
 import { replay } from "./commands/replay.js";
 import { safe } from "./commands/safe.js";
@@ -717,6 +718,15 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 		usageLines: ["doneness [meat]  Show recommended internal pull temperatures for common cuts"],
 		supportsJson: true,
 		handler: ({ args, options }: CommandContext) => doneness(args[1], options),
+	},
+	{
+		name: "placement",
+		summary: "Show meat and pit probe placement guidance",
+		usage: "placement [meat] [--json]",
+		usageLines: ["placement [meat]  Show meat and pit probe placement guidance"],
+		arguments: [{ name: "meat", description: "Meat name or alias." }],
+		supportsJson: true,
+		handler: ({ args, options }: CommandContext) => placement(args.slice(1), options),
 	},
 	{
 		name: "safe",

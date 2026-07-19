@@ -65,7 +65,12 @@ export function saveCookAnnotations(
 			},
 		];
 	});
-	localStorage.setItem(annotationStorageKey(sessionId), JSON.stringify(stored));
+	try {
+		localStorage.setItem(annotationStorageKey(sessionId), JSON.stringify(stored));
+	} catch {
+		// Best-effort: ignore quota/availability errors (private mode, storage full),
+		// matching loadCookAnnotations which tolerates read failures.
+	}
 }
 
 interface SerializableReading {

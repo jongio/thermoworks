@@ -140,6 +140,24 @@ describe("offline mutation outbox", () => {
 		await expect(getOutboxSnapshot()).resolves.toEqual({ pendingCount: 0, conflictCount: 0 });
 	});
 
+	it("keeps replaying remaining mutations when one mutation throws", async () => {
+		await enqueueStartSessionMutation({ serial: "TW-001", label: "Ribs", wasActive: false });
+		await enqueueStartSessionMutation({ serial: "TW-002", label: "Brisket", wasActive: false });
+
+		const client = makeClient({
+			getDevice: vi.fn().mockResolvedValue({ sessionStart: null } as Device),
+			startSession: vi
+				.fn()
+				.mockRejectedValueOnce(new Error("network error"))
+				.mockResolvedValueOnce({ success: true }),
+		});
+
+		// A single failure must not abort replay of the remaining queued mutations.
+		await expect(replayQueuedMutations(client)).resolves.toEqual({ replayed: 1, conflicts: 0 });
+		// The failed mutation stays queued for the next reconnect; the successful one is cleared.
+		await expect(getOutboxSnapshot()).resolves.toEqual({ pendingCount: 1, conflictCount: 0 });
+	});
+
 	it("shows and clears a pending badge count for queued actions", async () => {
 		await enqueueStartSessionMutation({ serial: "TW-001", label: "Ribs", wasActive: false });
 

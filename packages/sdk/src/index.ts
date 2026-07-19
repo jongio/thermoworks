@@ -94,6 +94,8 @@ export type {
 	SubscriptionOptions,
 } from "./subscribe.js";
 export { createSubscription } from "./subscribe.js";
+export type { ThawMethod, ThawOptions, ThawPlan, ThawProfile } from "./thaw.js";
+export { listThawProfiles, planThaw, resolveThawProfile } from "./thaw.js";
 export type {
 	CookTimeline,
 	TimelineEvent,

@@ -1130,6 +1130,28 @@ npx thermoworks plan --ready TIME --item SPEC [--list-meats] [--json]
 
 - `--json` - Output machine-readable JSON.
 
+### `thermoworks thaw <meat> --weight LB [--method fridge|cold-water] [--ready "DATE"] [--list] [--json]`
+
+Plan safe thaw timing before a cook
+
+**Usage**
+
+```bash
+npx thermoworks thaw <meat> --weight LB [--method fridge|cold-water] [--ready "DATE"] [--list] [--json]
+```
+
+**Arguments**
+
+- `meat` (required) - Meat name or alias.
+
+**Options**
+
+- `--weight LB` (required) - Frozen weight in pounds.
+- `--method fridge|cold-water` - Thaw method.
+- `--ready DATE` - Cook or prep time to work backward from.
+- `--list` - Show thaw timing profiles.
+- `--json` - Output machine-readable JSON.
+
 ### `thermoworks completion <bash|zsh|fish|powershell>`
 
 Print a shell completion script

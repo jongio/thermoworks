@@ -50,6 +50,7 @@ const expectedCommands = [
 	"convert",
 	"journal",
 	"plan",
+	"thaw",
 	"completion",
 	"config",
 	"doctor",

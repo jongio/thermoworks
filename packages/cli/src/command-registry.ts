@@ -51,6 +51,7 @@ import { session } from "./commands/session.js";
 import { stall } from "./commands/stall.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
 import { temp } from "./commands/temp.js";
+import { thaw } from "./commands/thaw.js";
 import { timeline } from "./commands/timeline.js";
 import { watch } from "./commands/watch.js";
 import { wrap } from "./commands/wrap.js";
@@ -846,6 +847,28 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 		],
 		supportsJson: true,
 		handler: ({ args, options }: CommandContext) => plan(args.slice(1), options),
+	},
+	{
+		name: "thaw",
+		summary: "Plan safe thaw timing before a cook",
+		usage:
+			'thaw <meat> --weight LB [--method fridge|cold-water] [--ready "DATE"] [--list] [--json]',
+		usageLines: [
+			"thaw <meat>      Plan safe thaw timing before a cook",
+			"  --weight LB    Frozen weight in pounds",
+			"  --method M     Thaw method: fridge or cold-water",
+			"  --ready DATE   Work backward from a cook or prep time",
+			"  --list         Show thaw timing profiles",
+		],
+		arguments: [{ name: "meat", description: "Meat name or alias.", required: true }],
+		options: [
+			{ name: "--weight LB", description: "Frozen weight in pounds.", required: true },
+			{ name: "--method fridge|cold-water", description: "Thaw method." },
+			{ name: "--ready DATE", description: "Cook or prep time to work backward from." },
+			{ name: "--list", description: "Show thaw timing profiles." },
+		],
+		supportsJson: true,
+		handler: ({ args, options }: CommandContext) => thaw(args.slice(1), options),
 	},
 	{
 		name: "completion",

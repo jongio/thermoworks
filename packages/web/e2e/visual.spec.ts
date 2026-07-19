@@ -48,6 +48,9 @@ test.describe("visual regression snapshots", () => {
 });
 
 async function openVisualRoute(page: Page, path: string, theme: Theme) {
+	// Freeze the clock so time-relative UI (cook-report duration, chart time axis)
+	// renders identically across runs; the mock fixtures use fixed timestamps near this time.
+	await page.clock.setFixedTime(new Date("2026-07-17T20:00:00.000Z"));
 	await page.emulateMedia({ colorScheme: theme });
 	await page.addInitScript((mode) => {
 		window.localStorage.setItem("thermoworks-theme", mode);

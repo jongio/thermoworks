@@ -11,6 +11,7 @@ function unfence(value: unknown): unknown {
 vi.mock("thermoworks-sdk", async () => {
 	const { FakeThermoworksCloud } =
 		await vi.importActual<typeof import("thermoworks-sdk/testing")>("thermoworks-sdk/testing");
+	const actual = await vi.importActual<typeof import("thermoworks-sdk")>("thermoworks-sdk");
 	const mockClose = vi.fn();
 	const mockGetDevices = vi.fn();
 	const mockGetDevice = vi.fn();
@@ -60,6 +61,7 @@ vi.mock("thermoworks-sdk", async () => {
 
 	return {
 		ThermoworksCloud: MockThermoworksCloud,
+		assessPasteurization: actual.assessPasteurization,
 		mockClose,
 		mockGetDevices,
 		mockGetDevice,
@@ -83,6 +85,7 @@ vi.mock("thermoworks-sdk", async () => {
 		mockSetFanEnabled,
 		planCook: mockPlanCook,
 		mockPlanCook,
+		toFahrenheit: actual.toFahrenheit,
 		getChannelAlarmState: (channel: any) => {
 			if (channel.alarmHigh?.alarming) return "high";
 			if (channel.alarmLow?.alarming) return "low";
@@ -622,6 +625,83 @@ describe("MCP Server", () => {
 			} finally {
 				teardownEnv();
 			}
+		});
+	});
+
+	describe("check_food_safety tool", () => {
+		it("assesses a manual temperature", async () => {
+			const server = createServer();
+			const handler = getToolHandler(server, "check_food_safety");
+
+			const result = await handler(
+				{ temperature: 74, units: "C", protein: "poultry", held_minutes: 0 },
+				{},
+			);
+
+			const parsed = JSON.parse(result.content[0].text);
+			expect(parsed.source).toBe("manual");
+			expect(parsed.input).toEqual({ value: 74, units: "C" });
+			expect(parsed.protein).toBe("poultry");
+			expect(parsed.temperatureF).toBeCloseTo(165.2, 1);
+			expect(parsed.safe).toBe(true);
+			expect(parsed.instant).toBe(true);
+		});
+
+		it("assesses a live channel reading", async () => {
+			setupEnv();
+			try {
+				(mockGetDeviceChannel as any).mockResolvedValueOnce(
+					makeChannel({ value: 150, units: "F", label: "Breast", number: "2" }),
+				);
+
+				const server = createServer();
+				const handler = getToolHandler(server, "check_food_safety");
+				const result = await handler(
+					{ serial: "ABC123", channel: 2, protein: "poultry", held_minutes: 1 },
+					{},
+				);
+
+				expect(mockGetDeviceChannel).toHaveBeenCalledWith("ABC123", 2);
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.source).toBe("device");
+				expect(parsed.serial).toBe("ABC123");
+				expect(parsed.channel).toBe(2);
+				expect(unfence(parsed.channelLabel)).toBe("Breast");
+				expect(parsed.safe).toBe(false);
+				expect(parsed.requiredMinutes).toBeCloseTo(1.4, 1);
+				expect(parsed.remainingMinutes).toBeCloseTo(0.4, 1);
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("assesses a device average when channel is omitted", async () => {
+			setupEnv();
+			try {
+				(mockGetAverageTemperature as any).mockResolvedValueOnce({ value: 140, units: "F" });
+
+				const server = createServer();
+				const handler = getToolHandler(server, "check_food_safety");
+				const result = await handler({ serial: "ABC123", protein: "beef", held_minutes: 12 }, {});
+
+				expect(mockGetAverageTemperature).toHaveBeenCalledWith("ABC123");
+				const parsed = JSON.parse(result.content[0].text);
+				expect(parsed.channel).toBeNull();
+				expect(parsed.protein).toBe("beef");
+				expect(parsed.safe).toBe(true);
+				expect(parsed.requiredMinutes).toBe(12);
+			} finally {
+				teardownEnv();
+			}
+		});
+
+		it("rejects mixed manual and device modes", async () => {
+			const server = createServer();
+			const handler = getToolHandler(server, "check_food_safety");
+
+			const result = await handler({ serial: "ABC123", temperature: 150 }, {});
+
+			expect(result.content[0].text).toContain("Use either manual temperature");
 		});
 	});
 
@@ -2412,10 +2492,10 @@ describe("MCP Server", () => {
 			expect(names).toEqual(["diagnose_cook", "food_safety_check", "when_to_wrap"]);
 		});
 
-		it("does not add any new tools (tool count stays flat)", () => {
+		it("registers the expected tool count", () => {
 			const server = createServer();
 			const tools = (server as any)._registeredTools as Record<string, unknown>;
-			expect(Object.keys(tools)).toHaveLength(24);
+			expect(Object.keys(tools)).toHaveLength(25);
 		});
 
 		describe("diagnose_cook", () => {

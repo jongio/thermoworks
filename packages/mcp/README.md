@@ -33,6 +33,7 @@ thermoworks mcp start
 | `get_calibration` | Get NIST-traceable calibration records for a device (per-channel adjustments, deviations, pass/fail) |
 | `get_data_usage` | Get account data storage usage (account total, or per-device with by_device) |
 | `get_temperature_guide` | Get cooking temperature reference |
+| `check_food_safety` | Assess time-at-temperature safety for a live probe or manual reading |
 | `set_alarm` | Set or clear high/low alarm thresholds on a device channel |
 | `get_fan_state` | Get the fan controller state for a device (connection, target temp, channel, level) |
 | `set_fan_target` | Set the fan controller target temperature for a device |

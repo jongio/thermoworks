@@ -909,27 +909,29 @@ export class ThermoworksCloud {
 
 		if (groupIds.length === 0) return [];
 
-		// Fetch each group document from the account's deviceGroups subcollection
-		const groups: DeviceGroup[] = [];
-		for (const groupId of groupIds) {
-			const groupPath = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups/${encodeURIComponent(groupId)}`;
-			const groupResponse = await session.request("GET", groupPath);
+		// Fetch each group document from the account's deviceGroups subcollection.
+		// The requests are independent, so run them in parallel to avoid N sequential
+		// round trips; Promise.all preserves groupIds order in the result.
+		const groups: DeviceGroup[] = await Promise.all(
+			groupIds.map(async (groupId): Promise<DeviceGroup> => {
+				const groupPath = `documents/accounts/${encodeURIComponent(accountId)}/deviceGroups/${encodeURIComponent(groupId)}`;
+				const groupResponse = await session.request("GET", groupPath);
 
-			if (groupResponse.status === 404) {
-				await groupResponse.text().catch(() => {});
-				// Group referenced but document missing - include with minimal info
-				groups.push({ id: groupId, name: "", devices: [] });
-				continue;
-			}
+				if (groupResponse.status === 404) {
+					await groupResponse.text().catch(() => {});
+					// Group referenced but document missing - include with minimal info
+					return { id: groupId, name: "", devices: [] };
+				}
 
-			const groupDoc = (await groupResponse.json()) as { fields?: FirestoreFields };
-			const groupFields = groupDoc.fields ?? {};
-			groups.push({
-				id: groupId,
-				name: getString(groupFields, "name") ?? "",
-				devices: getStringArray(groupFields, "devices") ?? [],
-			});
-		}
+				const groupDoc = (await groupResponse.json()) as { fields?: FirestoreFields };
+				const groupFields = groupDoc.fields ?? {};
+				return {
+					id: groupId,
+					name: getString(groupFields, "name") ?? "",
+					devices: getStringArray(groupFields, "devices") ?? [],
+				};
+			}),
+		);
 
 		return groups;
 	}
@@ -1211,13 +1213,13 @@ function parseDevice(fields: FirestoreFields): Device {
 		serial: getString(fields, "serial") ?? "",
 		deviceId: getString(fields, "deviceId"),
 		label: sanitizeLabel(getString(fields, "label")),
-		type: getString(fields, "type"),
+		type: sanitizeLabel(getString(fields, "type")),
 		device: getString(fields, "device"),
-		status: getString(fields, "status"),
+		status: sanitizeLabel(getString(fields, "status")),
 		battery: getNumber(fields, "battery"),
 		batteryState: getString(fields, "battery_state") ?? getString(fields, "batteryState"),
 		wifiStrength: getNumber(fields, "wifi_stength") ?? getNumber(fields, "wifiStrength"),
-		firmware: getString(fields, "firmware"),
+		firmware: sanitizeLabel(getString(fields, "firmware")),
 		color: getString(fields, "color"),
 		thumbnail: getString(fields, "thumbnail"),
 		deviceDisplayUnits: getString(fields, "deviceDisplayUnits"),
@@ -1236,12 +1238,12 @@ function parseDevice(fields: FirestoreFields): Device {
 		lastWifiConnection: getTimestamp(fields, "lastWifiConnection"),
 		lastBluetoothConnection: getTimestamp(fields, "lastBluetoothConnection"),
 		sessionStart: getTimestamp(fields, "sessionStart"),
-		sessionLabel: getString(fields, "sessionLabel"),
+		sessionLabel: sanitizeLabel(getString(fields, "sessionLabel")),
 		lastArchive: getTimestamp(fields, "lastArchive"),
 		lastPurged: getTimestamp(fields, "lastPurged"),
 		assignedToAccountOn: getTimestamp(fields, "assignedToAccountOn"),
 		accountId: getString(fields, "accountId"),
-		notes: getString(fields, "notes"),
+		notes: sanitizeLabel(getString(fields, "notes")),
 		public: getBoolean(fields, "public"),
 		publicLink: getString(fields, "publicLink"),
 		searModeEnabled: getBoolean(fields, "searModeEnabled"),
@@ -1279,8 +1281,8 @@ function parseDeviceChannel(fields: FirestoreFields): DeviceChannel {
 		value: getNumber(fields, "value"),
 		units: getString(fields, "units"),
 		label: sanitizeLabel(getString(fields, "label")),
-		status: getString(fields, "status"),
-		type: getString(fields, "type"),
+		status: sanitizeLabel(getString(fields, "status")),
+		type: sanitizeLabel(getString(fields, "type")),
 		number: getString(fields, "number"),
 		enabled: getBoolean(fields, "enabled"),
 		color: getString(fields, "color"),
@@ -1423,10 +1425,10 @@ function parseArchive(fields: FirestoreFields, id: string): Archive {
 		start: getTimestamp(fields, "start"),
 		end: getTimestamp(fields, "end"),
 		count: getNumber(fields, "count"),
-		type: getString(fields, "type"),
-		label: getString(fields, "label"),
-		deviceLabel: getString(fields, "deviceLabel"),
-		notes: getString(fields, "notes"),
+		type: sanitizeLabel(getString(fields, "type")),
+		label: sanitizeLabel(getString(fields, "label")),
+		deviceLabel: sanitizeLabel(getString(fields, "deviceLabel")),
+		notes: sanitizeLabel(getString(fields, "notes")),
 		createdOn: getTimestamp(fields, "createdOn"),
 		public: getBoolean(fields, "public"),
 		publicLink: getString(fields, "publicLink"),
@@ -1457,13 +1459,13 @@ function parseArchiveChannel(fields: FirestoreFields): ArchiveChannel {
 
 	return {
 		number: getString(fields, "number"),
-		label: getString(fields, "label"),
+		label: sanitizeLabel(getString(fields, "label")),
 		units: getString(fields, "units"),
 		value: getNumber(fields, "value"),
-		status: getString(fields, "status"),
+		status: sanitizeLabel(getString(fields, "status")),
 		enabled: getBoolean(fields, "enabled"),
 		color: getString(fields, "color"),
-		type: getString(fields, "type"),
+		type: sanitizeLabel(getString(fields, "type")),
 		alarmHigh: parseAlarm(getMapFields(fields, "alarmHigh")),
 		alarmLow: parseAlarm(getMapFields(fields, "alarmLow")),
 		minimum: parseMinMaxReading(getMapFields(fields, "minimum")),

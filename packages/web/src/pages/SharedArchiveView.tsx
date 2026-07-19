@@ -20,11 +20,13 @@ export function SharedArchiveView() {
 		try {
 			const result = await getPublicArchive(serial, archiveId);
 			if (!result) {
+				setArchive(null);
 				setError("Archive not found or not publicly shared.");
 			} else {
 				setArchive(result);
 			}
 		} catch (err) {
+			setArchive(null);
 			setError(err instanceof Error ? err.message : "Failed to load shared archive.");
 		} finally {
 			setIsLoading(false);

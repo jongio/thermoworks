@@ -1,5 +1,6 @@
 import { type MeatProfile, resolveMeatProfile } from "thermoworks-sdk";
 
+import { firstPositional } from "../args.js";
 import { type OutputOptions, outputJson } from "../output.js";
 
 /** Parse a named flag value from args (e.g., "--pit-band" "30" -> "30"). */
@@ -107,7 +108,7 @@ function formatSuggestion(s: AlarmSuggestion): string {
  * This command only suggests; it never writes to a device.
  */
 export async function alarmSuggest(args: string[], options: OutputOptions): Promise<void> {
-	const meat = args.find((a) => !a.startsWith("--"));
+	const meat = firstPositional(args, ["--pit-band", "--serial", "--meat-channel", "--pit-channel"]);
 	if (!meat) {
 		console.error(
 			"Usage: thermoworks alarm suggest <MEAT> [--pit-band <deg>] [--serial <SN>] [--meat-channel <1-9>] [--pit-channel <1-9>] [--json]",

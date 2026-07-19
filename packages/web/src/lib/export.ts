@@ -158,7 +158,7 @@ export async function downloadPNG(container: HTMLElement, filename: string): Pro
 /** Escape a CSV field per RFC 4180 with formula injection prevention (OWASP). */
 function escapeCSVField(value: string): string {
 	// Prevent CSV formula injection: prefix dangerous characters with a single quote
-	const formulaChars = /^[=+\-@|\t]/;
+	const formulaChars = /^[=+\-@|\t\r]/;
 	let sanitized = value;
 	if (formulaChars.test(sanitized)) {
 		sanitized = `'${sanitized}`;

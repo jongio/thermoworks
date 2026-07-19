@@ -1,5 +1,6 @@
 import { detectStall, type TemperatureReading, ThermoworksCloud } from "thermoworks-sdk";
 
+import { firstPositional } from "../args.js";
 import { getCredentials } from "../credentials.js";
 import { type OutputOptions, outputJson } from "../output.js";
 
@@ -34,7 +35,7 @@ export interface StallArgs {
  * Returns null when the serial is missing.
  */
 export function parseStallArgs(args: string[]): StallArgs | null {
-	const serial = args.find((a) => !a.startsWith("--"));
+	const serial = firstPositional(args, ["--threshold", "--duration"]);
 	if (!serial) return null;
 
 	const thresholdDegrees = parsePositiveFlag(getFlagValue(args, "--threshold"), "--threshold");

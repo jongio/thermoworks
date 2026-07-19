@@ -81,12 +81,12 @@ export function computeRetryDelay(
 	// Exponential backoff: baseDelay * 2^attempt, capped at maxDelay
 	const exponentialDelay = Math.min(baseDelayMs * 2 ** attempt, maxDelayMs);
 
-	// Use Retry-After as floor if larger than computed delay
-	const baseDelay = Math.max(exponentialDelay, retryAfterMs);
+	// Full jitter on the exponential component: uniform random in [0, exponentialDelay).
+	const jitteredDelay = Math.random() * exponentialDelay;
 
-	// Full jitter: uniform random in [0, baseDelay], capped at maxDelay
-	const jitteredDelay = Math.random() * baseDelay;
-	return Math.min(jitteredDelay, maxDelayMs);
+	// Honor Retry-After as a hard floor: never retry sooner than the server asked,
+	// even after jitter. Still capped at maxDelay.
+	return Math.min(Math.max(jitteredDelay, retryAfterMs), maxDelayMs);
 }
 
 function isRetryableStatus(statusCode: number): boolean {

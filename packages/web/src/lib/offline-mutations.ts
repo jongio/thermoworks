@@ -331,14 +331,19 @@ export async function replayQueuedMutations(client: ThermoworksWebClient): Promi
 	const mutations = (await getAllMutations()).filter((mutation) => mutation.status === "pending");
 
 	for (const mutation of mutations) {
-		const result =
-			mutation.type === "setAlarm"
-				? await replayAlarmMutation(client, mutation)
-				: await replaySessionMutation(client, mutation);
-		if (result === "conflict") {
-			conflicts += 1;
-		} else {
-			replayed += 1;
+		try {
+			const result =
+				mutation.type === "setAlarm"
+					? await replayAlarmMutation(client, mutation)
+					: await replaySessionMutation(client, mutation);
+			if (result === "conflict") {
+				conflicts += 1;
+			} else {
+				replayed += 1;
+			}
+		} catch {
+			// Leave this mutation queued for the next reconnect attempt; one failing
+			// mutation must not block replay of the remaining queued mutations.
 		}
 	}
 

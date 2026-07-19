@@ -103,6 +103,21 @@ describe("computeRetryDelay", () => {
 		expect(delay).toBe(5000);
 	});
 
+	it("honors Retry-After as a hard floor even with small jitter", () => {
+		// Without the floor, full jitter (random→0) would drop the delay to 0,
+		// retrying sooner than the server's Retry-After asked.
+		vi.spyOn(Math, "random").mockReturnValue(0);
+		const delay = computeRetryDelay(0, 1000, 30_000, "5");
+		expect(delay).toBe(5000);
+	});
+
+	it("caps the Retry-After floor at maxDelayMs", () => {
+		vi.spyOn(Math, "random").mockReturnValue(0);
+		// Retry-After 60s exceeds maxDelay 30s → capped at 30000.
+		const delay = computeRetryDelay(0, 1000, 30_000, "60");
+		expect(delay).toBe(30_000);
+	});
+
 	it("ignores invalid Retry-After header", () => {
 		vi.spyOn(Math, "random").mockReturnValue(0.5);
 		const delay = computeRetryDelay(0, 1000, 30_000, "not-a-number-or-date");

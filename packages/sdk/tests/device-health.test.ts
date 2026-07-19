@@ -168,6 +168,53 @@ describe("assessDeviceHealth", () => {
 		);
 	});
 
+	it("returns warning for weak RSSI", () => {
+		const now = new Date("2026-01-01T12:00:00Z");
+		const device = makeDevice({ lastSeen: now, status: "online", wifiStrength: -78 });
+		const channels = [makeChannel({ lastSeen: now })];
+
+		const result = assessDeviceHealth(device, channels, now);
+
+		expect(result.overall).toBe("warning");
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({
+				code: "weak_wifi_signal",
+				severity: "warning",
+				detail: "RSSI -78 dBm",
+			}),
+		);
+	});
+
+	it("returns critical for very weak RSSI", () => {
+		const now = new Date("2026-01-01T12:00:00Z");
+		const device = makeDevice({ lastSeen: now, status: "online", wifiStrength: -88 });
+		const channels = [makeChannel({ lastSeen: now })];
+
+		const result = assessDeviceHealth(device, channels, now);
+
+		expect(result.overall).toBe("critical");
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({ code: "weak_wifi_signal", severity: "critical" }),
+		);
+	});
+
+	it("returns warning for low percentage Wi-Fi signal", () => {
+		const now = new Date("2026-01-01T12:00:00Z");
+		const device = makeDevice({ lastSeen: now, status: "online", wifiStrength: 25 });
+		const channels = [makeChannel({ lastSeen: now })];
+
+		const result = assessDeviceHealth(device, channels, now);
+
+		expect(result.overall).toBe("warning");
+		expect(result.issues).toContainEqual(
+			expect.objectContaining({
+				code: "weak_wifi_signal",
+				severity: "warning",
+				detail: "Signal 25%",
+			}),
+		);
+	});
+
 	it("derives overall from worst severity", () => {
 		const now = new Date("2026-01-01T12:00:00Z");
 		// Offline (warning) + critical battery

@@ -6,6 +6,7 @@ import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";
 import { type AlarmState, getChannelAlarmState, type ThermoworksWebClient } from "../lib/api.ts";
 import { cn } from "../lib/utils.ts";
 import { AlarmConfig } from "./AlarmConfig.tsx";
+import { ResetMinMaxButton } from "./ResetMinMaxButton.tsx";
 
 /** 5 minutes in milliseconds. */
 const STALE_THRESHOLD_MS = 5 * 60 * 1000;
@@ -62,6 +63,7 @@ export function ChannelReading({
 	const [showAlarmConfig, setShowAlarmConfig] = useState(false);
 
 	const canConfigureAlarm = client != null && serial != null && channel.number != null;
+	const canResetMinMax = client != null && serial != null && channel.number != null;
 
 	// Alarm snooze state (local to browser, does not touch cloud settings).
 	const { snooze, unsnooze, isSnoozed, getRemainingMs } = useAlarmSnooze();
@@ -115,6 +117,14 @@ export function ChannelReading({
 						>
 							<Bell className="h-3.5 w-3.5" />
 						</button>
+					)}
+					{canResetMinMax && (
+						<ResetMinMaxButton
+							serial={serial}
+							channel={Number(channel.number)}
+							client={client}
+							onReset={onAlarmSaved}
+						/>
 					)}
 				</div>
 			</div>

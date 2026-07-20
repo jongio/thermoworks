@@ -253,6 +253,7 @@ describe("DeviceDetail", () => {
 
 		expect(shareBtn).toBeEnabled();
 		expect(resetBtn).toBeDisabled();
+		expect(screen.getAllByRole("button", { name: /reset min\/max/i })).toHaveLength(2);
 	});
 
 	it("opens the device share dialog from the quick action", async () => {

@@ -160,6 +160,19 @@ pnpm eval:full
 
 When adding a new skill, create a `SKILL.md` in `.github/skills/<name>/` with YAML frontmatter (`name` must match directory name) and add a corresponding eval spec in `evals/<name>/eval.yaml`. Run `pnpm eval:lint` to validate before pushing.
 
+## Releases
+
+Releases are run manually from the Actions tab (`workflow_dispatch`): **Release All** bumps, publishes, and tags every package; the per-package workflows do one package each. `release-all` publishes the SDK before the CLI so the CLI always resolves the SDK version it was built against.
+
+After a release publishes, the **Post-Release Smoke** workflow installs the published packages from npm on Linux, Windows, and macOS and runs offline smoke tests (`scripts/smoke-cli.mjs`, `scripts/smoke-sdk.mjs`) to catch broken installs, unpublished dependencies, CLI/SDK version skew, or a binary that crashes on startup. Run it on demand from the Actions tab, or reproduce locally:
+
+```bash
+# CLI: install the published (or a packed) build, then
+THERMOWORKS_BIN=thermoworks node scripts/smoke-cli.mjs
+# SDK: from a dir where thermoworks-sdk is installed
+node scripts/smoke-sdk.mjs
+```
+
 ## Notes
 
 This project interacts with an undocumented API. Be especially careful with changes to authentication and Firestore-related code.

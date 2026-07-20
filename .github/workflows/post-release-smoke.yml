@@ -1,0 +1,121 @@
+name: Post-Release Smoke
+
+# Installs the *published* npm packages from the public registry (like a real
+# user) and runs offline smoke tests, so a broken publish - an unresolved or
+# unpublished dependency, a version skew between the CLI and the SDK, a binary
+# that crashes on startup - is caught right after release instead of by users.
+
+on:
+  # Run automatically after any release workflow finishes successfully.
+  workflow_run:
+    workflows: ["Release All", "Release CLI", "Release SDK"]
+    types: [completed]
+  # Or run on demand against specific versions (default: latest on npm).
+  workflow_dispatch:
+    inputs:
+      cli_version:
+        description: "thermoworks CLI version (dist-tag or exact)"
+        required: false
+        default: "latest"
+      sdk_version:
+        description: "thermoworks-sdk version (dist-tag or exact)"
+        required: false
+        default: "latest"
+
+permissions: {}
+
+concurrency:
+  group: post-release-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke-cli:
+    name: Smoke CLI (${{ matrix.os }})
+    # Only run for successful releases (workflow_run) or manual dispatch.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # Install the published CLI globally, retrying to absorb npm propagation
+      # delay right after a publish.
+      - name: Install published thermoworks CLI
+        shell: bash
+        env:
+          CLI_VERSION: ${{ github.event.inputs.cli_version || 'latest' }}
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            if npm install -g "thermoworks@${CLI_VERSION}"; then
+              echo "Installed thermoworks@${CLI_VERSION}"
+              exit 0
+            fi
+            echo "Install attempt ${attempt} failed; waiting 20s for npm propagation..."
+            sleep 20
+          done
+          echo "::error::Failed to install thermoworks@${CLI_VERSION} after retries"
+          exit 1
+
+      - name: Run CLI smoke test
+        shell: bash
+        run: node scripts/smoke-cli.mjs
+
+  smoke-sdk:
+    name: Smoke SDK (${{ matrix.os }})
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      # Install the published SDK into a clean directory and run the smoke
+      # script from there so imports resolve to the installed package.
+      - name: Install published thermoworks-sdk
+        shell: bash
+        env:
+          SDK_VERSION: ${{ github.event.inputs.sdk_version || 'latest' }}
+        run: |
+          mkdir -p .smoke-sdk
+          cp scripts/smoke-sdk.mjs .smoke-sdk/smoke-sdk.mjs
+          cd .smoke-sdk
+          echo '{"name":"smoke-sdk","private":true,"type":"module"}' > package.json
+          for attempt in 1 2 3 4 5 6; do
+            if npm install "thermoworks-sdk@${SDK_VERSION}"; then
+              echo "Installed thermoworks-sdk@${SDK_VERSION}"
+              exit 0
+            fi
+            echo "Install attempt ${attempt} failed; waiting 20s for npm propagation..."
+            sleep 20
+          done
+          echo "::error::Failed to install thermoworks-sdk@${SDK_VERSION} after retries"
+          exit 1
+
+      - name: Run SDK smoke test
+        shell: bash
+        run: node .smoke-sdk/smoke-sdk.mjs

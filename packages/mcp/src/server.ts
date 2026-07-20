@@ -63,9 +63,9 @@ type ToolResult = { content: Array<{ type: "text"; text: string }> };
 /**
  * Field names whose values are user- or device-provided free text. Their values
  * are fenced before appearing in tool output an LLM reads, so injected text in a
- * device label cannot be interpreted as instructions. Constrained fields (status,
- * type, units, numeric values, serials/ids) are intentionally omitted: they are
- * not free-text vectors and fencing them would only add noise.
+ * device label or event value cannot be interpreted as instructions. Constrained
+ * fields (status, type, units, numeric values, serials/ids) are intentionally
+ * omitted: they are not free-text vectors and fencing them would only add noise.
  */
 const UNTRUSTED_STRING_FIELDS: ReadonlySet<string> = new Set([
 	"label",
@@ -74,6 +74,9 @@ const UNTRUSTED_STRING_FIELDS: ReadonlySet<string> = new Set([
 	"sessionLabel",
 	"firmware",
 	"notes",
+	"eventType",
+	"valueBefore",
+	"valueAfter",
 ]);
 
 /**
@@ -87,13 +90,15 @@ const UNTRUSTED_STRING_FIELDS: ReadonlySet<string> = new Set([
 export function fenceUntrusted(value: string | null | undefined): string | null {
 	if (value == null) return null;
 	const cleaned = value
-		// biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally stripping control chars
-		.replace(/[\u0000-\u001f\u007f\u009b]/g, " ")
+		// biome-ignore lint/suspicious/noControlCharactersInRegex: intentionally stripping control chars (C0, DEL, and C1)
+		.replace(/[\u0000-\u001f\u007f-\u009f]/g, " ")
 		.replace(/\s+/g, " ")
 		.trim()
 		.slice(0, 200)
-		.replaceAll("[UNTRUSTED_DATA]", "(UNTRUSTED DATA)")
-		.replaceAll("[/UNTRUSTED_DATA]", "(/UNTRUSTED DATA)");
+		// Case-insensitive so a lowercase sentinel cannot break out of the fence
+		// (LLMs treat boundary markers semantically, not byte-for-byte).
+		.replace(/\[untrusted_data\]/gi, "(UNTRUSTED DATA)")
+		.replace(/\[\/untrusted_data\]/gi, "(/UNTRUSTED DATA)");
 	if (cleaned.length === 0) return cleaned;
 	return `[UNTRUSTED_DATA]${cleaned}[/UNTRUSTED_DATA]`;
 }

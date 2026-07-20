@@ -51,6 +51,8 @@ export {
 	getPasteurizationTable,
 	requiredHoldMinutes,
 } from "./pasteurization.js";
+export type { ProbePlacement } from "./placement.js";
+export { getProbePlacements, resolveProbePlacement } from "./placement.js";
 export type {
 	CookPlan,
 	CookPlanItem,
@@ -79,6 +81,12 @@ export type {
 	WetBrinePlan,
 } from "./season.js";
 export { calculateSeasoning, listRubRecipes, resolveRubRecipe } from "./season.js";
+export type {
+	PitStabilityExcursion,
+	PitStabilityOptions,
+	PitStabilityResult,
+} from "./stability.js";
+export { analyzePitStability } from "./stability.js";
 export type {
 	RapidChangeOptions,
 	RapidChangeResult,

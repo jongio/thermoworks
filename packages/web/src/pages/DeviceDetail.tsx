@@ -9,6 +9,7 @@ import { EtaBadge } from "../components/EtaBadge.tsx";
 import { FanController } from "../components/FanController.tsx";
 import { HistoryViewer } from "../components/HistoryViewer.tsx";
 import { InlineEdit } from "../components/InlineEdit.tsx";
+import { ShareManager } from "../components/ShareManager.tsx";
 import { ChartSkeleton } from "../components/Skeleton.tsx";
 import { useArchiveData } from "../hooks/useArchiveData.ts";
 import { useDevice } from "../hooks/useDevice.ts";
@@ -31,6 +32,7 @@ function statusIndicator(status: string | null): { color: string; label: string 
 export function DeviceDetail() {
 	const { serial } = useParams<{ serial: string }>();
 	const { client } = useOutletContext<AppOutletContext>();
+	const [showShare, setShowShare] = React.useState(false);
 	const { data, isLoading, error, refresh } = useDevice(client, serial ?? "");
 	const {
 		history,
@@ -269,13 +271,14 @@ export function DeviceDetail() {
 				<div className="flex flex-wrap gap-2">
 					<button
 						type="button"
-						disabled
+						onClick={() => setShowShare(true)}
+						aria-label={`Share ${name}`}
 						className={cn(
 							"inline-flex items-center gap-1.5 rounded-md px-3 py-2",
 							"text-sm border border-border",
-							"disabled:opacity-50 disabled:cursor-not-allowed",
+							"hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 						)}
-						title="Coming soon"
+						title="Share"
 					>
 						<Share2 className="h-4 w-4" />
 						Share
@@ -295,6 +298,9 @@ export function DeviceDetail() {
 					</button>
 				</div>
 			</section>
+			{showShare && (
+				<ShareManager serial={device.serial} client={client} onClose={() => setShowShare(false)} />
+			)}
 
 			{/* Device settings */}
 			<DeviceSettings

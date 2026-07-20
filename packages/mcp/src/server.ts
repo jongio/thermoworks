@@ -1,12 +1,20 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import type { AlarmSetOptions, CookPlanItemInput, Device, DeviceChannel } from "thermoworks-sdk";
+import type {
+	AlarmSetOptions,
+	CookPlanItemInput,
+	Device,
+	DeviceChannel,
+	Protein,
+} from "thermoworks-sdk";
 import {
 	assessDeviceHealth,
+	assessPasteurization,
 	getChannelAlarmState,
 	planCook,
 	predictDoneTime,
 	ThermoworksCloud,
+	toFahrenheit,
 } from "thermoworks-sdk";
 import { z } from "zod";
 
@@ -456,6 +464,133 @@ export function createServer(): McpServer {
 			inputSchema: z.object({}),
 		},
 		() => handleReferenceTool((client) => client.getTemperatureGuide()),
+	);
+
+	server.registerTool(
+		"check_food_safety",
+		{
+			description:
+				"Assess food-safety pasteurization progress for a live ThermoWorks probe or a manual temperature reading. Uses time-at-temperature tables for poultry, beef, and pork.",
+			inputSchema: z.object({
+				serial: z
+					.string()
+					.optional()
+					.describe("Device serial number. Required unless temperature is provided."),
+				channel: z
+					.number()
+					.int()
+					.min(1)
+					.max(9)
+					.optional()
+					.describe("Channel number to read. Omit to use the device average."),
+				temperature: z
+					.number()
+					.finite()
+					.optional()
+					.describe("Manual core temperature to assess instead of reading a device."),
+				units: z
+					.enum(["F", "C"])
+					.optional()
+					.describe("Units for manual temperature. Defaults to F."),
+				protein: z
+					.enum(["poultry", "beef", "pork"])
+					.optional()
+					.describe("Food-safety table to use. Defaults to poultry."),
+				held_minutes: z
+					.number()
+					.finite()
+					.min(0)
+					.optional()
+					.describe("Minutes held at or above this temperature. Defaults to 0."),
+			}),
+		},
+		async ({ serial, channel, temperature, units, protein, held_minutes }) => {
+			const selectedProtein = (protein ?? "poultry") as Protein;
+			const heldMinutes = held_minutes ?? 0;
+
+			if (temperature != null) {
+				if (serial || channel != null) {
+					return {
+						content: [
+							{
+								type: "text",
+								text: "Use either manual temperature or serial/channel, not both.",
+							},
+						],
+					};
+				}
+
+				const inputUnits = units ?? "F";
+				const temperatureF = inputUnits === "C" ? toFahrenheit(temperature) : temperature;
+				const assessment = assessPasteurization({
+					temperatureF,
+					holdMinutes: heldMinutes,
+					protein: selectedProtein,
+				});
+				return toolJson({
+					source: "manual",
+					input: { value: temperature, units: inputUnits },
+					...assessment,
+				});
+			}
+
+			if (!serial) {
+				return {
+					content: [
+						{
+							type: "text",
+							text: "Provide serial for a live probe check, or temperature for a manual check.",
+						},
+					],
+				};
+			}
+
+			const client = getClient();
+			let value: number | null;
+			let readingUnits: string | null;
+			let channelLabel: string | null = null;
+
+			if (channel != null) {
+				const reading = await client.getDeviceChannel(serial, channel);
+				value = reading.value;
+				readingUnits = reading.units;
+				channelLabel = reading.label ?? null;
+			} else {
+				const average = await client.getAverageTemperature(serial);
+				value = average?.value ?? null;
+				readingUnits = average?.units ?? null;
+			}
+
+			if (value == null) {
+				return {
+					content: [
+						{
+							type: "text",
+							text:
+								channel != null
+									? `No reading for channel ${channel} on ${serial}.`
+									: `No temperature readings for ${serial}.`,
+						},
+					],
+				};
+			}
+
+			const temperatureF = readingUnits === "C" ? toFahrenheit(value) : value;
+			const assessment = assessPasteurization({
+				temperatureF,
+				holdMinutes: heldMinutes,
+				protein: selectedProtein,
+			});
+
+			return toolJson({
+				source: "device",
+				serial,
+				channel: channel ?? null,
+				channelLabel,
+				input: { value, units: readingUnits ?? "F" },
+				...assessment,
+			});
+		},
 	);
 
 	server.registerTool(
@@ -1138,11 +1273,12 @@ Steps:
 ${deviceClause(serial)}
 
 Steps:
-1. Call get_temperature_guide for the recommended safe internal temperatures by cut.
-2. Call get_live_cook_snapshot for the current probe temps and get_temperature_history with a limit around 200 for how they got there.
-3. Danger zone is 40F to 140F. Most cuts should clear 140F within about 4 hours of the surface entering that range. Seared whole-muscle beef and pork can be more lenient; poultry and ground meat are strict. From the history, estimate how long the probe sat between 40F and 140F.
-4. Compare the current or final internal temp against the guide for the cut. If you do not know the cut, ask.
-5. Report whether the danger-zone time looks safe, whether the internal temp reached a safe finish, and any specific concern.`,
+1. Call get_live_cook_snapshot for the current probe temps.
+2. Call check_food_safety for the meat probe. Use held_minutes when the user knows how long it has held at that temperature.
+3. Call get_temperature_guide if you need the cut-specific finish temperature.
+4. Call get_temperature_history with a limit around 200 and estimate danger-zone time from 40F to 140F.
+5. Most cuts should clear 140F within about 4 hours of the surface entering that range. Seared whole-muscle beef and pork can be more lenient; poultry and ground meat are strict.
+6. Report the pasteurization result, danger-zone concern, and what to do next.`,
 			),
 	);
 

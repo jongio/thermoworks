@@ -177,6 +177,14 @@ describe("DeviceNode health display", () => {
 		expect(node.description).toContain("Warning");
 	});
 
+	it("shows warning description for weak Wi-Fi", () => {
+		const device = makeDevice({ status: "online", battery: 80, wifiStrength: -78 });
+		const channels = [makeChannel()];
+		const node = new DeviceNode(device, false, false, channels);
+
+		expect(node.description).toContain("Warning");
+	});
+
 	it("shows no health indicator when all is well", () => {
 		const device = makeDevice({ status: "online", battery: 80 });
 		const channels = [makeChannel()];

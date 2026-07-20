@@ -616,6 +616,28 @@ npx thermoworks stats <serial> [--limit N] [--json]
 
 - `--json` - Output machine-readable JSON.
 
+### `thermoworks stability <SERIAL> --target F [--band F] [--archive ID] [--channel N] [--json]`
+
+Measure pit temperature time-in-band for an archived cook
+
+**Usage**
+
+```bash
+npx thermoworks stability <SERIAL> --target F [--band F] [--archive ID] [--channel N] [--json]
+```
+
+**Arguments**
+
+- `SERIAL` (required) - Device serial number.
+
+**Options**
+
+- `--target F` (required) - Desired pit temperature in Fahrenheit.
+- `--band F` - Allowed degrees above or below target.
+- `--archive ID` - Analyze a specific archive.
+- `--channel N` - Archive channel to analyze.
+- `--json` - Output machine-readable JSON.
+
 ### `thermoworks firmware [--device SERIAL] [--json]`
 
 Show firmware versions and available updates
@@ -879,6 +901,24 @@ Show recommended internal pull temperatures
 ```bash
 npx thermoworks doneness [meat] [--json]
 ```
+
+**Options**
+
+- `--json` - Output machine-readable JSON.
+
+### `thermoworks placement [meat] [--json]`
+
+Show meat and pit probe placement guidance
+
+**Usage**
+
+```bash
+npx thermoworks placement [meat] [--json]
+```
+
+**Arguments**
+
+- `meat` - Meat name or alias.
 
 **Options**
 

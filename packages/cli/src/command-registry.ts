@@ -42,12 +42,14 @@ import { mcpStart } from "./commands/mcp.js";
 import { metrics } from "./commands/metrics.js";
 import { notifications } from "./commands/notifications.js";
 import { open } from "./commands/open.js";
+import { placement } from "./commands/placement.js";
 import { plan } from "./commands/plan.js";
 import { replay } from "./commands/replay.js";
 import { safe } from "./commands/safe.js";
 import { search } from "./commands/search.js";
 import { season } from "./commands/season.js";
 import { session } from "./commands/session.js";
+import { stability } from "./commands/stability.js";
 import { stall } from "./commands/stall.js";
 import { parseStatsArgs, stats } from "./commands/stats.js";
 import { temp } from "./commands/temp.js";
@@ -594,6 +596,27 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 		},
 	},
 	{
+		name: "stability",
+		summary: "Measure pit temperature time-in-band for an archived cook",
+		usage: "stability <SERIAL> --target F [--band F] [--archive ID] [--channel N] [--json]",
+		usageLines: [
+			"stability <SERIAL>  Measure pit temperature time-in-band for an archived cook",
+			"  --target F     Desired pit temperature in Fahrenheit (required)",
+			"  --band F       Allowed degrees above or below target (default: 15)",
+			"  --archive ID   Analyze a specific archive instead of the latest",
+			"  --channel N    Archive channel to analyze (default: first with readings)",
+		],
+		arguments: [serial],
+		options: [
+			{ name: "--target F", description: "Desired pit temperature in Fahrenheit.", required: true },
+			{ name: "--band F", description: "Allowed degrees above or below target." },
+			{ name: "--archive ID", description: "Analyze a specific archive." },
+			{ name: "--channel N", description: "Archive channel to analyze." },
+		],
+		supportsJson: true,
+		handler: ({ args, options }: CommandContext) => stability(args.slice(1), options),
+	},
+	{
 		name: "firmware",
 		summary: "Show firmware versions and available updates",
 		usage: "firmware [--device SERIAL] [--json]",
@@ -717,6 +740,15 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 		usageLines: ["doneness [meat]  Show recommended internal pull temperatures for common cuts"],
 		supportsJson: true,
 		handler: ({ args, options }: CommandContext) => doneness(args[1], options),
+	},
+	{
+		name: "placement",
+		summary: "Show meat and pit probe placement guidance",
+		usage: "placement [meat] [--json]",
+		usageLines: ["placement [meat]  Show meat and pit probe placement guidance"],
+		arguments: [{ name: "meat", description: "Meat name or alias." }],
+		supportsJson: true,
+		handler: ({ args, options }: CommandContext) => placement(args.slice(1), options),
 	},
 	{
 		name: "safe",

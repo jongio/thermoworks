@@ -102,7 +102,12 @@ export function createSubscription(
 		} catch (err: unknown) {
 			if (stopped) return;
 			if (onError) {
-				onError(err instanceof Error ? err : new Error(String(err)));
+				try {
+					onError(err instanceof Error ? err : new Error(String(err)));
+				} catch {
+					// A throwing consumer onError callback must not reject this
+					// floating poll() promise and crash the host process.
+				}
 			}
 		} finally {
 			abortController = null;

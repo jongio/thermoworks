@@ -81,7 +81,7 @@ Full sidebar device panel + status bar integration. See all your devices, channe
 
 ### ⌨️ CLI + Copilot Statusline
 
-Live temperatures in your terminal footer while you code. Interactive wizard to pick devices and channels. 19 commands for device monitoring, alarms, sessions, data export, and more.
+Live temperatures in your terminal footer while you code. Interactive wizard to pick devices and channels. 45 commands for device monitoring, alarms, sessions, data export, and more.
 
 ![ThermoWorks statusline in GitHub Copilot CLI](docs/images/statusline.png)
 

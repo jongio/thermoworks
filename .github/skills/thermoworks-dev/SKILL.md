@@ -28,9 +28,10 @@ commands, extension features, SDK methods, and new packages.
 ```
 packages/
   sdk/      thermoworks-sdk    Node.js client (foundation - no workspace deps)
-  cli/      thermoworks        CLI tool (depends on sdk)
+  cli/      thermoworks        CLI tool (depends on sdk; bundles mcp)
+  mcp/      thermoworks-mcp    Internal MCP server library, bundled into the CLI (private, not published)
   vscode/   thermoworks        VS Code extension (depends on sdk as devDep)
-  web/                         Static marketing site (standalone)
+  web/      thermoworks-web    React real-time dashboard (depends on sdk)
 ```
 
 SDK is the foundation. CLI and VS Code both consume it via `"thermoworks-sdk": "workspace:^"`.
@@ -46,7 +47,7 @@ pnpm lint             # lint with Biome
 pnpm format           # auto-format with Biome
 ```
 
-Package manager is **pnpm** (v10.12.1). Never use npm or yarn.
+Package manager is **pnpm** (v11.14.0). Never use npm or yarn.
 
 ## Add a CLI command
 
@@ -66,14 +67,13 @@ Package manager is **pnpm** (v10.12.1). Never use npm or yarn.
    }
    ```
 
-2. Wire it in `packages/cli/src/index.ts` - add a case to the switch:
-   ```ts
-   case "mycommand":
-     await myCommand();
-     break;
-   ```
+2. Register it in `commandDefinitions` in `packages/cli/src/command-registry.ts`
+   (name, summary, usage, and a `handler`). `index.ts` dispatches through the
+   registry via `dispatchCommand` - there is no `switch` to edit.
 
-3. Add help text to `printUsage()`
+3. Regenerate the CLI reference with `pnpm --filter thermoworks generate:cli-docs`.
+   `docs/cli-reference.md` is generated from the registry - never hand-edit it
+   (a test asserts it matches the generator).
 
 4. Add tests in `packages/cli/tests/<name>.test.ts`
 

@@ -136,7 +136,7 @@ thermoworks copilot remove      # Remove statusline config
 thermoworks demo high|low|normal  # Preview alarm display
 ```
 
-The statusline config lives at `~/.config/thermoworks/statusline.json` and
+The statusline config lives at `~/.thermoworks/config.json` and
 maps device serials + channels to display labels.
 
 ## Key types

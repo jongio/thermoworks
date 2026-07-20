@@ -41,6 +41,23 @@ The package exports:
 - `assessCarryover(input)` — predict the pull temperature so carryover cooking lands on a target after resting (types: `CarryoverInput`, `CarryoverResult`, `CarryoverSize`)
 - `carryoverRiseForSize(size)` — preset carryover rise in °F for a `"small"`, `"medium"`, or `"large"` cut
 
+**Cook analytics & predictions:**
+- `predictDoneTime(current, target, rateOfChange, options?)` — estimate time-to-target from the current temperature trend (types: `PredictionOptions`, `PredictionResult`)
+- `detectStall(readings, options?)`, `detectRapidChange(readings, options?)` — stall and rapid-change detection over a reading series (types: `StallResult`, `RapidChangeResult`)
+- `assessCooling(samples, options?)` — FDA two-stage cooling compliance, with constants `FDA_STAGE1_START_F`, `FDA_STAGE1_END_F`, `FDA_STAGE2_END_F`
+- `assessWrap(input)` — should-I-wrap-now advisor, with defaults `DEFAULT_SLOW_RATE`, `DEFAULT_WRAP_AT_F`
+- `buildCookTimeline(readings, options?)` — annotated cook milestones (types: `CookTimeline`, `TimelineEvent`, `TimelineKind`, `TimelineOptions`)
+- `assessDeviceHealth(device, channels)`, `isChannelStale(channel)` — device health diagnostics (types: `DeviceHealth`, `DeviceHealthIssue`)
+- `planCook(items, options)`, `getMeatProfiles()`, `resolveMeatProfile(name)` — backwards cook planning by serve time (types: `CookPlan`, `MeatProfile`)
+- `calculateSeasoning(weightLb, options?)`, `listRubRecipes()`, `resolveRubRecipe(name)` — offline rub and brine scaling
+
+**Replay & subscriptions:**
+- `buildReplaySequence`, `archiveReadingToReplay`, `historyReadingToReplay`, `nextReplayIndex` — replay archived cooks as a time sequence
+- `createSubscription(serial, fetchChannels, callback, options?)` — standalone live-update subscription (types: `ChannelUpdate`, `Subscription`)
+
+**Token cache:**
+- `invalidateTokenCache()`, `resolveTokenCachePath(path?)` — manage the on-disk auth token cache (type: `TokenCacheData`)
+
 **Credential helpers:**
 - `parseCredentialBlob(blob)` — parse a JSON credential blob into `{ email, password }`
 - `serializeCredentials(email, password)` — serialize credentials to JSON
@@ -51,7 +68,7 @@ The package exports:
 - `StatuslineConfig`, `DeviceEntry`, `DEFAULT_STATUSLINE_CONFIG`
 - `isValidStatuslineConfig(raw)`, `isValidDeviceEntry(entry)` — validation helpers
 - `ChannelLabelMap`, `channelLabelKey(serial, channel)` — persistent channel label storage
-- `resolveChannelLabel(serial, channel, labels?, index?)` — three-tier label resolution (custom > cloud > "Ch N")
+- `resolveChannelLabel(serial, channel, labels, index)` — three-tier label resolution (custom > cloud > "Ch N")
 - `sanitizeLabel(value)` — strips ANSI/control characters and truncates to 50 chars
 - `isValidChannelLabelMap(raw)` — validation for channel label maps
 - `MAX_CHANNEL_LABEL_LENGTH` — max label length constant (50)

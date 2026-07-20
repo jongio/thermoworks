@@ -46,7 +46,7 @@ thermoworks auth login
 
 ### 2. (Optional) Choose which devices to show
 
-After signing in, the status bar shows **all** your devices (average temperature each), and the Devices panel lists everything automatically.
+After signing in, the status bar shows one device by default (its average temperature), and the Devices panel lists everything automatically. Change `thermoworks.statusBarMode` (`single`, `cycle`, or `all`) to control what the status bar shows.
 
 To curate which devices/channels appear in the **status bar** (e.g. specific probes instead of averages), run the CLI setup:
 

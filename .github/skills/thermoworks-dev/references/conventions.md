@@ -2,7 +2,7 @@
 
 ## Testing
 
-All packages use vitest ^4.1.8.
+All packages use vitest ^4.1.10.
 
 **Mocking `@github/keytar`** (CLI and VS Code packages):
 
@@ -65,9 +65,13 @@ CommonJS. The `vscode` and `@github/keytar` modules are externalized.
 
 ## Release
 
-Per-package release workflows triggered by git tags:
-- `thermoworks-sdk@x.y.z` - publishes SDK to npm
-- `thermoworks@x.y.z` - publishes CLI to npm
-- `thermoworks-vscode@x.y.z` - publishes VS Code extension
+Release workflows are run manually (`workflow_dispatch`) from the Actions tab.
+`release-all` bumps, publishes, and tags all packages; per-package workflows
+(`release-sdk`, `release-cli`, `release-vscode`) do one package each. Each run
+bumps the version, publishes (npm for sdk/cli, VS Code Marketplace for vscode),
+then commits and pushes tags:
+- `sdk-v x.y.z` - thermoworks-sdk (npm)
+- `cli-v x.y.z` - thermoworks (npm)
+- `vscode-v x.y.z` - jongio.thermoworks (VS Code Marketplace)
 
-A `release-all` workflow orchestrates publishing all packages.
+The web dashboard deploys to GitHub Pages via `pages.yml`, not npm.

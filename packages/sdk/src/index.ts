@@ -68,6 +68,8 @@ export {
 	historyReadingToReplay,
 	nextReplayIndex,
 } from "./replay.js";
+export type { RestPlan, RestPlanOptions, ServingTemperatureRange } from "./rest.js";
+export { planRest } from "./rest.js";
 export type {
 	DryBrinePlan,
 	RubIngredient,

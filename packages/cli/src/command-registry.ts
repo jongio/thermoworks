@@ -44,6 +44,7 @@ import { notifications } from "./commands/notifications.js";
 import { open } from "./commands/open.js";
 import { plan } from "./commands/plan.js";
 import { replay } from "./commands/replay.js";
+import { rest } from "./commands/rest.js";
 import { safe } from "./commands/safe.js";
 import { search } from "./commands/search.js";
 import { season } from "./commands/season.js";
@@ -901,6 +902,19 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 		arguments: [serial],
 		supportsJson: false,
 		handler: ({ args, options }: CommandContext) => replay(args.slice(1), options),
+	},
+	{
+		name: "rest",
+		summary: "Plan a rest window before serving",
+		usage: "rest <MEAT> [--weight LB] [--json]",
+		usageLines: [
+			"rest <MEAT>      Plan a rest window before serving",
+			"  --weight LB    Optional cut weight in pounds for large-cut holds",
+		],
+		arguments: [{ name: "MEAT", description: "Meat name or alias.", required: true }],
+		options: [{ name: "--weight LB", description: "Optional cut weight in pounds." }],
+		supportsJson: true,
+		handler: ({ args, options }: CommandContext) => rest(args.slice(1), options),
 	},
 	{
 		name: "timeline",

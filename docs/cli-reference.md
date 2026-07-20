@@ -1190,6 +1190,25 @@ npx thermoworks replay <SERIAL> [--archive ID] [--channel N] [--speed N] [--loop
 
 None.
 
+### `thermoworks rest <MEAT> [--weight LB] [--json]`
+
+Plan a rest window before serving
+
+**Usage**
+
+```bash
+npx thermoworks rest <MEAT> [--weight LB] [--json]
+```
+
+**Arguments**
+
+- `MEAT` (required) - Meat name or alias.
+
+**Options**
+
+- `--weight LB` - Optional cut weight in pounds.
+- `--json` - Output machine-readable JSON.
+
 ### `thermoworks timeline <SERIAL> [--archive ID] [--channel N] [--target F] [--json]`
 
 Annotate a saved cook with its key milestones

@@ -1,5 +1,33 @@
 # thermoworks-sdk
 
+## 0.6.0 (2026-07-09)
+
+### Features
+
+- Cook analytics and BBQ helpers: done-time prediction (`predictDoneTime`), stall and rapid-change detection (`detectStall`, `detectRapidChange`), FDA two-stage cooling (`assessCooling`), wrap advisor (`assessWrap`), annotated cook timeline (`buildCookTimeline`), device health diagnostics (`assessDeviceHealth`, `isChannelStale`), backwards cook planning (`planCook`), rub/brine scaling (`calculateSeasoning`), cook replay helpers, and pasteurization/carryover food-safety assessments (#134, #138, #150, and related).
+
+## 0.5.1 (2026-06-28)
+
+### Patch Changes
+
+- Documentation corrections across packages (#152).
+
+## 0.5.0 (2026-06-28)
+
+### Changes
+
+- Maintenance and dependency updates; released in lockstep with the VS Code live-charting and device-control work.
+
+## 0.4.0 (2026-06-09)
+
+### Features
+
+- MCP server package added to the monorepo, consuming the SDK (#49).
+
+### Fixes
+
+- `getFirmwareInfo` returns `null` on a 404 instead of throwing.
+
 ## 0.3.0
 
 ### Minor Changes

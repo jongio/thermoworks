@@ -1,5 +1,10 @@
 # Changelog
 
+> As of the 0.6.0 release, the MCP server is an **internal library bundled into
+> the `thermoworks` CLI** and is no longer published as a standalone npm package.
+> Run it with `thermoworks mcp start`. Further changes are tracked in the CLI
+> CHANGELOG (`packages/cli/CHANGELOG.md`).
+
 ## 0.1.0 (2026-06-07)
 
 ### Features

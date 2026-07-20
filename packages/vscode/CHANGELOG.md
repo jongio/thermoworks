@@ -1,8 +1,28 @@
 # Changelog
 
-## Unreleased
+## 0.6.0 (2026-07-09)
 
-### Features (#125-#130)
+### Features
+
+- Device health diagnostics and stale-reading indicators (#150).
+
+## 0.5.2 (2026-06-28)
+
+### Changes
+
+- Improve Marketplace listing metadata (#156).
+
+## 0.5.1 (2026-06-28)
+
+### Patch Changes
+
+- Documentation corrections (#152).
+
+## 0.5.0 (2026-06-28)
+
+### Features (#125-#132)
+
+- **Live charting** (#131, #132): full-session history charts, device streaming, device groups, and onboarding.
 
 - **Inline alarms** (#125): set and clear alarms directly from channel nodes in the tree
 - **Events panel** (#125): dedicated `thermoworksEvents` view with per-device filtering, severity icons, and configurable limit
@@ -21,6 +41,22 @@
 ### Changed
 
 - Retired the `@thermoworks` chat participant (#128). AI access now lives in the MCP server; use `thermoworks mcp start` and `thermoworks copilot setup`
+
+## 0.3.1 (2026-06-09)
+
+### Fixes
+
+- Align `engines.vscode` with `@types/vscode` (^1.120.0).
+
+## 0.3.0 (2026-06-09)
+
+### Features
+
+- VS Code features from the swarm feature drop.
+
+### Fixes
+
+- `getFirmwareInfo` returns `null` on a 404.
 
 ## 0.2.0
 

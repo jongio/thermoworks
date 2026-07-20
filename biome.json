@@ -45,6 +45,7 @@
 			"packages/*/src/**",
 			"packages/*/tests/**",
 			"packages/*/webview/**",
+			"packages/*/*.config.ts",
 			"*.json",
 			"*.ts"
 		]

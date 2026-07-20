@@ -5,7 +5,6 @@ export default defineConfig({
 		environment: "jsdom",
 		pool: "threads",
 		maxWorkers: 4,
-		exclude: [...configDefaults.exclude, "e2e/**"],
 		setupFiles: ["./tests/setup.ts"],
 		exclude: [...configDefaults.exclude, "e2e/**"],
 	},

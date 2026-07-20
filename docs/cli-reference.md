@@ -884,6 +884,24 @@ npx thermoworks doneness [meat] [--json]
 
 - `--json` - Output machine-readable JSON.
 
+### `thermoworks placement [meat] [--json]`
+
+Show meat and pit probe placement guidance
+
+**Usage**
+
+```bash
+npx thermoworks placement [meat] [--json]
+```
+
+**Arguments**
+
+- `meat` - Meat name or alias.
+
+**Options**
+
+- `--json` - Output machine-readable JSON.
+
 ### `thermoworks safe <SERIAL> [--channel N] [--temp T] [--protein P] [--held N] [--json]`
 
 Show food-safety pasteurization progress

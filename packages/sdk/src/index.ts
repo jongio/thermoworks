@@ -51,6 +51,8 @@ export {
 	getPasteurizationTable,
 	requiredHoldMinutes,
 } from "./pasteurization.js";
+export type { ProbePlacement } from "./placement.js";
+export { getProbePlacements, resolveProbePlacement } from "./placement.js";
 export type {
 	CookPlan,
 	CookPlanItem,

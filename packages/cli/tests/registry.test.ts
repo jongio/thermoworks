@@ -41,6 +41,7 @@ const expectedCommands = [
 	"graph",
 	"guide",
 	"doneness",
+	"placement",
 	"safe",
 	"carryover",
 	"cooldown",

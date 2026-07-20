@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import type { AppOutletContext } from "../src/components/AppLayout.tsx";
@@ -28,7 +28,10 @@ vi.mock("../src/components/TemperatureChart", () => ({
 }));
 
 function makeMockClient(): ThermoworksWebClient {
-	return { isAuthenticated: true } as unknown as ThermoworksWebClient;
+	return {
+		isAuthenticated: true,
+		shareDevice: vi.fn().mockResolvedValue({ shareUrl: "http://localhost/#/share/device/TW-001" }),
+	} as unknown as ThermoworksWebClient;
 }
 
 function makeDeviceData(overrides: Partial<DeviceWithChannels["device"]> = {}): DeviceWithChannels {
@@ -232,7 +235,7 @@ describe("DeviceDetail", () => {
 		expect(screen.getByText("INVALID-SERIAL")).toBeInTheDocument();
 	});
 
-	it("renders remaining quick action buttons as disabled", () => {
+	it("enables share while leaving reset disabled", () => {
 		mockUseDevice.mockReturnValue({
 			data: makeDeviceData(),
 			isLoading: false,
@@ -245,12 +248,30 @@ describe("DeviceDetail", () => {
 		// Rename is now functional via InlineEdit (not a disabled button)
 		expect(screen.getByRole("button", { name: /rename kitchen probe/i })).toBeEnabled();
 
-		// Share and Reset are still coming soon (disabled)
-		const shareBtn = screen.getByRole("button", { name: /share/i });
-		const resetBtn = screen.getByRole("button", { name: /reset/i });
+		const shareBtn = screen.getByRole("button", { name: /share kitchen probe/i });
+		const resetBtn = screen.getByRole("button", { name: /^reset$/i });
 
-		expect(shareBtn).toBeDisabled();
+		expect(shareBtn).toBeEnabled();
 		expect(resetBtn).toBeDisabled();
+	});
+
+	it("opens the device share dialog from the quick action", async () => {
+		mockUseDevice.mockReturnValue({
+			data: makeDeviceData(),
+			isLoading: false,
+			error: null,
+			refresh: vi.fn(),
+		});
+
+		renderDetailPage("TW-001");
+
+		const shareBtn = screen.getByRole("button", { name: /share/i });
+		fireEvent.click(shareBtn);
+
+		await waitFor(() => {
+			expect(screen.getByRole("dialog", { name: /share device/i })).toBeInTheDocument();
+		});
+		expect(screen.getByDisplayValue("http://localhost/#/share/device/TW-001")).toBeInTheDocument();
 	});
 
 	it("passes correct serial to useDevice hook", () => {

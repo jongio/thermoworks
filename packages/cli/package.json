@@ -47,12 +47,14 @@
 	"devDependencies": {
 		"@types/node": "^26.1.1",
 		"rimraf": "^6.1.3",
+		"thermoworks-mcp": "workspace:^",
 		"tsup": "^8.5.1",
 		"vitest": "^4.1.10"
 	},
 	"dependencies": {
 		"@github/keytar": "^7.10.6",
-		"thermoworks-mcp": "workspace:^",
-		"thermoworks-sdk": "workspace:^"
+		"@modelcontextprotocol/sdk": "^1.29.0",
+		"thermoworks-sdk": "workspace:^",
+		"zod": "^4.4.3"
 	}
 }

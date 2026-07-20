@@ -2,6 +2,8 @@
 
 MCP (Model Context Protocol) server for ThermoWorks Cloud. Gives AI assistants like GitHub Copilot, Claude, and ChatGPT read access to device temperatures, events, archives, and firmware status, plus safe write actions for alarms and cooking sessions.
 
+> This server ships **inside the `thermoworks` CLI** - there is no separate package to install. Install the CLI and launch it with `thermoworks mcp start`.
+
 ## Quick Start
 
 ```bash

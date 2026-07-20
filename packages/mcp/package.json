@@ -1,15 +1,9 @@
 {
 	"name": "thermoworks-mcp",
 	"version": "0.1.0",
-	"description": "MCP server for ThermoWorks Cloud - expose device data to AI assistants",
+	"private": true,
+	"description": "MCP server for ThermoWorks Cloud - internal library bundled into the thermoworks CLI (run via `thermoworks mcp start`)",
 	"type": "module",
-	"bin": {
-		"thermoworks-mcp": "./dist/index.js"
-	},
-	"files": [
-		"dist/",
-		"README.md"
-	],
 	"engines": {
 		"node": ">=18.0.0"
 	},
@@ -19,18 +13,6 @@
 		"type": "git",
 		"url": "https://github.com/jongio/thermoworks",
 		"directory": "packages/mcp"
-	},
-	"keywords": [
-		"thermoworks",
-		"mcp",
-		"model-context-protocol",
-		"ai",
-		"temperature",
-		"iot"
-	],
-	"publishConfig": {
-		"provenance": true,
-		"access": "public"
 	},
 	"exports": {
 		".": {
@@ -42,7 +24,6 @@
 		"build": "tsup && tsc -p tsconfig.json --emitDeclarationOnly",
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit",
-		"prepack": "pnpm build",
 		"clean": "rimraf dist"
 	},
 	"devDependencies": {

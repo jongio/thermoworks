@@ -8,6 +8,40 @@ const STALE_CRITICAL_MS = 30 * 60 * 1000;
 const BATTERY_WARNING_THRESHOLD = 20;
 /** Battery percentage below which a critical issue is issued. */
 const BATTERY_CRITICAL_THRESHOLD = 5;
+/** RSSI at or below this dBm is warning-level Wi-Fi health. */
+const WIFI_WARNING_DBM = -75;
+/** RSSI at or below this dBm is critical Wi-Fi health. */
+const WIFI_CRITICAL_DBM = -85;
+/** Percentage at or below this value is warning-level Wi-Fi health. */
+const WIFI_WARNING_PERCENT = 30;
+/** Percentage at or below this value is critical Wi-Fi health. */
+const WIFI_CRITICAL_PERCENT = 10;
+
+function assessWifiStrength(strength: number): DeviceHealthIssue | null {
+	const isRssi = strength < 0;
+	const detail = isRssi ? `RSSI ${strength} dBm` : `Signal ${strength}%`;
+	const critical = isRssi ? strength <= WIFI_CRITICAL_DBM : strength <= WIFI_CRITICAL_PERCENT;
+	if (critical) {
+		return {
+			code: "weak_wifi_signal",
+			severity: "critical",
+			message: "Wi-Fi signal critically weak",
+			detail,
+		};
+	}
+
+	const warning = isRssi ? strength <= WIFI_WARNING_DBM : strength <= WIFI_WARNING_PERCENT;
+	if (warning) {
+		return {
+			code: "weak_wifi_signal",
+			severity: "warning",
+			message: "Wi-Fi signal weak",
+			detail,
+		};
+	}
+
+	return null;
+}
 
 /**
  * Assess the health of a device based on its state and channel data.
@@ -78,6 +112,11 @@ export function assessDeviceHealth(
 				detail: `Battery at ${device.battery}%`,
 			});
 		}
+	}
+
+	if (device.wifiStrength != null) {
+		const wifiIssue = assessWifiStrength(device.wifiStrength);
+		if (wifiIssue) issues.push(wifiIssue);
 	}
 
 	// Offline check

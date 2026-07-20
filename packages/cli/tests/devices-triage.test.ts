@@ -43,7 +43,7 @@ function makeDevice(overrides: Partial<Device> & { serial: string }): Device {
 		status: overrides.status ?? null,
 		battery: overrides.battery ?? null,
 		batteryState: null,
-		wifiStrength: null,
+		wifiStrength: overrides.wifiStrength ?? null,
 		firmware: null,
 		color: null,
 		thumbnail: null,
@@ -386,6 +386,32 @@ describe("devices --critical", () => {
 		expect(parsed[0].serial).toBe("WARN");
 		expect(parsed[0].health).toBeDefined();
 		expect(parsed[0].health.overall).toBe("warning");
+	});
+
+	it("keeps weak Wi-Fi devices in JSON mode", async () => {
+		const goodDevice = makeDevice({ serial: "GOOD", label: "Healthy", status: "online" });
+		const weakWifiDevice = makeDevice({
+			serial: "WIFI",
+			label: "WeakWifi",
+			status: "online",
+			wifiStrength: -78,
+		});
+
+		mockGetDevices.mockResolvedValue([goodDevice, weakWifiDevice]);
+		mockGetAllDeviceChannels.mockResolvedValue([
+			makeChannel({ value: 200, units: "F", number: "1" }),
+		]);
+
+		const { devices } = await import("../src/commands/devices.js");
+		await devices({ json: true, criticalOnly: true });
+
+		const raw = logSpy.mock.calls[0][0] as string;
+		const parsed = JSON.parse(raw);
+		expect(parsed).toHaveLength(1);
+		expect(parsed[0].serial).toBe("WIFI");
+		expect(parsed[0].health.issues).toContainEqual(
+			expect.objectContaining({ code: "weak_wifi_signal", severity: "warning" }),
+		);
 	});
 });
 

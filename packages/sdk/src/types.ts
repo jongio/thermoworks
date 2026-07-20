@@ -472,7 +472,12 @@ export interface DeviceHealth {
 
 /** A single health issue detected on a device. */
 export interface DeviceHealthIssue {
-	readonly code: "stale_reading" | "low_battery" | "offline" | "firmware_outdated";
+	readonly code:
+		| "stale_reading"
+		| "low_battery"
+		| "weak_wifi_signal"
+		| "offline"
+		| "firmware_outdated";
 	readonly severity: "warning" | "critical";
 	readonly message: string;
 	readonly detail?: string;

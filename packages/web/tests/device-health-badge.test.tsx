@@ -167,4 +167,17 @@ describe("DeviceHealthBadge", () => {
 
 		expect(screen.getByRole("tooltip")).toHaveTextContent("stale");
 	});
+
+	it("shows weak Wi-Fi signal in the tooltip", () => {
+		const device = makeDevice({ status: "online", battery: 80, wifiStrength: -78 });
+		const channels = [makeChannel()];
+
+		render(<DeviceHealthBadge device={device} channels={channels} />);
+
+		const badge = screen.getByLabelText("Device health: Warning");
+		fireEvent.mouseEnter(badge);
+
+		expect(screen.getByRole("tooltip")).toHaveTextContent("Wi-Fi signal weak");
+		expect(screen.getByRole("tooltip")).toHaveTextContent("RSSI -78 dBm");
+	});
 });

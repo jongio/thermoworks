@@ -58,10 +58,10 @@ jobs:
           VERSION=$(npm version ${{ inputs.bump }} --no-git-tag-version)
           VERSION="${VERSION#v}"
           echo "Publishing jongio.thermoworks@$VERSION to VS Code Marketplace"
-          npx vsce publish --no-dependencies --pat "$VSCE_PAT"
+          pnpm exec vsce publish --no-dependencies --pat "$VSCE_PAT"
           if [ -n "$OVSX_PAT" ]; then
             echo "Publishing to Open VSX Registry"
-            npx ovsx publish --pat "$OVSX_PAT" --no-dependencies
+            pnpm exec ovsx publish --pat "$OVSX_PAT" --no-dependencies
           fi
           cd ../..
           git config user.name "github-actions[bot]"

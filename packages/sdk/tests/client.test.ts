@@ -547,7 +547,19 @@ describe("ThermoworksCloud", () => {
 			setupAuth();
 			mockRequest.mockResolvedValueOnce(
 				mockRes(200, {
-					fields: { value: { doubleValue: 70 }, units: { stringValue: "F\x1b[2J" } },
+					fields: {
+						value: { doubleValue: 70 },
+						units: { stringValue: "F\x1b[2J" },
+						alarmHigh: {
+							mapValue: {
+								fields: {
+									enabled: { booleanValue: true },
+									value: { doubleValue: 225 },
+									units: { stringValue: "F\x1b[31m" },
+								},
+							},
+						},
+					},
 				}) as any,
 			);
 			for (let i = 2; i <= 9; i++) {
@@ -556,6 +568,8 @@ describe("ThermoworksCloud", () => {
 			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
 			const channels = await client.getAllDeviceChannels("ABC123");
 			expect(channels[0]?.units).toBe("F");
+			// Alarm units is also untrusted cloud free-text and must be sanitized.
+			expect(channels[0]?.alarmHigh?.units).toBe("F");
 			client.close();
 		});
 	});

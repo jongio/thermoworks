@@ -1307,7 +1307,7 @@ function parseAlarm(fields: FirestoreFields | null): Alarm | null {
 		alarming: getBoolean(fields, "alarming") ?? false,
 		muted: getBoolean(fields, "muted"),
 		value: getNumber(fields, "value"),
-		units: getString(fields, "units"),
+		units: sanitizeLabel(getString(fields, "units")),
 		lastNotified: getTimestamp(fields, "lastNotified"),
 	};
 }
@@ -1317,7 +1317,7 @@ function parseMinMaxReading(fields: FirestoreFields | null): MinMaxReading | nul
 	const readingFields = getMapFields(fields, "reading");
 	return {
 		value: readingFields ? getNumber(readingFields, "value") : null,
-		units: readingFields ? getString(readingFields, "units") : null,
+		units: readingFields ? sanitizeLabel(getString(readingFields, "units")) : null,
 		date: getTimestamp(fields, "dateReading"),
 	};
 }
@@ -1507,7 +1507,7 @@ function parseCalibrationPoints(values: FirestoreValue[] | null): CalibrationPoi
 			points.push({
 				channel: getNumber(f, "channel") ?? 0,
 				value: getNumber(f, "value") ?? 0,
-				units: getString(f, "units") ?? "",
+				units: sanitizeLabel(getString(f, "units")) ?? "",
 				referenceValue: getNumber(f, "referenceValue") ?? 0,
 				deviation: getNumber(f, "deviation") ?? 0,
 				trimValue: getNumber(f, "trimValue"),

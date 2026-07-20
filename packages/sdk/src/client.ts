@@ -76,7 +76,7 @@ function validateChannel(channel: number): void {
 function sanitizeLabel(value: string | null | undefined): string | null {
 	if (value == null) return null;
 	// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional - stripping control chars
-	return value.replace(/[\x00-\x1f\x7f\x1b](\[[0-9;]*[A-Za-z])?/g, "");
+	return value.replace(/[\x00-\x1f\x7f-\x9f](\[[0-9;]*[A-Za-z])?/g, "");
 }
 
 /**
@@ -1279,7 +1279,7 @@ function parseDevice(fields: FirestoreFields): Device {
 function parseDeviceChannel(fields: FirestoreFields): DeviceChannel {
 	return {
 		value: getNumber(fields, "value"),
-		units: getString(fields, "units"),
+		units: sanitizeLabel(getString(fields, "units")),
 		label: sanitizeLabel(getString(fields, "label")),
 		status: sanitizeLabel(getString(fields, "status")),
 		type: sanitizeLabel(getString(fields, "type")),
@@ -1379,7 +1379,8 @@ function parseNotificationSettings(fields: FirestoreFields | null): Notification
 function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {
 	return {
 		id,
-		eventType: getString(fields, "EventType") ?? getString(fields, "eventType") ?? "",
+		eventType:
+			sanitizeLabel(getString(fields, "EventType") ?? getString(fields, "eventType")) ?? "",
 		severity: getNumber(fields, "Severity") ?? getNumber(fields, "severity") ?? 0,
 		eventTime:
 			getTimestamp(fields, "EventTime") ??
@@ -1390,8 +1391,10 @@ function parseDeviceEvent(fields: FirestoreFields, id: string): DeviceEvent {
 		deviceId: getString(fields, "deviceId") ?? "",
 		channelId: getString(fields, "channelId"),
 		accountId: getString(fields, "accountId") ?? "",
-		valueBefore: getString(fields, "ValueBefore") ?? getString(fields, "valueBefore"),
-		valueAfter: getString(fields, "ValueAfter") ?? getString(fields, "valueAfter"),
+		valueBefore: sanitizeLabel(
+			getString(fields, "ValueBefore") ?? getString(fields, "valueBefore"),
+		),
+		valueAfter: sanitizeLabel(getString(fields, "ValueAfter") ?? getString(fields, "valueAfter")),
 		groups: getStringArray(fields, "groups"),
 	};
 }
@@ -1449,7 +1452,7 @@ function parseArchiveChannel(fields: FirestoreFields): ArchiveChannel {
 				const rawValue =
 					getNumber(rf, "value") ?? getNumber(rf, "v") ?? parseFloat(getString(rf, "v") ?? "");
 				const timestamp = getTimestamp(rf, "timestamp") ?? getTimestamp(rf, "ts");
-				const units = getString(rf, "units") ?? getString(rf, "u");
+				const units = sanitizeLabel(getString(rf, "units") ?? getString(rf, "u"));
 				if (rawValue != null && !Number.isNaN(rawValue) && timestamp != null && units != null) {
 					recentReadings.push({ value: rawValue, timestamp, units });
 				}
@@ -1460,7 +1463,7 @@ function parseArchiveChannel(fields: FirestoreFields): ArchiveChannel {
 	return {
 		number: getString(fields, "number"),
 		label: sanitizeLabel(getString(fields, "label")),
-		units: getString(fields, "units"),
+		units: sanitizeLabel(getString(fields, "units")),
 		value: getNumber(fields, "value"),
 		status: sanitizeLabel(getString(fields, "status")),
 		enabled: getBoolean(fields, "enabled"),

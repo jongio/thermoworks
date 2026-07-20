@@ -42,7 +42,7 @@ export const DEFAULT_STATUSLINE_CONFIG: StatuslineConfig = {
 export function sanitizeLabel(value: string | null | undefined): string | null {
 	if (value == null) return null;
 	// biome-ignore lint/suspicious/noControlCharactersInRegex: intentional - stripping ANSI/control chars from untrusted labels
-	const stripped = value.replace(/[\x00-\x1f\x7f\x1b](\[[0-9;]*[A-Za-z])?/g, "");
+	const stripped = value.replace(/[\x00-\x1f\x7f-\x9f](\[[0-9;]*[A-Za-z])?/g, "");
 	return stripped.slice(0, MAX_CHANNEL_LABEL_LENGTH);
 }
 

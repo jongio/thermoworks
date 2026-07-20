@@ -542,6 +542,22 @@ describe("ThermoworksCloud", () => {
 			expect(channels[1]?.units).toBe("H");
 			client.close();
 		});
+
+		it("sanitizes ANSI/control characters from untrusted channel units", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: { value: { doubleValue: 70 }, units: { stringValue: "F\x1b[2J" } },
+				}) as any,
+			);
+			for (let i = 2; i <= 9; i++) {
+				mockRequest.mockResolvedValueOnce(mockRes(404, {}) as any);
+			}
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const channels = await client.getAllDeviceChannels("ABC123");
+			expect(channels[0]?.units).toBe("F");
+			client.close();
+		});
 	});
 
 	describe("getAccount", () => {
@@ -624,6 +640,38 @@ describe("ThermoworksCloud", () => {
 			expect(events[0]?.severity).toBe(2);
 			expect(events[0]?.deviceId).toBe("ABC123");
 			expect(events[0]?.id).toBe("evt-1");
+			client.close();
+		});
+
+		it("sanitizes ANSI/control characters from untrusted event free-text", async () => {
+			setupAuth();
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, {
+					fields: { accountId: { stringValue: "acct-123" } },
+				}) as any,
+			);
+			mockRequest.mockResolvedValueOnce(
+				mockRes(200, [
+					{
+						document: {
+							name: "projects/thermoworks-app/databases/(default)/documents/events/evt-9",
+							fields: {
+								EventType: { stringValue: "High\x1b[2J Alarm" },
+								ValueBefore: { stringValue: "20\x07" },
+								ValueAfter: { stringValue: "\x1b[31m225\x1b[0m" },
+								deviceId: { stringValue: "ABC123" },
+								accountId: { stringValue: "acct-123" },
+							},
+						},
+					},
+				]) as any,
+			);
+
+			const client = new ThermoworksCloud({ email: "test@example.com", password: "pass" });
+			const events = await client.getEvents();
+			expect(events[0]?.eventType).toBe("High Alarm");
+			expect(events[0]?.valueBefore).toBe("20");
+			expect(events[0]?.valueAfter).toBe("225");
 			client.close();
 		});
 

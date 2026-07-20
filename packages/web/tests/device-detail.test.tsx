@@ -246,11 +246,12 @@ describe("DeviceDetail", () => {
 		expect(screen.getByRole("button", { name: /rename kitchen probe/i })).toBeEnabled();
 
 		// Share and Reset are still coming soon (disabled)
-		const shareBtn = screen.getByRole("button", { name: /share/i });
-		const resetBtn = screen.getByRole("button", { name: /reset/i });
+		const shareBtn = screen.getByRole("button", { name: /^share$/i });
+		const resetBtn = screen.getByRole("button", { name: /^reset$/i });
 
 		expect(shareBtn).toBeDisabled();
 		expect(resetBtn).toBeDisabled();
+		expect(screen.getAllByRole("button", { name: /reset min\/max/i })).toHaveLength(2);
 	});
 
 	it("passes correct serial to useDevice hook", () => {

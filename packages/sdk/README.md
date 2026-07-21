@@ -50,6 +50,10 @@ The package exports:
 - `assessDeviceHealth(device, channels)`, `isChannelStale(channel)` — device health diagnostics (types: `DeviceHealth`, `DeviceHealthIssue`)
 - `planCook(items, options)`, `getMeatProfiles()`, `resolveMeatProfile(name)` — backwards cook planning by serve time (types: `CookPlan`, `MeatProfile`)
 - `calculateSeasoning(weightLb, options?)`, `listRubRecipes()`, `resolveRubRecipe(name)` — offline rub and brine scaling
+- `analyzePitStability(readings, options?)` — pit temperature time-in-band for an archived cook: time in band, high/low excursions, and average/min/max (types: `PitStabilityOptions`, `PitStabilityResult`, `PitStabilityExcursion`)
+
+**Probe placement:**
+- `getProbePlacements()`, `resolveProbePlacement(meat)` — reference guidance for placing meat and pit probes per cut, with common mistakes to avoid (type: `ProbePlacement`)
 
 **Replay & subscriptions:**
 - `buildReplaySequence`, `archiveReadingToReplay`, `historyReadingToReplay`, `nextReplayIndex` — replay archived cooks as a time sequence

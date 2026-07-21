@@ -70,6 +70,23 @@ describe("useAccounts", () => {
 		expect(result.current.activeAccountId).toBe("user-1");
 	});
 
+	it("does not persist the long-lived refresh token to localStorage", () => {
+		seedSessionStorage("user-1");
+		const { result } = renderHook(() => useAccounts());
+
+		act(() => {
+			result.current.addAccount("alice@example.com", { isAuthenticated: true } as never);
+		});
+
+		const raw = localStorage.getItem("thermoworks-accounts") ?? "[]";
+		const stored = JSON.parse(raw) as Array<{
+			token: { refreshToken: string; accessToken: string };
+		}>;
+		// Refresh token is dropped; only the short-lived access token is kept.
+		expect(stored[0].token.refreshToken).toBe("");
+		expect(stored[0].token.accessToken).toBe("access-user-1");
+	});
+
 	it("addAccount updates existing account if same userId", () => {
 		seedSessionStorage("user-1");
 		const { result } = renderHook(() => useAccounts());

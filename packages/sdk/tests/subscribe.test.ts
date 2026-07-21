@@ -221,6 +221,23 @@ describe("createSubscription", () => {
 		sub.unsubscribe();
 	});
 
+	it("does not crash the poll loop when onError itself throws", async () => {
+		const fetcher: ChannelFetcher = vi.fn().mockRejectedValue(new Error("network failure"));
+		const sub = createSubscription("ABC123", fetcher, () => {}, {
+			intervalMs: 5000,
+			onError: () => {
+				throw new Error("consumer onError blew up");
+			},
+		});
+
+		// A throwing consumer onError must not reject the floating poll() promise;
+		// otherwise it surfaces as an unhandled rejection and crashes the host.
+		await vi.advanceTimersByTimeAsync(0);
+		await vi.advanceTimersByTimeAsync(5000);
+		expect(fetcher).toHaveBeenCalled();
+		sub.unsubscribe();
+	});
+
 	it("swallows errors silently when onError is not provided", async () => {
 		const fetcher: ChannelFetcher = vi.fn().mockRejectedValue(new Error("oops"));
 		const updates: ChannelUpdate[] = [];

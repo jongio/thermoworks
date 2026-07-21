@@ -28,6 +28,11 @@ describe("sanitizeLabel", () => {
 		expect(sanitizeLabel("hello\x00world\x07")).toBe("helloworld");
 	});
 
+	it("strips C1 control characters (8-bit CSI/OSC)", () => {
+		// U+009B (CSI) and U+009F (APC) are C1 controls some terminals honor.
+		expect(sanitizeLabel("a\u009bb\u009fc")).toBe("abc");
+	});
+
 	it("truncates to MAX_CHANNEL_LABEL_LENGTH", () => {
 		const long = "A".repeat(100);
 		const result = sanitizeLabel(long);

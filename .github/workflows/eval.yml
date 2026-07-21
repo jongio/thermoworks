@@ -63,10 +63,13 @@ jobs:
       # green until the secret is provisioned (and never fail for external forks).
       - name: Run eval suite
         if: ${{ env.COPILOT_GITHUB_TOKEN != '' }}
+        env:
+          EVAL_SUITE: ${{ inputs.suite || 'smoke' }}
+          EVAL_MODEL: ${{ inputs.model }}
         run: |
-          ARGS="--suite ${{ inputs.suite || 'smoke' }} --verbose"
-          if [ -n "${{ inputs.model }}" ]; then
-            ARGS="$ARGS --model ${{ inputs.model }}"
+          ARGS="--suite $EVAL_SUITE --verbose"
+          if [ -n "$EVAL_MODEL" ]; then
+            ARGS="$ARGS --model $EVAL_MODEL"
           fi
           npx vally eval $ARGS
 

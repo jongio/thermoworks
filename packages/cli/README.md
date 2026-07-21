@@ -540,6 +540,23 @@ Options:
 - `--limit N` — Summarize only the N most recent archives
 - `--json` — Emit the stats as JSON (durations in seconds, dates as ISO strings)
 
+### `thermoworks stability <serial> --target F`
+
+Measure how steadily a pit held its target across an archived cook: time in band, the longest out-of-band excursion, and average/min/max. Offline analysis of a stored session.
+
+```bash
+npx thermoworks stability M100009168 --target 225
+npx thermoworks stability M100009168 --target 225 --band 15 --archive 123
+npx thermoworks stability M100009168 --target 225 --json
+```
+
+Options:
+- `--target F` — Desired pit temperature in Fahrenheit (required)
+- `--band F` — Allowed degrees above or below target
+- `--archive ID` — Analyze a specific archive
+- `--channel N` — Archive channel to analyze
+- `--json` — Output machine-readable JSON
+
 ### `thermoworks firmware`
 
 Show firmware versions and available updates for all devices.
@@ -795,6 +812,19 @@ npx thermoworks doneness brisket
 npx thermoworks doneness --json
 ```
 
+### `thermoworks placement [meat]`
+
+Show where to place the meat and pit probes for common cuts, plus mistakes to avoid. Reads built-in reference data, so it needs no network access or login.
+
+```bash
+npx thermoworks placement
+npx thermoworks placement brisket
+npx thermoworks placement --json
+```
+
+Options:
+- `--json` — Output machine-readable JSON
+
 ### `thermoworks safe <serial>|--temp <value>`
 
 Show food-safety pasteurization progress for a probe. Reads the current channel temperature and, using USDA time-at-temperature data (7.0-log10 Salmonella for poultry, 6.5-log10 for beef and pork), reports whether the food is safe now or how long it must hold at this temperature. Pulling poultry, beef, or pork at a lower temperature is safe when the core holds long enough, and this tells you when that point is reached. Estimates only, not a replacement for official food-safety guidance.
@@ -980,6 +1010,18 @@ Keys:
 
 The `watch` command reads `device` and `watchInterval` when the matching flags are not passed. Unknown keys and invalid values are rejected with a non-zero exit code.
 
+### `thermoworks doctor`
+
+Diagnose authentication, network, and API issues. Checks stored credentials, connectivity to ThermoWorks Cloud, and the auth token cache.
+
+```bash
+npx thermoworks doctor
+npx thermoworks doctor --json
+```
+
+Options:
+- `--json` — Output machine-readable JSON
+
 ### `thermoworks replay <serial>`
 
 Play back a past cook as if it were streaming live. Reads recent history (or a saved archive) and prints each reading in order, waiting between readings based on the original time gaps. Useful for reviewing how a cook progressed, demoing, or testing dashboards without a live device.
@@ -1025,7 +1067,7 @@ npx thermoworks mcp start
 Notes:
 - Launched by an MCP client (not used interactively).
 - Credentials resolved from env vars or OS keychain.
-- Exposes 12 tools: `get_devices`, `get_device`, `get_device_channels`, `get_average_temperature`, `get_events`, `get_archives`, `get_temperature_guide`, `set_alarm`, `start_session`, `end_session`, `get_firmware_status`, `get_archive_detail`.
+- Exposes 25 tools spanning device readings, alarms, sessions, fan control, archives, firmware, health summaries, cook planning, and food safety (see the [MCP server README](../mcp/README.md) for the full list).
 - See [MCP server README](../mcp/README.md) for client configuration.
 
 ### `thermoworks demo <high|low|normal>`

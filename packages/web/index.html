@@ -13,16 +13,6 @@
     <link rel="icon" href="favicon-16x16.png" sizes="16x16" type="image/png" />
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="icon-192.png" sizes="192x192" />
-    <script>
-      // SPA redirect recovery for GitHub Pages
-      (function () {
-        var redirect = sessionStorage.redirect;
-        delete sessionStorage.redirect;
-        if (redirect && redirect !== location.href) {
-          history.replaceState(null, '', redirect);
-        }
-      })();
-    </script>
   </head>
   <body class="min-h-screen bg-background text-foreground antialiased">
     <div id="root"></div>

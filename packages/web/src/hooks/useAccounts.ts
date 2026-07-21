@@ -68,7 +68,16 @@ function writeAccounts(accounts: StoredAccount[]): void {
 		if (accounts.length === 0) {
 			localStorage.removeItem(ACCOUNTS_STORAGE_KEY);
 		} else {
-			localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(accounts));
+			// Do not persist long-lived refresh tokens to localStorage: this app is
+			// served from a shared *.github.io origin, so any script on that origin
+			// could read them and mint fresh sessions indefinitely. Keep only the
+			// short-lived access token; once it expires, switching to that account
+			// re-authenticates.
+			const persisted = accounts.map((account) => ({
+				...account,
+				token: { ...account.token, refreshToken: "" },
+			}));
+			localStorage.setItem(ACCOUNTS_STORAGE_KEY, JSON.stringify(persisted));
 		}
 	} catch {
 		// Storage unavailable

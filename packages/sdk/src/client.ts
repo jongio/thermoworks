@@ -80,6 +80,17 @@ function sanitizeLabel(value: string | null | undefined): string | null {
 }
 
 /**
+ * Sanitize a units string: strip control/escape chars like a label, then cap the
+ * length so units stays a short token (for example F, C, %RH) and cannot smuggle
+ * a prompt-injection sentence into a terminal or an LLM tool result. This keeps
+ * units a genuinely constrained field even though it is written from the cloud.
+ */
+function sanitizeUnits(value: string | null | undefined): string | null {
+	const cleaned = sanitizeLabel(value);
+	return cleaned == null ? cleaned : cleaned.slice(0, 8);
+}
+
+/**
  * Client for the ThermoWorks Cloud service.
  *
  * @example
@@ -1279,7 +1290,7 @@ function parseDevice(fields: FirestoreFields): Device {
 function parseDeviceChannel(fields: FirestoreFields): DeviceChannel {
 	return {
 		value: getNumber(fields, "value"),
-		units: sanitizeLabel(getString(fields, "units")),
+		units: sanitizeUnits(getString(fields, "units")),
 		label: sanitizeLabel(getString(fields, "label")),
 		status: sanitizeLabel(getString(fields, "status")),
 		type: sanitizeLabel(getString(fields, "type")),
@@ -1307,7 +1318,7 @@ function parseAlarm(fields: FirestoreFields | null): Alarm | null {
 		alarming: getBoolean(fields, "alarming") ?? false,
 		muted: getBoolean(fields, "muted"),
 		value: getNumber(fields, "value"),
-		units: sanitizeLabel(getString(fields, "units")),
+		units: sanitizeUnits(getString(fields, "units")),
 		lastNotified: getTimestamp(fields, "lastNotified"),
 	};
 }
@@ -1317,7 +1328,7 @@ function parseMinMaxReading(fields: FirestoreFields | null): MinMaxReading | nul
 	const readingFields = getMapFields(fields, "reading");
 	return {
 		value: readingFields ? getNumber(readingFields, "value") : null,
-		units: readingFields ? sanitizeLabel(getString(readingFields, "units")) : null,
+		units: readingFields ? sanitizeUnits(getString(readingFields, "units")) : null,
 		date: getTimestamp(fields, "dateReading"),
 	};
 }
@@ -1452,7 +1463,7 @@ function parseArchiveChannel(fields: FirestoreFields): ArchiveChannel {
 				const rawValue =
 					getNumber(rf, "value") ?? getNumber(rf, "v") ?? parseFloat(getString(rf, "v") ?? "");
 				const timestamp = getTimestamp(rf, "timestamp") ?? getTimestamp(rf, "ts");
-				const units = sanitizeLabel(getString(rf, "units") ?? getString(rf, "u"));
+				const units = sanitizeUnits(getString(rf, "units") ?? getString(rf, "u"));
 				if (rawValue != null && !Number.isNaN(rawValue) && timestamp != null && units != null) {
 					recentReadings.push({ value: rawValue, timestamp, units });
 				}
@@ -1463,7 +1474,7 @@ function parseArchiveChannel(fields: FirestoreFields): ArchiveChannel {
 	return {
 		number: getString(fields, "number"),
 		label: sanitizeLabel(getString(fields, "label")),
-		units: sanitizeLabel(getString(fields, "units")),
+		units: sanitizeUnits(getString(fields, "units")),
 		value: getNumber(fields, "value"),
 		status: sanitizeLabel(getString(fields, "status")),
 		enabled: getBoolean(fields, "enabled"),
@@ -1507,7 +1518,7 @@ function parseCalibrationPoints(values: FirestoreValue[] | null): CalibrationPoi
 			points.push({
 				channel: getNumber(f, "channel") ?? 0,
 				value: getNumber(f, "value") ?? 0,
-				units: sanitizeLabel(getString(f, "units")) ?? "",
+				units: sanitizeUnits(getString(f, "units")) ?? "",
 				referenceValue: getNumber(f, "referenceValue") ?? 0,
 				deviation: getNumber(f, "deviation") ?? 0,
 				trimValue: getNumber(f, "trimValue"),

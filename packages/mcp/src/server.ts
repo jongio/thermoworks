@@ -64,8 +64,10 @@ type ToolResult = { content: Array<{ type: "text"; text: string }> };
  * Field names whose values are user- or device-provided free text. Their values
  * are fenced before appearing in tool output an LLM reads, so injected text in a
  * device label or event value cannot be interpreted as instructions. Constrained
- * fields (status, type, units, numeric values, serials/ids) are intentionally
- * omitted: they are not free-text vectors and fencing them would only add noise.
+ * fields (status, type, numeric values, serials/ids) and units (sanitized and
+ * length-capped at the SDK parse boundary, so it stays a short token) are
+ * intentionally omitted: they are not free-text vectors and fencing them would
+ * only add noise.
  */
 const UNTRUSTED_STRING_FIELDS: ReadonlySet<string> = new Set([
 	"label",

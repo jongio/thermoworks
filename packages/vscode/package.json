@@ -3,7 +3,7 @@
   "private": true,
   "displayName": "ThermoWorks",
   "description": "Monitor live ThermoWorks Cloud temperatures, alarms, charts, and events for your Smoke, Signals, Node, and RFX devices — right in the VS Code status bar and a full device panel.",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "publisher": "jongio",
   "author": "Jon Gallant",
   "license": "MIT",

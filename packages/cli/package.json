@@ -1,6 +1,6 @@
 {
 	"name": "thermoworks",
-	"version": "0.7.0",
+	"version": "0.8.0",
 	"description": "CLI for ThermoWorks Cloud - manage credentials, view temperatures, configure Copilot statusline",
 	"type": "module",
 	"bin": {

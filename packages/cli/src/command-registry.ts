@@ -671,17 +671,17 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 	},
 	{
 		name: "export",
-		summary: "Export archive readings to CSV, JSON, or InfluxDB",
+		summary: "Export archive readings to CSV, JSON, InfluxDB, or summary stats",
 		usage: "export SERIAL [--archive ID] [--format FMT] [--output PATH]",
 		usageLines: [
-			"export SERIAL    Export archive readings to CSV, JSON, or InfluxDB",
+			"export SERIAL    Export archive readings to CSV, JSON, InfluxDB, or summary stats",
 			"  --archive ID   Export a specific archive (default: latest)",
-			"  --format FMT   Output format: csv, json, or influx (default: json)",
+			"  --format FMT   Output format: csv, json, influx, or summary (default: json)",
 			"  --output PATH  Write to file (default: stdout)",
 		],
 		arguments: [serial],
 		supportsJson: true,
-		handler: ({ args }: CommandContext) => exportData(args),
+		handler: ({ args, options }: CommandContext) => exportData(args, options),
 	},
 	{
 		name: "backup",

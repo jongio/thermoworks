@@ -3,6 +3,7 @@ packages:
 allowBuilds:
   '@biomejs/biome': true
   '@github/keytar': true
+  '@vscode/deviceid': true
   '@vscode/vsce-sign': true
   better-sqlite3: true
   esbuild: true
@@ -41,10 +42,10 @@ minimumReleaseAgeExclude:
   - '@biomejs/cli-linux-x64@2.5.2 || 2.5.3'
   - '@biomejs/cli-win32-arm64@2.5.2 || 2.5.3'
   - '@biomejs/cli-win32-x64@2.5.2 || 2.5.3'
-  - '@microsoft/vally-cli@0.7.0 || 0.8.0'
-  - '@microsoft/vally-server@0.7.0 || 0.8.0'
-  - '@microsoft/vally@0.7.0 || 0.8.0'
-  - undici@8.6.0 || 8.7.0
+  - '@microsoft/vally-cli@0.7.0 || 0.8.0 || 0.11.0'
+  - '@microsoft/vally-server@0.7.0 || 0.8.0 || 0.11.0'
+  - '@microsoft/vally@0.7.0 || 0.8.0 || 0.11.0'
+  - undici@8.6.0 || 8.7.0 || 8.9.0
   - '@typescript/typescript-aix-ppc64@7.0.2'
   - '@typescript/typescript-darwin-arm64@7.0.2'
   - '@typescript/typescript-darwin-x64@7.0.2'

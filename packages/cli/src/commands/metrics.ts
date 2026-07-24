@@ -98,6 +98,10 @@ function activeChannels(channels: DeviceChannel[]): DeviceChannel[] {
 	return channels.filter((ch) => ch.enabled !== false);
 }
 
+function ageSeconds(timestamp: Date): number {
+	return Math.max(0, Math.floor((Date.now() - timestamp.getTime()) / 1000));
+}
+
 function channelLabels(device: Device, channel: DeviceChannel): Record<string, string | null> {
 	return {
 		serial: device.serial,
@@ -119,8 +123,18 @@ export function renderMetrics(snapshot: MetricsSnapshot): string {
 	const alarmHigh: Sample[] = [];
 	const alarmLow: Sample[] = [];
 	const battery: Sample[] = [];
+	const deviceTelemetryAge: Sample[] = [];
+	const channelTelemetryAge: Sample[] = [];
 
 	for (const { device, channels } of snapshot.devices) {
+		const deviceTimestamp = device.latestReading ?? device.lastTelemetrySaved ?? device.lastSeen;
+		if (deviceTimestamp) {
+			deviceTelemetryAge.push({
+				labels: { serial: device.serial, device: device.label || device.serial },
+				value: ageSeconds(deviceTimestamp),
+			});
+		}
+
 		if (device.battery != null) {
 			battery.push({
 				labels: { serial: device.serial, device: device.label || device.serial },
@@ -132,6 +146,10 @@ export function renderMetrics(snapshot: MetricsSnapshot): string {
 			const labels = channelLabels(device, channel);
 			if (channel.value != null) {
 				temperature.push({ labels, value: channel.value });
+			}
+			const channelTimestamp = channel.lastTelemetrySaved ?? channel.lastSeen;
+			if (channelTimestamp) {
+				channelTelemetryAge.push({ labels, value: ageSeconds(channelTimestamp) });
 			}
 			if (channel.minimum?.value != null) {
 				minimum.push({ labels, value: channel.minimum.value });
@@ -196,6 +214,18 @@ export function renderMetrics(snapshot: MetricsSnapshot): string {
 			help: "Device battery level as a percentage.",
 			type: "gauge",
 			samples: battery,
+		},
+		{
+			name: "thermoworks_device_telemetry_age_seconds",
+			help: "Seconds since the newest device telemetry timestamp.",
+			type: "gauge",
+			samples: deviceTelemetryAge,
+		},
+		{
+			name: "thermoworks_channel_telemetry_age_seconds",
+			help: "Seconds since the newest channel telemetry timestamp.",
+			type: "gauge",
+			samples: channelTelemetryAge,
 		},
 	];
 

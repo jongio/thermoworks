@@ -37,9 +37,9 @@ function makeDevice(overrides: Partial<Device> & { serial: string }): Device {
 		temperatureDeltaTrigger: null,
 		pendingLoad: null,
 		batteryAlertSent: null,
-		lastSeen: null,
-		lastTelemetrySaved: null,
-		latestReading: null,
+		lastSeen: overrides.lastSeen ?? null,
+		lastTelemetrySaved: overrides.lastTelemetrySaved ?? null,
+		latestReading: overrides.latestReading ?? null,
 		lastWifiConnection: null,
 		lastBluetoothConnection: null,
 		sessionStart: null,
@@ -70,8 +70,8 @@ function makeChannel(overrides: Partial<DeviceChannel> = {}): DeviceChannel {
 		number: overrides.number ?? null,
 		enabled: overrides.enabled ?? null,
 		color: null,
-		lastSeen: null,
-		lastTelemetrySaved: null,
+		lastSeen: overrides.lastSeen ?? null,
+		lastTelemetrySaved: overrides.lastTelemetrySaved ?? null,
 		lastEventId: null,
 		showAvgTemp: null,
 		estimatedAlarmStatus: null,
@@ -294,6 +294,54 @@ describe("renderMetrics", () => {
 		const text = renderMetrics({ up: true, scrapeErrors: 0, devices });
 		expect(text).toContain('device="My \\"Smoker\\""');
 	});
+});
+
+it("emits telemetry age metrics when timestamps are present", () => {
+	vi.useFakeTimers();
+	vi.setSystemTime(new Date("2026-01-15T12:10:00Z"));
+	try {
+		const devices: DeviceWithChannels[] = [
+			{
+				device: makeDevice({
+					serial: "S1",
+					label: "Smoker",
+					latestReading: new Date("2026-01-15T12:08:00Z"),
+				}),
+				channels: [
+					makeChannel({
+						label: "Pit",
+						number: "1",
+						lastTelemetrySaved: new Date("2026-01-15T12:09:30Z"),
+					}),
+				],
+			},
+		];
+
+		const text = renderMetrics({ up: true, scrapeErrors: 0, devices });
+
+		expect(text).toContain(
+			'thermoworks_device_telemetry_age_seconds{serial="S1",device="Smoker"} 120',
+		);
+		expect(text).toContain(
+			'thermoworks_channel_telemetry_age_seconds{serial="S1",device="Smoker",channel="1",label="Pit"} 30',
+		);
+	} finally {
+		vi.useRealTimers();
+	}
+});
+
+it("skips telemetry age metrics when timestamps are missing", () => {
+	const devices: DeviceWithChannels[] = [
+		{
+			device: makeDevice({ serial: "S1", label: "Smoker" }),
+			channels: [makeChannel({ label: "Pit", number: "1" })],
+		},
+	];
+
+	const text = renderMetrics({ up: true, scrapeErrors: 0, devices });
+
+	expect(text).not.toContain("thermoworks_device_telemetry_age_seconds{");
+	expect(text).not.toContain("thermoworks_channel_telemetry_age_seconds{");
 });
 
 // =============================================================================

@@ -1,4 +1,4 @@
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 import { navigationItems } from "../lib/navigation.ts";
 import { cn } from "../lib/utils.ts";
 

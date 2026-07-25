@@ -1,6 +1,6 @@
 import { Archive as ArchiveIcon, Clock, Globe } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import type { Archive, ArchiveChannel } from "thermoworks-sdk";
 import { ShareError, ShareHeader, ShareLoading } from "../components/ShareLayout.tsx";
 import { getPublicArchive } from "../lib/api.ts";

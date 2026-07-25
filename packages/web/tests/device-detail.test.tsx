@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import type { AppOutletContext } from "../src/components/AppLayout.tsx";
 import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";

@@ -1,4 +1,4 @@
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { ExportScheduler } from "../components/ExportScheduler.tsx";
 

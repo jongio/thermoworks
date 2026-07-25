@@ -1,6 +1,6 @@
 import { Monitor } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { DeviceGroups } from "../components/DeviceGroups.tsx";
 import { DeviceList } from "../components/DeviceList.tsx";

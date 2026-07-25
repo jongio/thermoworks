@@ -1,5 +1,5 @@
 import { type MouseEvent, useEffect, useRef } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router";
 import type { StoredAccount } from "../hooks/useAccounts.ts";
 import { useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts.ts";
 import { useOfflineMutationReplay } from "../hooks/useOfflineMutations.ts";

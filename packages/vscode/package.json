@@ -574,7 +574,7 @@
     "ovsx": "^1.0.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "recharts": "^3.10.0",
+    "recharts": "^3.10.1",
     "thermoworks-sdk": "workspace:^",
     "typescript": "^7.0.2",
     "vite": "^8.1.5",

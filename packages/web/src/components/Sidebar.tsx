@@ -1,6 +1,6 @@
 import { ChevronsLeft, ChevronsRight, LogOut } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink } from "react-router";
 import type { StoredAccount } from "../hooks/useAccounts.ts";
 import { navigationItems } from "../lib/navigation.ts";
 import { cn } from "../lib/utils.ts";

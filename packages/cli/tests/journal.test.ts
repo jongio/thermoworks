@@ -212,6 +212,68 @@ describe("formatList", () => {
 	});
 });
 
+describe("journal filters", () => {
+	it("parses meat, minimum rating, and search filters", async () => {
+		const { parseJournalFilterArgs } = await import("../src/commands/journal.js");
+		expect(
+			parseJournalFilterArgs(["--meat", "brisket", "--min-rating", "4", "--search", "wrap"]),
+		).toEqual({
+			meat: "brisket",
+			minRating: 4,
+			search: "wrap",
+		});
+	});
+
+	it("rejects invalid filter options", async () => {
+		const { parseJournalFilterArgs } = await import("../src/commands/journal.js");
+		expect(parseJournalFilterArgs(["--min-rating", "6"])).toEqual({
+			error: '--min-rating must be an integer from 1 to 5, got "6"',
+		});
+		expect(parseJournalFilterArgs(["--search"])).toEqual({
+			error: "--search requires a value",
+		});
+		expect(parseJournalFilterArgs(["--bogus"])).toEqual({
+			error: "Unknown option: --bogus",
+		});
+	});
+
+	it("filters entries by meat, rating, and title or notes search", async () => {
+		const { filterJournalEntries } = await import("../src/commands/journal.js");
+		const entries = [
+			sampleEntry({
+				id: "match",
+				title: "Sunday brisket",
+				meat: "beef brisket",
+				rating: 5,
+				notes: "Wrapped at 165",
+			}),
+			sampleEntry({
+				id: "wrong-rating",
+				title: "Friday brisket",
+				meat: "beef brisket",
+				rating: 3,
+				notes: "Wrapped early",
+			}),
+			sampleEntry({
+				id: "wrong-meat",
+				title: "Pork ribs",
+				meat: "pork ribs",
+				rating: 5,
+				notes: "Wrapped at 165",
+			}),
+		];
+
+		expect(
+			filterJournalEntries(entries, { meat: "brisket", minRating: 4, search: "wrapped" }).map(
+				(entry) => entry.id,
+			),
+		).toEqual(["match"]);
+		expect(filterJournalEntries(entries, { search: "sunday" }).map((entry) => entry.id)).toEqual([
+			"match",
+		]);
+	});
+});
+
 describe("formatEntry", () => {
 	it("includes optional fields when present", async () => {
 		const { formatEntry } = await import("../src/commands/journal.js");
@@ -352,10 +414,26 @@ describe("formatCostSummary", () => {
 describe("journal export helpers", () => {
 	it("parses export options", async () => {
 		const { parseJournalExportArgs } = await import("../src/commands/journal.js");
-		expect(parseJournalExportArgs([])).toEqual({ format: "json", output: undefined });
-		expect(parseJournalExportArgs(["--format", "csv", "--output", "cooks.csv"])).toEqual({
+		expect(parseJournalExportArgs([])).toEqual({
+			format: "json",
+			output: undefined,
+			filters: {},
+		});
+		expect(
+			parseJournalExportArgs([
+				"--format",
+				"csv",
+				"--output",
+				"cooks.csv",
+				"--meat",
+				"ribs",
+				"--min-rating",
+				"4",
+			]),
+		).toEqual({
 			format: "csv",
 			output: "cooks.csv",
+			filters: { meat: "ribs", minRating: 4 },
 		});
 	});
 
@@ -439,5 +517,22 @@ describe("journal export command", () => {
 			"utf8",
 		);
 		expect(errorSpy).toHaveBeenCalledWith("Exported 2 journal entries to journal.json.");
+	});
+
+	it("filters exported entries", async () => {
+		mockReadFile.mockResolvedValue(
+			JSON.stringify([
+				sampleEntry({ id: "one", title: "Brisket", meat: "brisket", rating: 5 }),
+				sampleEntry({ id: "two", title: "Ribs", meat: "pork ribs", rating: 5 }),
+			]) as never,
+		);
+		const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
+
+		const { journal } = await import("../src/commands/journal.js");
+		await journal(["export", "--meat", "brisket"], { json: false });
+
+		const output = stdoutSpy.mock.calls.map((call) => call[0]).join("");
+		expect(output).toContain('"id": "one"');
+		expect(output).not.toContain('"id": "two"');
 	});
 });

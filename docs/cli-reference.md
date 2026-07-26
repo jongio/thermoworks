@@ -312,20 +312,20 @@ npx thermoworks account [--json]
 
 - `--json` - Output machine-readable JSON.
 
-### `thermoworks devices [--type T] [--status S] [--label L] [--serial SN] [--active-within N] [--sort health] [--critical] [--no-channels] [--json]`
+### `thermoworks devices [--type T] [--status S] [--label L] [--serial SN] [--active-within N] [--sort health|label|last-seen] [--critical] [--no-channels] [--json]`
 
 List connected devices and channel readings
 
 **Usage**
 
 ```bash
-npx thermoworks devices [--type T] [--status S] [--label L] [--serial SN] [--active-within N] [--sort health] [--critical] [--no-channels] [--json]
+npx thermoworks devices [--type T] [--status S] [--label L] [--serial SN] [--active-within N] [--sort health|label|last-seen] [--critical] [--no-channels] [--json]
 ```
 
 **Options**
 
 - `--active-within N` - Only devices seen within N minutes.
-- `--sort health` - Sort devices by attention needed.
+- `--sort FIELD` - Sort devices by health, label, or last-seen.
 - `--critical` - Only show devices needing attention.
 - `--no-channels` - Hide channel readings.
 - `--json` - Output machine-readable JSON.

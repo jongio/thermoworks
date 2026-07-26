@@ -15,11 +15,28 @@ interface HistoryOptions {
 	format: HistoryFormat;
 	limit?: number;
 	output?: string;
+	since?: Date;
+	until?: Date;
+}
+
+function parseDateFlag(flag: string, value: string | undefined): Date {
+	if (!value) {
+		console.error(`${flag} requires an ISO date value`);
+		process.exit(1);
+	}
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) {
+		console.error(
+			`Invalid ${flag} value: ${value}. Use an ISO date, for example 2026-06-07T12:00:00Z.`,
+		);
+		process.exit(1);
+	}
+	return date;
 }
 
 /**
  * Parse history-specific CLI args.
- * Expected: SERIAL [--limit N] [--format table|csv|json] [--output PATH]
+ * Expected: SERIAL [--limit N] [--format table|csv|json] [--output PATH] [--since ISO] [--until ISO]
  *
  * Format precedence: explicit --format wins; otherwise if global --json is
  * set, use json; otherwise table.
@@ -36,6 +53,8 @@ export function parseHistoryArgs(args: string[], globalOptions: OutputOptions): 
 	let format: HistoryFormat | undefined;
 	let limit: number | undefined;
 	let output: string | undefined;
+	let since: Date | undefined;
+	let until: Date | undefined;
 
 	for (let i = 1; i < args.length; i++) {
 		switch (args[i]) {
@@ -67,6 +86,12 @@ export function parseHistoryArgs(args: string[], globalOptions: OutputOptions): 
 					process.exit(1);
 				}
 				break;
+			case "--since":
+				since = parseDateFlag("--since", args[++i]);
+				break;
+			case "--until":
+				until = parseDateFlag("--until", args[++i]);
+				break;
 			default:
 				console.error(`Unknown option: ${args[i]}`);
 				process.exit(1);
@@ -76,7 +101,23 @@ export function parseHistoryArgs(args: string[], globalOptions: OutputOptions): 
 	// Format precedence: explicit --format > global --json > default table
 	const resolvedFormat = format ?? (globalOptions.json ? "json" : "table");
 
-	return { serial, format: resolvedFormat, limit, output };
+	return { serial, format: resolvedFormat, limit, output, since, until };
+}
+
+/** Filter history readings to the requested time window. */
+export function filterReadingsByWindow(
+	readings: DeviceHistory["readings"],
+	since?: Date,
+	until?: Date,
+): DeviceHistory["readings"] {
+	if (!since && !until) return readings;
+	return readings.filter((reading) => {
+		const timestamp = new Date(reading.timestamp).getTime();
+		if (Number.isNaN(timestamp)) return false;
+		if (since && timestamp < since.getTime()) return false;
+		if (until && timestamp > until.getTime()) return false;
+		return true;
+	});
 }
 
 /** Format readings as an aligned table with header. */
@@ -134,7 +175,8 @@ export async function history(args: string[], options: OutputOptions): Promise<v
 
 		// The API returns readings in chronological order. --limit N takes the
 		// N most recent readings (from the end of the array).
-		const readings = opts.limit ? data.readings.slice(-opts.limit) : data.readings;
+		const windowedReadings = filterReadingsByWindow(data.readings, opts.since, opts.until);
+		const readings = opts.limit ? windowedReadings.slice(-opts.limit) : windowedReadings;
 
 		let content: string;
 		switch (opts.format) {

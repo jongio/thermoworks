@@ -842,14 +842,14 @@ npx thermoworks backup [SERIAL] [--output DIR] [--format FMT] [--limit N] [--jso
 
 - `--json` - Output machine-readable JSON.
 
-### `thermoworks history <SERIAL> [--limit N] [--format FMT] [--output PATH]`
+### `thermoworks history <SERIAL> [--limit N] [--format FMT] [--output PATH] [--since ISO] [--until ISO]`
 
 Export historical time-series readings
 
 **Usage**
 
 ```bash
-npx thermoworks history <SERIAL> [--limit N] [--format FMT] [--output PATH]
+npx thermoworks history <SERIAL> [--limit N] [--format FMT] [--output PATH] [--since ISO] [--until ISO]
 ```
 
 **Arguments**

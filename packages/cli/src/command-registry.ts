@@ -699,12 +699,15 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 	{
 		name: "history",
 		summary: "Export historical time-series readings",
-		usage: "history <SERIAL> [--limit N] [--format FMT] [--output PATH]",
+		usage:
+			"history <SERIAL> [--limit N] [--format FMT] [--output PATH] [--since ISO] [--until ISO]",
 		usageLines: [
 			"history <SERIAL> Export historical time-series readings (BigQuery)",
 			"  --limit N      Show the N most recent readings",
 			"  --format FMT   Output format: table, csv, or json (default: table)",
 			"  --output PATH  Write to file (default: stdout)",
+			"  --since ISO    Only include readings at or after this time",
+			"  --until ISO    Only include readings at or before this time",
 		],
 		arguments: [serial],
 		supportsJson: true,

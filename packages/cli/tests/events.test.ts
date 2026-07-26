@@ -81,6 +81,26 @@ describe("parseEventsArgs", () => {
 		expect(result.limit).toBe(20);
 	});
 
+	it("parses --since and --until flags as dates", () => {
+		const result = parseEventsArgs([
+			"--since",
+			"2026-06-07T12:00:00Z",
+			"--until",
+			"2026-06-07T13:00:00Z",
+		]);
+		expect(result.since?.toISOString()).toBe("2026-06-07T12:00:00.000Z");
+		expect(result.until?.toISOString()).toBe("2026-06-07T13:00:00.000Z");
+	});
+
+	it("exits when a date filter is invalid", () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+			throw new Error("process.exit");
+		});
+		expect(() => parseEventsArgs(["--since", "not-a-date"])).toThrow("process.exit");
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid --since value"));
+		exitSpy.mockRestore();
+	});
+
 	it("ignores invalid --limit values", () => {
 		const result = parseEventsArgs(["--limit", "abc"]);
 		expect(result.limit).toBeUndefined();
@@ -229,6 +249,8 @@ describe("events", () => {
 		expect(mockGetEvents).toHaveBeenCalledWith({
 			deviceId: "NODE5",
 			eventType: undefined,
+			startTime: undefined,
+			endTime: undefined,
 			limit: undefined,
 		});
 	});
@@ -242,6 +264,8 @@ describe("events", () => {
 		expect(mockGetEvents).toHaveBeenCalledWith({
 			deviceId: undefined,
 			eventType: "alarm",
+			startTime: undefined,
+			endTime: undefined,
 			limit: undefined,
 		});
 	});
@@ -255,7 +279,26 @@ describe("events", () => {
 		expect(mockGetEvents).toHaveBeenCalledWith({
 			deviceId: undefined,
 			eventType: undefined,
+			startTime: undefined,
+			endTime: undefined,
 			limit: 10,
+		});
+	});
+
+	it("passes date filters to SDK", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetEvents.mockResolvedValue([]);
+		const since = new Date("2026-06-07T12:00:00Z");
+		const until = new Date("2026-06-07T13:00:00Z");
+
+		await events({ since, until }, { json: false });
+
+		expect(mockGetEvents).toHaveBeenCalledWith({
+			deviceId: undefined,
+			eventType: undefined,
+			startTime: since,
+			endTime: until,
+			limit: undefined,
 		});
 	});
 

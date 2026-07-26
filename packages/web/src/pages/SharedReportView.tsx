@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router";
 import { CookReport } from "../components/CookReport.tsx";
 import { ShareError, ShareHeader } from "../components/ShareLayout.tsx";
 import { TemperatureUnitProvider } from "../context/TemperatureUnitContext.tsx";

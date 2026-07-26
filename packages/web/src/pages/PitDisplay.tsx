@@ -1,6 +1,6 @@
 import { Maximize2, Minimize2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { OfflineCacheProvider } from "../context/OfflineCacheContext.tsx";
 import { TemperatureUnitProvider } from "../context/TemperatureUnitContext.tsx";
 import { useDevices } from "../hooks/useDevices.ts";

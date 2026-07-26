@@ -1,6 +1,6 @@
 import { Beef, Bird, Drumstick, Fish, Search, Thermometer } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { useTemperatureGuide } from "../hooks/useTemperatureGuide.ts";
 import { useTemperatureUnit } from "../hooks/useTemperatureUnit.ts";

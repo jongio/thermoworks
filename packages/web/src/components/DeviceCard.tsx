@@ -10,7 +10,7 @@ import {
 	Wifi,
 } from "lucide-react";
 import React, { Suspense, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "react-router";
 import { useArchiveData } from "../hooks/useArchiveData.ts";
 import { resolveChannelLabel, useChannelLabels } from "../hooks/useChannelLabels.ts";
 import { useRestTimer } from "../hooks/useRestTimer.ts";

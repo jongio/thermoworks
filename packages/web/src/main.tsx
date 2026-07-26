@@ -1,7 +1,7 @@
 import "./spa-redirect.ts";
 import { lazy, StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import { HashRouter, Route, Routes } from "react-router-dom";
+import { HashRouter, Route, Routes } from "react-router";
 import { App } from "./App.tsx";
 import { ErrorBoundary } from "./components/ErrorBoundary.tsx";
 import { DeviceListSkeleton, EventListSkeleton, Skeleton } from "./components/Skeleton.tsx";

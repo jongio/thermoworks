@@ -1,5 +1,5 @@
 import { Settings as SettingsIcon } from "lucide-react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router";
 import { AccountPanel } from "../components/AccountPanel.tsx";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { NotificationPrefs } from "../components/NotificationPrefs.tsx";

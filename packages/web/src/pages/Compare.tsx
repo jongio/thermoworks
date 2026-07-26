@@ -1,6 +1,6 @@
 import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext } from "react-router";
 import type { ArchiveChannel, DeviceChannel, TemperatureReading } from "thermoworks-sdk";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import {

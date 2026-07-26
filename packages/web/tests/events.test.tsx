@@ -1,5 +1,5 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Outlet, Route, Routes } from "react-router";
 import type { Archive, DeviceEvent, EventFilter } from "thermoworks-sdk";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useEvents } from "../src/hooks/useEvents.ts";

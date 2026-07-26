@@ -1,6 +1,6 @@
 import { ArrowLeft, Battery, RotateCcw, Share2, Signal, Wifi } from "lucide-react";
 import React, { Suspense, useCallback } from "react";
-import { Link, useOutletContext, useParams } from "react-router-dom";
+import { Link, useOutletContext, useParams } from "react-router";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { ChannelReading } from "../components/ChannelReading.tsx";
 import { CookReport } from "../components/CookReport.tsx";

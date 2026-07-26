@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { DeviceList } from "../src/components/DeviceList.tsx";
 import { TemperatureUnitProvider } from "../src/context/TemperatureUnitContext.tsx";

@@ -1,6 +1,6 @@
 import { Eye, EyeOff, Loader2, Star, ThermometerSun } from "lucide-react";
 import { useMemo } from "react";
-import { Link, useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { useDevices } from "../hooks/useDevices.ts";
 import { useDeviceVisibility } from "../hooks/useDeviceVisibility.ts";

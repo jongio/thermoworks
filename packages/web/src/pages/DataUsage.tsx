@@ -1,5 +1,5 @@
 import { Database, HardDrive, Loader2, RefreshCw } from "lucide-react";
-import { Link, useOutletContext } from "react-router-dom";
+import { Link, useOutletContext } from "react-router";
 import type { AppOutletContext } from "../components/AppLayout.tsx";
 import { useDataUsage } from "../hooks/useDataUsage.ts";
 import { cn } from "../lib/utils.ts";

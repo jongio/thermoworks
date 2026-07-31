@@ -1,17 +1,19 @@
 import { describe, expect, it } from "vitest";
 
 /**
- * Regression guard for the patched jsdom in patches/jsdom@30.0.0.patch.
+ * Regression guard for getComputedStyle() with CSS math functions.
  *
- * jsdom 30.0.0 throws "object null is not iterable" from getComputedStyle() for
- * any CSS math function it cannot reduce to a plain length, which covers every
+ * jsdom 30.0.0 threw "object null is not iterable" from getComputedStyle() for
+ * any CSS math function it couldn't reduce to a plain length, which covers every
  * percentage-plus-length expression. @testing-library/dom calls getComputedStyle
  * on every element during a role query, so one such declaration takes out every
  * query in a file rather than a single assertion. The chart marker components
- * use calc(6% + 1.25rem) for absolute positioning, so this is not hypothetical.
+ * use calc(6% + 1.25rem) for absolute positioning, so this isn't hypothetical.
  *
- * If someone bumps jsdom and drops the patch, these fail with a clear cause
- * instead of a cascade of unrelated "unable to find role" errors.
+ * jsdom 30.0.1 fixed it upstream, which retired the local patch this file used
+ * to guard. These keep the behaviour pinned so a future jsdom regression fails
+ * with a clear cause instead of a cascade of unrelated "unable to find role"
+ * errors.
  *
  * Upstream: https://github.com/jsdom/jsdom/issues/4193
  */

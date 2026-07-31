@@ -5,11 +5,12 @@ allowBuilds:
   '@github/keytar': true
   '@vscode/deviceid': true
   '@vscode/vsce-sign': true
-  better-sqlite3: true
+  better-sqlite3: false
   esbuild: true
   keytar: true
+  koffi: false
 minimumReleaseAgeExclude:
-  - '@types/node@26.0.1 || 26.1.0 || 26.1.1'
+  - '@types/node@26.0.1 || 26.1.0 || 26.1.1 || 26.1.2'
   - '@tanstack/react-virtual@3.14.4 || 3.14.5'
   - '@tanstack/virtual-core@3.17.2 || 3.17.3'
   - lucide-react@1.22.0 || 1.23.0 || 1.24.0
@@ -40,9 +41,9 @@ minimumReleaseAgeExclude:
   - '@biomejs/cli-linux-x64@2.5.2 || 2.5.3'
   - '@biomejs/cli-win32-arm64@2.5.2 || 2.5.3'
   - '@biomejs/cli-win32-x64@2.5.2 || 2.5.3'
-  - '@microsoft/vally-cli@0.7.0 || 0.8.0 || 0.11.0'
-  - '@microsoft/vally-server@0.7.0 || 0.8.0 || 0.11.0'
-  - '@microsoft/vally@0.7.0 || 0.8.0 || 0.11.0'
+  - '@microsoft/vally-cli@0.7.0 || 0.8.0 || 0.11.0 || 0.12.0'
+  - '@microsoft/vally-server@0.7.0 || 0.8.0 || 0.11.0 || 0.12.0'
+  - '@microsoft/vally@0.7.0 || 0.8.0 || 0.11.0 || 0.12.0'
   - undici@8.6.0 || 8.7.0 || 8.9.0
   - '@typescript/typescript-aix-ppc64@7.0.2'
   - '@typescript/typescript-darwin-arm64@7.0.2'
@@ -68,9 +69,14 @@ minimumReleaseAgeExclude:
   - '@playwright/test@1.62.0'
   - playwright-core@1.62.0
   - playwright@1.62.0
+  - '@modelcontextprotocol/sdk@1.30.0'
+  - jsdom@30.0.0
+  - '@types/react-dom@19.2.4'
+  - '@types/react@19.2.18'
 overrides:
   form-data: ^4.0.6
   hono: ^4.12.32
+  '@hono/node-server': ^2.0.12
   esbuild: ^0.28.1
   fast-uri: ^3.1.4
   brace-expansion: ^5.0.8

@@ -16,12 +16,16 @@ import { loadConfig } from "../config.js";
 import { getCredentials } from "../credentials.js";
 import { type OutputOptions, outputJson } from "../output.js";
 
+type DeviceSortField = "health" | "label" | "last-seen";
+
 /** Options specific to the devices command. */
 export interface DevicesOptions extends OutputOptions {
 	/** Show channel readings per device (default: true). */
 	channels?: boolean;
 	/** Optional filter applied to the device list. */
 	filter?: DeviceFilter;
+	/** Optional device sort field. */
+	sortBy?: DeviceSortField;
 	/** Sort devices by health priority (alarms first, then critical, warning, good). */
 	sortByHealth?: boolean;
 	/** Only show devices needing attention (alarming, critical, or warning health). */
@@ -84,11 +88,12 @@ export function parseDevicesArgs(args: string[], base: OutputOptions): DevicesOp
 	// --sort health
 	const sort = getFlagValue(args, "--sort");
 	if (sort !== undefined) {
-		if (sort !== "health") {
-			console.error(`Invalid --sort value: ${sort}. Supported values: health`);
+		if (sort !== "health" && sort !== "label" && sort !== "last-seen") {
+			console.error(`Invalid --sort value: ${sort}. Supported values: health, label, last-seen`);
 			process.exit(1);
 		}
-		options.sortByHealth = true;
+		options.sortBy = sort;
+		options.sortByHealth = sort === "health";
 	}
 
 	// --critical
@@ -175,7 +180,8 @@ export function formatChannelLine(
 
 export async function devices(options: DevicesOptions = { json: false }): Promise<void> {
 	const showChannels = options.channels ?? true;
-	const useHealth = options.sortByHealth || options.criticalOnly;
+	const sortBy = options.sortBy ?? (options.sortByHealth ? "health" : undefined);
+	const useHealth = sortBy === "health" || options.criticalOnly;
 
 	const creds = await getCredentials();
 	if (!creds) {
@@ -229,12 +235,24 @@ export async function devices(options: DevicesOptions = { json: false }): Promis
 			});
 		}
 
-		// Apply --sort health: sort by priority (lowest = most urgent first).
-		if (options.sortByHealth) {
+		// Apply requested sort.
+		if (sortBy === "health") {
 			displayList = [...displayList].sort((a, b) => {
 				const pa = healthBySerial.get(a.serial)?.priority ?? 3;
 				const pb = healthBySerial.get(b.serial)?.priority ?? 3;
 				return pa - pb;
+			});
+		} else if (sortBy === "label") {
+			displayList = [...displayList].sort((a, b) => {
+				const labelA = (a.label || a.serial).toLocaleLowerCase();
+				const labelB = (b.label || b.serial).toLocaleLowerCase();
+				return labelA.localeCompare(labelB);
+			});
+		} else if (sortBy === "last-seen") {
+			displayList = [...displayList].sort((a, b) => {
+				const timeA = a.lastSeen?.getTime() ?? 0;
+				const timeB = b.lastSeen?.getTime() ?? 0;
+				return timeB - timeA;
 			});
 		}
 

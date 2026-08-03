@@ -383,11 +383,11 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 		name: "devices",
 		summary: "List connected devices and channel readings",
 		usage:
-			"devices [--type T] [--status S] [--label L] [--serial SN] [--active-within N] [--sort health] [--critical] [--no-channels] [--json]",
+			"devices [--type T] [--status S] [--label L] [--serial SN] [--active-within N] [--sort health|label|last-seen] [--critical] [--no-channels] [--json]",
 		usageLines: [
 			"devices          List connected devices and channel readings",
 			"  --active-within N  Only devices seen within N minutes",
-			"  --sort health      Sort by attention needed (alarms, offline, battery, stale)",
+			"  --sort FIELD       Sort by health, label, or last-seen",
 			"  --critical         Only show devices needing attention",
 		],
 		completion: [
@@ -402,7 +402,7 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 		],
 		options: [
 			{ name: "--active-within N", description: "Only devices seen within N minutes." },
-			{ name: "--sort health", description: "Sort devices by attention needed." },
+			{ name: "--sort FIELD", description: "Sort devices by health, label, or last-seen." },
 			{ name: "--critical", description: "Only show devices needing attention." },
 			{ name: "--no-channels", description: "Hide channel readings." },
 		],

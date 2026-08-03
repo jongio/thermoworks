@@ -73,6 +73,7 @@ minimumReleaseAgeExclude:
   - jsdom@30.0.0
   - '@types/react-dom@19.2.4'
   - '@types/react@19.2.18'
+  - ovsx@1.1.0
 overrides:
   form-data: ^4.0.6
   hono: ^4.12.32

@@ -53,8 +53,6 @@
 	},
 	"dependencies": {
 		"@github/keytar": "^7.10.6",
-		"@modelcontextprotocol/sdk": "^1.30.0",
-		"thermoworks-sdk": "workspace:^",
-		"zod": "^4.4.3"
+		"thermoworks-sdk": "workspace:^"
 	}
 }

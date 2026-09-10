@@ -554,7 +554,7 @@
   },
   "scripts": {
     "build": "node build.mjs",
-    "build:webview": "vite build --config vite.webview.config.ts",
+    "build:webview": "vite build --config vite.webview.config.mts",
     "watch": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --external:@github/keytar --format=cjs --platform=node --sourcemap --watch",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
@@ -563,22 +563,22 @@
     "publish": "vsce publish --no-dependencies"
   },
   "devDependencies": {
-    "@types/node": "^26.1.2",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "@types/vscode": "^1.125.0",
-    "@vitejs/plugin-react": "^6.0.5",
-    "@vitest/coverage-v8": "^4.1.10",
+    "@types/node": "^26.5.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@types/vscode": "^1.137.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "^5.0.0",
     "@vscode/vsce": "^3.9.2",
-    "esbuild": "^0.28.1",
-    "ovsx": "^1.1.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "esbuild": "^0.28.2",
+    "ovsx": "^1.1.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "recharts": "^3.10.1",
     "thermoworks-sdk": "workspace:^",
     "typescript": "^7.0.2",
-    "vite": "^8.2.0",
-    "vitest": "^4.1.10"
+    "vite": "^8.2.2",
+    "vitest": "^5.0.0"
   },
   "dependencies": {
     "@github/keytar": "^7.10.6"

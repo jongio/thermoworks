@@ -11,11 +11,6 @@ import { ThermoworksWebClient } from "../src/lib/api.ts";
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
-Object.defineProperty(globalThis, "window", {
-	value: { location: { origin: "https://cloud.thermoworks.com", pathname: "/" } },
-	writable: true,
-});
-
 function jsonResponse(body: unknown, status = 200): Response {
 	return {
 		ok: status >= 200 && status < 300,

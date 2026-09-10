@@ -16,13 +16,13 @@ export default defineConfig({
 		target: "es2022",
 		cssCodeSplit: false,
 		sourcemap: false,
+		chunkSizeWarningLimit: 650,
 		rollupOptions: {
 			input: resolve(dir, "webview/main.tsx"),
 			output: {
 				format: "iife",
 				entryFileNames: "webview.js",
 				assetFileNames: "webview.[ext]",
-				inlineDynamicImports: true,
 			},
 		},
 	},

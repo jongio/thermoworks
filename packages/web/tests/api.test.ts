@@ -13,14 +13,6 @@ import {
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
-// Suppress window.location usage in shareDevice/shareArchive
-Object.defineProperty(globalThis, "window", {
-	value: {
-		location: { origin: "https://cloud.thermoworks.com", pathname: "/" },
-	},
-	writable: true,
-});
-
 function jsonResponse(body: unknown, status = 200): Response {
 	return {
 		ok: status >= 200 && status < 300,

@@ -66,6 +66,7 @@ describe("ExportScheduler", () => {
 			createObjectURL: vi.fn(() => "blob:mock-url"),
 			revokeObjectURL: vi.fn(),
 		});
+		vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
 	});
 
 	afterEach(() => {

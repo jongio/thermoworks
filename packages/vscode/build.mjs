@@ -3,12 +3,12 @@ import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { build } from "esbuild";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const vendorDest = join(__dirname, "dist", "vendor", "@github", "keytar");
 const require = createRequire(import.meta.url);
 const viteCli = join(dirname(require.resolve("vite/package.json")), "bin", "vite.js");
-const esbuildCli = require.resolve("esbuild/bin/esbuild");
 
 // 0. Build the React/recharts chart webview (Vite -> dist/webview/webview.js + webview.css)
 execFileSync(process.execPath, [viteCli, "build", "--config", "vite.webview.config.mts"], {
@@ -17,21 +17,17 @@ execFileSync(process.execPath, [viteCli, "build", "--config", "vite.webview.conf
 });
 
 // 1. Bundle with esbuild (keytar externalized since it's native)
-execFileSync(
-	process.execPath,
-	[
-		esbuildCli,
-		"src/extension.ts",
-		"--bundle",
-		"--outfile=dist/extension.js",
-		"--external:vscode",
-		"--external:@github/keytar",
-		"--format=cjs",
-		"--platform=node",
-		"--sourcemap",
-	],
-	{ stdio: "inherit", cwd: __dirname },
-);
+await build({
+	absWorkingDir: __dirname,
+	entryPoints: ["src/extension.ts"],
+	bundle: true,
+	outfile: "dist/extension.js",
+	external: ["vscode", "@github/keytar"],
+	format: "cjs",
+	platform: "node",
+	sourcemap: true,
+	logLevel: "info",
+});
 
 // 2. Copy keytar into dist/vendor so it ships with the VSIX
 const keytarSource = dirname(require.resolve("@github/keytar/package.json"));

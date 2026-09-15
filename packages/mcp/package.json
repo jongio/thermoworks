@@ -35,6 +35,6 @@
 	"dependencies": {
 		"@modelcontextprotocol/sdk": "^1.30.0",
 		"thermoworks-sdk": "workspace:^",
-		"zod": "^4.6.0"
+		"zod": "^4.6.2"
 	}
 }

@@ -14,7 +14,7 @@
 		"eval:full": "vally eval --suite full"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.12",
+		"@biomejs/biome": "^2.5.13",
 		"@microsoft/vally-cli": "^0.16.0",
 		"typescript": "^7.0.2"
 	},

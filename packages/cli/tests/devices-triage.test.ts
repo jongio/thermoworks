@@ -150,8 +150,23 @@ describe("parseDevicesArgs triage flags", () => {
 	it("parses --sort health into sortByHealth", async () => {
 		const { parseDevicesArgs } = await import("../src/commands/devices.js");
 		const opts = parseDevicesArgs(["--sort", "health"], { json: false });
+		expect(opts.sortBy).toBe("health");
 		expect(opts.sortByHealth).toBe(true);
 		expect(opts.criticalOnly).toBeUndefined();
+	});
+
+	it("parses --sort label", async () => {
+		const { parseDevicesArgs } = await import("../src/commands/devices.js");
+		const opts = parseDevicesArgs(["--sort", "label"], { json: false });
+		expect(opts.sortBy).toBe("label");
+		expect(opts.sortByHealth).toBe(false);
+	});
+
+	it("parses --sort last-seen", async () => {
+		const { parseDevicesArgs } = await import("../src/commands/devices.js");
+		const opts = parseDevicesArgs(["--sort", "last-seen"], { json: false });
+		expect(opts.sortBy).toBe("last-seen");
+		expect(opts.sortByHealth).toBe(false);
 	});
 
 	it("parses --critical into criticalOnly", async () => {
@@ -180,6 +195,7 @@ describe("parseDevicesArgs triage flags", () => {
 			json: false,
 		});
 		expect(opts.filter).toEqual({ type: "signals" });
+		expect(opts.sortBy).toBe("health");
 		expect(opts.sortByHealth).toBe(true);
 		expect(opts.criticalOnly).toBe(true);
 	});
@@ -187,8 +203,61 @@ describe("parseDevicesArgs triage flags", () => {
 	it("leaves sortByHealth and criticalOnly undefined when neither flag is present", async () => {
 		const { parseDevicesArgs } = await import("../src/commands/devices.js");
 		const opts = parseDevicesArgs([], { json: false });
+		expect(opts.sortBy).toBeUndefined();
 		expect(opts.sortByHealth).toBeUndefined();
 		expect(opts.criticalOnly).toBeUndefined();
+	});
+});
+
+// =============================================================================
+// devices --sort label and --sort last-seen
+// =============================================================================
+
+describe("devices alternate sort fields", () => {
+	it("sorts devices by label with serial fallback", async () => {
+		const zed = makeDevice({ serial: "CCC", label: "Zed" });
+		const alpha = makeDevice({ serial: "BBB", label: "Alpha" });
+		const fallback = makeDevice({ serial: "AAA", label: null });
+
+		mockGetDevices.mockResolvedValue([zed, alpha, fallback]);
+
+		const { devices } = await import("../src/commands/devices.js");
+		await devices({ json: false, channels: false, sortBy: "label" });
+
+		const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+		const fallbackPos = output.indexOf("AAA");
+		const alphaPos = output.indexOf("Alpha");
+		const zedPos = output.indexOf("Zed");
+		expect(fallbackPos).toBeLessThan(alphaPos);
+		expect(alphaPos).toBeLessThan(zedPos);
+		expect(mockGetAllDeviceChannels).not.toHaveBeenCalled();
+	});
+
+	it("sorts devices by last seen with newest first", async () => {
+		const older = makeDevice({
+			serial: "OLD",
+			label: "Old",
+			lastSeen: new Date("2026-01-15T12:00:00Z"),
+		});
+		const newer = makeDevice({
+			serial: "NEW",
+			label: "New",
+			lastSeen: new Date("2026-01-15T13:00:00Z"),
+		});
+		const missing = makeDevice({ serial: "MISS", label: "Missing", lastSeen: null });
+
+		mockGetDevices.mockResolvedValue([older, missing, newer]);
+
+		const { devices } = await import("../src/commands/devices.js");
+		await devices({ json: false, channels: false, sortBy: "last-seen" });
+
+		const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+		const newerPos = output.indexOf("New");
+		const olderPos = output.indexOf("Old");
+		const missingPos = output.indexOf("Missing");
+		expect(newerPos).toBeLessThan(olderPos);
+		expect(olderPos).toBeLessThan(missingPos);
+		expect(mockGetAllDeviceChannels).not.toHaveBeenCalled();
 	});
 });
 

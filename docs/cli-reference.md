@@ -570,14 +570,14 @@ npx thermoworks metrics [--host HOST] [--port N] [--device SN] [--interval N]
 
 None.
 
-### `thermoworks events [--device SERIAL] [--type TYPE] [--limit N] [--json]`
+### `thermoworks events [--device SERIAL] [--type TYPE] [--limit N] [--since ISO] [--until ISO] [--json]`
 
 Show device event history
 
 **Usage**
 
 ```bash
-npx thermoworks events [--device SERIAL] [--type TYPE] [--limit N] [--json]
+npx thermoworks events [--device SERIAL] [--type TYPE] [--limit N] [--since ISO] [--until ISO] [--json]
 ```
 
 **Options**

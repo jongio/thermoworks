@@ -132,6 +132,66 @@ export function sortJournalEntries(entries: JournalEntry[]): JournalEntry[] {
 	return [...entries].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+export interface JournalFilterOptions {
+	meat?: string;
+	minRating?: number;
+	search?: string;
+}
+
+export function parseJournalFilterArgs(args: string[]): JournalFilterOptions | { error: string } {
+	const filters: JournalFilterOptions = {};
+
+	for (let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if (arg === undefined) continue;
+		if (arg === "--meat") {
+			const value = args[++i];
+			if (value === undefined) return { error: "--meat requires a value" };
+			filters.meat = value;
+		} else if (arg === "--min-rating") {
+			const value = args[++i];
+			if (value === undefined) return { error: "--min-rating requires a value" };
+			const rating = Number.parseInt(value, 10);
+			if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+				return { error: `--min-rating must be an integer from 1 to 5, got "${value}"` };
+			}
+			filters.minRating = rating;
+		} else if (arg === "--search") {
+			const value = args[++i];
+			if (value === undefined) return { error: "--search requires a value" };
+			filters.search = value;
+		} else {
+			return { error: `Unknown option: ${arg}` };
+		}
+	}
+
+	return filters;
+}
+
+function includesText(value: string | undefined, needle: string): boolean {
+	return (value ?? "").toLocaleLowerCase().includes(needle.toLocaleLowerCase());
+}
+
+export function filterJournalEntries(
+	entries: JournalEntry[],
+	filters: JournalFilterOptions,
+): JournalEntry[] {
+	return entries.filter((entry) => {
+		if (filters.meat && !includesText(entry.meat, filters.meat)) return false;
+		if (filters.minRating != null && (entry.rating == null || entry.rating < filters.minRating)) {
+			return false;
+		}
+		if (
+			filters.search &&
+			!includesText(entry.title, filters.search) &&
+			!includesText(entry.notes, filters.search)
+		) {
+			return false;
+		}
+		return true;
+	});
+}
+
 /** Format the list view (newest first). */
 export function formatList(entries: JournalEntry[]): string {
 	if (entries.length === 0) {
@@ -247,12 +307,14 @@ export function formatCostSummary(summary: CostSummary): string {
 export interface JournalExportOptions {
 	format: "json" | "csv";
 	output?: string;
+	filters: JournalFilterOptions;
 }
 
 /** Parse args after `journal export`. Returns an error message on failure. */
 export function parseJournalExportArgs(args: string[]): JournalExportOptions | { error: string } {
 	let format: "json" | "csv" = "json";
 	let output: string | undefined;
+	const filterArgs: string[] = [];
 
 	for (let i = 0; i < args.length; i++) {
 		const arg = args[i];
@@ -268,12 +330,19 @@ export function parseJournalExportArgs(args: string[]): JournalExportOptions | {
 			const value = args[++i];
 			if (value === undefined) return { error: "--output requires a file path" };
 			output = value;
+		} else if (arg === "--meat" || arg === "--min-rating" || arg === "--search") {
+			filterArgs.push(arg);
+			const value = args[++i];
+			if (value === undefined) return { error: `${arg} requires a value` };
+			filterArgs.push(value);
 		} else {
 			return { error: `Unknown option: ${arg}` };
 		}
 	}
 
-	return { format, output };
+	const filters = parseJournalFilterArgs(filterArgs);
+	if ("error" in filters) return filters;
+	return { format, output, filters };
 }
 
 function escapeCsvField(value: string): string {
@@ -344,11 +413,13 @@ async function journalExport(args: string[]): Promise<void> {
 	}
 
 	const entries = await loadJournal();
-	const content = parsed.format === "csv" ? formatJournalCsv(entries) : formatJournalJson(entries);
+	const filtered = filterJournalEntries(entries, parsed.filters);
+	const content =
+		parsed.format === "csv" ? formatJournalCsv(filtered) : formatJournalJson(filtered);
 	if (parsed.output) {
 		await writeFile(parsed.output, content, "utf8");
 		console.error(
-			`Exported ${entries.length} journal entr${entries.length === 1 ? "y" : "ies"} to ${parsed.output}.`,
+			`Exported ${filtered.length} journal entr${filtered.length === 1 ? "y" : "ies"} to ${parsed.output}.`,
 		);
 		return;
 	}
@@ -410,11 +481,11 @@ const USAGE = `Usage: thermoworks journal <add|list|show|cost|import|export|rm> 
   journal add --title "Sunday brisket" [--meat brisket] [--weight 12]
               [--rating 4] [--cost-meat 40] [--cost-fuel 8] [--notes "..."]
               [--device SN] [--archive ID]
-  journal list [--json]
+  journal list [--meat TEXT] [--min-rating N] [--search TEXT] [--json]
   journal show <id> [--json]
-  journal cost [--json]
+  journal cost [--meat TEXT] [--min-rating N] [--search TEXT] [--json]
   journal import [SERIAL] [--limit N] [--dry-run] [--json]
-  journal export [--format json|csv] [--output PATH]
+  journal export [--format json|csv] [--output PATH] [--meat TEXT] [--min-rating N] [--search TEXT]
   journal rm <id>`;
 
 /** Route `thermoworks journal <subcommand>` to the right handler. */
@@ -437,12 +508,18 @@ export async function journal(args: string[], options: OutputOptions): Promise<v
 			break;
 		}
 		case "list": {
+			const filters = parseJournalFilterArgs(args.slice(1));
+			if ("error" in filters) {
+				console.error(filters.error);
+				process.exit(1);
+			}
 			const entries = await loadJournal();
+			const filtered = filterJournalEntries(entries, filters);
 			if (options.json) {
-				outputJson([...entries].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+				outputJson([...filtered].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
 				return;
 			}
-			process.stdout.write(formatList(entries));
+			process.stdout.write(formatList(filtered));
 			break;
 		}
 		case "show": {
@@ -464,8 +541,13 @@ export async function journal(args: string[], options: OutputOptions): Promise<v
 			break;
 		}
 		case "cost": {
+			const filters = parseJournalFilterArgs(args.slice(1));
+			if ("error" in filters) {
+				console.error(filters.error);
+				process.exit(1);
+			}
 			const entries = await loadJournal();
-			const summary = summarizeCosts(entries);
+			const summary = summarizeCosts(filterJournalEntries(entries, filters));
 			if (options.json) {
 				outputJson(summary);
 				return;

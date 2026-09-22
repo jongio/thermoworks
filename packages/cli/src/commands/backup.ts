@@ -21,6 +21,8 @@ export interface BackupOptions {
 	format: "csv" | "json";
 	/** Maximum number of archives to fetch per device. */
 	limit: number;
+	/** Write a machine-readable manifest alongside archive files. */
+	manifest: boolean;
 }
 
 /** A record of one archive written to disk. */
@@ -29,12 +31,20 @@ export interface BackupEntry {
 	archiveId: string;
 	label: string | null;
 	file: string;
+	format: "csv" | "json";
 	readings: number;
+}
+
+/** Manifest written by `backup --manifest`. */
+export interface BackupManifest {
+	createdAt: string;
+	format: "csv" | "json";
+	entries: BackupEntry[];
 }
 
 /**
  * Parse backup-specific CLI args from remaining argv after global flags.
- * Expected: backup [SERIAL] [--output DIR] [--format csv|json] [--limit N]
+ * Expected: backup [SERIAL] [--output DIR] [--format csv|json] [--limit N] [--manifest]
  */
 export function parseBackupArgs(args: string[]): BackupOptions {
 	// args[0] is "backup"
@@ -42,10 +52,14 @@ export function parseBackupArgs(args: string[]): BackupOptions {
 	let output = DEFAULT_OUTPUT_DIR;
 	let format: "csv" | "json" = "json";
 	let limit = DEFAULT_LIMIT;
+	let manifest = false;
 
 	for (let i = 1; i < args.length; i++) {
 		const arg = args[i];
 		switch (arg) {
+			case "--manifest":
+				manifest = true;
+				break;
 			case "--output":
 			case "-o":
 				{
@@ -84,7 +98,7 @@ export function parseBackupArgs(args: string[]): BackupOptions {
 		}
 	}
 
-	return { serial, output, format, limit };
+	return { serial, output, format, limit, manifest };
 }
 
 /** Replace filesystem-unfriendly characters so a value is safe to use in a filename. */
@@ -141,13 +155,24 @@ export async function backup(args: string[], options: OutputOptions): Promise<vo
 					archiveId: listed.id,
 					label: full.label,
 					file,
+					format: opts.format,
 					readings: rows.length,
 				});
 			}
 		}
 
+		const manifestFile = join(opts.output, "manifest.json");
+		if (opts.manifest) {
+			const manifest: BackupManifest = {
+				createdAt: new Date().toISOString(),
+				format: opts.format,
+				entries,
+			};
+			await writeFile(manifestFile, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+		}
+
 		if (options.json) {
-			outputJson(entries);
+			outputJson(opts.manifest ? { manifest: manifestFile, entries } : entries);
 			return;
 		}
 
@@ -158,6 +183,9 @@ export async function backup(args: string[], options: OutputOptions): Promise<vo
 
 		for (const entry of entries) {
 			console.log(`${entry.file}  (${entry.readings} readings)`);
+		}
+		if (opts.manifest) {
+			console.log(`${manifestFile}  (manifest)`);
 		}
 
 		const totalReadings = entries.reduce((sum, entry) => sum + entry.readings, 0);

@@ -8,7 +8,12 @@ on:
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
-permissions: {}
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   deploy:

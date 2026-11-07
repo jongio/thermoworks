@@ -20,7 +20,12 @@ on:
   schedule:
     - cron: "0 6 * * 1-5" # weekdays at 6am UTC
 
-permissions: {}
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   eval:

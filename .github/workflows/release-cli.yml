@@ -17,7 +17,8 @@ concurrency:
   group: release-cli
   cancel-in-progress: false
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   release-cli:
@@ -54,10 +55,11 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUMP: ${{ inputs.bump }}
         run: |
           set -e
           cd packages/cli
-          VERSION=$(npm version ${{ inputs.bump }} --no-git-tag-version)
+          VERSION=$(npm version "$BUMP" --no-git-tag-version)
           VERSION="${VERSION#v}"
           echo "Publishing thermoworks@$VERSION"
           pnpm publish --no-git-checks --provenance

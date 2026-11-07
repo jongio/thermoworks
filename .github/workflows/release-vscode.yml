@@ -17,7 +17,8 @@ concurrency:
   group: release-vscode
   cancel-in-progress: false
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   release-vscode:
@@ -52,10 +53,11 @@ jobs:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUMP: ${{ inputs.bump }}
         run: |
           set -e
           cd packages/vscode
-          VERSION=$(npm version ${{ inputs.bump }} --no-git-tag-version)
+          VERSION=$(npm version "$BUMP" --no-git-tag-version)
           VERSION="${VERSION#v}"
           echo "Publishing jongio.thermoworks@$VERSION to VS Code Marketplace"
           pnpm exec vsce publish --no-dependencies --pat "$VSCE_PAT"

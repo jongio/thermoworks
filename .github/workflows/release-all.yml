@@ -22,7 +22,8 @@ concurrency:
   group: release-all
   cancel-in-progress: false
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   release-all:
@@ -60,11 +61,11 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUMP: ${{ inputs.bump }}
+          SKIP_UNCHANGED: ${{ inputs.skip_unchanged }}
         run: |
           set -e
 
-          BUMP="${{ inputs.bump }}"
-          SKIP_UNCHANGED="${{ inputs.skip_unchanged }}"
           published=""
 
           # Helper: get latest tag for prefix

@@ -686,12 +686,13 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 	{
 		name: "backup",
 		summary: "Bulk-export archived sessions to a directory",
-		usage: "backup [SERIAL] [--output DIR] [--format FMT] [--limit N] [--json]",
+		usage: "backup [SERIAL] [--output DIR] [--format FMT] [--limit N] [--manifest] [--json]",
 		usageLines: [
 			"backup [SERIAL]  Bulk-export archived sessions to a directory",
 			"  --output DIR   Directory to write files (default: thermoworks-backup)",
 			"  --format FMT   Output format: csv or json (default: json)",
 			"  --limit N      Max archives to export per device (default: 20)",
+			"  --manifest    Write manifest.json with exported archive metadata",
 		],
 		supportsJson: true,
 		handler: ({ args, options }: CommandContext) => backup(args, options),

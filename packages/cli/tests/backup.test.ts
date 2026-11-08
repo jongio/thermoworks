@@ -120,6 +120,7 @@ describe("parseBackupArgs", () => {
 		expect(result.output).toBe("thermoworks-backup");
 		expect(result.format).toBe("json");
 		expect(result.limit).toBe(20);
+		expect(result.manifest).toBe(false);
 	});
 
 	it("parses a positional serial", () => {
@@ -138,6 +139,10 @@ describe("parseBackupArgs", () => {
 
 	it("parses --limit", () => {
 		expect(parseBackupArgs(["backup", "--limit", "5"]).limit).toBe(5);
+	});
+
+	it("parses --manifest", () => {
+		expect(parseBackupArgs(["backup", "--manifest"]).manifest).toBe(true);
 	});
 
 	it("parses serial combined with flags", () => {
@@ -254,6 +259,51 @@ describe("backup", () => {
 
 		expect(mockGetArchive).toHaveBeenCalledWith("X", "empty");
 		expect(mockWriteFile).toHaveBeenCalledTimes(1);
+	});
+
+	it("writes a manifest file when --manifest is set", async () => {
+		mockGetArchives.mockResolvedValue([
+			makeArchive({
+				id: "a1",
+				label: "Brisket",
+				channels: [
+					makeArchiveChannel({ label: "Pit", recentReadings: [makeReading({ value: 225 })] }),
+				],
+			}),
+		]);
+
+		await backup(["backup", "X", "--output", "cooks", "--manifest"], { json: false });
+
+		expect(mockWriteFile).toHaveBeenCalledTimes(2);
+		const [manifestPath, manifestContent] = mockWriteFile.mock.calls[1] as [string, string, string];
+		expect(manifestPath).toContain("manifest.json");
+		const manifest = JSON.parse(manifestContent);
+		expect(manifest.format).toBe("json");
+		expect(manifest.entries[0]).toMatchObject({
+			serial: "X",
+			archiveId: "a1",
+			label: "Brisket",
+			format: "json",
+			readings: 1,
+		});
+	});
+
+	it("includes the manifest path in JSON output when --manifest is set", async () => {
+		mockGetArchives.mockResolvedValue([
+			makeArchive({
+				id: "arch-001",
+				channels: [
+					makeArchiveChannel({ label: "Pit", recentReadings: [makeReading({ value: 225 })] }),
+				],
+			}),
+		]);
+
+		await backup(["backup", "ABC123", "--output", "cooks", "--manifest"], { json: true });
+
+		const output = logSpy.mock.calls.map((c) => c[0]).join("\n");
+		const parsed = JSON.parse(output);
+		expect(parsed.manifest).toContain("manifest.json");
+		expect(parsed.entries).toHaveLength(1);
 	});
 
 	it("prints a JSON manifest with --json", async () => {

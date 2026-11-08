@@ -26,7 +26,13 @@ vi.mock("node:fs/promises", () => ({
 	writeFile: (...args: unknown[]) => mockWriteFile(...args),
 }));
 
-import { formatCsv, formatTable, history, parseHistoryArgs } from "../src/commands/history.js";
+import {
+	filterReadingsByWindow,
+	formatCsv,
+	formatTable,
+	history,
+	parseHistoryArgs,
+} from "../src/commands/history.js";
 import { getCredentials } from "../src/credentials.js";
 
 const mockGetCredentials = vi.mocked(getCredentials);
@@ -93,6 +99,15 @@ describe("parseHistoryArgs", () => {
 	it("parses --output flag", () => {
 		const result = parseHistoryArgs(["ABC123", "--output", "data.csv"], { json: false });
 		expect(result.output).toBe("data.csv");
+	});
+
+	it("parses --since and --until flags", () => {
+		const result = parseHistoryArgs(
+			["ABC123", "--since", "2026-01-15T12:00:00Z", "--until", "2026-01-15T13:00:00Z"],
+			{ json: false },
+		);
+		expect(result.since?.toISOString()).toBe("2026-01-15T12:00:00.000Z");
+		expect(result.until?.toISOString()).toBe("2026-01-15T13:00:00.000Z");
 	});
 
 	it("parses all flags combined", () => {
@@ -164,6 +179,17 @@ describe("parseHistoryArgs", () => {
 		exitSpy.mockRestore();
 	});
 
+	it("exits on invalid --since value", () => {
+		const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
+			throw new Error("process.exit");
+		});
+		expect(() => parseHistoryArgs(["X", "--since", "soon"], { json: false })).toThrow(
+			"process.exit",
+		);
+		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Invalid --since value"));
+		exitSpy.mockRestore();
+	});
+
 	it("exits on unknown option", () => {
 		const exitSpy = vi.spyOn(process, "exit").mockImplementation(() => {
 			throw new Error("process.exit");
@@ -171,6 +197,29 @@ describe("parseHistoryArgs", () => {
 		expect(() => parseHistoryArgs(["X", "--verbose"], { json: false })).toThrow("process.exit");
 		expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Unknown option"));
 		exitSpy.mockRestore();
+	});
+});
+
+// =============================================================================
+// filterReadingsByWindow
+// =============================================================================
+
+describe("filterReadingsByWindow", () => {
+	it("keeps readings inside the inclusive time window", () => {
+		const readings = [
+			makeReading({ value: 100, timestamp: "2026-01-15T11:59:00.000Z" }),
+			makeReading({ value: 200, timestamp: "2026-01-15T12:00:00.000Z" }),
+			makeReading({ value: 300, timestamp: "2026-01-15T12:30:00.000Z" }),
+			makeReading({ value: 400, timestamp: "2026-01-15T13:01:00.000Z" }),
+		];
+
+		const filtered = filterReadingsByWindow(
+			readings,
+			new Date("2026-01-15T12:00:00.000Z"),
+			new Date("2026-01-15T13:00:00.000Z"),
+		);
+
+		expect(filtered.map((reading) => reading.value)).toEqual([200, 300]);
 	});
 });
 
@@ -323,6 +372,35 @@ describe("history", () => {
 		// Should be the 2 most recent (last 2)
 		expect(parsed.readings[0].value).toBe(300);
 		expect(parsed.readings[1].value).toBe(400);
+	});
+
+	it("filters readings by date window before formatting", async () => {
+		mockGetCredentials.mockResolvedValue({ email: "a@b.com", password: "pw" });
+		mockGetHistory.mockResolvedValue(
+			makeHistory("SIG001", [
+				makeReading({ value: 100, timestamp: "2026-01-15T11:59:00.000Z" }),
+				makeReading({ value: 200, timestamp: "2026-01-15T12:00:00.000Z" }),
+				makeReading({ value: 300, timestamp: "2026-01-15T12:30:00.000Z" }),
+				makeReading({ value: 400, timestamp: "2026-01-15T13:01:00.000Z" }),
+			]),
+		);
+
+		await history(
+			[
+				"SIG001",
+				"--format",
+				"json",
+				"--since",
+				"2026-01-15T12:00:00.000Z",
+				"--until",
+				"2026-01-15T13:00:00.000Z",
+			],
+			{ json: false },
+		);
+
+		const written = stdoutWriteSpy.mock.calls[0]?.[0] as string;
+		const parsed = JSON.parse(written);
+		expect(parsed.readings.map((reading: HistoricalReading) => reading.value)).toEqual([200, 300]);
 	});
 
 	it("writes to file with --output", async () => {

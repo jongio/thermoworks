@@ -36,7 +36,9 @@ import {
 	formatCsv,
 	formatInflux,
 	formatJson,
+	formatSummary,
 	parseExportArgs,
+	summarizeRows,
 } from "../src/commands/export.js";
 import { getCredentials } from "../src/credentials.js";
 
@@ -135,6 +137,11 @@ describe("parseExportArgs", () => {
 	it("parses --format json", () => {
 		const result = parseExportArgs(["export", "ABC123", "--format", "json"]);
 		expect(result.format).toBe("json");
+	});
+
+	it("parses --format summary", () => {
+		const result = parseExportArgs(["export", "ABC123", "--format", "summary"]);
+		expect(result.format).toBe("summary");
 	});
 
 	it("parses --format influx", () => {
@@ -723,5 +730,65 @@ describe("exportData", () => {
 		expect(parsed).toHaveLength(2);
 		expect(parsed[0].value).toBe(225);
 		expect(parsed[1].value).toBe(230);
+	});
+});
+
+// =============================================================================
+// summarizeRows / formatSummary
+// =============================================================================
+
+describe("summarizeRows", () => {
+	it("calculates per-channel summary statistics", () => {
+		const rows: ExportRow[] = [
+			{ timestamp: "2026-01-15T12:00:00.000Z", channel: "Pit", value: 225, units: "F" },
+			{ timestamp: "2026-01-15T12:05:00.000Z", channel: "Pit", value: 275, units: "F" },
+			{ timestamp: "2026-01-15T12:10:00.000Z", channel: "Meat", value: 150, units: "F" },
+		];
+
+		const summary = summarizeRows(rows);
+
+		expect(summary).toEqual([
+			{
+				channel: "Pit",
+				units: "F",
+				count: 2,
+				minimum: 225,
+				maximum: 275,
+				average: 250,
+				firstTimestamp: "2026-01-15T12:00:00.000Z",
+				lastTimestamp: "2026-01-15T12:05:00.000Z",
+				durationSeconds: 300,
+			},
+			{
+				channel: "Meat",
+				units: "F",
+				count: 1,
+				minimum: 150,
+				maximum: 150,
+				average: 150,
+				firstTimestamp: "2026-01-15T12:10:00.000Z",
+				lastTimestamp: "2026-01-15T12:10:00.000Z",
+				durationSeconds: 0,
+			},
+		]);
+	});
+
+	it("formats summary rows as tab-separated text", () => {
+		const text = formatSummary([
+			{
+				channel: "Pit",
+				units: "F",
+				count: 2,
+				minimum: 225,
+				maximum: 275,
+				average: 250,
+				firstTimestamp: "2026-01-15T12:00:00.000Z",
+				lastTimestamp: "2026-01-15T12:05:00.000Z",
+				durationSeconds: 300,
+			},
+		]);
+
+		expect(text).toContain("channel\tunits\tcount\tminimum\tmaximum\taverage");
+		expect(text).toContain("Pit\tF\t2\t225\t275\t250");
 	});
 });

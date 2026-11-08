@@ -4,7 +4,7 @@ import type { Archive } from "thermoworks-sdk";
 import { ThermoworksCloud } from "thermoworks-sdk";
 
 import { getCredentials } from "../credentials.js";
-import { maybeRedact } from "../output.js";
+import { maybeRedact, type OutputOptions } from "../output.js";
 
 /** A flattened reading row for export output. */
 export interface ExportRow {
@@ -18,26 +18,26 @@ export interface ExportRow {
 export interface ExportOptions {
 	serial: string;
 	archiveId?: string;
-	format: "csv" | "json" | "influx";
+	format: "csv" | "json" | "influx" | "summary";
 	output?: string;
 	downsample?: number;
 }
 
 /**
  * Parse export-specific CLI args from remaining argv after global flags.
- * Expected: export SERIAL [--archive ID] [--format csv|json|influx] [--output PATH] [--downsample SECONDS]
+ * Expected: export SERIAL [--archive ID] [--format csv|json|influx|summary] [--output PATH] [--downsample SECONDS]
  */
 export function parseExportArgs(args: string[]): ExportOptions {
 	// args[0] is "export", args[1] is SERIAL
 	const serial = args[1];
 	if (!serial || serial.startsWith("--")) {
 		throw new Error(
-			"Usage: thermoworks export SERIAL [--archive ID] [--format csv|json|influx] [--output PATH] [--downsample SECONDS]",
+			"Usage: thermoworks export SERIAL [--archive ID] [--format csv|json|influx|summary] [--output PATH] [--downsample SECONDS]",
 		);
 	}
 
 	let archiveId: string | undefined;
-	let format: "csv" | "json" | "influx" = "json";
+	let format: "csv" | "json" | "influx" | "summary" = "json";
 	let output: string | undefined;
 	let downsample: number | undefined;
 
@@ -50,8 +50,8 @@ export function parseExportArgs(args: string[]): ExportOptions {
 			case "--format":
 				{
 					const val = args[++i];
-					if (val !== "csv" && val !== "json" && val !== "influx") {
-						throw new Error("--format must be 'csv', 'json', or 'influx'");
+					if (val !== "csv" && val !== "json" && val !== "influx" && val !== "summary") {
+						throw new Error("--format must be 'csv', 'json', 'influx', or 'summary'");
 					}
 					format = val;
 				}
@@ -131,6 +131,80 @@ export function downsampleRows(rows: ExportRow[], intervalSeconds: number): Expo
 	return out;
 }
 
+/** Summary statistics for one archive channel. */
+export interface ExportSummaryRow {
+	channel: string;
+	units: string;
+	count: number;
+	minimum: number | null;
+	maximum: number | null;
+	average: number | null;
+	firstTimestamp: string | null;
+	lastTimestamp: string | null;
+	durationSeconds: number | null;
+}
+
+/** Build per-channel summary statistics from flattened export rows. */
+export function summarizeRows(rows: ExportRow[]): ExportSummaryRow[] {
+	const groups = new Map<string, ExportRow[]>();
+	for (const row of rows) {
+		const key = `${row.channel}\0${row.units}`;
+		const group = groups.get(key);
+		if (group) {
+			group.push(row);
+		} else {
+			groups.set(key, [row]);
+		}
+	}
+
+	return [...groups.values()].map((group) => {
+		const first = group[0];
+		const last = group[group.length - 1];
+		const values = group.map((row) => row.value).filter(Number.isFinite);
+		const average =
+			values.length > 0 ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
+		const firstMs = first ? new Date(first.timestamp).getTime() : Number.NaN;
+		const lastMs = last ? new Date(last.timestamp).getTime() : Number.NaN;
+		const durationSeconds =
+			Number.isNaN(firstMs) || Number.isNaN(lastMs) ? null : Math.max(0, (lastMs - firstMs) / 1000);
+		return {
+			channel: first?.channel ?? "unknown",
+			units: first?.units ?? "",
+			count: group.length,
+			minimum: values.length > 0 ? Math.min(...values) : null,
+			maximum: values.length > 0 ? Math.max(...values) : null,
+			average,
+			firstTimestamp: first?.timestamp ?? null,
+			lastTimestamp: last?.timestamp ?? null,
+			durationSeconds,
+		};
+	});
+}
+
+function formatNumber(value: number | null): string {
+	return value == null ? "" : Number(value.toFixed(2)).toString();
+}
+
+/** Format summary rows as a tab-separated table. */
+export function formatSummary(rows: ExportSummaryRow[]): string {
+	const header =
+		"channel\tunits\tcount\tminimum\tmaximum\taverage\tfirstTimestamp\tlastTimestamp\tdurationSeconds";
+	const lines = rows.map((row) =>
+		[
+			row.channel,
+			row.units,
+			String(row.count),
+			formatNumber(row.minimum),
+			formatNumber(row.maximum),
+			formatNumber(row.average),
+			row.firstTimestamp ?? "",
+			row.lastTimestamp ?? "",
+			formatNumber(row.durationSeconds),
+		].join("\t"),
+	);
+	return `${[header, ...lines].join("\n")}\n`;
+}
+
 /** Format rows as CSV with header line. */
 export function formatCsv(rows: ExportRow[]): string {
 	const header = "timestamp,channel,value,units";
@@ -201,7 +275,10 @@ export function formatInflux(rows: ExportRow[], serial: string): string {
 }
 
 /** Main export command handler. */
-export async function exportData(args: string[]): Promise<void> {
+export async function exportData(
+	args: string[],
+	outputOptions: OutputOptions = { json: false },
+): Promise<void> {
 	const options = parseExportArgs(args);
 
 	const creds = await getCredentials();
@@ -236,6 +313,13 @@ export async function exportData(args: string[]): Promise<void> {
 		} else if (options.format === "influx") {
 			const serialTag = maybeRedact({ serial: options.serial }).serial;
 			content = formatInflux(rows, serialTag);
+		} else if (options.format === "summary") {
+			const summary = summarizeRows(rows);
+			if (outputOptions.json) {
+				content = `${JSON.stringify(summary, null, 2)}\n`;
+			} else {
+				content = formatSummary(summary);
+			}
 		} else {
 			content = formatJson(rows);
 		}

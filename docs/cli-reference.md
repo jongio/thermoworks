@@ -1079,11 +1079,14 @@ list subcommand
 **Usage**
 
 ```bash
-npx thermoworks journal list
+npx thermoworks journal list [--meat TEXT] [--min-rating N] [--search TEXT]
 ```
 
 **Options**
 
+- `--meat TEXT` - Only include entries whose meat field contains this text.
+- `--min-rating N` - Only include entries rated at least N stars.
+- `--search TEXT` - Search entry titles and notes.
 - `--json` - Output machine-readable JSON.
 
 ### `thermoworks journal show`
@@ -1107,11 +1110,14 @@ cost subcommand
 **Usage**
 
 ```bash
-npx thermoworks journal cost
+npx thermoworks journal cost [--meat TEXT] [--min-rating N] [--search TEXT]
 ```
 
 **Options**
 
+- `--meat TEXT` - Only include entries whose meat field contains this text.
+- `--min-rating N` - Only include entries rated at least N stars.
+- `--search TEXT` - Search entry titles and notes.
 - `--json` - Output machine-readable JSON.
 
 ### `thermoworks journal import`
@@ -1135,12 +1141,16 @@ export subcommand
 **Usage**
 
 ```bash
-npx thermoworks journal export
+npx thermoworks journal export [--format json|csv] [--output PATH] [--meat TEXT] [--min-rating N] [--search TEXT]
 ```
 
 **Options**
 
-None.
+- `--format json|csv` - Output format.
+- `--output PATH` - Write output to a file.
+- `--meat TEXT` - Only include entries whose meat field contains this text.
+- `--min-rating N` - Only include entries rated at least N stars.
+- `--search TEXT` - Search entry titles and notes.
 
 ### `thermoworks journal rm`
 

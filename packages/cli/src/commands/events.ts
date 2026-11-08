@@ -13,6 +13,24 @@ export interface EventsCommandOptions {
 	device?: string;
 	type?: string;
 	limit?: number;
+	since?: Date;
+	until?: Date;
+}
+
+/** Parse an ISO date flag value, exiting with a clear error when invalid. */
+function parseDateFlag(flag: string, value: string | undefined): Date {
+	if (!value) {
+		console.error(`${flag} requires an ISO date value`);
+		process.exit(1);
+	}
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) {
+		console.error(
+			`Invalid ${flag} value: ${value}. Use an ISO date, for example 2026-06-07T12:00:00Z.`,
+		);
+		process.exit(1);
+	}
+	return date;
 }
 
 /** Map a numeric severity to a labeled color badge. */
@@ -28,7 +46,7 @@ export function formatSeverityBadge(severity: number): string {
 
 /**
  * Parse events-specific flags from remaining CLI args.
- * Handles: --device SERIAL, --type TYPE, --limit N
+ * Handles: --device SERIAL, --type TYPE, --limit N, --since ISO, --until ISO
  */
 export function parseEventsArgs(args: string[]): EventsCommandOptions {
 	const options: EventsCommandOptions = {};
@@ -48,6 +66,12 @@ export function parseEventsArgs(args: string[]): EventsCommandOptions {
 			if (!Number.isNaN(parsed) && parsed > 0) {
 				options.limit = parsed;
 			}
+			i++;
+		} else if (arg === "--since") {
+			options.since = parseDateFlag("--since", next);
+			i++;
+		} else if (arg === "--until") {
+			options.until = parseDateFlag("--until", next);
 			i++;
 		}
 	}
@@ -71,6 +95,8 @@ export async function events(
 		const eventList = await client.getEvents({
 			deviceId: commandOptions.device,
 			eventType: commandOptions.type,
+			startTime: commandOptions.since,
+			endTime: commandOptions.until,
 			limit: commandOptions.limit,
 		});
 

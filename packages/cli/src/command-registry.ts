@@ -532,8 +532,13 @@ export const commandDefinitions: readonly CommandDefinition[] = [
 	{
 		name: "events",
 		summary: "Show device event history",
-		usage: "events [--device SERIAL] [--type TYPE] [--limit N] [--json]",
-		usageLines: ["events           Show device event history (alarms, status changes)"],
+		usage:
+			"events [--device SERIAL] [--type TYPE] [--limit N] [--since ISO] [--until ISO] [--json]",
+		usageLines: [
+			"events           Show device event history (alarms, status changes)",
+			"  --since ISO    Only show events at or after this time",
+			"  --until ISO    Only show events at or before this time",
+		],
 		supportsJson: true,
 		handler: ({ args, options }: CommandContext) => events(parseEventsArgs(args.slice(1)), options),
 	},
